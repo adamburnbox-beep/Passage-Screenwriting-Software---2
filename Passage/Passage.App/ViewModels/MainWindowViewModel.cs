@@ -2056,7 +2056,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var roots = new List<OutlineNodeViewModel>();
         var sectionStack = new Stack<OutlineNodeViewModel>();
-        OutlineNodeViewModel? currentSynopsis = null;
 
         foreach (var element in elements)
         {
@@ -2068,8 +2067,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         sectionStack.Pop();
                     }
-
-                    currentSynopsis = null;
 
                     var sectionNode = new OutlineNodeViewModel(
                         OutlineNodeKind.Section,
@@ -2100,37 +2097,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     sectionStack.Push(sectionNode);
                     break;
                 }
-                case SynopsisElement synopsis:
-                {
-                    var synopsisNode = new OutlineNodeViewModel(
-                        OutlineNodeKind.Synopsis,
-                        synopsis.Text,
-                        synopsis.StartLine,
-                        synopsis.SectionLevel,
-                        synopsis.BodyText);
 
-                    if (HasExpandedOutlineKey(
-                            expandedKeys,
-                            OutlineNodeKind.Synopsis,
-                            synopsis.StartLine,
-                            synopsis.SectionLevel,
-                            synopsis.Text))
-                    {
-                        synopsisNode.IsExpanded = true;
-                    }
-
-                    if (sectionStack.Count == 0)
-                    {
-                        roots.Add(synopsisNode);
-                    }
-                    else
-                    {
-                        sectionStack.Peek().Children.Add(synopsisNode);
-                    }
-
-                    currentSynopsis = synopsisNode;
-                    break;
-                }
                 case SceneHeadingElement sceneHeading:
                 {
                     var sceneNode = new OutlineNodeViewModel(
@@ -2150,11 +2117,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         sceneNode.IsExpanded = true;
                     }
 
-                    if (currentSynopsis is not null)
-                    {
-                        currentSynopsis.Children.Add(sceneNode);
-                    }
-                    else if (sectionStack.Count == 0)
+                    if (sectionStack.Count == 0)
                     {
                         roots.Add(sceneNode);
                     }

@@ -1,4 +1,0 @@
-C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\artifacts\verify-obj\Debug\net9.0\Passage.Core.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\artifacts\verify-obj\Debug\net9.0\Passage.Core.AssemblyInfoInputs.cache
-C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\artifacts\verify-obj\Debug\net9.0\Passage.Core.AssemblyInfo.cs
-C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\artifacts\verify-obj\Debug\net9.0\Passage.Core.csproj.CoreCompileInputs.cache

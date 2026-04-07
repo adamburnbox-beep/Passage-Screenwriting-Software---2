@@ -2248,10 +2248,7 @@
                               <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
                                 <Setter Property="FontWeight" Value="Bold" />
                               </DataTrigger>
-                              <DataTrigger Binding="{Binding Kind}" Value="Synopsis">
-                                <Setter Property="FontStyle" Value="Italic" />
-                                <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
-                              </DataTrigger>
+
                             </Style.Triggers>
                           </Style>
                         </TextBlock.Style>

@@ -9,7 +9,6 @@ public enum OutlineNodeKind
 {
     Section,
     SceneHeading,
-    Synopsis,
     Note
 }
 
@@ -43,7 +42,6 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
             _ => "Beat"
         },
         OutlineNodeKind.SceneHeading => "Scene",
-        OutlineNodeKind.Synopsis => "Synopsis",
         OutlineNodeKind.Note => "Note",
         _ => Kind.ToString()
     };

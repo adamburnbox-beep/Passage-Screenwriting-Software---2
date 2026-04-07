@@ -1,0 +1,25 @@
+## [Visual Studio / .NET Core / WPF]
+# Target directories
+Bin/
+bin/
+Obj/
+obj/
+publish/
+
+# IDE specific files
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# Packages
+*.nuget.props
+*.nuget.targets
+project.assets.json
