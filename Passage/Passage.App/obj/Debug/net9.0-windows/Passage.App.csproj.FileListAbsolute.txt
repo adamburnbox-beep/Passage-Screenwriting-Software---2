@@ -1,0 +1,209 @@
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Core.dll
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Export.dll
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Parser.dll
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Parser.pdb
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Export.pdb
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Core.pdb
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.csproj.AssemblyReference.cache
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\FindReplaceDialog.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\GoToLineDialog.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\GoToSceneDialog.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\App.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\FindReplaceDialog.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\GoToLineDialog.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\GoToSceneDialog.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\MainWindow.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Views\GoalPanel.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\App.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App_MarkupCompile.cache
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App_MarkupCompile.lref
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\MainWindow.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Views\GoalPanel.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.g.resources
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.AssemblyInfoInputs.cache
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.AssemblyInfo.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.csproj.CoreCompileInputs.cache
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.dll
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\refint\Passage.App.dll
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.Core.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.Export.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\verify-build\Debug\net9.0-windows\Passage.Core.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\buildcheck\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\buildcheck\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\buildcheck\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\buildcheck\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App2\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App2\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App2\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App2\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App2\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App3\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App3\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App3\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App3\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App3\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App4\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App4\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App4\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App4\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App4\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App5\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App5\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App5\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App5\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App5\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App6\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App6\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App6\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App6\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App6\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App7\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App7\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App7\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App7\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App7\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App8\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App8\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App8\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App8\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\build-check\Passage.App8\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\verify-caret-fix\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\verify-caret-fix\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\verify-caret-fix\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\verify-caret-fix\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\verify-caret-fix\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\build-check\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\build-check\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\build-check\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\artifacts\build-check\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.Core.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.Export.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\hover-check\Passage.Core.pdb
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.exe
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.deps.json
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.runtimeconfig.json
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.dll
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Themes\DarkTheme.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Themes\LightTheme.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Views\SyntaxQuickReferencePanel.baml
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Views\SyntaxQuickReferencePanel.g.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage..52D638E7.Up2Date
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.genruntimeconfig.cache
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\f4684fff3d426082\Passage\Passage.App\obj\Debug\net9.0-windows\ref\Passage.App.dll
+c:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\build-verify\Passage.App.deps.json
+c:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\build-verify\Passage.App.runtimeconfig.json
+c:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\build-verify\Passage.App.dll
+c:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\build-verify\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Core.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Export.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Core.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.csproj.AssemblyReference.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\FindReplaceDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\GoToLineDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\GoToSceneDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Themes\DarkTheme.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Themes\LightTheme.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Views\SyntaxQuickReferencePanel.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\App.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\FindReplaceDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\GoToLineDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\GoToSceneDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\MainWindow.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Views\GoalPanel.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Views\SyntaxQuickReferencePanel.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\App.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App_MarkupCompile.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App_MarkupCompile.lref
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\MainWindow.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Views\GoalPanel.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.g.resources
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.AssemblyInfoInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.AssemblyInfo.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.csproj.CoreCompileInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage..52D638E7.Up2Date
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\refint\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.genruntimeconfig.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\ref\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Views\TitlePageDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\obj\Debug\net9.0-windows\Views\TitlePageDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.exe
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Core.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.csproj.AssemblyReference.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\FindReplaceDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\GoToLineDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\GoToSceneDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Themes\DarkTheme.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Themes\LightTheme.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Views\SyntaxQuickReferencePanel.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\App.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\FindReplaceDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\GoToLineDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\GoToSceneDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\MainWindow.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Views\GoalPanel.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Views\SyntaxQuickReferencePanel.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Views\TitlePageDialog.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\App.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App_MarkupCompile.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App_MarkupCompile.lref
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\MainWindow.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Views\GoalPanel.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Views\TitlePageDialog.baml
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\refint\Passage.App.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Export.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.Core.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.g.resources
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.AssemblyInfoInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.AssemblyInfo.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.csproj.CoreCompileInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.runtimeconfig.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\bin\Debug\net9.0-windows\Passage.App.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage..52D638E7.Up2Date
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\Passage.App.genruntimeconfig.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\obj\Debug\net9.0-windows\ref\Passage.App.dll

@@ -1,0 +1,17 @@
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Export.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Export.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Core.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Core.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug-verify5\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.csproj.AssemblyReference.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.AssemblyInfoInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.AssemblyInfo.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.csproj.CoreCompileInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage..5070C1EC.Up2Date
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\refint\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\Passage.Export.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\obj\Debug-verify5\ref\Passage.Export.dll

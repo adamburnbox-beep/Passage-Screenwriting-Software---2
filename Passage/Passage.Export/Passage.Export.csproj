@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Passage.Core\Passage.Core.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\Passage.Parser\Passage.Parser.csproj" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+</Project>

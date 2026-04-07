@@ -1,0 +1,65 @@
+<Window x:Class="Passage.App.FindReplaceDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Find / Replace"
+        Width="520"
+        Height="240"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource WindowBackground}">
+  <Border Padding="16" Background="{DynamicResource WindowBackground}">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <Grid Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="96" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Find what:" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryText}" />
+        <TextBox x:Name="FindTextBox"
+                 Grid.Column="1"
+                 Height="28"
+                 VerticalContentAlignment="Center"
+                 Margin="0,0,0,6"
+                 TextChanged="FindTextBox_TextChanged" />
+      </Grid>
+
+      <Grid Grid.Row="1" Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="96" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Replace with:" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryText}" />
+        <TextBox x:Name="ReplaceTextBox"
+                 Grid.Column="1"
+                 Height="28"
+                 VerticalContentAlignment="Center" />
+      </Grid>
+
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,10">
+        <Button Content="Find Next" Width="92" Margin="0,0,8,0" Click="FindNext_Click" />
+        <Button Content="Find Previous" Width="106" Margin="0,0,8,0" Click="FindPrevious_Click" />
+        <Button Content="Replace" Width="88" Margin="0,0,8,0" Click="Replace_Click" />
+        <Button Content="Replace All" Width="96" Click="ReplaceAll_Click" />
+      </StackPanel>
+
+      <DockPanel Grid.Row="3">
+        <TextBlock x:Name="StatusTextBlock"
+                   Text="Ready"
+                   Foreground="{DynamicResource MutedText}"
+                   VerticalAlignment="Center" />
+        <Button Content="Close"
+                Width="80"
+                DockPanel.Dock="Right"
+                HorizontalAlignment="Right"
+                Click="Close_Click" />
+      </DockPanel>
+    </Grid>
+  </Border>
+</Window>

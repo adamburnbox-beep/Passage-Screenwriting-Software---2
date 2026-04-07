@@ -1,0 +1,20 @@
+﻿
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Passage.Core -> C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\bin\Debug\net9.0\Passage.Core.dll
+  Passage.Parser -> C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\bin\Debug\net9.0\Passage.Parser.dll
+  Passage.Export -> C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Export\bin\Debug\net9.0\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\MainWindow.xaml.cs(2436,54): error CS1061: 'MainWindowViewModel' does not contain a definition for 'Text' and no accessible extension method 'Text' accepting a first argument of type 'MainWindowViewModel' could be found (are you missing a using directive or an assembly reference?) [C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\Passage.App_ldp4fapc_wpftmp.csproj]
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\MainWindow.xaml.cs(2446,39): error CS0120: An object reference is required for the non-static field, method, or property 'FountainParser.Parse(string?)' [C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\Passage.App_ldp4fapc_wpftmp.csproj]
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\MainWindow.xaml.cs(2467,28): error CS0219: The variable 'pdTop' is assigned but its value is never used [C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\Passage.App_ldp4fapc_wpftmp.csproj]
+
+Build FAILED.
+
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\MainWindow.xaml.cs(2436,54): error CS1061: 'MainWindowViewModel' does not contain a definition for 'Text' and no accessible extension method 'Text' accepting a first argument of type 'MainWindowViewModel' could be found (are you missing a using directive or an assembly reference?) [C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\Passage.App_ldp4fapc_wpftmp.csproj]
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\MainWindow.xaml.cs(2446,39): error CS0120: An object reference is required for the non-static field, method, or property 'FountainParser.Parse(string?)' [C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\Passage.App_ldp4fapc_wpftmp.csproj]
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\MainWindow.xaml.cs(2467,28): error CS0219: The variable 'pdTop' is assigned but its value is never used [C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.App\Passage.App_ldp4fapc_wpftmp.csproj]
+    0 Warning(s)
+    3 Error(s)
+
+Time Elapsed 00:00:06.41
+

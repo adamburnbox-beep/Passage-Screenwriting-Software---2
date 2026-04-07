@@ -1,0 +1,15 @@
+﻿
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Passage.Core -> C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.Core\bin\Debug\net9.0\Passage.Core.dll
+  Passage.Parser -> C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.Parser\bin\Debug\net9.0\Passage.Parser.dll
+  Passage.Export -> C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.Export\bin\Debug\net9.0\Passage.Export.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\ViewModels\MainWindowViewModel.cs(4452,13): error CS7036: There is no argument given that corresponds to the required parameter 'description' of 'MainWindowViewModel.BuildBoardDraftRawText(Guid, ScreenplayElementType, int, string, string, string)' [C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\Passage.App_tmbh0ea2_wpftmp.csproj]
+
+Build FAILED.
+
+C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\ViewModels\MainWindowViewModel.cs(4452,13): error CS7036: There is no argument given that corresponds to the required parameter 'description' of 'MainWindowViewModel.BuildBoardDraftRawText(Guid, ScreenplayElementType, int, string, string, string)' [C:\Users\Adam\Downloads\Passage Screenwriting Software - Copy\Passage\Passage.App\Passage.App_tmbh0ea2_wpftmp.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:04.92

@@ -1,0 +1,15 @@
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\bin\Debug-verify3\Passage.Parser.deps.json
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\bin\Debug-verify3\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\bin\Debug-verify3\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\bin\Debug-verify3\Passage.Core.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\bin\Debug-verify3\Passage.Core.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.csproj.AssemblyReference.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.AssemblyInfoInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.AssemblyInfo.cs
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.csproj.CoreCompileInputs.cache
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage..17135E12.Up2Date
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\refint\Passage.Parser.dll
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\Passage.Parser.pdb
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Parser\obj\Debug-verify3\ref\Passage.Parser.dll

@@ -1,0 +1,3 @@
+/p:RestoreUseStaticGraphEvaluation=true
+/p:BuildInParallel=false
+/p:RestoreBuildInParallel=false

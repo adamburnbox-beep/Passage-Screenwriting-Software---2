@@ -1,0 +1,113 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#FF0E1116" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#FFEAF0F6" />
+
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF171B21" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#FFF2F6FB" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlDarkBrushKey}" Color="#FF39414C" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlDarkDarkBrushKey}" Color="#FF2E353F" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlLightBrushKey}" Color="#FF1C2128" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.ControlLightLightBrushKey}" Color="#FF15191F" />
+
+  <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#FF12161B" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#FFEAF0F6" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.InfoBrushKey}" Color="#FF171B21" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.InfoTextBrushKey}" Color="#FFF2F6FB" />
+
+  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#66708FB7" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFF2F6FB" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#4D708FB7" />
+  <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#FFF2F6FB" />
+
+  <SolidColorBrush x:Key="WindowBackground" Color="#FF0E1116" />
+  <SolidColorBrush x:Key="WindowForeground" Color="#FFEAF0F6" />
+
+  <SolidColorBrush x:Key="SurfaceBackground" Color="#FF12161B" />
+  <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#FF171B21" />
+  <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#FF1D232B" />
+  <SolidColorBrush x:Key="SurfaceBorder" Color="#FF2F3742" />
+  <SolidColorBrush x:Key="SurfaceMutedBorder" Color="#FF252C35" />
+
+  <SolidColorBrush x:Key="ControlBackground" Color="#FF171C22" />
+  <SolidColorBrush x:Key="ControlForeground" Color="#FFF2F6FB" />
+  <SolidColorBrush x:Key="ControlBorder" Color="#FF39414C" />
+  <SolidColorBrush x:Key="ControlAccent" Color="#FF89A6D9" />
+
+  <SolidColorBrush x:Key="HeaderText" Color="#FFF5F8FC" />
+  <SolidColorBrush x:Key="SecondaryText" Color="#FFBAC5D4" />
+  <SolidColorBrush x:Key="MutedText" Color="#FF97A3B5" />
+  <SolidColorBrush x:Key="SubtleText" Color="#FF738093" />
+
+  <SolidColorBrush x:Key="OutlineSectionBackground" Color="#FF232237" />
+  <SolidColorBrush x:Key="OutlineSectionBorder" Color="#FF8C79D8" />
+  <SolidColorBrush x:Key="OutlineSynopsisBackground" Color="#FF1E242D" />
+  <SolidColorBrush x:Key="OutlineSynopsisBorder" Color="#FF6E879F" />
+  <SolidColorBrush x:Key="OutlineNoteBackground" Color="#FF18211E" />
+  <SolidColorBrush x:Key="OutlineNoteBorder" Color="#FF4F6C60" />
+  <SolidColorBrush x:Key="OutlineSceneBorder" Color="#FF39424D" />
+  <SolidColorBrush x:Key="OutlineCardBorder" Color="#FF2E353F" />
+  <SolidColorBrush x:Key="BeatBoardActCardBackground" Color="#FF24203A" />
+  <SolidColorBrush x:Key="BeatBoardOutlineActCardBackground" Color="#1E24203A" />
+  <SolidColorBrush x:Key="BeatBoardOutlineActCardCollapsedBackground" Color="#1624203A" />
+  <SolidColorBrush x:Key="BeatBoardSequenceCardBackground" Color="#FF172836" />
+  <SolidColorBrush x:Key="BeatBoardOutlineSequenceCardBackground" Color="#18172836" />
+  <SolidColorBrush x:Key="BeatBoardSceneCardBackground" Color="#FF221A17" />
+  <SolidColorBrush x:Key="BeatBoardSceneCardBorder" Color="#FFD8A561" />
+  <SolidColorBrush x:Key="BeatBoardSceneCardAccentForeground" Color="#FFF0C689" />
+  <SolidColorBrush x:Key="BeatBoardOutlineSceneCardBackground" Color="#18221A17" />
+  <SolidColorBrush x:Key="BeatBoardNoteCardBackground" Color="#FF18231F" />
+  <SolidColorBrush x:Key="BeatBoardNoteCardBorder" Color="#FF3F5B4E" />
+  <SolidColorBrush x:Key="BeatBoardNoteCardAccentForeground" Color="#FFA9C8B8" />
+  <SolidColorBrush x:Key="BeatBoardNoteCardContentForeground" Color="#FFDCEAE2" />
+  <SolidColorBrush x:Key="BeatBoardOutlineNoteCardBackground" Color="#1818231F" />
+  <SolidColorBrush x:Key="BeatBoardDefaultCardBackground" Color="#FF171C22" />
+  <SolidColorBrush x:Key="BeatBoardDefaultCardBorder" Color="#FF2E353F" />
+  <SolidColorBrush x:Key="BeatBoardOutlineDefaultCardBackground" Color="#18171C22" />
+  <SolidColorBrush x:Key="BeatBoardOutlineDefaultCardBorder" Color="#FF2E353F" />
+  <SolidColorBrush x:Key="BeatBoardDefaultCardAccentForeground" Color="#FFBEC9D6" />
+  <SolidColorBrush x:Key="BeatBoardGhostLayerBackground" Color="#FF0F1318" />
+  <SolidColorBrush x:Key="BeatBoardGhostCardBackground" Color="#FF171C22" />
+  <SolidColorBrush x:Key="BeatBoardGhostTitleForeground" Color="#FFF5F8FC" />
+  <SolidColorBrush x:Key="BeatBoardGhostDescriptionForeground" Color="#FFBAC5D4" />
+
+  <SolidColorBrush x:Key="EditorPageBackground" Color="#FF101419" />
+  <SolidColorBrush x:Key="EditorPageBorder" Color="#FF37404B" />
+  <SolidColorBrush x:Key="EditorPageShadow" Color="#55000000" />
+  <SolidColorBrush x:Key="EditorForeground" Color="#FFF2F6FB" />
+  <SolidColorBrush x:Key="EditorSelection" Color="#66708FB7" />
+  <SolidColorBrush x:Key="EditorCaret" Color="#FFF2F6FB" />
+
+  <SolidColorBrush x:Key="GoalSuccessBackground" Color="#FF17231F" />
+  <SolidColorBrush x:Key="GoalSuccessBorder" Color="#FF3F5B4E" />
+  <SolidColorBrush x:Key="GoalSuccessForeground" Color="#FFDCEAE2" />
+  <SolidColorBrush x:Key="GoalValueText" Color="#FFF0F5FA" />
+  <SolidColorBrush x:Key="GoalLabelText" Color="#FFA9C8B8" />
+  <SolidColorBrush x:Key="GoalOverallBackground" Color="#FF171C22" />
+  <SolidColorBrush x:Key="GoalOverallBorder" Color="#FF39414C" />
+  <SolidColorBrush x:Key="DestructiveBackground" Color="#FF4A1D1D" />
+  <SolidColorBrush x:Key="DestructiveBorder" Color="#FFD66A6A" />
+  <SolidColorBrush x:Key="DestructiveForeground" Color="#FFF9EEEE" />
+
+  <Style TargetType="ToolTip">
+    <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="HasDropShadow" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToolTip">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="4"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

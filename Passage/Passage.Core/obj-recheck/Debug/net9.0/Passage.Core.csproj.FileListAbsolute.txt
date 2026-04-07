@@ -1,0 +1,2 @@
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\obj-recheck\Debug\net9.0\Passage.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Adam\Downloads\Passage Screenwriting Software\Passage\Passage.Core\obj-recheck\Debug\net9.0\Passage.Core.csproj.CoreCompileInputs.cache

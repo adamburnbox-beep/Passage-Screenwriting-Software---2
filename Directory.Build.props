@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**\artifacts\**;**\verify-obj\**;**\obj-recheck\**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>
