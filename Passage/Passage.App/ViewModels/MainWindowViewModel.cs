@@ -1406,6 +1406,37 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CurrentElementText = GetCurrentElementDescription(elementType, isTabOverride: false);
     }
 
+    public OutlineNodeViewModel? FindActiveOutlineNode(int lineNumber)
+    {
+        return FindActiveOutlineNodeInCollection(OutlineRoots, lineNumber);
+    }
+
+    private static OutlineNodeViewModel? FindActiveOutlineNodeInCollection(IEnumerable<OutlineNodeViewModel> nodes, int lineNumber)
+    {
+        OutlineNodeViewModel? bestMatch = null;
+
+        foreach (var node in nodes)
+        {
+            if (node.LineNumber <= lineNumber)
+            {
+                // If it's a closer match than the current best, take it
+                if (bestMatch == null || node.LineNumber >= bestMatch.LineNumber)
+                {
+                    bestMatch = node;
+                }
+
+                // Check children for even better match
+                var childMatch = FindActiveOutlineNodeInCollection(node.Children, lineNumber);
+                if (childMatch != null)
+                {
+                    bestMatch = childMatch;
+                }
+            }
+        }
+
+        return bestMatch;
+    }
+
     public void UpdateEnterContinuation(int lineNumber, string currentLineText)
     {
         if (lineNumber < 1)
@@ -2241,6 +2272,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (left.Kind != right.Kind ||
             left.Text != right.Text ||
+            left.BodyText != right.BodyText ||
             left.LineNumber != right.LineNumber ||
             left.SectionLevel != right.SectionLevel ||
             left.Children.Count != right.Children.Count)
@@ -2981,6 +3013,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             if (left.Id != right.Id ||
                 left.Text != right.Text ||
+                left.BodyText != right.BodyText ||
                 CreateBoardElementSignature(left) != CreateBoardElementSignature(right) ||
                 left.IsCollapsed != right.IsCollapsed ||
                 left.IsDraft != right.IsDraft)
@@ -4474,17 +4507,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var normalizedDescription = (description ?? string.Empty).ReplaceLineEndings("\n").Trim();
         return IsDefaultBoardDescription(normalizedDescription)
-            ? DefaultNewBoardCardDescription
+            ? string.Empty
             : normalizedDescription;
     }
 
-    private static bool HasMeaningfulBoardDescription(string description)
+    public static bool HasMeaningfulBoardDescription(string? description)
     {
         return !string.IsNullOrWhiteSpace(description) &&
             !IsDefaultBoardDescription(description);
     }
 
-    private static bool IsDefaultBoardDescription(string? description)
+    public static bool IsDefaultBoardDescription(string? description)
     {
         var normalizedDescription = (description ?? string.Empty).Trim();
         return string.Equals(normalizedDescription, DefaultNewBoardCardDescription, StringComparison.Ordinal) ||
@@ -4500,7 +4533,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var sourceDescription = GetBoardScriptDescription(sourceElement);
         return HasMeaningfulBoardDescription(sourceDescription)
-            ? sourceDescription
+            ? sourceDescription.Trim()
             : description;
     }
 

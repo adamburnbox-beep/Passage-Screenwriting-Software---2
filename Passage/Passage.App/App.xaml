@@ -77,11 +77,94 @@
         <Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
       </Style>
 
-      <Style TargetType="{x:Type Button}">
+      <Style x:Key="DarkChromeButtonStyle" TargetType="{x:Type Button}">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="Button">
+              <Border x:Name="ButtonBorder"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      Padding="{TemplateBinding Padding}"
+                      SnapsToDevicePixels="True"
+                      CornerRadius="4">
+                <ContentPresenter HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  RecognizesAccessKey="True" />
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
+                  <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
+                  <Setter Property="Cursor" Value="Arrow" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
       </Style>
+
+      <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DarkChromeButtonStyle}" />
+
+      <Style x:Key="DarkChromeToggleButtonStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="ToggleButton">
+              <Border x:Name="ButtonBorder"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      Padding="{TemplateBinding Padding}"
+                      CornerRadius="4"
+                      SnapsToDevicePixels="True">
+                <ContentPresenter HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  RecognizesAccessKey="True" />
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
+                    <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter Property="Opacity" Value="0.55" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
+      <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource DarkChromeToggleButtonStyle}" />
 
       <Style TargetType="{x:Type TextBox}">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />

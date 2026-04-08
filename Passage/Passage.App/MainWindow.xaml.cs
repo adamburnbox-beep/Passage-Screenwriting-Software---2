@@ -1132,11 +1132,18 @@ public partial class MainWindow : Window
 
     private static string GetEditableBoardDescription(ScreenplayElement element)
     {
-        return element switch
+        var description = element switch
         {
             ScratchpadCardElement draftCard => draftCard.Description,
             _ => element.BoardDescription
         };
+
+        if (description is null || MainWindowViewModel.IsDefaultBoardDescription(description))
+        {
+            return string.Empty;
+        }
+
+        return description ?? string.Empty;
     }
 
     private bool CommitInlineBeatBoardEditorChanges(FrameworkElement elementHost, ScreenplayElement element)
@@ -5007,6 +5014,11 @@ public partial class MainWindow : Window
         {
             ScheduleEditorViewportRefresh(ensureCaretVisible: false);
         }
+
+        if (e.PropertyName == nameof(ShellViewModel.CurrentLineNumber))
+        {
+            RestoreOutlineSelection(ViewModel.CurrentLineNumber);
+        }
     }
 
     private void ThemeManager_ThemeChanged(object? sender, EventArgs e)
@@ -6029,9 +6041,13 @@ public partial class MainWindow : Window
             ClearTreeSelection(OutlineTree);
             ClearTreeSelection(NotesTree);
 
-            if (OutlineTree is not null && TrySelectOutlineNode(OutlineTree, lineNumber))
+            var activeNode = ViewModel.SelectedDocument?.FindActiveOutlineNode(lineNumber);
+            if (activeNode != null)
             {
-                return;
+                if (OutlineTree is not null && TrySelectSpecificNode(OutlineTree, activeNode))
+                {
+                    return;
+                }
             }
 
             if (NotesTree is not null)
@@ -6043,6 +6059,44 @@ public partial class MainWindow : Window
         {
             _suppressOutlineSelectionNavigation = false;
         }
+    }
+
+    private bool TrySelectSpecificNode(System.Windows.Controls.ItemsControl parent, OutlineNodeViewModel targetNode)
+    {
+        foreach (var item in parent.Items)
+        {
+            if (item is not OutlineNodeViewModel node)
+            {
+                continue;
+            }
+
+            var container = parent.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.TreeViewItem;
+            if (container is null)
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(node, targetNode))
+            {
+                if (!container.IsSelected)
+                {
+                    container.IsSelected = true;
+                }
+                container.BringIntoView();
+                return true;
+            }
+
+            if (TrySelectSpecificNode(container, targetNode))
+            {
+                if (!container.IsExpanded)
+                {
+                    container.IsExpanded = true;
+                }
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool TrySelectOutlineNode(System.Windows.Controls.ItemsControl parent, int lineNumber)
@@ -6067,13 +6121,12 @@ public partial class MainWindow : Window
                 return true;
             }
 
-            if (!container.IsExpanded)
-            {
-                container.IsExpanded = true;
-            }
-
             if (TrySelectOutlineNode(container, lineNumber))
             {
+                if (!container.IsExpanded)
+                {
+                    container.IsExpanded = true;
+                }
                 return true;
             }
         }

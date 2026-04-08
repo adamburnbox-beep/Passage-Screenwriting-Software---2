@@ -26,6 +26,33 @@
       <Setter Property="AcceptsReturn" Value="False" />
     </Style>
 
+    <ControlTemplate x:Key="BeatBoardWatermarkTextBoxTemplate" TargetType="TextBox">
+      <Grid>
+        <Border x:Name="Border"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                Padding="{TemplateBinding Padding}"
+                CornerRadius="2">
+          <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+        </Border>
+        <TextBlock x:Name="Placeholder"
+                   Text="{TemplateBinding Tag}"
+                   Foreground="{TemplateBinding Foreground}"
+                   Opacity="0.4"
+                   FontStyle="Italic"
+                   IsHitTestVisible="False"
+                   Margin="5,3,5,0"
+                   Visibility="Collapsed"
+                   TextWrapping="Wrap" />
+      </Grid>
+      <ControlTemplate.Triggers>
+        <Trigger Property="Text" Value="">
+          <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+        </Trigger>
+      </ControlTemplate.Triggers>
+    </ControlTemplate>
+
     <Style x:Key="BeatBoardInlineDescriptionTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BeatBoardInlineTextBoxStyle}">
       <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
       <Setter Property="FontSize" Value="11.5" />
@@ -33,95 +60,13 @@
       <Setter Property="MinLines" Value="3" />
       <Setter Property="MaxLines" Value="8" />
       <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+      <Setter Property="Template" Value="{StaticResource BeatBoardWatermarkTextBoxTemplate}" />
+      <Setter Property="Tag" Value="Click the pencil to edit. Double-click to locate in script." />
     </Style>
 
     <local:UppercaseConverter x:Key="UppercaseConverter" />
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
-    <Style x:Key="DarkChromeButtonStyle" TargetType="Button">
-      <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
-      <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="10,5" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="SnapsToDevicePixels" Value="True" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border x:Name="ButtonBorder"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    Padding="{TemplateBinding Padding}"
-                    SnapsToDevicePixels="True"
-                    CornerRadius="4">
-              <ContentPresenter HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                RecognizesAccessKey="True" />
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
-                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-              </Trigger>
-              <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-              </Trigger>
-              <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
-              </Trigger>
-              <Trigger Property="IsEnabled" Value="False">
-                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
-                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
-                <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
-                <Setter Property="Cursor" Value="Arrow" />
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
-    <Style x:Key="DarkChromeToggleButtonStyle" TargetType="ToggleButton">
-      <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
-      <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="10,3" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="SnapsToDevicePixels" Value="True" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="ToggleButton">
-            <Border x:Name="ButtonBorder"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    Padding="{TemplateBinding Padding}"
-                    CornerRadius="4"
-                    SnapsToDevicePixels="True">
-              <ContentPresenter HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                RecognizesAccessKey="True" />
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
-                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-              </Trigger>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
-                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-              </Trigger>
-              <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Opacity" Value="0.55" />
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
 
     <Style x:Key="UtilityActionGroupBorderStyle" TargetType="Border">
       <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
@@ -180,9 +125,6 @@
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Visibility" Value="Visible" />
       <Style.Triggers>
-        <Trigger Property="Text" Value="">
-          <Setter Property="Visibility" Value="Collapsed" />
-        </Trigger>
       </Style.Triggers>
     </Style>
 
@@ -1076,19 +1018,19 @@
                        Style="{StaticResource BeatBoardHeadingStyle}" />
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
-            <TextBlock x:Name="DescriptionTextBlock"
-                       Text="{Binding BoardDescription}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardDescriptionStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
+            <Grid Margin="0,10,0,0">
+              <TextBlock x:Name="DescriptionTextBlock"
+                         Text="{Binding BoardDescription}"
+                         Style="{StaticResource BeatBoardDescriptionStyle}"
+                         Margin="0" />
+              <TextBlock x:Name="DescriptionPlaceholder"
+                         Text="Click the pencil to edit. Double-click to locate in script."
+                         Style="{StaticResource BeatBoardDescriptionStyle}"
+                         Margin="0"
+                         Opacity="0.5"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineDescriptionTextBox"
                      Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
                      Margin="0,10,0,0" />
@@ -2321,7 +2263,8 @@
                 </Border>
 
                 <Grid Grid.Row="1">
-                  <TreeView x:Name="OutlineTree" VirtualizingPanel.ScrollUnit="Pixel"
+                  <TreeView x:Name="OutlineTree" 
+                            VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding OutlineRoots}"
                             Background="Transparent"
                             BorderThickness="0"
@@ -2363,7 +2306,8 @@
             <TabItem Header="Notes">
               <Grid Margin="-8,8,4,4">
                 <Grid>
-                  <TreeView x:Name="NotesTree" VirtualizingPanel.ScrollUnit="Pixel"
+                  <TreeView x:Name="NotesTree" 
+                            VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding NotesRoots}"
                             Background="Transparent"
                             BorderThickness="0"
@@ -3196,3 +3140,4 @@
     </Border>
   </Grid>
 </Window>
+
