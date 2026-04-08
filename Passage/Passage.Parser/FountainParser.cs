@@ -453,6 +453,11 @@ public sealed class FountainParser
         var trimmed = line.Text.Trim();
         titlePageEntry = default!;
 
+        if (IdCommentRegex.IsMatch(trimmed))
+        {
+            return false;
+        }
+
         var colonIndex = trimmed.IndexOf(':');
         if (colonIndex <= 0)
         {

@@ -102,6 +102,7 @@ public partial class MainWindow : Window
     private const double BeatBoardHorizontalWheelStep = 56.0;
     private const double MinimumEditorPageWidth = 1.0;
     private static readonly Regex MarkdownBoldRegex = new(@"\*\*(.+?)\*\*", RegexOptions.Compiled | RegexOptions.Multiline);
+    private static readonly Regex IdCommentRegex = new(@"\s*\[\[id:([a-f\d\-]+)\]\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Thickness ActionParagraphMargin = new(0.0);
     private static readonly Thickness DialogueParagraphMargin = new(96.0, 0.0, 0.0, 0.0);
     private static readonly Thickness ParentheticalParagraphMargin = new(144.0, 0.0, 0.0, 0.0);
@@ -3435,6 +3436,39 @@ public partial class MainWindow : Window
     private void ApplyParagraphFormatting(Paragraph paragraph, ParagraphFormattingResult paragraphFormatting)
     {
         ApplyParagraphLayout(paragraph, paragraphFormatting.ScreenplayType);
+
+        var text = paragraphFormatting.Text ?? string.Empty;
+        var match = IdCommentRegex.Match(text);
+        
+        if (match.Success)
+        {
+            var before = text.Substring(0, match.Index);
+            var idTag = match.Value;
+            var after = text.Substring(match.Index + match.Length);
+
+            // Rebuild inlines to ensure the ID tag is in an atomic UI container
+            paragraph.Inlines.Clear();
+            if (!string.IsNullOrEmpty(before))
+            {
+                paragraph.Inlines.Add(new Run(before));
+            }
+
+            var idBlock = new TextBlock 
+            { 
+                Text = idTag, 
+                FontSize = 0.1, 
+                Opacity = 0, 
+                Width = 0, 
+                Height = 0,
+                IsHitTestVisible = false
+            };
+            paragraph.Inlines.Add(new InlineUIContainer(idBlock));
+
+            if (!string.IsNullOrEmpty(after))
+            {
+                paragraph.Inlines.Add(new Run(after));
+            }
+        }
     }
 
     private Dictionary<int, Paragraph> CreateParagraphLookup(IEnumerable<int> lineNumbers)
@@ -4015,6 +4049,12 @@ public partial class MainWindow : Window
                     break;
                 case Span span:
                     AppendInlineText(span.Inlines, builder);
+                    break;
+                case InlineUIContainer container:
+                    if (container.Child is TextBlock tb)
+                    {
+                        builder.Append(tb.Text);
+                    }
                     break;
             }
         }

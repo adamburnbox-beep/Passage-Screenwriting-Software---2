@@ -352,6 +352,12 @@ internal static class RichTextBoxTextUtilities
                 case Span span:
                     AppendInlineText(span.Inlines, builder);
                     break;
+                case InlineUIContainer container:
+                    if (container.Child is TextBlock tb)
+                    {
+                        builder.Append(tb.Text);
+                    }
+                    break;
             }
         }
     }
