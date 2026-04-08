@@ -1246,7 +1246,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
 
             // Update the document text. This will trigger a re-parse internally.
-            DocumentText = syncPlan.DocumentText;
+            DocumentText = ScriptSanitizer.CollapseTripleNewlines(syncPlan.DocumentText);
             IsBoardSyncRequired = false;
             
             // Ensure the UI is updated immediately after the sync.
@@ -2487,6 +2487,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             var originalTrailing = sourceLines[trailingStart..trailingEnd];
 
+            // Clean trailing content: avoid preserving more than one trailing blank line at the end 
+            // of a block, which prevents compounding whitespace expansion.
+            var cleanedTrailing = new List<string>(originalTrailing);
+            while (cleanedTrailing.Count > 1 && 
+                   string.IsNullOrWhiteSpace(cleanedTrailing[^1]) && 
+                   string.IsNullOrWhiteSpace(cleanedTrailing[^2]))
+            {
+                cleanedTrailing.RemoveAt(cleanedTrailing.Count - 1);
+            }
+
             // Prefer the parsed element's embedded GUID; fall back to the direct id-map scan;
             // then fall back to signature matching for elements that lack IDs.
             var targetId = element.Id;
@@ -2506,7 +2516,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 // Card exists on the board. Carry any propagated orphan lines into its block.
                 var content = new List<string>(propagationBuffer);
-                content.AddRange(originalTrailing);
+                content.AddRange(cleanedTrailing);
                 segmentLookup[targetId] = content;
                 segmentLineInfos[targetId] = (element.LineIndex, nextElementLineIndex);
                 propagationBuffer.Clear();
@@ -2515,7 +2525,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 // Card was deleted from the board or is unmatched — preserve its trailing
                 // content in the propagation buffer so it can attach to the next active card.
-                propagationBuffer.AddRange(originalTrailing);
+                propagationBuffer.AddRange(cleanedTrailing);
             }
         }
 
@@ -2543,6 +2553,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         foreach (var boardElement in BoardElements)
         {
+            // Ensure exactly one blank line precedes every card block (Act, Sequence, Scene, Note).
+            if (currentOutputLineIndex > 0)
+            {
+                if (synchronizedLines.Count == 0 || !string.IsNullOrWhiteSpace(synchronizedLines[^1]))
+                {
+                    synchronizedLines.Add(string.Empty);
+                    currentOutputLineIndex++;
+                }
+            }
+
             var outputLines = BuildBoardElementSourceLines(boardElement);
             synchronizedLines.AddRange(outputLines);
 
@@ -2666,7 +2686,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string SerializeSceneHeadingElement(SceneHeadingElement sceneHeading)
     {
-        var lines = new List<string> { string.Empty };
+        var lines = new List<string>();
         
         // Step A: Heading + ID Line
         var headingText = (sceneHeading.ScriptHeading ?? sceneHeading.Text ?? "Scene").Trim();
@@ -2711,7 +2731,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         
         // Step A: Heading + ID Line
         // Ensure a blank line precedes every card block for Fountain compliance.
-        var lines = new List<string> { string.Empty };
+        var lines = new List<string>();
         
         // Use section.Text explicitly for the title.
         var title = (section.Text ?? string.Empty).Trim();
@@ -2756,7 +2776,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var prefix = new string('#', depth);
         
         // Step A: Title + ID Line
-        var lines = new List<string> { string.Empty };
+        var lines = new List<string>();
         var title = ResolveBoardScriptText(heading, fallback: "Section");
         lines.Add($"{prefix} {title} [[id:{id}]]");
 
@@ -2775,7 +2795,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string SerializeDraftSceneHeading(Guid id, string sceneHeading, string description)
     {
-        var lines = new List<string> { string.Empty };
+        var lines = new List<string>();
         var trimmedHeading = NormalizeBoardCardSceneHeading(null, sceneHeading);
         var trimmedDescription = NormalizeBoardCardDescription(description);
 
@@ -2810,7 +2830,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string SerializeDraftNote(Guid id, string heading, string description)
     {
-        var lines = new List<string> { string.Empty };
+        var lines = new List<string>();
         var trimmedHeading = ResolveBoardScriptText(heading, fallback: "Note");
         var trimmedDescription = NormalizeBoardCardDescription(description);
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Passage.Parser;
 
@@ -101,5 +102,19 @@ public static class ScriptSanitizer
         }
 
         return string.Join(Environment.NewLine, keptLines);
+    }
+
+    /// <summary>
+    /// Collapses triple newlines (\r?\n){3,} into double newlines \n\n.
+    /// Used to prevent whitespace expansion during Beat Board synchronization.
+    /// </summary>
+    public static string CollapseTripleNewlines(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        return Regex.Replace(text, @"(\r?\n){3,}", "\n\n", RegexOptions.Compiled);
     }
 }
