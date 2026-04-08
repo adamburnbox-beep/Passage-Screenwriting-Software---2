@@ -65,6 +65,7 @@
     </Style>
 
     <local:UppercaseConverter x:Key="UppercaseConverter" />
+    <local:EqualityConverter x:Key="EqualityConverter" />
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
 
@@ -334,6 +335,20 @@
         <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
           <Setter Property="Padding" Value="14,10" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Value="True">
+              <Condition.Binding>
+                <MultiBinding Converter="{StaticResource EqualityConverter}">
+                  <Binding />
+                  <Binding Path="DataContext.SelectedDocument.BoardDropTargetElement" RelativeSource="{RelativeSource AncestorType=Window}" />
+                </MultiBinding>
+              </Condition.Binding>
+            </Condition>
+          </MultiDataTrigger.Conditions>
+          <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+          <Setter Property="Opacity" Value="0.25" />
+        </MultiDataTrigger>
       </Style.Triggers>
     </Style>
 
@@ -463,6 +478,20 @@
                 <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Value="True">
+                    <Condition.Binding>
+                      <MultiBinding Converter="{StaticResource EqualityConverter}">
+                        <Binding />
+                        <Binding Path="DataContext.SelectedDocument.BoardDropTargetElement" RelativeSource="{RelativeSource AncestorType=Window}" />
+                      </MultiBinding>
+                    </Condition.Binding>
+                  </Condition>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Opacity" Value="0.25" />
+              </MultiDataTrigger>
             </Style.Triggers>
           </Style>
         </Border.Style>
@@ -594,6 +623,20 @@
                 <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Value="True">
+                    <Condition.Binding>
+                      <MultiBinding Converter="{StaticResource EqualityConverter}">
+                        <Binding />
+                        <Binding Path="DataContext.SelectedDocument.BoardDropTargetElement" RelativeSource="{RelativeSource AncestorType=Window}" />
+                      </MultiBinding>
+                    </Condition.Binding>
+                  </Condition>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Opacity" Value="0.25" />
+              </MultiDataTrigger>
             </Style.Triggers>
           </Style>
         </Border.Style>
@@ -713,6 +756,20 @@
                 <Setter Property="Padding" Value="15,10" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Value="True">
+                    <Condition.Binding>
+                      <MultiBinding Converter="{StaticResource EqualityConverter}">
+                        <Binding />
+                        <Binding Path="DataContext.SelectedDocument.BoardDropTargetElement" RelativeSource="{RelativeSource AncestorType=Window}" />
+                      </MultiBinding>
+                    </Condition.Binding>
+                  </Condition>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Opacity" Value="0.25" />
+              </MultiDataTrigger>
             </Style.Triggers>
           </Style>
         </Border.Style>
@@ -844,6 +901,20 @@
                 <Setter Property="Padding" Value="14,10" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Value="True">
+                    <Condition.Binding>
+                      <MultiBinding Converter="{StaticResource EqualityConverter}">
+                        <Binding />
+                        <Binding Path="DataContext.SelectedDocument.BoardDropTargetElement" RelativeSource="{RelativeSource AncestorType=Window}" />
+                      </MultiBinding>
+                    </Condition.Binding>
+                  </Condition>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Opacity" Value="0.25" />
+              </MultiDataTrigger>
             </Style.Triggers>
           </Style>
         </Border.Style>
@@ -957,6 +1028,20 @@
                 <Setter Property="Padding" Value="15,10" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Value="True">
+                    <Condition.Binding>
+                      <MultiBinding Converter="{StaticResource EqualityConverter}">
+                        <Binding />
+                        <Binding Path="DataContext.SelectedDocument.BoardDropTargetElement" RelativeSource="{RelativeSource AncestorType=Window}" />
+                      </MultiBinding>
+                    </Condition.Binding>
+                  </Condition>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Opacity" Value="0.25" />
+              </MultiDataTrigger>
             </Style.Triggers>
           </Style>
         </Border.Style>
@@ -2910,16 +2995,6 @@
                       </ItemsControl.ItemsPanel>
                     </ItemsControl>
 
-                    <Canvas IsHitTestVisible="False"
-                            Panel.ZIndex="10">
-                      <Border Width="{Binding SelectedDocument.BoardDropIndicatorWidth}"
-                              Height="{Binding SelectedDocument.BoardDropIndicatorHeight}"
-                              Background="{DynamicResource ControlAccent}"
-                              CornerRadius="2"
-                              Visibility="{Binding SelectedDocument.IsBoardDropIndicatorVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                              Canvas.Left="{Binding SelectedDocument.BoardDropIndicatorX}"
-                              Canvas.Top="{Binding SelectedDocument.BoardDropIndicatorY}" />
-                    </Canvas>
                   </Grid>
                 </ScrollViewer>
 

@@ -109,10 +109,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isBoardSyncRequired;
     private bool _isBoardModeActive;
     private bool _isBoardDropIndicatorVisible;
-    private double _boardDropIndicatorX;
-    private double _boardDropIndicatorY;
-    private double _boardDropIndicatorWidth;
-    private double _boardDropIndicatorHeight;
+    private ScreenplayElement? _boardDropTargetElement;
     private ScreenplayElement? _selectedBoardElement;
     private readonly ICollectionView _scratchpadView;
     private string _scratchpadSearchText = string.Empty;
@@ -121,6 +118,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly Stack<ScratchpadMoveHistoryEntry> _scratchpadRedoHistory = new();
     private readonly TitlePageViewModel _titlePage = new();
     private bool _suppressTitlePageSync;
+    private List<ScreenplayElement>? _originalBoardElements;
+    private (ScreenplayElement dragged, ScreenplayElement target, bool insertAfter)? _lastPreviewRequest;
+    private (ScreenplayElement dragged, ScreenplayElement target, bool insertAfter)? _pendingPreviewRequest;
+    private readonly DispatcherTimer _reorderPreviewTimer;
 
     public MainWindowViewModel()
     {
@@ -178,6 +179,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Interval = TimeSpan.FromSeconds(3)
         };
         _recoveryTimer.Tick += (_, _) => SaveRecoverySnapshot();
+        _reorderPreviewTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _reorderPreviewTimer.Tick += (_, _) =>
+        {
+            if (_pendingPreviewRequest.HasValue)
+            {
+                var req = _pendingPreviewRequest.Value;
+                ApplyReorderPreview(req.dragged, req.target, req.insertAfter);
+            }
+            _reorderPreviewTimer.Stop();
+        };
         UpdateOutline();
         // Seed the session baseline immediately so a new blank document starts at zero.
         CaptureSessionGoalBaseline();
@@ -220,28 +234,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _isBoardDropIndicatorVisible, value);
     }
 
-    public double BoardDropIndicatorX
-    {
-        get => _boardDropIndicatorX;
-        private set => SetProperty(ref _boardDropIndicatorX, value);
-    }
 
-    public double BoardDropIndicatorY
+    public ScreenplayElement? BoardDropTargetElement
     {
-        get => _boardDropIndicatorY;
-        private set => SetProperty(ref _boardDropIndicatorY, value);
-    }
-
-    public double BoardDropIndicatorWidth
-    {
-        get => _boardDropIndicatorWidth;
-        private set => SetProperty(ref _boardDropIndicatorWidth, value);
-    }
-
-    public double BoardDropIndicatorHeight
-    {
-        get => _boardDropIndicatorHeight;
-        private set => SetProperty(ref _boardDropIndicatorHeight, value);
+        get => _boardDropTargetElement;
+        private set => SetProperty(ref _boardDropTargetElement, value);
     }
 
     public ScreenplayElement? SelectedBoardElement
@@ -1126,18 +1123,136 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
-    public void SetBoardDropIndicator(double x, double y, double width, double height)
+    public void SetBoardDropIndicator(ScreenplayElement? targetElement)
     {
-        BoardDropIndicatorX = Math.Max(0.0, x);
-        BoardDropIndicatorY = Math.Max(0.0, y);
-        BoardDropIndicatorWidth = Math.Max(0.0, width);
-        BoardDropIndicatorHeight = Math.Max(0.0, height);
-        IsBoardDropIndicatorVisible = BoardDropIndicatorWidth > 0.5 && BoardDropIndicatorHeight > 0.5;
+        BoardDropTargetElement = targetElement;
+        IsBoardDropIndicatorVisible = BoardDropTargetElement != null;
     }
 
     public void ClearBoardDropIndicator()
     {
         IsBoardDropIndicatorVisible = false;
+        BoardDropTargetElement = null;
+    }
+
+    public void PerformReorderPreview(ScreenplayElement dragged, ScreenplayElement target, bool insertAfter)
+    {
+        if (target == null || dragged == null || ReferenceEquals(dragged, target))
+        {
+            return;
+        }
+
+        // Capture original state immediately so Cancel works even without a shuffle
+        if (_originalBoardElements == null)
+        {
+            _originalBoardElements = BoardElements.ToList();
+        }
+
+        // Avoid redundant moves if the target hasn't changed
+        if (_lastPreviewRequest.HasValue &&
+            ReferenceEquals(_lastPreviewRequest.Value.dragged, dragged) &&
+            ReferenceEquals(_lastPreviewRequest.Value.target, target) &&
+            _lastPreviewRequest.Value.insertAfter == insertAfter)
+        {
+            return;
+        }
+
+        // Check if this matches the currently pending or active preview
+        if (_pendingPreviewRequest.HasValue &&
+            ReferenceEquals(_pendingPreviewRequest.Value.dragged, dragged) &&
+            ReferenceEquals(_pendingPreviewRequest.Value.target, target) &&
+            _pendingPreviewRequest.Value.insertAfter == insertAfter)
+        {
+            return;
+        }
+
+        // Delay the actual shuffle to avoid "blinking" while moving across cards
+        _reorderPreviewTimer.Stop();
+        _pendingPreviewRequest = (dragged, target, insertAfter);
+        _reorderPreviewTimer.Start();
+    }
+
+    private void ApplyReorderPreview(ScreenplayElement dragged, ScreenplayElement target, bool insertAfter)
+    {
+        _lastPreviewRequest = (dragged, target, insertAfter);
+        _pendingPreviewRequest = null;
+
+        // Resolve indices and ranges
+        if (!TryResolveVisibleBoardDropIndex(target, insertAfter, out var targetIndex))
+        {
+            return;
+        }
+
+        StoryBlockRange movingRange;
+        try
+        {
+            movingRange = StoryHierarchyHelper.GetBlockRange(BoardElements, dragged);
+        }
+        catch (ArgumentException)
+        {
+            return;
+        }
+
+        // Perform the move in the collection
+        var movingElements = BoardElements.Skip(movingRange.Index).Take(movingRange.Count).ToList();
+        
+        for (int i = 0; i < movingRange.Count; i++)
+        {
+            BoardElements.RemoveAt(movingRange.Index);
+        }
+
+        if (targetIndex > movingRange.Index)
+        {
+            targetIndex -= movingRange.Count;
+        }
+
+        targetIndex = Math.Clamp(targetIndex, 0, BoardElements.Count);
+
+        for (int i = 0; i < movingElements.Count; i++)
+        {
+            BoardElements.Insert(targetIndex + i, movingElements[i]);
+        }
+        
+        UpdateBoardSyncRequiredState();
+    }
+
+    public void CancelReorderPreview()
+    {
+        _reorderPreviewTimer.Stop();
+        _pendingPreviewRequest = null;
+
+        if (_originalBoardElements == null)
+        {
+            _lastPreviewRequest = null;
+            return;
+        }
+
+        BoardElements.Clear();
+        foreach (var element in _originalBoardElements)
+        {
+            BoardElements.Add(element);
+        }
+
+        _originalBoardElements = null;
+        _lastPreviewRequest = null;
+        UpdateBoardSyncRequiredState();
+    }
+
+    public void FinalizeReorderPreview()
+    {
+        // If a preview is pending but hasn't fired yet, fire it now
+        if (_reorderPreviewTimer.IsEnabled && _pendingPreviewRequest.HasValue)
+        {
+            _reorderPreviewTimer.Stop();
+            var req = _pendingPreviewRequest.Value;
+            ApplyReorderPreview(req.dragged, req.target, req.insertAfter);
+        }
+
+        _originalBoardElements = null;
+        _lastPreviewRequest = null;
+        _pendingPreviewRequest = null;
+        UpdateBoardSyncRequiredState();
+        ExecuteSyncBoardToScript(null);
     }
 
     public bool TryMoveBoardBlock(ScreenplayElement? element, ScreenplayElement? visibleTargetElement, bool insertAfter)

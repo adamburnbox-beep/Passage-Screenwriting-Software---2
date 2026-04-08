@@ -48,8 +48,8 @@ public partial class MainWindow : Window
     private readonly record struct BeatBoardDropLocation(
         ScreenplayElement? TargetElement,
         bool InsertAfter,
-        Rect IndicatorBounds,
-        BeatBoardDropOperation Operation);
+        BeatBoardDropOperation Operation,
+        ScreenplayElement? DisplacementTarget);
     private readonly record struct BeatBoardItemLayout(
         ScreenplayElement Element,
         Rect Bounds);
@@ -325,34 +325,76 @@ public partial class MainWindow : Window
     {
         UpdateBeatBoardDragGhostPosition();
 
+        // Handle auto-scroll based on cursor proximity to viewport boundaries
+        if (BeatBoardScrollViewer != null)
+        {
+            var relativePoint = e.GetPosition(BeatBoardScrollViewer);
+            const double threshold = 40.0;
+            double vDelta = 0;
+            double hDelta = 0;
+
+            if (relativePoint.Y < threshold && relativePoint.Y >= 0)
+            {
+                vDelta = -((threshold - relativePoint.Y) / threshold) * BeatBoardVerticalWheelStep;
+            }
+            else if (relativePoint.Y > BeatBoardScrollViewer.ActualHeight - threshold && relativePoint.Y <= BeatBoardScrollViewer.ActualHeight)
+            {
+                vDelta = ((relativePoint.Y - (BeatBoardScrollViewer.ActualHeight - threshold)) / threshold) * BeatBoardVerticalWheelStep;
+            }
+
+            if (relativePoint.X < threshold && relativePoint.X >= 0)
+            {
+                hDelta = -((threshold - relativePoint.X) / threshold) * BeatBoardHorizontalWheelStep;
+            }
+            else if (relativePoint.X > BeatBoardScrollViewer.ActualWidth - threshold && relativePoint.X <= BeatBoardScrollViewer.ActualWidth)
+            {
+                hDelta = ((relativePoint.X - (BeatBoardScrollViewer.ActualWidth - threshold)) / threshold) * BeatBoardHorizontalWheelStep;
+            }
+
+            if (Math.Abs(vDelta) > 0.5 || Math.Abs(hDelta) > 0.5)
+            {
+                ScrollBeatBoard(BeatBoardScrollViewer, vDelta, hDelta);
+                UpdateBeatBoardDragGhostPosition();
+            }
+        }
+
         if (!TryGetBeatBoardDraggedElement(e, out var draggedElement))
         {
+            ViewModel.SelectedDocument?.CancelReorderPreview();
             ViewModel.SelectedDocument?.ClearBoardDropIndicator();
             e.Effects = DragDropEffects.None;
             e.Handled = true;
             return;
         }
 
-        if (!TryGetBeatBoardDropLocation(e.GetPosition(BeatBoard), draggedElement, out var dropLocation))
+        if (TryGetBeatBoardDropLocation(e.GetPosition(BeatBoard), draggedElement, out var dropLocation))
         {
+            if (dropLocation.Operation == BeatBoardDropOperation.Nest)
+            {
+                ViewModel.SelectedDocument?.CancelReorderPreview();
+                ViewModel.SelectedDocument?.SetBoardDropIndicator(dropLocation.TargetElement);
+            }
+            else if (dropLocation.TargetElement != null)
+            {
+                ViewModel.SelectedDocument?.SetBoardDropIndicator(dropLocation.DisplacementTarget);
+                ViewModel.SelectedDocument?.PerformReorderPreview(draggedElement, dropLocation.TargetElement, dropLocation.InsertAfter);
+            }
+            
+            e.Effects = DragDropEffects.Move;
+        }
+        else
+        {
+            ViewModel.SelectedDocument?.CancelReorderPreview();
             ViewModel.SelectedDocument?.ClearBoardDropIndicator();
             e.Effects = DragDropEffects.None;
-            e.Handled = true;
-            return;
         }
 
-        var indicatorBounds = dropLocation.IndicatorBounds;
-        ViewModel.SelectedDocument?.SetBoardDropIndicator(
-            indicatorBounds.Left,
-            indicatorBounds.Top,
-            indicatorBounds.Width,
-            indicatorBounds.Height);
-        e.Effects = DragDropEffects.Move;
         e.Handled = true;
     }
 
     private void BeatBoard_DragLeave(object sender, DragEventArgs e)
     {
+        ViewModel.SelectedDocument?.CancelReorderPreview();
         ViewModel.SelectedDocument?.ClearBoardDropIndicator();
     }
 
@@ -360,23 +402,34 @@ public partial class MainWindow : Window
     {
         if (!TryGetBeatBoardDraggedElement(e, out var draggedElement))
         {
+            ViewModel.SelectedDocument?.CancelReorderPreview();
             ViewModel.SelectedDocument?.ClearBoardDropIndicator();
             e.Effects = DragDropEffects.None;
             e.Handled = true;
             return;
         }
 
-        var didMove = TryGetBeatBoardDropLocation(e.GetPosition(BeatBoard), draggedElement, out var dropLocation) &&
-            (dropLocation.Operation == BeatBoardDropOperation.Nest
-                ? (ViewModel.SelectedDocument?.TryMoveBoardBlockIntoParent(
-                    draggedElement,
-                    dropLocation.TargetElement) ?? false)
-                : (ViewModel.SelectedDocument?.TryMoveBoardBlock(
-                    draggedElement,
-                    dropLocation.TargetElement,
-                    dropLocation.InsertAfter) ?? false));
+        if (TryGetBeatBoardDropLocation(e.GetPosition(BeatBoard), draggedElement, out var dropLocation))
+        {
+            if (dropLocation.Operation == BeatBoardDropOperation.Nest)
+            {
+                ViewModel.SelectedDocument?.CancelReorderPreview();
+                var didMove = ViewModel.SelectedDocument?.TryMoveBoardBlockIntoParent(draggedElement, dropLocation.TargetElement) ?? false;
+                e.Effects = didMove ? DragDropEffects.Move : DragDropEffects.None;
+            }
+            else
+            {
+                ViewModel.SelectedDocument?.FinalizeReorderPreview();
+                e.Effects = DragDropEffects.Move;
+            }
+        }
+        else
+        {
+            ViewModel.SelectedDocument?.CancelReorderPreview();
+            e.Effects = DragDropEffects.None;
+        }
+
         ViewModel.SelectedDocument?.ClearBoardDropIndicator();
-        e.Effects = didMove ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -391,6 +444,7 @@ public partial class MainWindow : Window
     {
         if (e.EscapePressed)
         {
+            ViewModel.SelectedDocument?.CancelReorderPreview();
             ViewModel.SelectedDocument?.ClearBoardDropIndicator();
             SetBeatBoardDeleteButtonState(isActive: false);
             StopBeatBoardDragGhost();
@@ -1058,6 +1112,16 @@ public partial class MainWindow : Window
     public static bool GetIsEditing(DependencyObject d) => (bool)d.GetValue(IsEditingProperty);
     public static void SetIsEditing(DependencyObject d, bool value) => d.SetValue(IsEditingProperty, value);
 
+    public static readonly DependencyProperty IsDropTargetProperty =
+        DependencyProperty.RegisterAttached(
+            "IsDropTarget",
+            typeof(bool),
+            typeof(MainWindow),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.Inherits));
+
+    public static bool GetIsDropTarget(DependencyObject d) => (bool)d.GetValue(IsDropTargetProperty);
+    public static void SetIsDropTarget(DependencyObject d, bool value) => d.SetValue(IsDropTargetProperty, value);
+
     private void CommitAndCloseInlineEditor()
     {
         if (_currentInlineEditElement is null)
@@ -1303,8 +1367,8 @@ public partial class MainWindow : Window
             dropLocation = new BeatBoardDropLocation(
                 null,
                 InsertAfter: false,
-                new Rect(18.0, 18.0, 140.0, 3.0),
-                BeatBoardDropOperation.Insert);
+                BeatBoardDropOperation.Insert,
+                null);
             return true;
         }
 
@@ -1345,8 +1409,8 @@ public partial class MainWindow : Window
         dropLocation = new BeatBoardDropLocation(
             directTarget.Element,
             InsertAfter: false,
-            CreateBeatBoardNestIndicatorBounds(directTarget.Bounds),
-            BeatBoardDropOperation.Nest);
+            BeatBoardDropOperation.Nest,
+            directTarget.Element);
         return true;
     }
 
@@ -1397,66 +1461,26 @@ public partial class MainWindow : Window
         IReadOnlyList<BeatBoardItemLayout> itemLayouts,
         out BeatBoardDropLocation dropLocation)
     {
-        var directTarget = itemLayouts.FirstOrDefault(entry => entry.Bounds.Contains(boardPosition));
-        if (directTarget.Element is not null)
+        // Find the closest item by distance to center
+        var closestItem = itemLayouts[0];
+        var minDistanceSq = double.MaxValue;
+
+        foreach (var layout in itemLayouts)
         {
-            var insertAfter = ShouldInsertAfterInBoardView(directTarget.Element, directTarget.Bounds, boardPosition);
-            dropLocation = CreateBeatBoardDropLocation(directTarget.Element, directTarget.Bounds, insertAfter);
-            return true;
+            var center = new Point(layout.Bounds.Left + (layout.Bounds.Width / 2.0), layout.Bounds.Top + (layout.Bounds.Height / 2.0));
+            var dx = boardPosition.X - center.X;
+            var dy = boardPosition.Y - center.Y;
+            var distSq = (dx * dx) + (dy * dy);
+
+            if (distSq < minDistanceSq)
+            {
+                minDistanceSq = distSq;
+                closestItem = layout;
+            }
         }
 
-        var rowMatch = itemLayouts
-            .Where(entry => boardPosition.Y >= entry.Bounds.Top - 12.0 && boardPosition.Y <= entry.Bounds.Bottom + 12.0)
-            .OrderBy(entry => entry.Bounds.Left)
-            .ToArray();
-        if (rowMatch.Length > 0)
-        {
-            if (rowMatch.Length == 1 && !UsesHorizontalBoardChronology(rowMatch[0].Element))
-            {
-                var singleRowItem = rowMatch[0];
-                var insertAfter = boardPosition.Y >= singleRowItem.Bounds.Top + (singleRowItem.Bounds.Height / 2.0);
-                dropLocation = CreateBeatBoardDropLocation(singleRowItem.Element, singleRowItem.Bounds, insertAfter);
-                return true;
-            }
-
-            var firstInRow = rowMatch[0];
-            if (boardPosition.X <= firstInRow.Bounds.Left)
-            {
-                dropLocation = CreateBeatBoardDropLocation(firstInRow.Element, firstInRow.Bounds, insertAfter: false);
-                return true;
-            }
-
-            for (var index = 0; index < rowMatch.Length - 1; index++)
-            {
-                var current = rowMatch[index];
-                var next = rowMatch[index + 1];
-                if (boardPosition.X <= current.Bounds.Right)
-                {
-                    dropLocation = CreateBeatBoardDropLocation(current.Element, current.Bounds, insertAfter: true);
-                    return true;
-                }
-
-                if (boardPosition.X < next.Bounds.Left)
-                {
-                    dropLocation = CreateBeatBoardDropLocation(next.Element, next.Bounds, insertAfter: false);
-                    return true;
-                }
-            }
-
-            var lastInRow = rowMatch[^1];
-            dropLocation = CreateBeatBoardDropLocation(lastInRow.Element, lastInRow.Bounds, insertAfter: true);
-            return true;
-        }
-
-        var firstItem = itemLayouts[0];
-        if (boardPosition.Y < firstItem.Bounds.Top)
-        {
-            dropLocation = CreateBeatBoardDropLocation(firstItem.Element, firstItem.Bounds, insertAfter: false);
-            return true;
-        }
-
-        var lastItem = itemLayouts[^1];
-        dropLocation = CreateBeatBoardDropLocation(lastItem.Element, lastItem.Bounds, insertAfter: true);
+        var insertAfter = ShouldInsertAfterInBoardView(closestItem.Element, closestItem.Bounds, boardPosition);
+        dropLocation = CreateBeatBoardDropLocation(closestItem.Element, closestItem.Bounds, insertAfter);
         return true;
     }
 
@@ -1465,15 +1489,11 @@ public partial class MainWindow : Window
         Rect targetBounds,
         bool insertAfter)
     {
-        var indicatorBounds = _currentBeatBoardViewMode == BeatBoardViewMode.Outline
-            ? CreateBeatBoardOutlineIndicatorBounds(targetBounds, insertAfter)
-            : CreateBeatBoardBoardIndicatorBounds(targetElement, targetBounds, insertAfter);
-
         return new BeatBoardDropLocation(
             targetElement,
             insertAfter,
-            indicatorBounds,
-            BeatBoardDropOperation.Insert);
+            BeatBoardDropOperation.Insert,
+            targetElement);
     }
 
     private static bool CanNestBeatBoardElement(ScreenplayElement draggedElement, ScreenplayElement targetElement)
@@ -1521,46 +1541,6 @@ public partial class MainWindow : Window
             Math.Max(0.0, targetBounds.Height - (verticalInset * 2.0)));
     }
 
-    private Rect CreateBeatBoardNestIndicatorBounds(Rect targetBounds)
-    {
-        var indicatorX = targetBounds.Left + 18.0;
-        var indicatorY = targetBounds.Top + 10.0;
-        var indicatorWidth = Math.Max(72.0, targetBounds.Width - 36.0);
-        return new Rect(indicatorX, indicatorY, indicatorWidth, 3.0);
-    }
-
-    private static Rect CreateBeatBoardBoardIndicatorBounds(
-        ScreenplayElement targetElement,
-        Rect targetBounds,
-        bool insertAfter)
-    {
-        if (UsesHorizontalBoardChronology(targetElement))
-        {
-            var verticalIndicatorX = insertAfter
-                ? targetBounds.Right - 1.5
-                : targetBounds.Left - 1.5;
-            var verticalIndicatorY = targetBounds.Top + 6.0;
-            var indicatorHeight = Math.Max(28.0, targetBounds.Height - 12.0);
-            return new Rect(verticalIndicatorX, verticalIndicatorY, 3.0, indicatorHeight);
-        }
-
-        var indicatorX = targetBounds.Left + 12.0;
-        var indicatorY = insertAfter
-            ? targetBounds.Bottom - 1.5
-            : targetBounds.Top - 1.5;
-        var indicatorWidth = Math.Max(72.0, targetBounds.Width - 24.0);
-        return new Rect(indicatorX, indicatorY, indicatorWidth, 3.0);
-    }
-
-    private static Rect CreateBeatBoardOutlineIndicatorBounds(Rect targetBounds, bool insertAfter)
-    {
-        var indicatorX = targetBounds.Left + 12.0;
-        var indicatorY = insertAfter
-            ? targetBounds.Bottom - 1.5
-            : targetBounds.Top - 1.5;
-        var indicatorWidth = Math.Max(64.0, targetBounds.Width - 24.0);
-        return new Rect(indicatorX, indicatorY, indicatorWidth, 3.0);
-    }
 
     private void ApplyBeatBoardDragPreviewConstraints()
     {
