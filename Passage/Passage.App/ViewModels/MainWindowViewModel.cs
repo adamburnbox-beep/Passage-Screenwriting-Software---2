@@ -1334,6 +1334,278 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
+    private bool _isWorkspaceReordering;
+    private List<OutlineNodeViewModel>? _backupOutlineRoots;
+    private List<OutlineNodeViewModel>? _backupNotesRoots;
+    private Dictionary<OutlineNodeViewModel, List<OutlineNodeViewModel>>? _backupChildren;
+
+    public void StartWorkspaceDragSession()
+    {
+        if (_isWorkspaceReordering) return;
+        
+        _backupOutlineRoots = new List<OutlineNodeViewModel>(OutlineRoots);
+        _backupNotesRoots = new List<OutlineNodeViewModel>(NotesRoots);
+        _backupChildren = new Dictionary<OutlineNodeViewModel, List<OutlineNodeViewModel>>();
+        CaptureChildrenRecursive(OutlineRoots);
+        CaptureChildrenRecursive(NotesRoots);
+        
+        _isWorkspaceReordering = true;
+    }
+
+    private void CaptureChildrenRecursive(IEnumerable<OutlineNodeViewModel> nodes)
+    {
+        if (_backupChildren == null) return;
+        foreach (var node in nodes)
+        {
+            _backupChildren[node] = new List<OutlineNodeViewModel>(node.Children);
+            CaptureChildrenRecursive(node.Children);
+        }
+    }
+
+    public void PerformWorkspaceReorderPreview(OutlineNodeViewModel dragged, OutlineNodeViewModel target, WorkspaceDropPosition position)
+    {
+        if (dragged == null || target == null || ReferenceEquals(dragged, target))
+            return;
+
+        if (!_isWorkspaceReordering)
+        {
+            StartWorkspaceDragSession();
+        }
+
+        // Perform the shuffle in the tree (Existing logic below...)
+
+        if (!TryFindNodeCollection(OutlineRoots, dragged, out var draggedCollection))
+        {
+            // Try NotesRoots if not in OutlineRoots
+            if (!TryFindNodeCollection(NotesRoots, dragged, out draggedCollection))
+                return;
+        }
+
+        if (!TryFindNodeCollection(OutlineRoots, target, out var targetCollection))
+        {
+            if (!TryFindNodeCollection(NotesRoots, target, out targetCollection))
+                return;
+        }
+
+        int targetIndex = targetCollection.IndexOf(target);
+        if (targetIndex < 0 && position != WorkspaceDropPosition.Onto) return;
+
+        // If we are moving within the same collection and the position is Below,
+        // we might need to adjust the index after removal.
+        int draggedIndex = draggedCollection.IndexOf(dragged);
+
+        draggedCollection.Remove(dragged);
+
+        if (position == WorkspaceDropPosition.Above)
+        {
+            if (ReferenceEquals(draggedCollection, targetCollection) && targetIndex > draggedIndex)
+            {
+                // No adjustment needed for Above if target was after dragged in same collection
+            }
+            targetCollection.Insert(targetIndex, dragged);
+        }
+        else if (position == WorkspaceDropPosition.Below)
+        {
+            int insertIndex = targetIndex + 1;
+            if (ReferenceEquals(draggedCollection, targetCollection) && draggedIndex < targetIndex)
+            {
+                insertIndex = targetIndex;
+            }
+            targetCollection.Insert(Math.Min(insertIndex, targetCollection.Count), dragged);
+        }
+        else if (position == WorkspaceDropPosition.Onto)
+        {
+            // Nesting
+            if (CanNestNode(dragged, target))
+            {
+                target.Children.Insert(0, dragged);
+                target.IsExpanded = true;
+            }
+            else
+            {
+                // Fallback to Below if nesting not allowed
+                targetCollection.Insert(Math.Min(targetIndex + 1, targetCollection.Count), dragged);
+            }
+        }
+    }
+
+    public void FinalizeWorkspaceReorderPreview()
+    {
+        if (!_isWorkspaceReordering) return;
+
+        var finalizedBoardElements = ReconstructBoardElementsFromTree(OutlineRoots, BoardElements);
+        
+        BoardElements.Clear();
+        foreach (var element in finalizedBoardElements)
+        {
+            BoardElements.Add(element);
+        }
+
+        _isWorkspaceReordering = false;
+        _backupOutlineRoots = null;
+        _backupNotesRoots = null;
+        _backupChildren = null;
+
+        IsBoardSyncRequired = true;
+        ExecuteSyncBoardToScript(null);
+    }
+
+    public void CancelWorkspaceReorderPreview()
+    {
+        if (!_isWorkspaceReordering) return;
+
+        RestoreWorkspaceStructure();
+        
+        _isWorkspaceReordering = false;
+        _backupOutlineRoots = null;
+        _backupNotesRoots = null;
+        _backupChildren = null;
+
+        foreach (var node in OutlineRoots) ClearDragOverRecursive(node);
+        foreach (var node in NotesRoots) ClearDragOverRecursive(node);
+    }
+
+    private void RestoreWorkspaceStructure()
+    {
+        if (_backupOutlineRoots == null || _backupNotesRoots == null || _backupChildren == null) return;
+
+        OutlineRoots.Clear();
+        foreach (var node in _backupOutlineRoots) OutlineRoots.Add(node);
+
+        NotesRoots.Clear();
+        foreach (var node in _backupNotesRoots) NotesRoots.Add(node);
+
+        foreach (var entry in _backupChildren)
+        {
+            entry.Key.Children.Clear();
+            foreach (var child in entry.Value) entry.Key.Children.Add(child);
+        }
+    }
+
+    private void ClearDragOverRecursive(OutlineNodeViewModel node)
+    {
+        node.IsDragOver = false;
+        foreach (var child in node.Children)
+        {
+            ClearDragOverRecursive(child);
+        }
+    }
+
+    private bool TryFindNodeCollection(ObservableCollection<OutlineNodeViewModel> roots, OutlineNodeViewModel node, out ObservableCollection<OutlineNodeViewModel> collection)
+    {
+        if (roots.Contains(node))
+        {
+            collection = roots;
+            return true;
+        }
+
+        foreach (var root in roots)
+        {
+            if (TryFindNodeCollection(root.Children, node, out collection))
+            {
+                return true;
+            }
+        }
+
+        collection = null!;
+        return false;
+    }
+
+    private bool CanNestNode(OutlineNodeViewModel dragged, OutlineNodeViewModel target)
+    {
+        // Acts (Level 1) can contain Sequences (Level 2) and Scenes (Level 3)
+        // Sequences (Level 2) can contain Scenes (Level 3)
+        // Scenes (Level 3) can contain Notes
+        
+        if (target.Kind == OutlineNodeKind.Section)
+        {
+            int targetLevel = target.SectionLevel ?? 3;
+            int draggedLevel = dragged.SectionLevel ?? (dragged.Kind == OutlineNodeKind.SceneHeading ? 3 : 4);
+            
+            return draggedLevel > targetLevel;
+        }
+        
+        if (target.Kind == OutlineNodeKind.SceneHeading && dragged.Kind == OutlineNodeKind.Note)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private List<OutlineNodeViewModel> FlattenTree(IEnumerable<OutlineNodeViewModel> nodes)
+    {
+        var result = new List<OutlineNodeViewModel>();
+        foreach (var node in nodes)
+        {
+            result.Add(node);
+            result.AddRange(FlattenTree(node.Children));
+        }
+        return result;
+    }
+
+    private List<ScreenplayElement> ReconstructBoardElementsFromTree(IEnumerable<OutlineNodeViewModel> tree, ObservableCollection<ScreenplayElement> originalElements)
+    {
+        var result = new List<ScreenplayElement>();
+        var usedIds = new HashSet<Guid>();
+        
+        // Use the current roots to flatten, so we get all outline nodes across the whole tree
+        var allOutlineNodes = FlattenTree(OutlineRoots).Concat(FlattenTree(NotesRoots)).ToList();
+        var outlineStartLines = new HashSet<int>(allOutlineNodes.Select(n => n.LineNumber));
+
+        foreach (var node in tree)
+        {
+            var element = originalElements.FirstOrDefault(e => e.StartLine == node.LineNumber);
+            if (element != null)
+            {
+                if (usedIds.Add(element.Id))
+                {
+                    result.Add(element);
+                }
+
+                // Add all non-outline elements that follow this element in the original flat list,
+                // until we hit another element that is part of the outline tree.
+                int sourceIndex = originalElements.IndexOf(element);
+                if (sourceIndex >= 0)
+                {
+                    for (int i = sourceIndex + 1; i < originalElements.Count; i++)
+                    {
+                        var candidate = originalElements[i];
+                        if (outlineStartLines.Contains(candidate.StartLine))
+                        {
+                            break;
+                        }
+
+                        if (usedIds.Add(candidate.Id))
+                        {
+                            result.Add(candidate);
+                        }
+                    }
+                }
+            }
+            
+            // Recurse into children of this node
+            foreach (var childElement in ReconstructBoardElementsFromTree(node.Children, originalElements))
+            {
+                if (usedIds.Add(childElement.Id))
+                {
+                    result.Add(childElement);
+                }
+            }
+        }
+
+        // Add any elements that might have been lost (guards against edge cases)
+        foreach (var element in originalElements)
+        {
+            if (usedIds.Add(element.Id))
+            {
+                result.Add(element);
+            }
+        }
+
+        return result;
+    }
+
     private void ExecuteSyncBoardToScript(object? _)
     {
         _isInternalSync = true;

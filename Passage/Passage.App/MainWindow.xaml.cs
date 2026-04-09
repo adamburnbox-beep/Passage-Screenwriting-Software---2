@@ -1920,6 +1920,16 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        if (e.Key == System.Windows.Input.Key.Escape)
+        {
+            if (_isWorkspaceDragging)
+            {
+                CancelWorkspaceDrag();
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (!IsCtrlShortcut(e))
         {
             return;
@@ -4951,12 +4961,20 @@ public partial class MainWindow : Window
         NavigateEditorToLine(node.LineNumber);
     }
 
+    private Point _workspaceDragStartPoint;
+    private bool _isWorkspaceDragging;
+    private OutlineNodeViewModel? _draggedWorkspaceNode;
+    private OutlineNodeViewModel? _lastHoveredWorkspaceNode;
+
     private void WorkspaceNode_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Border border || border.DataContext is not OutlineNodeViewModel node)
         {
             return;
         }
+
+        _workspaceDragStartPoint = e.GetPosition(this);
+        _draggedWorkspaceNode = node;
 
         // Set visual selection in sidebar
         if (node.LineNumber > 0)
@@ -4972,7 +4990,208 @@ public partial class MainWindow : Window
             EditorBox?.Focus();
         }, System.Windows.Threading.DispatcherPriority.Input);
 
+        // Do not mark handled yet so we can detect MouseMove for drag
+        // e.Handled = true; 
+    }
+
+    private void WorkspaceNode_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _draggedWorkspaceNode == null || _isWorkspaceDragging)
+        {
+            return;
+        }
+
+        var currentPoint = e.GetPosition(this);
+        if (Math.Abs(currentPoint.X - _workspaceDragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+            Math.Abs(currentPoint.Y - _workspaceDragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+        {
+            _isWorkspaceDragging = true;
+            
+            // Show ghost before starting drag loop
+            UpdateWorkspaceGhostVisibility(true);
+            
+            DragDrop.DoDragDrop((DependencyObject)sender, _draggedWorkspaceNode, DragDropEffects.Move);
+            
+            // Cleanup after drag completes (either dropped or cancelled)
+            _isWorkspaceDragging = false;
+            _draggedWorkspaceNode = null;
+            UpdateWorkspaceGhostVisibility(false);
+        }
+    }
+
+    private void UpdateWorkspaceGhostVisibility(bool visible)
+    {
+        var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        var node = visible ? _draggedWorkspaceNode : null;
+
+        if (WorkspaceGhostVisual != null)
+        {
+            WorkspaceGhostVisual.Visibility = visibility;
+            WorkspaceGhostVisual.DataContext = node;
+        }
+        if (NotesGhostVisual != null)
+        {
+            NotesGhostVisual.Visibility = visibility;
+            NotesGhostVisual.DataContext = node;
+        }
+    }
+
+    private void UpdateWorkspaceGhostPosition(DragEventArgs e)
+    {
+        bool isNotes = LeftDockTabs.SelectedIndex == 1;
+        var canvas = isNotes ? NotesDragCanvas : WorkspaceDragCanvas;
+        var ghost = isNotes ? NotesGhostVisual : WorkspaceGhostVisual;
+
+        if (ghost != null && canvas != null)
+        {
+            var pos = e.GetPosition(canvas);
+            
+            // Center the ghost on the cursor using ActualWidth/Height
+            double width = ghost.ActualWidth > 0 ? ghost.ActualWidth : 240;
+            double height = ghost.ActualHeight > 0 ? ghost.ActualHeight : 60;
+            
+            Canvas.SetLeft(ghost, pos.X - (width / 2));
+            Canvas.SetTop(ghost, pos.Y - (height / 2));
+        }
+    }
+
+    private void WorkspaceNode_DragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(typeof(OutlineNodeViewModel)) || _draggedWorkspaceNode == null)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var draggedNode = (OutlineNodeViewModel)e.Data.GetData(typeof(OutlineNodeViewModel));
+        var treeView = sender is DependencyObject d ? FindAncestor<TreeView>(d) : null;
+        if (treeView == null) return;
+
+        // Auto-scrolling
+        HandleWorkspaceAutoScroll(treeView, e.GetPosition(treeView));
+
+        // Update ghost position
+        UpdateWorkspaceGhostPosition(e);
+
+        // Hit-testing
+        var hitResult = VisualTreeHelper.HitTest(treeView, e.GetPosition(treeView));
+        if (hitResult?.VisualHit == null) return;
+
+        var targetItem = FindAncestor<TreeViewItem>(hitResult.VisualHit);
+        if (targetItem == null || targetItem.DataContext is not OutlineNodeViewModel targetNode)
+        {
+            if (_lastHoveredWorkspaceNode != null)
+            {
+                _lastHoveredWorkspaceNode.IsDragOver = false;
+                _lastHoveredWorkspaceNode = null;
+            }
+            return;
+        }
+
+        if (ReferenceEquals(draggedNode, targetNode))
+        {
+            if (_lastHoveredWorkspaceNode != null)
+            {
+                _lastHoveredWorkspaceNode.IsDragOver = false;
+                _lastHoveredWorkspaceNode = null;
+            }
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (!ReferenceEquals(targetNode, _lastHoveredWorkspaceNode))
+        {
+            if (_lastHoveredWorkspaceNode != null)
+            {
+                _lastHoveredWorkspaceNode.IsDragOver = false;
+            }
+            targetNode.IsDragOver = true;
+            _lastHoveredWorkspaceNode = targetNode;
+        }
+
+        var position = e.GetPosition(targetItem);
+        var height = targetItem.ActualHeight;
+        
+        // 3-zone hit-testing for reordering vs nesting
+        // Top 25%: Above
+        // Middle 50%: Onto (Nest)
+        // Bottom 25%: Below
+        WorkspaceDropPosition dropPos;
+        if (position.Y < height * 0.25)
+        {
+            dropPos = WorkspaceDropPosition.Above;
+        }
+        else if (position.Y > height * 0.75)
+        {
+            dropPos = WorkspaceDropPosition.Below;
+        }
+        else
+        {
+            dropPos = WorkspaceDropPosition.Onto;
+        }
+
+        ViewModel.SelectedDocument?.PerformWorkspaceReorderPreview(draggedNode, targetNode, dropPos);
+        e.Effects = DragDropEffects.Move;
         e.Handled = true;
+    }
+
+    private void WorkspaceNode_Drop(object sender, DragEventArgs e)
+    {
+        if (_lastHoveredWorkspaceNode != null)
+        {
+            _lastHoveredWorkspaceNode.IsDragOver = false;
+            _lastHoveredWorkspaceNode = null;
+        }
+
+        if (_isWorkspaceDragging)
+        {
+            ViewModel.SelectedDocument?.FinalizeWorkspaceReorderPreview();
+            _isWorkspaceDragging = false;
+            _draggedWorkspaceNode = null;
+            UpdateWorkspaceGhostVisibility(false);
+        }
+        e.Handled = true;
+    }
+
+    private void WorkspaceNode_DragLeave(object sender, DragEventArgs e)
+    {
+        // Highlight cleanup is handled by DragOver (on node change) 
+        // and Drop/Cancel (on drag completion). 
+        // We leave this empty to prevent flickering when moving over child elements.
+    }
+
+    private void CancelWorkspaceDrag()
+    {
+        if (_lastHoveredWorkspaceNode != null)
+        {
+            _lastHoveredWorkspaceNode.IsDragOver = false;
+            _lastHoveredWorkspaceNode = null;
+        }
+
+        UpdateWorkspaceGhostVisibility(false);
+        ViewModel.SelectedDocument?.CancelWorkspaceReorderPreview();
+        _isWorkspaceDragging = false;
+        _draggedWorkspaceNode = null;
+    }
+
+    private void HandleWorkspaceAutoScroll(TreeView treeView, Point mousePos)
+    {
+        var scrollViewer = FindDescendant<ScrollViewer>(treeView);
+        if (scrollViewer == null) return;
+
+        double scrollMargin = 40.0;
+        double scrollStep = 10.0;
+
+        if (mousePos.Y < scrollMargin)
+        {
+            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - scrollStep);
+        }
+        else if (mousePos.Y > treeView.ActualHeight - scrollMargin)
+        {
+            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset + scrollStep);
+        }
     }
 
     private void ViewModel_OutlineUpdated(object? sender, EventArgs e)

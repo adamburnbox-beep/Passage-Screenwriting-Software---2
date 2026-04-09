@@ -12,9 +12,17 @@ public enum OutlineNodeKind
     Note
 }
 
+public enum WorkspaceDropPosition
+{
+    Above,
+    Below,
+    Onto
+}
+
 public sealed class OutlineNodeViewModel : INotifyPropertyChanged
 {
     private bool _isExpanded;
+    private bool _isDragOver;
 
     public OutlineNodeViewModel(
         OutlineNodeKind kind,
@@ -66,6 +74,12 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
     {
         get => _isExpanded;
         set => SetProperty(ref _isExpanded, value);
+    }
+
+    public bool IsDragOver
+    {
+        get => _isDragOver;
+        set => SetProperty(ref _isDragOver, value);
     }
 
     public ObservableCollection<OutlineNodeViewModel> Children { get; }

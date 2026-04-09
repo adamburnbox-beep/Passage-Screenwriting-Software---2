@@ -68,6 +68,39 @@
     <local:EqualityConverter x:Key="EqualityConverter" />
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
+    <DataTemplate x:Key="WorkspaceGhostTemplate" DataType="{x:Type vm:OutlineNodeViewModel}">
+      <Border Padding="12,10"
+              CornerRadius="10"
+              Width="240"
+              Height="60"
+              Background="{DynamicResource SurfaceMutedBackground}"
+              BorderBrush="{DynamicResource ControlAccent}"
+              BorderThickness="1"
+              Opacity="0.5">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="28" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" 
+                     Text="{Binding LineNumber}"
+                     Foreground="{DynamicResource MutedText}"
+                     FontSize="10.5" />
+          <StackPanel Grid.Column="1" Margin="4,0,0,0">
+            <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                       Foreground="{DynamicResource SecondaryText}"
+                       FontSize="9.5"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Heading}"
+                       Foreground="{DynamicResource HeaderText}"
+                       FontSize="13.5"
+                       FontWeight="Bold"
+                       TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+
 
     <Style x:Key="UtilityActionGroupBorderStyle" TargetType="Border">
       <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
@@ -2188,6 +2221,10 @@
                     <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
                   </DataTrigger>
+                  <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+                    <Setter Property="Opacity" Value="0.25" />
+                  </DataTrigger>
                 </Style.Triggers>
               </Style>
 
@@ -2215,6 +2252,10 @@
                         ClipToBounds="True"
                         ToolTip="{Binding BodyText}"
                         MouseLeftButtonDown="WorkspaceNode_MouseLeftButtonDown"
+                        MouseMove="WorkspaceNode_MouseMove"
+                        DragOver="WorkspaceNode_DragOver"
+                        Drop="WorkspaceNode_Drop"
+                        DragLeave="WorkspaceNode_DragLeave"
                         Style="{StaticResource WorkspaceNodeCardBorderStyle}">
 
                   <Grid>
@@ -2349,6 +2390,7 @@
 
                 <Grid Grid.Row="1">
                   <TreeView x:Name="OutlineTree" 
+                            AllowDrop="True" 
                             VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding OutlineRoots}"
                             Background="Transparent"
@@ -2378,12 +2420,19 @@
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
                           <DataTrigger Binding="{Binding HasOutlineItems}" Value="False">
-                          <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </TextBlock.Style>
+                            <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
                   </TextBlock>
+ 
+                  <Canvas x:Name="WorkspaceDragCanvas" IsHitTestVisible="False">
+                    <ContentControl x:Name="WorkspaceGhostVisual"
+                                    Visibility="Collapsed"
+                                    ContentTemplate="{StaticResource WorkspaceGhostTemplate}"
+                                    IsHitTestVisible="False" />
+                  </Canvas>
                 </Grid>
               </Grid>
             </TabItem>
@@ -2392,6 +2441,7 @@
               <Grid Margin="-8,8,4,4">
                 <Grid>
                   <TreeView x:Name="NotesTree" 
+                            AllowDrop="True" 
                             VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding NotesRoots}"
                             Background="Transparent"
@@ -2426,6 +2476,13 @@
                       </Style>
                     </TextBlock.Style>
                   </TextBlock>
+ 
+                  <Canvas x:Name="NotesDragCanvas" IsHitTestVisible="False">
+                    <ContentControl x:Name="NotesGhostVisual"
+                                    Visibility="Collapsed"
+                                    ContentTemplate="{StaticResource WorkspaceGhostTemplate}"
+                                    IsHitTestVisible="False" />
+                  </Canvas>
                 </Grid>
               </Grid>
             </TabItem>
