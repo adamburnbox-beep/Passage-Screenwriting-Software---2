@@ -595,15 +595,28 @@
     </Style>
 
     <DataTemplate x:Key="BeatBoardActCardTemplate">
-      <Border Margin="0,0,0,16"
-              BorderThickness="1"
-              Cursor="Hand"
-              MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
-              MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
+      <StackPanel Orientation="Vertical">
+        <Rectangle Height="1" Fill="{DynamicResource SurfaceBorder}" Opacity="0.8" Margin="0,32,0,24">
+          <Rectangle.Style>
+            <Style TargetType="Rectangle">
+              <Setter Property="Visibility" Value="Visible" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="0">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Rectangle.Style>
+        </Rectangle>
+        <Border Margin="0,0,0,16"
+                BorderThickness="1"
+                Cursor="Hand"
+                MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
+                MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="18,16" />
-            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="24,20" />
+            <Setter Property="CornerRadius" Value="20" />
             <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
             <Style.Triggers>
@@ -689,11 +702,11 @@
                 <TextBlock x:Name="HeadingTextBlock"
                            Text="{Binding Heading}"
                            Style="{StaticResource BeatBoardHeadingStyle}"
-                           FontSize="18" />
+                           FontSize="24" />
                 <TextBlock x:Name="HeadingPlaceholder"
                            Text="NEW ACT TITLE"
                            Style="{StaticResource BeatBoardHeadingStyle}"
-                           FontSize="18"
+                           FontSize="24"
                            Opacity="0.4"
                            FontStyle="Italic"
                            Visibility="Collapsed" />
@@ -701,7 +714,7 @@
               <TextBox x:Name="InlineHeadingTextBox"
                        Style="{StaticResource BeatBoardInlineTextBoxStyle}"
                        Tag="NEW ACT TITLE"
-                       FontSize="18"
+                       FontSize="24"
                        CharacterCasing="Upper" />
             </StackPanel>
 
@@ -738,6 +751,7 @@
                    Margin="0,10,0,0" />
         </Grid>
       </Border>
+      </StackPanel>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
@@ -758,7 +772,7 @@
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="16,14" />
+            <Setter Property="Padding" Value="20,16" />
             <Setter Property="CornerRadius" Value="16" />
             <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
@@ -849,11 +863,11 @@
               <TextBlock x:Name="HeadingTextBlock"
                          Text="{Binding Heading}"
                          Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="16" />
+                         FontSize="19" />
               <TextBlock x:Name="HeadingPlaceholder"
                          Text="NEW SEQUENCE TITLE"
                          Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="16"
+                         FontSize="19"
                          Opacity="0.4"
                          FontStyle="Italic"
                          Visibility="Collapsed" />
@@ -861,7 +875,7 @@
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
                      Tag="NEW SEQUENCE TITLE"
-                     FontSize="16"
+                     FontSize="19"
                      CharacterCasing="Upper" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
@@ -921,13 +935,13 @@
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="15,14" />
+            <Setter Property="Padding" Value="14,12" />
             <Setter Property="CornerRadius" Value="15" />
             <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                <Setter Property="Padding" Value="15,10" />
+                <Setter Property="Padding" Value="14,8" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -1003,17 +1017,20 @@
             <Grid>
               <TextBlock x:Name="HeadingTextBlock"
                          Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardHeadingStyle}" />
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         FontSize="15" />
               <TextBlock x:Name="HeadingPlaceholder"
                          Text="SCENE SUMMARY"
                          Style="{StaticResource BeatBoardHeadingStyle}"
+                         FontSize="15"
                          Opacity="0.4"
                          FontStyle="Italic"
                          Visibility="Collapsed" />
             </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="SCENE SUMMARY" />
+                     Tag="SCENE SUMMARY"
+                     FontSize="15" />
             <Grid>
               <TextBlock x:Name="SceneHeadingTextBlock"
                          Text="{Binding ScriptHeading}">
@@ -2066,22 +2083,15 @@
       <Setter Property="SnapsToDevicePixels" Value="True" />
       <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
       <Style.Triggers>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding Type}" Value="{x:Static parser:ScreenplayElementType.Section}" />
-            <Condition Binding="{Binding Level}" Value="0" />
-            <Condition Binding="{Binding IsCollapsed}" Value="False" />
-          </MultiDataTrigger.Conditions>
+        <DataTrigger Binding="{Binding Level}" Value="0">
           <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="True" />
-        </MultiDataTrigger>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding Type}" Value="{x:Static parser:ScreenplayElementType.Section}" />
-            <Condition Binding="{Binding Level}" Value="1" />
-            <Condition Binding="{Binding IsCollapsed}" Value="False" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="True" />
-        </MultiDataTrigger>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Level}" Value="1">
+          <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Level}" Value="2">
+          <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
+        </DataTrigger>
       </Style.Triggers>
     </Style>
 
@@ -3478,6 +3488,7 @@
                                   ItemsSource="{Binding SelectedDocument.VisibleBoardElements}"
                                   ItemTemplateSelector="{StaticResource BeatBoardCardTemplateSelector}"
                                   ItemContainerStyle="{StaticResource BeatBoardBoardItemContainerStyle}"
+                                  AlternationCount="9999"
                                   AllowDrop="True"
                                   PreviewMouseLeftButtonDown="BeatBoard_PreviewMouseLeftButtonDown"
                                   PreviewMouseLeftButtonUp="BeatBoard_PreviewMouseLeftButtonUp"

@@ -56,40 +56,46 @@ public sealed class BeatBoardWrapPanel : Panel
                 continue;
             }
 
-            if (TryGetScreenplayElement(child, out var element) && IsHorizontalChronologyElement(element))
+            if (!TryGetScreenplayElement(child, out var element))
             {
-                var rowWidth = ResolveHierarchyIndent(child);
-                var rowHeight = 0.0;
-                var isFirstInRow = true;
-
-                while (index < InternalChildren.Count &&
-                       InternalChildren[index] is UIElement rowChild &&
-                       TryGetScreenplayElement(rowChild, out var rowElement) &&
-                       IsHorizontalChronologyElement(rowElement))
-                {
-                    if (!isFirstInRow)
-                    {
-                        rowWidth += HorizontalChronologyGap;
-                    }
-
-                    var rowChildSize = rowChild.DesiredSize;
-                    rowWidth += rowChildSize.Width;
-                    rowHeight = Math.Max(rowHeight, rowChildSize.Height);
-                    isFirstInRow = false;
-                    index++;
-                }
-
-                measuredWidth = Math.Max(measuredWidth, rowWidth + TrailingGutterWidth);
-                measuredHeight += rowHeight;
-                index--;
+                measuredWidth = Math.Max(measuredWidth, child.DesiredSize.Width);
+                measuredHeight += child.DesiredSize.Height;
                 continue;
             }
 
-            var indent = ResolveHierarchyIndent(child);
-            measuredWidth = Math.Max(
-                measuredWidth,
-                indent + ResolveSingleRowWidth(child, viewportWidth) + TrailingGutterWidth);
-            measuredHeight += child.DesiredSize.Height;
+
+
+            if (element.Level <= 0) // Act - Row Header
+            {
+                measuredWidth = Math.Max(measuredWidth, child.DesiredSize.Width + TrailingGutterWidth);
+                measuredHeight += child.DesiredSize.Height;
+                continue;
+            }
+
+            double laneWidth = ResolveHierarchyIndent(child);
+            double laneHeight = 0;
+            bool isFirstInLane = true;
+
+            while (index < InternalChildren.Count &&
+                   InternalChildren[index] is UIElement horizontalChild &&
+                   TryGetScreenplayElement(horizontalChild, out var horizontalElement) &&
+                   IsHorizontalChronologyElement(horizontalElement))
+            {
+                if (!isFirstInLane)
+                {
+                    laneWidth += HorizontalChronologyGap;
+                }
+
+                var rowChildSize = horizontalChild.DesiredSize;
+                laneWidth += rowChildSize.Width;
+                laneHeight = Math.Max(laneHeight, rowChildSize.Height);
+                isFirstInLane = false;
+                index++;
+            }
+
+            measuredWidth = Math.Max(measuredWidth, laneWidth + TrailingGutterWidth);
+            measuredHeight += laneHeight;
+            index--;
         }
 
         return new Size(
@@ -111,48 +117,47 @@ public sealed class BeatBoardWrapPanel : Panel
                 continue;
             }
 
-            if (TryGetScreenplayElement(child, out var element) && IsHorizontalChronologyElement(element))
+            if (!TryGetScreenplayElement(child, out var element))
             {
-                var lineLeft = ResolveHierarchyIndent(child);
-                var rowHeight = 0.0;
-                var rowStartIndex = index;
-                var rowItems = new List<(UIElement Child, int Index)>();
-
-                while (index < InternalChildren.Count &&
-                       InternalChildren[index] is UIElement rowChild &&
-                       TryGetScreenplayElement(rowChild, out var rowElement) &&
-                       IsHorizontalChronologyElement(rowElement))
-                {
-                    rowItems.Add((rowChild, index));
-                    rowHeight = Math.Max(rowHeight, rowChild.DesiredSize.Height);
-                    index++;
-                }
-
-                foreach (var (rowChild, childIndex) in rowItems)
-                {
-                    var rowChildSize = rowChild.DesiredSize;
-                    var rowBounds = new Rect(lineLeft, lineTop, rowChildSize.Width, rowChildSize.Height);
-                    rowChild.Arrange(rowBounds);
-                    _arrangedChildBounds[childIndex] = rowBounds;
-                    lineLeft += rowChildSize.Width + HorizontalChronologyGap;
-                }
-
-                lineTop += rowHeight;
-                index = rowStartIndex + rowItems.Count - 1;
+                var bounds = new Rect(0, lineTop, child.DesiredSize.Width, child.DesiredSize.Height);
+                child.Arrange(bounds);
+                _arrangedChildBounds[index] = bounds;
+                lineTop += child.DesiredSize.Height;
                 continue;
             }
 
-            var childSize = child.DesiredSize;
-            var indent = ResolveHierarchyIndent(child);
-            var isFullWidth = GetIsFullWidth(child);
-            var availableWidth = Math.Max(0.0, contentWidth - indent - TrailingGutterWidth);
-            var arrangedWidth = isFullWidth
-                ? Math.Max(childSize.Width, availableWidth)
-                : Math.Min(childSize.Width, availableWidth);
-            var arrangedBounds = new Rect(indent, lineTop, arrangedWidth, childSize.Height);
-            child.Arrange(arrangedBounds);
-            _arrangedChildBounds[index] = arrangedBounds;
-            lineTop += childSize.Height;
+
+
+            if (element.Level <= 0) // Act - Row Header
+            {
+                var rowHeaderIndent = ResolveHierarchyIndent(child);
+                var childBounds = new Rect(rowHeaderIndent, lineTop, child.DesiredSize.Width, child.DesiredSize.Height);
+                child.Arrange(childBounds);
+                _arrangedChildBounds[index] = childBounds;
+                lineTop += child.DesiredSize.Height;
+                continue;
+            }
+
+            double lineLeft = ResolveHierarchyIndent(child);
+            double rowHeight = 0;
+
+            while (index < InternalChildren.Count &&
+                   InternalChildren[index] is UIElement horizontalChild &&
+                   TryGetScreenplayElement(horizontalChild, out var horizontalElement) &&
+                   IsHorizontalChronologyElement(horizontalElement))
+            {
+                var rowChildSize = horizontalChild.DesiredSize;
+                var rowBounds = new Rect(lineLeft, lineTop, rowChildSize.Width, rowChildSize.Height);
+                horizontalChild.Arrange(rowBounds);
+                _arrangedChildBounds[index] = rowBounds;
+
+                rowHeight = Math.Max(rowHeight, rowChildSize.Height);
+                lineLeft += rowChildSize.Width + HorizontalChronologyGap;
+                index++;
+            }
+
+            lineTop += rowHeight;
+            index--;
         }
 
         return new Size(contentWidth, Math.Max(finalSize.Height, lineTop));
@@ -190,7 +195,7 @@ public sealed class BeatBoardWrapPanel : Panel
     {
         var indent = ResolveHierarchyIndent(child);
         var childMeasureWidth = GetIsFullWidth(child)
-            ? Math.Max(280.0, viewportWidth - indent - TrailingGutterWidth)
+            ? Math.Max(280.0, viewportWidth - TrailingGutterWidth)
             : double.PositiveInfinity;
         child.Measure(new Size(childMeasureWidth, availableHeight));
     }
@@ -231,7 +236,7 @@ public sealed class BeatBoardWrapPanel : Panel
 
     private static bool IsHorizontalChronologyElement(ScreenplayElement element)
     {
-        return element.Level >= 2;
+        return element.Level >= 1;
     }
 
     private void EnsureArrangedChildBoundsCapacity()
