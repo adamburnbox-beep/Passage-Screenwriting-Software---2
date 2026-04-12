@@ -38,6 +38,9 @@
   <SolidColorBrush x:Key="BeatBoardLaneGuideBrush" Color="#1AF5F8FC" />
   <SolidColorBrush x:Key="BeatBoardActBoundaryBrush" Color="#FFD66A6A" />
   <SolidColorBrush x:Key="BeatBoardSequenceSeparatorBrush" Color="#FFF0C689" />
+  <SolidColorBrush x:Key="BeatBoardLaneSeparator" Color="#4DFFFFFF" />
+  <SolidColorBrush x:Key="BeatBoardActLaneBackground" Color="#0CFFFFFF" />
+  <SolidColorBrush x:Key="BeatBoardSequenceLaneBackground" Color="#1A0055FF" />
 
   <SolidColorBrush x:Key="HeaderText" Color="#FFF5F8FC" />
   <SolidColorBrush x:Key="SecondaryText" Color="#FFBAC5D4" />

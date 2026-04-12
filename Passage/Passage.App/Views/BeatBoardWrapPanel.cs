@@ -17,6 +17,8 @@ public sealed class BeatBoardWrapPanel : Panel
     private readonly List<Rect> _arrangedChildBounds = new();
     private readonly List<double> _actBoundariesY = new();
     private readonly List<(double X, double Y)> _sequenceBoundaries = new();
+    private readonly List<Rect> _actLaneRects = new();
+    private readonly List<Rect> _sequenceLaneRects = new();
 
     protected override Size MeasureOverride(Size availableSize)
     {
@@ -122,6 +124,8 @@ public sealed class BeatBoardWrapPanel : Panel
         EnsureArrangedChildBoundsCapacity();
         _actBoundariesY.Clear();
         _sequenceBoundaries.Clear();
+        _actLaneRects.Clear();
+        _sequenceLaneRects.Clear();
         var currentY = 0.0;
 
         for (var i = 0; i < InternalChildren.Count; i++)
@@ -176,6 +180,9 @@ public sealed class BeatBoardWrapPanel : Panel
                         seqChild.Arrange(seqBounds);
                         _arrangedChildBounds[actEndIndex] = seqBounds;
 
+                        // Track Sequence Lane Background
+                        _sequenceLaneRects.Add(new Rect(currentActWidth + (HorizontalGap / 2), rowTop - (VerticalGap / 4), finalSize.Width - currentActWidth - (HorizontalGap / 2), rowHeight + (VerticalGap / 2)));
+
                         double currentSceneX = currentActWidth + SequenceWidth + (HorizontalGap * 2);
                         for (int k = actEndIndex + 1; k < sceneIndex; k++)
                         {
@@ -221,7 +228,11 @@ public sealed class BeatBoardWrapPanel : Panel
 
                 // Add the absolute bottom of the Act block to the Act boundaries
                 double actBlockBottom = actTop + Math.Max(actRunningHeight, actChild.DesiredSize.Height + VerticalGap);
-                _actBoundariesY.Add(actBlockBottom - (VerticalGap / 2));
+                double actBoundaryY = actBlockBottom - (VerticalGap / 2);
+                _actBoundariesY.Add(actBoundaryY);
+
+                // Track Act Lane Background
+                _actLaneRects.Add(new Rect(0, actTop - (VerticalGap / 4), finalSize.Width, actBoundaryY - actTop + (VerticalGap / 4)));
 
                 currentY = actBlockBottom;
                 i = actEndIndex - 1;
@@ -244,28 +255,44 @@ public sealed class BeatBoardWrapPanel : Panel
     {
         base.OnRender(dc);
 
-        var actBrush = TryFindResource("BeatBoardActBoundaryBrush") as Brush;
-        var seqBrush = TryFindResource("BeatBoardSequenceSeparatorBrush") as Brush;
+        var actLaneBrush = TryFindResource("BeatBoardActLaneBackground") as Brush;
+        var seqLaneBrush = TryFindResource("BeatBoardSequenceLaneBackground") as Brush;
+        var separatorBrush = TryFindResource("BeatBoardLaneSeparator") as Brush;
 
-        // Draw Act Boundaries (Red Lines) - Full Width
-        if (actBrush != null)
+        // Draw Act Lane Backgrounds
+        if (actLaneBrush != null)
         {
-            var actPen = new Pen(actBrush, 2.0);
-            actPen.Freeze();
-            foreach (var y in _actBoundariesY)
+            foreach (var rect in _actLaneRects)
             {
-                dc.DrawLine(actPen, new Point(0, y), new Point(ActualWidth, y));
+                dc.DrawRoundedRectangle(actLaneBrush, null, rect, 8, 8);
             }
         }
 
-        // Draw Sequence Separators (Yellow Lines) - Starting from the correct column
-        if (seqBrush != null)
+        // Draw Sequence Lane Backgrounds
+        if (seqLaneBrush != null)
         {
-            var seqPen = new Pen(seqBrush, 1.0);
-            seqPen.Freeze();
+            foreach (var rect in _sequenceLaneRects)
+            {
+                dc.DrawRoundedRectangle(seqLaneBrush, null, rect, 8, 8);
+            }
+        }
+
+        // Draw Separator Lines
+        if (separatorBrush != null)
+        {
+            var separatorPen = new Pen(separatorBrush, 1.0);
+            separatorPen.Freeze();
+
+            // Act Boundaries
+            foreach (var y in _actBoundariesY)
+            {
+                dc.DrawLine(separatorPen, new Point(0, y), new Point(ActualWidth, y));
+            }
+
+            // Sequence Separators
             foreach (var boundary in _sequenceBoundaries)
             {
-                dc.DrawLine(seqPen, new Point(boundary.X, boundary.Y), new Point(ActualWidth, boundary.Y));
+                dc.DrawLine(separatorPen, new Point(boundary.X, boundary.Y), new Point(ActualWidth, boundary.Y));
             }
         }
     }

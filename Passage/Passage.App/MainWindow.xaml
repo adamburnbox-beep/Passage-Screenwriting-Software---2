@@ -601,7 +601,7 @@
                 MinWidth="180"
                 Width="Auto"
                 BorderThickness="1"
-                BorderBrush="{DynamicResource ControlAccent}"
+                BorderBrush="{DynamicResource BeatBoardLaneSeparator}"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
                 MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
@@ -609,8 +609,8 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="24,20" />
             <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardActLaneBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BeatBoardLaneSeparator}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="4,2,4,2" />
@@ -770,8 +770,8 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="20,16" />
             <Setter Property="CornerRadius" Value="16" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceLaneBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BeatBoardLaneSeparator}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="4,2,4,2" />
