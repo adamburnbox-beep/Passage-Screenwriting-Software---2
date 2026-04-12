@@ -595,20 +595,10 @@
     </Style>
 
     <DataTemplate x:Key="BeatBoardActCardTemplate">
-      <StackPanel Orientation="Vertical">
-        <Rectangle Height="1" Fill="{DynamicResource SurfaceBorder}" Opacity="0.8" Margin="0,32,0,24">
-          <Rectangle.Style>
-            <Style TargetType="Rectangle">
-              <Setter Property="Visibility" Value="Visible" />
-              <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="0">
-                  <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-              </Style.Triggers>
-            </Style>
-          </Rectangle.Style>
-        </Rectangle>
-        <Border Margin="0,0,0,16"
+      <Grid>
+        <Rectangle Height="4" Margin="0,0,0,0" Fill="{DynamicResource BeatBoardActDividerBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Top" />
+        <Border Margin="0,40,0,16"
+                HorizontalAlignment="Stretch"
                 BorderThickness="1"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
@@ -645,6 +635,7 @@
         </Border.Style>
         <Grid>
           <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
@@ -751,8 +742,8 @@
                    Margin="0,10,0,0" />
         </Grid>
       </Border>
-      </StackPanel>
-      <DataTemplate.Triggers>
+    </Grid>
+    <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
@@ -766,10 +757,10 @@
 
     <DataTemplate x:Key="BeatBoardSequenceCardTemplate">
       <Border Margin="0,0,0,16"
-              BorderThickness="1"
-              Cursor="Hand"
-              MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
-              MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
+                BorderThickness="1"
+                Cursor="Hand"
+                MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
+                MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="20,16" />
@@ -896,7 +887,7 @@
           </StackPanel>
         </Grid>
       </Border>
-      <DataTemplate.Triggers>
+    <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
@@ -927,12 +918,12 @@
 
     <DataTemplate x:Key="BeatBoardSceneCardTemplate">
       <Border Width="288"
-              MaxWidth="288"
-              Margin="0,0,0,16"
-              BorderThickness="1"
-              Cursor="Hand"
-              MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
-              MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
+                MaxWidth="288"
+                Margin="0,0,0,16"
+                BorderThickness="1"
+                Cursor="Hand"
+                MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
+                MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="14,12" />
@@ -1094,7 +1085,7 @@
           </StackPanel>
         </Grid>
       </Border>
-      <DataTemplate.Triggers>
+    <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
@@ -1144,12 +1135,12 @@
 
     <DataTemplate x:Key="BeatBoardNoteCardTemplate">
       <Border Width="252"
-              MaxWidth="252"
-              Margin="0,0,0,16"
-              BorderThickness="1"
-              Cursor="Hand"
-              MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
-              MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
+                MaxWidth="252"
+                Margin="0,0,0,16"
+                BorderThickness="1"
+                Cursor="Hand"
+                MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
+                MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="14,13" />
@@ -1267,16 +1258,16 @@
           </StackPanel>
         </Grid>
       </Border>
-      <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding (app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
-          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
-          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
-          <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
-          <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
-          <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
-          <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
-          <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
-        </DataTrigger>
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
+        <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+        <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
+        <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
+        <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
+        <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
+        <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
+        <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
+      </DataTrigger>
         <MultiDataTrigger>
           <MultiDataTrigger.Conditions>
             <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
@@ -2085,6 +2076,7 @@
       <Style.Triggers>
         <DataTrigger Binding="{Binding Level}" Value="0">
           <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="True" />
+          <Setter Property="HorizontalAlignment" Value="Stretch" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="1">
           <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
@@ -3723,4 +3715,5 @@
     </Border>
   </Grid>
 </Window>
+
 
