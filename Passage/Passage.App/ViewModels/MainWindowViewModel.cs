@@ -952,6 +952,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ScreenplayElement? TryUpdateBoardElementContent(
         ScreenplayElement? element,
         string? heading,
+        string? headingPrefix,
         string? sceneHeading,
         string? description)
     {
@@ -968,8 +969,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var currentElement = BoardElements[elementIndex];
         var normalizedHeading = NormalizeBoardCardHeading(currentElement, heading);
+
+        var finalSceneHeading = string.IsNullOrWhiteSpace(headingPrefix)
+            ? sceneHeading
+            : $"{headingPrefix} {sceneHeading}";
+
         var normalizedSceneHeading = currentElement.Type == ScreenplayElementType.SceneHeading
-            ? NormalizeBoardCardSceneHeading(currentElement, sceneHeading)
+            ? NormalizeBoardCardSceneHeading(currentElement, finalSceneHeading)
             : string.Empty;
         var normalizedDescription = NormalizeBoardCardDescription(description);
         var currentHeading = GetBoardCardHeading(currentElement);
@@ -1686,9 +1692,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var newCard = CreateBoardDraftElement(
             type: ScreenplayElementType.SceneHeading,
             level: 2,
-            heading: DefaultNewBoardCardHeading,
-            sceneHeading: DefaultNewBoardCardHeading,
-            description: DefaultNewBoardCardDescription);
+            heading: string.Empty,
+            sceneHeading: string.Empty,
+            description: string.Empty);
         BoardElements.Insert(0, newCard);
         SelectedBoardElement = newCard;
         UpdateBoardSyncRequiredState();
@@ -3189,6 +3195,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // Step A: Heading + ID Line
         string outputHeading;
         if (trimmedHeading.StartsWith(".", StringComparison.Ordinal))
+        {
+            outputHeading = trimmedHeading;
+        }
+        else if (trimmedHeading.StartsWith("INT.", StringComparison.OrdinalIgnoreCase) ||
+                 trimmedHeading.StartsWith("EXT.", StringComparison.OrdinalIgnoreCase))
         {
             outputHeading = trimmedHeading;
         }
@@ -4876,20 +4887,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return trimmedHeading;
         }
 
-        if (element is not null)
-        {
-            return element.Type switch
-            {
-                ScreenplayElementType.SceneHeading => "NEW SCENE",
-                ScreenplayElementType.Note => "Note",
-                ScreenplayElementType.Section when element.Level == 0 => "NEW ACT",
-                ScreenplayElementType.Section when element.Level == 1 => "NEW SEQUENCE",
-                ScreenplayElementType.Section => "NEW BEAT",
-                _ => "New Card"
-            };
-        }
-
-        return "New Card";
+        return string.Empty;
     }
 
     private static string NormalizeBoardCardSceneHeading(ScreenplayElement? element, string? sceneHeading)
@@ -4897,17 +4895,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var trimmedSceneHeading = (sceneHeading ?? string.Empty).Trim();
         if (trimmedSceneHeading.Length > 0)
         {
-            return trimmedSceneHeading;
+            return trimmedSceneHeading.ToUpperInvariant();
         }
 
         if (element is not null &&
             element.Type == ScreenplayElementType.SceneHeading &&
             !string.IsNullOrWhiteSpace(element.ScriptHeading))
         {
-            return element.ScriptHeading.Trim();
+            return element.ScriptHeading.Trim().ToUpperInvariant();
         }
 
-        return "NEW SCENE";
+        return string.Empty;
     }
 
     private static string NormalizeBoardCardDescription(string? description)

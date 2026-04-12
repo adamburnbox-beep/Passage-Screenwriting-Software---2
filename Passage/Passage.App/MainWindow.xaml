@@ -14,18 +14,6 @@
         WindowStartupLocation="Manual"
         Background="{DynamicResource WindowBackground}">
   <Window.Resources>
-    <Style x:Key="BeatBoardInlineTextBoxStyle" TargetType="TextBox">
-      <Setter Property="Visibility" Value="Collapsed" />
-      <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
-      <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="4,2" />
-      <Setter Property="Margin" Value="0,0,0,4" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="AcceptsReturn" Value="False" />
-    </Style>
-
     <ControlTemplate x:Key="BeatBoardWatermarkTextBoxTemplate" TargetType="TextBox">
       <Grid>
         <Border x:Name="Border"
@@ -52,6 +40,113 @@
         </Trigger>
       </ControlTemplate.Triggers>
     </ControlTemplate>
+
+    <Style x:Key="BeatBoardInlineTextBoxStyle" TargetType="TextBox">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="AcceptsReturn" Value="False" />
+      <Setter Property="Template" Value="{StaticResource BeatBoardWatermarkTextBoxTemplate}" />
+    </Style>
+
+    <Style x:Key="BeatBoardInlineComboBoxStyle" TargetType="ComboBox">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="Margin" Value="0,0,8,4" />
+      <Setter Property="FontFamily" Value="Courier Prime, Courier New, Courier" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton x:Name="ToggleButton"
+                            Background="{TemplateBinding Background}"
+                            Foreground="{TemplateBinding Foreground}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                            Padding="{TemplateBinding Padding}"
+                            ClickMode="Press">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="templateRoot" 
+                            Background="{TemplateBinding Background}" 
+                            BorderBrush="{TemplateBinding BorderBrush}" 
+                            BorderThickness="{TemplateBinding BorderThickness}" 
+                            CornerRadius="2">
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="18" />
+                        </Grid.ColumnDefinitions>
+                        <ContentPresenter Grid.Column="0" 
+                                          Margin="{TemplateBinding Padding}" 
+                                          VerticalAlignment="Center" 
+                                          HorizontalAlignment="Left" 
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        <Path Grid.Column="1" 
+                              Data="M0,0 L4,4 L8,0 Z" 
+                              Fill="{DynamicResource MutedText}" 
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="true">
+                        <Setter TargetName="templateRoot" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}"/>
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <ContentPresenter x:Name="ContentSite"
+                                IsHitTestVisible="False"
+                                Content="{TemplateBinding SelectionBoxItem}"
+                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                Margin="{TemplateBinding Padding}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left" />
+              <Popup x:Name="Popup"
+                     Placement="Bottom"
+                     IsOpen="{TemplateBinding IsDropDownOpen}"
+                     AllowsTransparency="True"
+                     Focusable="False"
+                     PopupAnimation="Slide">
+                <Border x:Name="DropDownBorder"
+                        Background="{DynamicResource SurfaceBackground}"
+                        BorderBrush="{DynamicResource ControlBorder}"
+                        BorderThickness="1"
+                        MinWidth="{TemplateBinding ActualWidth}"
+                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                  <ScrollViewer SnapsToDevicePixels="True">
+                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="HasItems" Value="false">
+                <Setter TargetName="DropDownBorder" Property="Height" Value="0"/>
+              </Trigger>
+              <Trigger Property="IsGrouping" Value="true">
+                <Setter Property="ScrollViewer.CanContentScroll" Value="false"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
 
     <Style x:Key="BeatBoardInlineDescriptionTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BeatBoardInlineTextBoxStyle}">
       <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
@@ -150,6 +245,12 @@
       <Setter Property="FontSize" Value="14" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="TextWrapping" Value="Wrap" />
+      <Style.Triggers>
+        <Trigger Property="Text" Value="">
+          <Setter Property="Opacity" Value="0.4" />
+          <Setter Property="FontStyle" Value="Italic" />
+        </Trigger>
+      </Style.Triggers>
     </Style>
 
     <Style x:Key="BeatBoardDescriptionStyle" TargetType="TextBlock">
@@ -170,7 +271,8 @@
       <Setter Property="Visibility" Value="Visible" />
       <Style.Triggers>
         <Trigger Property="Text" Value="">
-          <Setter Property="Visibility" Value="Collapsed" />
+          <Setter Property="Opacity" Value="0.4" />
+          <Setter Property="FontStyle" Value="Italic" />
         </Trigger>
       </Style.Triggers>
     </Style>
@@ -583,13 +685,24 @@
                 <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
               </Button>
               </StackPanel>
-              <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="18" />
+              <Grid>
+                <TextBlock x:Name="HeadingTextBlock"
+                           Text="{Binding Heading}"
+                           Style="{StaticResource BeatBoardHeadingStyle}"
+                           FontSize="18" />
+                <TextBlock x:Name="HeadingPlaceholder"
+                           Text="NEW ACT TITLE"
+                           Style="{StaticResource BeatBoardHeadingStyle}"
+                           FontSize="18"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
               <TextBox x:Name="InlineHeadingTextBox"
                        Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                       FontSize="18" />
+                       Tag="NEW ACT TITLE"
+                       FontSize="18"
+                       CharacterCasing="Upper" />
             </StackPanel>
 
             <Button Grid.Column="1"
@@ -732,13 +845,24 @@
           </Grid>
 
           <StackPanel Grid.Row="1">
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardHeadingStyle}"
-                       FontSize="16" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         FontSize="16" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW SEQUENCE TITLE"
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         FontSize="16"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     FontSize="16" />
+                     Tag="NEW SEQUENCE TITLE"
+                     FontSize="16"
+                     CharacterCasing="Upper" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -761,12 +885,29 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -859,29 +1000,64 @@
           </Grid>
 
           <StackPanel Grid.Row="1">
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardHeadingStyle}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardHeadingStyle}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="SCENE SUMMARY"
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
-            <TextBlock x:Name="SceneHeadingTextBlock"
-                       Text="{Binding ScriptHeading}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardSceneHeadingStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineSceneHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     FontSize="11.5"
-                     Foreground="{DynamicResource MutedText}"
-                     Margin="0,8,0,0" />
+                     Tag="SCENE SUMMARY" />
+            <Grid>
+              <TextBlock x:Name="SceneHeadingTextBlock"
+                         Text="{Binding ScriptHeading}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardSceneHeadingStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBlock x:Name="SceneHeadingPlaceholder"
+                         Text="NEW SCENE"
+                         Style="{StaticResource BeatBoardSceneHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
+            <Grid x:Name="InlineSceneHeadingHost" Visibility="Collapsed" Margin="0,8,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <ComboBox x:Name="InlineSceneHeadingPrefixCombo"
+                        Style="{StaticResource BeatBoardInlineComboBoxStyle}"
+                        Visibility="Visible"
+                        Width="64"
+                        Margin="0,0,8,0">
+                <ComboBoxItem Content="INT." />
+                <ComboBoxItem Content="EXT." />
+              </ComboBox>
+              <TextBox x:Name="InlineSceneHeadingTextBox"
+                       Grid.Column="1"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="NEW SCENE"
+                       Visibility="Visible"
+                       FontSize="11.5"
+                       Foreground="{DynamicResource MutedText}"
+                       Margin="0"
+                       CharacterCasing="Upper" />
+            </Grid>
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -904,14 +1080,48 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="SceneHeadingTextBlock" Property="Visibility" Value="Collapsed" />
-          <Setter TargetName="InlineSceneHeadingTextBox" Property="Visibility" Value="Visible" />
+          <Setter TargetName="SceneHeadingPlaceholder" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="InlineSceneHeadingHost" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding ScriptHeading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="SceneHeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="SceneHeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding ScriptHeading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="SceneHeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="SceneHeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1004,12 +1214,22 @@
           </Grid>
 
           <StackPanel Grid.Row="1">
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardHeadingStyle}"
-                       Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW NOTE"
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         Foreground="{DynamicResource BeatBoardNoteCardContentForeground}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
+                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                     Tag="NEW NOTE" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -1033,12 +1253,29 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding (app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1131,11 +1368,20 @@
           </Grid>
 
           <StackPanel Grid.Row="1">
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardHeadingStyle}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardHeadingStyle}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW HEADING"
+                         Style="{StaticResource BeatBoardHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
+                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                     Tag="NEW HEADING" />
             <Grid Margin="0,10,0,0">
               <TextBlock x:Name="DescriptionTextBlock"
                          Text="{Binding BoardDescription}"
@@ -1158,12 +1404,37 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1206,13 +1477,24 @@
                 <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
               </Button>
             </StackPanel>
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                       FontSize="18" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         FontSize="18" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW ACT TITLE"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         FontSize="18"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     FontSize="18" />
+                     Tag="NEW ACT TITLE"
+                     FontSize="18"
+                     CharacterCasing="Upper" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}"
                        Foreground="{DynamicResource SecondaryText}">
@@ -1244,12 +1526,29 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1292,11 +1591,21 @@
                 <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
               </Button>
             </StackPanel>
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW SEQUENCE TITLE"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
+                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                     Tag="NEW SEQUENCE TITLE"
+                     CharacterCasing="Upper" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -1327,12 +1636,29 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1375,29 +1701,64 @@
                 <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
               </Button>
             </StackPanel>
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="SCENE SUMMARY"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
-            <TextBlock x:Name="SceneHeadingTextBlock"
-                       Text="{Binding ScriptHeading}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineSceneHeadingStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineSceneHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     FontSize="11.5"
-                     Foreground="{DynamicResource MutedText}"
-                     Margin="0,5,0,0" />
+                     Tag="SCENE SUMMARY" />
+            <Grid>
+              <TextBlock x:Name="SceneHeadingTextBlock"
+                         Text="{Binding ScriptHeading}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineSceneHeadingStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBlock x:Name="SceneHeadingPlaceholder"
+                         Text="NEW SCENE"
+                         Style="{StaticResource BeatBoardOutlineSceneHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
+            <Grid x:Name="InlineSceneHeadingHost" Visibility="Collapsed" Margin="0,5,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <ComboBox x:Name="InlineSceneHeadingPrefixCombo"
+                        Style="{StaticResource BeatBoardInlineComboBoxStyle}"
+                        Visibility="Visible"
+                        Width="64"
+                        Margin="0,0,8,0">
+                <ComboBoxItem Content="INT." />
+                <ComboBoxItem Content="EXT." />
+              </ComboBox>
+              <TextBox x:Name="InlineSceneHeadingTextBox"
+                       Grid.Column="1"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="NEW SCENE"
+                       Visibility="Visible"
+                       FontSize="10.5"
+                       Foreground="{DynamicResource MutedText}"
+                       Margin="0"
+                       CharacterCasing="Upper" />
+            </Grid>
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -1428,14 +1789,40 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="SceneHeadingTextBlock" Property="Visibility" Value="Collapsed" />
-          <Setter TargetName="InlineSceneHeadingTextBox" Property="Visibility" Value="Visible" />
+          <Setter TargetName="SceneHeadingPlaceholder" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="InlineSceneHeadingHost" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding ScriptHeading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="SceneHeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="SceneHeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding ScriptHeading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="SceneHeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="SceneHeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1478,12 +1865,22 @@
                 <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
               </Button>
             </StackPanel>
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                       Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW NOTE"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         Foreground="{DynamicResource BeatBoardNoteCardContentForeground}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
+                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                     Tag="NEW NOTE" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -1515,12 +1912,29 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -1563,11 +1977,20 @@
                 <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
               </Button>
             </StackPanel>
-            <TextBlock x:Name="HeadingTextBlock"
-                       Text="{Binding Heading}"
-                       Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+            <Grid>
+              <TextBlock x:Name="HeadingTextBlock"
+                         Text="{Binding Heading}"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+              <TextBlock x:Name="HeadingPlaceholder"
+                         Text="NEW HEADING"
+                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                         Opacity="0.4"
+                         FontStyle="Italic"
+                         Visibility="Collapsed" />
+            </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}" />
+                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                     Tag="NEW HEADING" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
               <TextBlock.Style>
@@ -1598,12 +2021,29 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineHeadingTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="DescriptionTextBlock" Property="Visibility" Value="Collapsed" />
           <Setter TargetName="InlineDescriptionTextBox" Property="Visibility" Value="Visible" />
           <Setter TargetName="EditIconPath" Property="Style" Value="{StaticResource BeatBoardCommitCheckIconStyle}" />
           <Setter TargetName="EditButton" Property="ToolTip" Value="Save changes" />
         </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="False" />
+            <Condition Binding="{Binding Heading}" Value="{x:Null}" />
+          </MultiDataTrigger.Conditions>
+          <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
+          <Setter TargetName="HeadingPlaceholder" Property="Visibility" Value="Visible" />
+        </MultiDataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 

@@ -1161,9 +1161,34 @@ public partial class MainWindow : Window
             }), DispatcherPriority.Input);
         }
 
-        if (FindDescendant<TextBox>(elementHost, "InlineSceneHeadingTextBox") is TextBox sceneHeadingBox)
+        if (isSceneCard)
         {
-            sceneHeadingBox.Text = isSceneCard ? GetEditableBoardSceneHeading(element) : string.Empty;
+            var fullHeading = GetEditableBoardSceneHeading(element);
+            var prefixCombo = FindDescendant<ComboBox>(elementHost, "InlineSceneHeadingPrefixCombo");
+            var sceneHeadingBox = FindDescendant<TextBox>(elementHost, "InlineSceneHeadingTextBox");
+
+            if (prefixCombo != null && sceneHeadingBox != null)
+            {
+                if (fullHeading.StartsWith("INT.", StringComparison.OrdinalIgnoreCase))
+                {
+                    SetComboBoxByContent(prefixCombo, "INT.");
+                    sceneHeadingBox.Text = fullHeading.Substring(4).Trim();
+                }
+                else if (fullHeading.StartsWith("EXT.", StringComparison.OrdinalIgnoreCase))
+                {
+                    SetComboBoxByContent(prefixCombo, "EXT.");
+                    sceneHeadingBox.Text = fullHeading.Substring(4).Trim();
+                }
+                else
+                {
+                    prefixCombo.SelectedIndex = -1;
+                    sceneHeadingBox.Text = fullHeading;
+                }
+            }
+            else if (sceneHeadingBox != null)
+            {
+                sceneHeadingBox.Text = fullHeading;
+            }
         }
 
         if (FindDescendant<TextBox>(elementHost, "InlineDescriptionTextBox") is TextBox descriptionBox)
@@ -1172,13 +1197,46 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SetComboBoxByContent(ComboBox combo, string content)
+    {
+        if (combo == null) return;
+        foreach (var item in combo.Items)
+        {
+            if (item is ComboBoxItem cbItem && string.Equals(cbItem.Content?.ToString(), content, StringComparison.OrdinalIgnoreCase))
+            {
+                combo.SelectedItem = cbItem;
+                return;
+            }
+        }
+        combo.SelectedIndex = -1;
+    }
+
     private static string GetEditableBoardHeading(ScreenplayElement element)
     {
-        return element switch
+        var text = element switch
         {
             ScratchpadCardElement draftCard => draftCard.Heading,
             _ => element.Heading
         };
+
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        var trimmedText = text.Trim();
+
+        // Filter out default labels so they appear as placeholders
+        if (string.Equals(trimmedText, "NEW ACT", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "NEW SEQUENCE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "NEW BEAT", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "New Card", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "NEW HEADING", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "NEW SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "SCENE SUMMARY", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return text;
     }
 
     private static string GetEditableBoardSceneHeading(ScreenplayElement element)
@@ -1188,11 +1246,27 @@ public partial class MainWindow : Window
             return string.Empty;
         }
 
-        return element switch
+        var text = element switch
         {
             ScratchpadCardElement draftCard => draftCard.ScriptHeading,
             _ => element.ScriptHeading
         };
+
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        var trimmedText = text.Trim();
+
+        if (string.Equals(trimmedText, "NEW SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "INT. NEW SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "EXT. NEW SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "INT. SCENE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedText, "EXT. SCENE", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return text;
     }
 
     private static string GetEditableBoardDescription(ScreenplayElement element)
@@ -1214,22 +1288,29 @@ public partial class MainWindow : Window
     private bool CommitInlineBeatBoardEditorChanges(FrameworkElement elementHost, ScreenplayElement element)
     {
         var headingBox = FindDescendant<TextBox>(elementHost, "InlineHeadingTextBox");
+        var sceneHeadingPrefixCombo = FindDescendant<ComboBox>(elementHost, "InlineSceneHeadingPrefixCombo");
         var sceneHeadingBox = FindDescendant<TextBox>(elementHost, "InlineSceneHeadingTextBox");
         var descriptionBox = FindDescendant<TextBox>(elementHost, "InlineDescriptionTextBox");
 
         var newHeading = headingBox?.Text ?? GetEditableBoardHeading(element);
+        var newSceneHeadingPrefix = (sceneHeadingPrefixCombo?.SelectedItem as ComboBoxItem)?.Content?.ToString();
         var newSceneHeading = element.Type == ScreenplayElementType.SceneHeading 
             ? (sceneHeadingBox?.Text ?? GetEditableBoardSceneHeading(element))
             : string.Empty;
         var newDescription = descriptionBox?.Text ?? GetEditableBoardDescription(element);
 
+        var combinedNewSceneHeading = string.IsNullOrWhiteSpace(newSceneHeadingPrefix)
+            ? newSceneHeading
+            : $"{newSceneHeadingPrefix} {newSceneHeading}";
+
         var isDirty = !string.Equals(newHeading, GetEditableBoardHeading(element), StringComparison.Ordinal) ||
                       !string.Equals(newDescription, GetEditableBoardDescription(element), StringComparison.Ordinal) ||
-                      (element.Type == ScreenplayElementType.SceneHeading && !string.Equals(newSceneHeading, GetEditableBoardSceneHeading(element), StringComparison.Ordinal));
+                      (element.Type == ScreenplayElementType.SceneHeading &&
+                       !string.Equals(combinedNewSceneHeading, GetEditableBoardSceneHeading(element), StringComparison.Ordinal));
 
         if (isDirty)
         {
-            var updatedElement = ViewModel.SelectedDocument?.TryUpdateBoardElementContent(element, newHeading, newSceneHeading, newDescription);
+            var updatedElement = ViewModel.SelectedDocument?.TryUpdateBoardElementContent(element, newHeading, newSceneHeadingPrefix, newSceneHeading, newDescription);
             if (updatedElement is not null && ReferenceEquals(_currentInlineEditElement, element))
             {
                 _currentInlineEditElement = updatedElement;
