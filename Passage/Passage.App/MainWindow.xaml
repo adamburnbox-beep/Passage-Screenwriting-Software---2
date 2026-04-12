@@ -596,10 +596,12 @@
 
     <DataTemplate x:Key="BeatBoardActCardTemplate">
       <Grid>
-        <Rectangle Height="4" Margin="0,0,0,0" Fill="{DynamicResource BeatBoardActDividerBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Top" />
-        <Border Margin="0,40,0,16"
-                HorizontalAlignment="Stretch"
+        <Border HorizontalAlignment="Left"
+                VerticalAlignment="Stretch"
+                MinWidth="180"
+                Width="Auto"
                 BorderThickness="1"
+                BorderBrush="{DynamicResource ControlAccent}"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
                 MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
@@ -634,11 +636,12 @@
           </Style>
         </Border.Style>
         <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
+             <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                   <RowDefinition Height="Auto" />
+                   <RowDefinition Height="Auto" />
+                   <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
           <Grid>
             <Grid.ColumnDefinitions>
@@ -736,13 +739,14 @@
               </Style>
             </TextBlock.Style>
           </TextBlock>
-          <TextBox x:Name="InlineDescriptionTextBox"
-                   Grid.Row="1"
-                   Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
-                   Margin="0,10,0,0" />
-        </Grid>
-      </Border>
-    </Grid>
+                   <TextBox x:Name="InlineDescriptionTextBox"
+                            Grid.Row="1"
+                            Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
+                            Margin="0,10,0,0" />
+                 </Grid>
+              </Grid>
+        </Border>
+     </Grid>
     <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
           <Setter TargetName="HeadingTextBlock" Property="Visibility" Value="Collapsed" />
@@ -757,6 +761,7 @@
 
     <DataTemplate x:Key="BeatBoardSequenceCardTemplate">
       <Border Margin="0,0,0,16"
+                Width="200"
                 BorderThickness="1"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
@@ -854,19 +859,19 @@
               <TextBlock x:Name="HeadingTextBlock"
                          Text="{Binding Heading}"
                          Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="19" />
+                         FontSize="18" />
               <TextBlock x:Name="HeadingPlaceholder"
-                         Text="NEW SEQUENCE TITLE"
+                         Text="NEW SEQUENCE"
                          Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="19"
+                         FontSize="18"
                          Opacity="0.4"
                          FontStyle="Italic"
                          Visibility="Collapsed" />
             </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="NEW SEQUENCE TITLE"
-                     FontSize="19"
+                     Tag="NEW SEQUENCE"
+                     FontSize="18"
                      CharacterCasing="Upper" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
@@ -917,8 +922,8 @@
     </DataTemplate>
 
     <DataTemplate x:Key="BeatBoardSceneCardTemplate">
-      <Border Width="288"
-                MaxWidth="288"
+      <Border Width="180"
+                MaxWidth="180"
                 Margin="0,0,0,16"
                 BorderThickness="1"
                 Cursor="Hand"
@@ -1009,11 +1014,11 @@
               <TextBlock x:Name="HeadingTextBlock"
                          Text="{Binding Heading}"
                          Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="15" />
+                         FontSize="13" />
               <TextBlock x:Name="HeadingPlaceholder"
                          Text="SCENE SUMMARY"
                          Style="{StaticResource BeatBoardHeadingStyle}"
-                         FontSize="15"
+                         FontSize="13"
                          Opacity="0.4"
                          FontStyle="Italic"
                          Visibility="Collapsed" />
@@ -1021,7 +1026,7 @@
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
                      Tag="SCENE SUMMARY"
-                     FontSize="15" />
+                     FontSize="13" />
             <Grid>
               <TextBlock x:Name="SceneHeadingTextBlock"
                          Text="{Binding ScriptHeading}">
@@ -1134,8 +1139,8 @@
     </DataTemplate>
 
     <DataTemplate x:Key="BeatBoardNoteCardTemplate">
-      <Border Width="252"
-                MaxWidth="252"
+      <Border Width="180"
+                MaxWidth="180"
                 Margin="0,0,0,16"
                 BorderThickness="1"
                 Cursor="Hand"
@@ -1226,10 +1231,12 @@
               <TextBlock x:Name="HeadingTextBlock"
                          Text="{Binding Heading}"
                          Style="{StaticResource BeatBoardHeadingStyle}"
+                         FontSize="13"
                          Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
               <TextBlock x:Name="HeadingPlaceholder"
                          Text="NEW NOTE"
                          Style="{StaticResource BeatBoardHeadingStyle}"
+                         FontSize="13"
                          Foreground="{DynamicResource BeatBoardNoteCardContentForeground}"
                          Opacity="0.4"
                          FontStyle="Italic"
@@ -1237,6 +1244,7 @@
             </Grid>
             <TextBox x:Name="InlineHeadingTextBox"
                      Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                     FontSize="13"
                      Tag="NEW NOTE" />
             <TextBlock x:Name="DescriptionTextBlock"
                        Text="{Binding BoardDescription}">
@@ -2072,19 +2080,8 @@
     <Style x:Key="BeatBoardBoardItemContainerStyle" TargetType="ContentPresenter">
       <Setter Property="Margin" Value="0" />
       <Setter Property="SnapsToDevicePixels" Value="True" />
-      <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding Level}" Value="0">
-          <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="True" />
-          <Setter Property="HorizontalAlignment" Value="Stretch" />
-        </DataTrigger>
-        <DataTrigger Binding="{Binding Level}" Value="1">
-          <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
-        </DataTrigger>
-        <DataTrigger Binding="{Binding Level}" Value="2">
-          <Setter Property="views:BeatBoardWrapPanel.IsFullWidth" Value="False" />
-        </DataTrigger>
-      </Style.Triggers>
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
 
     <Style x:Key="BeatBoardOutlineItemContainerStyle" TargetType="ContentPresenter">
