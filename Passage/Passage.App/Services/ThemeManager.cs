@@ -9,11 +9,15 @@ public static class ThemeManager
 {
     public const string LightThemeName = "Light";
     public const string DarkThemeName = "Dark";
+    public const string EReaderThemeName = "E-Reader";
+    public const string EReaderDarkThemeName = "E-Reader Dark";
     public const string SystemThemeName = "System Default";
 
     private const string ThemeFolder = "Themes";
     private const string LightThemeFile = "LightTheme.xaml";
     private const string DarkThemeFile = "DarkTheme.xaml";
+    private const string EReaderThemeFile = "EReaderTheme.xaml";
+    private const string EReaderDarkThemeFile = "EReaderDarkTheme.xaml";
     private const string WindowsThemeKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private const string AppsUseLightThemeValueName = "AppsUseLightTheme";
 
@@ -109,6 +113,8 @@ public static class ThemeManager
         return NormalizeThemeName(themeName) switch
         {
             DarkThemeName => DarkThemeFile,
+            EReaderThemeName => EReaderThemeFile,
+            EReaderDarkThemeName => EReaderDarkThemeFile,
             _ => LightThemeFile
         };
     }
@@ -123,6 +129,18 @@ public static class ThemeManager
         if (string.Equals(themeName, DarkThemeName, StringComparison.OrdinalIgnoreCase))
         {
             return DarkThemeName;
+        }
+
+        if (string.Equals(themeName, EReaderThemeName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(themeName, "EReader", StringComparison.OrdinalIgnoreCase))
+        {
+            return EReaderThemeName;
+        }
+
+        if (string.Equals(themeName, EReaderDarkThemeName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(themeName, "EReaderDark", StringComparison.OrdinalIgnoreCase))
+        {
+            return EReaderDarkThemeName;
         }
 
         if (string.Equals(themeName, SystemThemeName, StringComparison.OrdinalIgnoreCase) ||

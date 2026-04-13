@@ -5381,7 +5381,9 @@ public partial class MainWindow : Window
         {
             ThemeManager.LightThemeName => 0,
             ThemeManager.DarkThemeName => 1,
-            _ => 2
+            ThemeManager.EReaderThemeName => 2,
+            ThemeManager.EReaderDarkThemeName => 3,
+            _ => 4
         };
     }
 
@@ -5399,6 +5401,12 @@ public partial class MainWindow : Window
                 break;
             case 1:
                 ThemeManager.SetTheme(ThemeManager.DarkThemeName);
+                break;
+            case 2:
+                ThemeManager.SetTheme(ThemeManager.EReaderThemeName);
+                break;
+            case 3:
+                ThemeManager.SetTheme(ThemeManager.EReaderDarkThemeName);
                 break;
             default:
                 ThemeManager.SetTheme(ThemeManager.SystemThemeName);

@@ -2415,6 +2415,8 @@
               </ComboBox.ItemContainerStyle>
               <ComboBoxItem Content="Light" />
               <ComboBoxItem Content="Dark" />
+              <ComboBoxItem Content="E-Reader" />
+              <ComboBoxItem Content="E-Reader Dark" />
               <ComboBoxItem Content="System Default" />
             </ComboBox>
 
