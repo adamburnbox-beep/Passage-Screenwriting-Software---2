@@ -29,6 +29,9 @@
   <SolidColorBrush x:Key="SurfaceBorder" Color="#FF000000" />
   <SolidColorBrush x:Key="SurfaceMutedBorder" Color="#FFA0A0A0" />
 
+  <SolidColorBrush x:Key="CardBaseBackground" Color="#FFFFFFFF" />
+  <SolidColorBrush x:Key="CardAlternatingBackground" Color="#FFE0E0E0" />
+
   <SolidColorBrush x:Key="ControlBackground" Color="#FFFFFFFF" />
   <SolidColorBrush x:Key="ControlForeground" Color="#FF000000" />
   <SolidColorBrush x:Key="ControlBorder" Color="#FF000000" />

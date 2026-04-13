@@ -223,6 +223,8 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<IExporter> AvailableExporters { get; } = ExporterCatalog.GetDefaultExporters();
 
+    public IEnumerable<string> AvailableThemes => ThemeManager.AvailableThemes;
+
     public IReadOnlyList<GoalType> GoalTypes => GoalTypeOptions;
 
     public IReadOnlyList<GoalType> SessionGoalTypes => SessionGoalTypeOptions;
@@ -393,6 +395,32 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
     public string ActiveZoomDisplayText => IsBoardModeActive ? BoardZoomDisplayText : EditorZoomDisplayText;
 
+    public ObservableCollection<string> AutoCompleteSuggestions => SelectedDocument?.AutoCompleteSuggestions ?? _emptySuggestions;
+
+    public bool IsAutoCompleteOpen
+    {
+        get => SelectedDocument?.IsAutoCompleteOpen ?? false;
+        set
+        {
+            if (SelectedDocument is not null)
+            {
+                SelectedDocument.IsAutoCompleteOpen = value;
+            }
+        }
+    }
+
+    public int SelectedSuggestionIndex
+    {
+        get => SelectedDocument?.SelectedSuggestionIndex ?? -1;
+        set
+        {
+            if (SelectedDocument is not null)
+            {
+                SelectedDocument.SelectedSuggestionIndex = value;
+            }
+        }
+    }
+
     public ScreenplayElementType GetEffectiveLineType(int lineNumber)
     {
         return SelectedDocument?.GetEffectiveLineType(lineNumber) ?? ScreenplayElementType.Action;
@@ -528,6 +556,8 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     }
 
     public void UpdateCaretContext(int lineNumber) => SelectedDocument?.UpdateCaretContext(lineNumber);
+
+    public void UpdateSuggestions(string prefix, string elementTypeName) => SelectedDocument?.UpdateSuggestions(prefix, elementTypeName);
 
     public void UpdateEnterContinuation(int lineNumber, string currentLineText) => SelectedDocument?.UpdateEnterContinuation(lineNumber, currentLineText);
 
@@ -677,6 +707,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     private static readonly ObservableCollection<ScreenplayElement> _emptyBoard = new();
     private static readonly ObservableCollection<ScreenplayElement> _emptyScratchpad = new();
     private static readonly ObservableCollection<TitlePageEntry> _emptyTitlePage = new();
+    private static readonly ObservableCollection<string> _emptySuggestions = new();
     private static readonly ObservableCollection<PreviewElementItem> _emptyPreview = new();
 
     private void AddRestoredDocument(SessionDocumentState state, bool select = true)

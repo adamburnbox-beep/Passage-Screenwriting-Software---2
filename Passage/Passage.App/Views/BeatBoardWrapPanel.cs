@@ -50,7 +50,7 @@ public sealed class BeatBoardWrapPanel : Panel
         // Structural Measurement Pass
         for (var i = 0; i < InternalChildren.Count; i++)
         {
-            if (InternalChildren[i] is not UIElement actChild || !TryGetScreenplayElement(actChild, out var actElement))
+            if (InternalChildren[i] is not UIElement currentChild || !TryGetScreenplayElement(currentChild, out var currentElement))
             {
                 if (InternalChildren[i] is UIElement nonElement)
                 {
@@ -60,9 +60,9 @@ public sealed class BeatBoardWrapPanel : Panel
             }
 
             // Group into Acts (Vertical Spines)
-            if (actElement.Level <= 0)
+            if (currentElement.Level <= 0)
             {
-                double currentActWidth = Math.Max(MinActWidth, actChild.DesiredSize.Width);
+                double currentActWidth = Math.Max(MinActWidth, currentChild.DesiredSize.Width);
                 double actTotalHeight = 0;
                 double actMaxRowWidth = currentActWidth + HorizontalGap;
                 int actEndIndex = i + 1;
@@ -71,50 +71,85 @@ public sealed class BeatBoardWrapPanel : Panel
                 while (actEndIndex < InternalChildren.Count && 
                        (!TryGetScreenplayElement(InternalChildren[actEndIndex], out var nextElement) || nextElement.Level > 0))
                 {
-                    if (InternalChildren[actEndIndex] is not UIElement seqChild || !TryGetScreenplayElement(seqChild, out var seqElement))
+                    if (InternalChildren[actEndIndex] is not UIElement rowChild || !TryGetScreenplayElement(rowChild, out var rowElement))
                     {
                         actEndIndex++;
                         continue;
                     }
 
-                    // Group into Sequence Rows
-                    if (seqElement.Level == 1)
+                    // Group into Rows
+                    double rowX;
+                    double rowHeight;
+                    int nextIndex;
+                    
+                    if (rowElement.Level == 1) // Sequence-started row
                     {
-                        double rowX = currentActWidth + SequenceWidth + (HorizontalGap * 2);
-                        double rowHeight = seqChild.DesiredSize.Height;
-                        int sceneIndex = actEndIndex + 1;
-
-                        // Iterate through Scenes in this Sequence Row
-                        while (sceneIndex < InternalChildren.Count && 
-                               TryGetScreenplayElement(InternalChildren[sceneIndex], out var sceneElement) && 
-                               sceneElement.Level >= 2)
-                        {
-                            var sceneChild = InternalChildren[sceneIndex];
-                            rowHeight = Math.Max(rowHeight, sceneChild.DesiredSize.Height);
-                            rowX += SceneWidth + HorizontalGap;
-                            sceneIndex++;
-                        }
-
-                        actTotalHeight += rowHeight + VerticalGap;
-                        actMaxRowWidth = Math.Max(actMaxRowWidth, rowX);
-                        actEndIndex = sceneIndex;
+                        rowX = currentActWidth + SequenceWidth + (HorizontalGap * 2);
+                        rowHeight = rowChild.DesiredSize.Height;
+                        nextIndex = actEndIndex + 1;
                     }
-                    else
+                    else // Scene-started row (inside Act)
                     {
-                        actTotalHeight += seqChild.DesiredSize.Height + VerticalGap;
-                        actEndIndex++;
+                        rowX = currentActWidth + SequenceWidth + (HorizontalGap * 2);
+                        rowHeight = 0; // Will be set by scenes
+                        nextIndex = actEndIndex;
                     }
+
+                    // Collect Scenes
+                    while (nextIndex < InternalChildren.Count && 
+                           TryGetScreenplayElement(InternalChildren[nextIndex], out var sceneElement) && 
+                           sceneElement.Level >= 2)
+                    {
+                        var sceneChild = InternalChildren[nextIndex];
+                        rowHeight = Math.Max(rowHeight, sceneChild.DesiredSize.Height);
+                        rowX += SceneWidth + HorizontalGap;
+                        nextIndex++;
+                    }
+
+                    actTotalHeight += rowHeight + VerticalGap;
+                    actMaxRowWidth = Math.Max(actMaxRowWidth, rowX);
+                    actEndIndex = nextIndex;
                 }
 
-                actTotalHeight = Math.Max(actTotalHeight, actChild.DesiredSize.Height + VerticalGap);
+                actTotalHeight = Math.Max(actTotalHeight, currentChild.DesiredSize.Height + VerticalGap);
                 totalMeasuredHeight += actTotalHeight;
                 maxMeasuredWidth = Math.Max(maxMeasuredWidth, actMaxRowWidth);
                 i = actEndIndex - 1;
             }
             else
             {
-                totalMeasuredHeight += actChild.DesiredSize.Height + VerticalGap;
-                maxMeasuredWidth = Math.Max(maxMeasuredWidth, actChild.DesiredSize.Width);
+                // Lone Group (No Act)
+                double rowWidth = BoardPadding;
+                double rowHeight;
+                int nextIndex;
+
+                if (currentElement.Level == 1) // Sequence-started lone row
+                {
+                    rowWidth += MinActWidth + SequenceWidth + (HorizontalGap * 2);
+                    rowHeight = currentChild.DesiredSize.Height;
+                    nextIndex = i + 1;
+                }
+                else // Scene-started lone row
+                {
+                    rowWidth += MinActWidth + SequenceWidth + (HorizontalGap * 2);
+                    rowHeight = 0;
+                    nextIndex = i;
+                }
+
+                // Collect Scenes
+                while (nextIndex < InternalChildren.Count && 
+                       TryGetScreenplayElement(InternalChildren[nextIndex], out var sceneElement) && 
+                       sceneElement.Level >= 2)
+                {
+                    var sceneChild = InternalChildren[nextIndex];
+                    rowHeight = Math.Max(rowHeight, sceneChild.DesiredSize.Height);
+                    rowWidth += SceneWidth + HorizontalGap;
+                    nextIndex++;
+                }
+
+                totalMeasuredHeight += rowHeight + VerticalGap;
+                maxMeasuredWidth = Math.Max(maxMeasuredWidth, rowWidth);
+                i = nextIndex - 1;
             }
         }
 
@@ -132,7 +167,7 @@ public sealed class BeatBoardWrapPanel : Panel
 
         for (var i = 0; i < InternalChildren.Count; i++)
         {
-            if (InternalChildren[i] is not UIElement actChild || !TryGetScreenplayElement(actChild, out var actElement))
+            if (InternalChildren[i] is not UIElement currentChild || !TryGetScreenplayElement(currentChild, out var currentElement))
             {
                 if (InternalChildren[i] is UIElement nonElement)
                 {
@@ -144,48 +179,48 @@ public sealed class BeatBoardWrapPanel : Panel
                 continue;
             }
 
-            if (actElement.Level <= 0) // Act Spine
+            if (currentElement.Level <= 0) // Act Spine
             {
-                double currentActWidth = Math.Max(MinActWidth, actChild.DesiredSize.Width);
+                double currentActWidth = Math.Max(MinActWidth, currentChild.DesiredSize.Width);
                 double actTop = currentY;
                 double actRunningHeight = 0;
                 int actEndIndex = i + 1;
-                
-                // Track row boundaries within this Act for OnRender
-                var internalRowBottoms = new List<double>();
 
                 while (actEndIndex < InternalChildren.Count && 
                        (!TryGetScreenplayElement(InternalChildren[actEndIndex], out var nextElement) || nextElement.Level > 0))
                 {
-                    if (InternalChildren[actEndIndex] is not UIElement seqChild || !TryGetScreenplayElement(seqChild, out var seqElement))
+                    if (InternalChildren[actEndIndex] is not UIElement rowChild || !TryGetScreenplayElement(rowChild, out var rowElement))
                     {
                         actEndIndex++;
                         continue;
                     }
 
-                    if (seqElement.Level == 1)
+                    double rowTop = actTop + actRunningHeight;
+                    double rowHeight;
+                    int nextIndex;
+
+                    if (rowElement.Level == 1) // Sequence row
                     {
-                        double rowTop = actTop + actRunningHeight;
-                        double rowHeight = seqChild.DesiredSize.Height;
-                        int sceneIndex = actEndIndex + 1;
-                        while (sceneIndex < InternalChildren.Count && 
-                               TryGetScreenplayElement(InternalChildren[sceneIndex], out var sceneElement) && 
+                        rowHeight = rowChild.DesiredSize.Height;
+                        nextIndex = actEndIndex + 1;
+
+                        while (nextIndex < InternalChildren.Count && 
+                               TryGetScreenplayElement(InternalChildren[nextIndex], out var sceneElement) && 
                                sceneElement.Level >= 2)
                         {
-                            var sceneChild = InternalChildren[sceneIndex];
-                            rowHeight = Math.Max(rowHeight, sceneChild.DesiredSize.Height);
-                            sceneIndex++;
+                            rowHeight = Math.Max(rowHeight, InternalChildren[nextIndex].DesiredSize.Height);
+                            nextIndex++;
                         }
 
-                        var seqBounds = new Rect(BoardPadding + currentActWidth + HorizontalGap, rowTop, SequenceWidth, seqChild.DesiredSize.Height);
-                        seqChild.Arrange(seqBounds);
+                        var seqBounds = new Rect(BoardPadding + currentActWidth + HorizontalGap, rowTop, SequenceWidth, rowChild.DesiredSize.Height);
+                        rowChild.Arrange(seqBounds);
                         _arrangedChildBounds[actEndIndex] = seqBounds;
 
                         // Track Sequence Lane Background
                         _sequenceLaneRects.Add(new Rect(BoardPadding + currentActWidth + (HorizontalGap / 2), rowTop - LanePadding, finalSize.Width - BoardPadding - currentActWidth - (HorizontalGap / 2) - LanePadding, rowHeight + (LanePadding * 2)));
 
                         double currentSceneX = BoardPadding + currentActWidth + SequenceWidth + (HorizontalGap * 2);
-                        for (int k = actEndIndex + 1; k < sceneIndex; k++)
+                        for (int k = actEndIndex + 1; k < nextIndex; k++)
                         {
                             var sceneChild = InternalChildren[k];
                             var sceneBounds = new Rect(currentSceneX, rowTop, SceneWidth, sceneChild.DesiredSize.Height);
@@ -196,45 +231,116 @@ public sealed class BeatBoardWrapPanel : Panel
 
                         _sequenceBoundaries.Add((BoardPadding + currentActWidth + (HorizontalGap / 2), rowTop + rowHeight + (VerticalGap / 2)));
                         actRunningHeight += rowHeight + VerticalGap;
-                        internalRowBottoms.Add(actTop + actRunningHeight - (VerticalGap / 2));
-                        actEndIndex = sceneIndex;
+                        actEndIndex = nextIndex;
                     }
-                    else
+                    else // Scene row (inside Act)
                     {
-                        var bounds = new Rect(BoardPadding + currentActWidth + HorizontalGap, actTop + actRunningHeight, seqChild.DesiredSize.Width, seqChild.DesiredSize.Height);
-                        seqChild.Arrange(bounds);
-                        _arrangedChildBounds[actEndIndex] = bounds;
-                        actRunningHeight += bounds.Height + VerticalGap;
-                        internalRowBottoms.Add(actTop + actRunningHeight - (VerticalGap / 2));
-                        actEndIndex++;
+                        rowHeight = 0;
+                        nextIndex = actEndIndex;
+
+                         while (nextIndex < InternalChildren.Count && 
+                                TryGetScreenplayElement(InternalChildren[nextIndex], out var sceneElement) && 
+                                sceneElement.Level >= 2)
+                        {
+                            rowHeight = Math.Max(rowHeight, InternalChildren[nextIndex].DesiredSize.Height);
+                            nextIndex++;
+                        }
+
+                        double currentSceneX = BoardPadding + currentActWidth + SequenceWidth + (HorizontalGap * 2);
+                        for (int k = actEndIndex; k < nextIndex; k++)
+                        {
+                            var sceneChild = InternalChildren[k];
+                            var sceneBounds = new Rect(currentSceneX, rowTop, SceneWidth, sceneChild.DesiredSize.Height);
+                            sceneChild.Arrange(sceneBounds);
+                            _arrangedChildBounds[k] = sceneBounds;
+                            currentSceneX += SceneWidth + HorizontalGap;
+                        }
+
+                        actRunningHeight += rowHeight + VerticalGap;
+                        actEndIndex = nextIndex;
                     }
                 }
 
-                // to exactly the end of the content (minus trailing gap).
-                double contentHeight = actRunningHeight > 0 ? actRunningHeight - VerticalGap : actChild.DesiredSize.Height;
-                double cardHeight = Math.Max(actChild.DesiredSize.Height, contentHeight);
+                double contentHeight = actRunningHeight > 0 ? actRunningHeight - VerticalGap : currentChild.DesiredSize.Height;
+                double cardHeight = Math.Max(currentChild.DesiredSize.Height, contentHeight);
                 var actBounds = new Rect(BoardPadding, actTop, currentActWidth, cardHeight);
-                actChild.Arrange(actBounds);
+                currentChild.Arrange(actBounds);
                 _arrangedChildBounds[i] = actBounds;
 
-                // Add the absolute bottom of the Act block to the Act boundaries
-                double actBlockBottom = actTop + Math.Max(actRunningHeight, actChild.DesiredSize.Height + VerticalGap);
+                double actBlockBottom = actTop + Math.Max(actRunningHeight, currentChild.DesiredSize.Height + VerticalGap);
                 double actBoundaryY = actBlockBottom - (VerticalGap / 2);
                 _actBoundariesY.Add(actBoundaryY);
 
-                // Track Act Lane Background
                 _actLaneRects.Add(new Rect(BoardPadding - LanePadding, actTop - LanePadding, finalSize.Width - (BoardPadding - LanePadding) * 2, actBoundaryY - actTop + (VerticalGap / 4) + LanePadding));
 
                 currentY = actBlockBottom;
                 i = actEndIndex - 1;
             }
-            else // Lone element
+            else // Lone Group (No Act)
             {
-                var bounds = new Rect(BoardPadding, currentY, actChild.DesiredSize.Width, actChild.DesiredSize.Height);
-                actChild.Arrange(bounds);
-                _arrangedChildBounds[i] = bounds;
-                currentY += bounds.Height + VerticalGap;
-                _actBoundariesY.Add(currentY - (VerticalGap / 2));
+                double rowTop = currentY;
+                double rowHeight;
+                int nextIndex;
+
+                if (currentElement.Level == 1) // Sequence row
+                {
+                    rowHeight = currentChild.DesiredSize.Height;
+                    nextIndex = i + 1;
+
+                    while (nextIndex < InternalChildren.Count && 
+                           TryGetScreenplayElement(InternalChildren[nextIndex], out var sceneElement) && 
+                           sceneElement.Level >= 2)
+                    {
+                        rowHeight = Math.Max(rowHeight, InternalChildren[nextIndex].DesiredSize.Height);
+                        nextIndex++;
+                    }
+
+                    var seqBounds = new Rect(BoardPadding + MinActWidth + HorizontalGap, rowTop, SequenceWidth, currentChild.DesiredSize.Height);
+                    currentChild.Arrange(seqBounds);
+                    _arrangedChildBounds[i] = seqBounds;
+
+                    _sequenceLaneRects.Add(new Rect(BoardPadding + MinActWidth + (HorizontalGap / 2), rowTop - LanePadding, finalSize.Width - BoardPadding - MinActWidth - (HorizontalGap / 2) - LanePadding, rowHeight + (LanePadding * 2)));
+
+                    double currentSceneX = BoardPadding + MinActWidth + SequenceWidth + (HorizontalGap * 2);
+                    for (int k = i + 1; k < nextIndex; k++)
+                    {
+                        var sceneChild = InternalChildren[k];
+                        var sceneBounds = new Rect(currentSceneX, rowTop, SceneWidth, sceneChild.DesiredSize.Height);
+                        sceneChild.Arrange(sceneBounds);
+                        _arrangedChildBounds[k] = sceneBounds;
+                        currentSceneX += SceneWidth + HorizontalGap;
+                    }
+
+                    _sequenceBoundaries.Add((BoardPadding + MinActWidth + (HorizontalGap / 2), rowTop + rowHeight + (VerticalGap / 2)));
+                }
+                else // Scene row
+                {
+                    rowHeight = 0;
+                    nextIndex = i;
+
+                    while (nextIndex < InternalChildren.Count && 
+                           TryGetScreenplayElement(InternalChildren[nextIndex], out var sceneElement) && 
+                           sceneElement.Level >= 2)
+                    {
+                        rowHeight = Math.Max(rowHeight, InternalChildren[nextIndex].DesiredSize.Height);
+                        nextIndex++;
+                    }
+
+                    double currentSceneX = BoardPadding + MinActWidth + SequenceWidth + (HorizontalGap * 2);
+                    for (int k = i; k < nextIndex; k++)
+                    {
+                        var sceneChild = InternalChildren[k];
+                        var sceneBounds = new Rect(currentSceneX, rowTop, SceneWidth, sceneChild.DesiredSize.Height);
+                        sceneChild.Arrange(sceneBounds);
+                        _arrangedChildBounds[k] = sceneBounds;
+                        currentSceneX += SceneWidth + HorizontalGap;
+                    }
+                    
+                    _actBoundariesY.Add(rowTop + rowHeight + (VerticalGap / 2));
+                }
+
+                currentY += rowHeight + VerticalGap;
+                i = nextIndex - 1;
             }
         }
 

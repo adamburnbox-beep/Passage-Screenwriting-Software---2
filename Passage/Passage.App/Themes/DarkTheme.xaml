@@ -29,6 +29,9 @@
   <SolidColorBrush x:Key="SurfaceBorder" Color="#FF2F3742" />
   <SolidColorBrush x:Key="SurfaceMutedBorder" Color="#FF252C35" />
 
+  <SolidColorBrush x:Key="CardBaseBackground" Color="#FF12161B" />
+  <SolidColorBrush x:Key="CardAlternatingBackground" Color="#FF171B21" />
+
   <SolidColorBrush x:Key="ControlBackground" Color="#FF171C22" />
   <SolidColorBrush x:Key="ControlForeground" Color="#FFF2F6FB" />
   <SolidColorBrush x:Key="ControlBorder" Color="#FF39414C" />
@@ -118,4 +121,8 @@
       </Setter.Value>
     </Setter>
   </Style>
+
+  <SolidColorBrush x:Key="EInkCardPrimaryBackground" Color="#FF1B1B1B" />
+  <SolidColorBrush x:Key="EInkCardSecondaryBackground" Color="#FF2D2D2D" />
+  <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#FF5F5F5F" />
 </ResourceDictionary>

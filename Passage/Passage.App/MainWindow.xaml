@@ -452,23 +452,29 @@
     </Style>
 
     <Style x:Key="BeatBoardOutlineCardBorderBaseStyle" TargetType="Border">
-      <Setter Property="Margin" Value="68,0,18,10" />
-      <Setter Property="Padding" Value="14,13" />
-      <Setter Property="CornerRadius" Value="14" />
-      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
       <Style.Triggers>
+        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+          <Setter Property="Background" Value="{DynamicResource EInkCardSecondaryBackground}" />
+        </Trigger>
         <DataTrigger Binding="{Binding Level}" Value="0">
-          <Setter Property="Margin" Value="0,0,18,14" />
+          <Setter Property="BorderThickness" Value="4,0,0,1" />
+          <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="1">
-          <Setter Property="Margin" Value="24,0,18,12" />
+          <Setter Property="Padding" Value="32,10,12,10" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="2">
-          <Setter Property="Margin" Value="48,0,18,10" />
+          <Setter Property="Padding" Value="52,10,12,10" />
         </DataTrigger>
         <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-          <Setter Property="Padding" Value="14,10" />
+          <Setter Property="Padding" Value="12,6" />
         </DataTrigger>
         <MultiDataTrigger>
           <MultiDataTrigger.Conditions>
@@ -490,69 +496,54 @@
     <Style x:Key="BeatBoardOutlineActCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Padding" Value="18,15" />
-      <Setter Property="CornerRadius" Value="18" />
-      <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
+      <Setter Property="Padding" Value="16,14" />
       <Style.Triggers>
-        <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
+        <DataTrigger Binding="{Binding Level}" Value="0">
+          <Setter Property="BorderThickness" Value="8,0,0,1" />
+          <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
+        </DataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsCollapsed}" Value="False" />
+            <Condition Binding="{Binding Level}" Value="0" />
+          </MultiDataTrigger.Conditions>
+          <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsCollapsed}" Value="False" />
+            <Condition Binding="{Binding Level}" Value="1" />
+          </MultiDataTrigger.Conditions>
           <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-        </DataTrigger>
-        <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-          <Setter Property="Padding" Value="18,10" />
-          <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
-          <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
-        </DataTrigger>
+        </MultiDataTrigger>
+        <MultiDataTrigger>
+          <MultiDataTrigger.Conditions>
+            <Condition Binding="{Binding IsCollapsed}" Value="False" />
+            <Condition Binding="{Binding Level}" Value="2" />
+          </MultiDataTrigger.Conditions>
+          <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        </MultiDataTrigger>
       </Style.Triggers>
     </Style>
 
     <Style x:Key="BeatBoardOutlineSequenceCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceCardBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
-          <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-        </DataTrigger>
-      </Style.Triggers>
     </Style>
 
     <Style x:Key="BeatBoardOutlineSceneCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource BeatBoardSceneCardBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
-          <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-        </DataTrigger>
-      </Style.Triggers>
     </Style>
 
     <Style x:Key="BeatBoardOutlineNoteCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource BeatBoardNoteCardBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
-          <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-        </DataTrigger>
-      </Style.Triggers>
     </Style>
 
     <Style x:Key="BeatBoardOutlineDefaultCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource BeatBoardDefaultCardBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
-          <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-        </DataTrigger>
-      </Style.Triggers>
     </Style>
 
     <Style x:Key="BeatBoardOutlineTypeSelectorStyle"
@@ -607,15 +598,13 @@
                 MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="24,20" />
-            <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BeatBoardLaneSeparator}" />
+            <Setter Property="Padding" Value="20,16" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                <Setter Property="Padding" Value="4,2,4,2" />
-                <Setter Property="CornerRadius" Value="10" />
-                <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
+                <Setter Property="Padding" Value="8,4" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -767,15 +756,13 @@
                 MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="20,16" />
-            <Setter Property="CornerRadius" Value="16" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceCardBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BeatBoardLaneSeparator}" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                <Setter Property="Padding" Value="4,2,4,2" />
-                <Setter Property="CornerRadius" Value="10" />
-                <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceCardBackground}" />
+                <Setter Property="Padding" Value="8,4" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -929,14 +916,13 @@
                 MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="14,12" />
-            <Setter Property="CornerRadius" Value="15" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardSceneCardBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                <Setter Property="Padding" Value="14,8" />
-                <Setter Property="Background" Value="{DynamicResource BeatBoardSceneCardBackground}" />
+                <Setter Property="Padding" Value="8,4" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -1146,14 +1132,13 @@
                 MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="14,13" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardNoteCardBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                <Setter Property="Padding" Value="14,10" />
-                <Setter Property="Background" Value="{DynamicResource BeatBoardNoteCardBackground}" />
+                <Setter Property="Padding" Value="8,4" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -1303,14 +1288,13 @@
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="Padding" Value="15,14" />
-            <Setter Property="CornerRadius" Value="14" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardDefaultCardBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                <Setter Property="Padding" Value="15,10" />
-                <Setter Property="Background" Value="{DynamicResource BeatBoardDefaultCardBackground}" />
+                <Setter Property="Padding" Value="8,4" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -2413,11 +2397,6 @@
                   <Setter Property="Padding" Value="8,4" />
                 </Style>
               </ComboBox.ItemContainerStyle>
-              <ComboBoxItem Content="Light" />
-              <ComboBoxItem Content="Dark" />
-              <ComboBoxItem Content="E-Reader" />
-              <ComboBoxItem Content="E-Reader Dark" />
-              <ComboBoxItem Content="System Default" />
             </ComboBox>
 
           <StackPanel Orientation="Horizontal"
@@ -2470,7 +2449,7 @@
           x:Name="MainLayoutGrid">
       <Grid.ColumnDefinitions>
         <ColumnDefinition x:Name="LeftDockColumn" Width="265" />
-        <ColumnDefinition x:Name="LeftSplitterColumn" Width="6" />
+        <ColumnDefinition x:Name="LeftSplitterColumn" Width="2" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition x:Name="SyntaxQuickReferenceSplitterColumn" Width="0" />
         <ColumnDefinition x:Name="SyntaxQuickReferenceColumn" Width="0" />
@@ -2650,10 +2629,14 @@
               </Style>
 
               <Style x:Key="WorkspaceNodeCardBorderStyle" TargetType="Border">
-                <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+                <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
                 <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Margin" Value="0,0,12,6" />
                 <Style.Triggers>
+                  <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                    <Setter Property="Background" Value="{DynamicResource EInkCardSecondaryBackground}" />
+                  </Trigger>
                   <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
                   </Trigger>
@@ -2664,6 +2647,19 @@
                   <DataTrigger Binding="{Binding IsDragOver}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
                     <Setter Property="Opacity" Value="0.25" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Level}" Value="0">
+                    <Setter Property="BorderThickness" Value="4,1,1,1" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Level}" Value="1">
+                    <Setter Property="Margin" Value="15,0,12,6" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Level}" Value="2">
+                    <Setter Property="Margin" Value="30,0,12,6" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Level}" Value="3">
+                    <Setter Property="Margin" Value="45,0,12,6" />
                   </DataTrigger>
                 </Style.Triggers>
               </Style>
@@ -2684,7 +2680,6 @@
                                         DataType="{x:Type vm:OutlineNodeViewModel}"
                                         ItemsSource="{Binding Children}">
                 <Border Padding="12,10"
-                        Margin="0,0,12,6"
                         CornerRadius="10"
                         MinHeight="56"
                         Height="Auto"
@@ -2833,6 +2828,8 @@
                             AllowDrop="True" 
                             VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding OutlineRoots}"
+                            AlternationCount="2"
+                            HorizontalContentAlignment="Stretch"
                             Background="Transparent"
                             BorderThickness="0"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -2884,6 +2881,8 @@
                             AllowDrop="True" 
                             VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding NotesRoots}"
+                            AlternationCount="2"
+                            HorizontalContentAlignment="Stretch"
                             Background="Transparent"
                             BorderThickness="0"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -3204,7 +3203,7 @@
 
       <GridSplitter x:Name="LeftSplitter"
                     Grid.Column="1"
-                    Width="6"
+                    Width="2"
                     HorizontalAlignment="Stretch"
                     Background="{DynamicResource SurfaceBorder}" />
 
@@ -3351,6 +3350,66 @@
               </Grid>
             </ScrollViewer>
 
+            <Popup x:Name="AutoCompletePopup"
+                   Placement="Relative"
+                   PlacementTarget="{Binding ElementName=EditorBox}"
+                   IsOpen="{Binding IsAutoCompleteOpen}"
+                   AllowsTransparency="True"
+                   PopupAnimation="Fade">
+              <Border Background="{DynamicResource ControlBackground}"
+                      BorderBrush="{DynamicResource ControlAccent}"
+                      BorderThickness="1"
+                      CornerRadius="6"
+                      Padding="1"
+                      MinWidth="200"
+                      MaxHeight="300"
+                      SnapsToDevicePixels="True">
+                <ListBox x:Name="SuggestionsListBox"
+                         ItemsSource="{Binding AutoCompleteSuggestions}"
+                         SelectedIndex="{Binding SelectedSuggestionIndex}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         PreviewMouseLeftButtonUp="SuggestionsListBox_PreviewMouseLeftButtonUp">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}"
+                                 Padding="8,4"
+                                 Foreground="{DynamicResource EditorForeground}"
+                                 FontSize="13"
+                                 FontFamily="Courier Prime, Inter, Segoe UI" />
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                  <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="Bd"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="2"
+                                    CornerRadius="2">
+                              <ContentPresenter />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                              <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlAccent}" />
+                                <Setter Property="Foreground" Value="{DynamicResource WindowBackground}" />
+                              </Trigger>
+                              <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+                              </Trigger>
+                            </ControlTemplate.Triggers>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                    </Style>
+                  </ListBox.ItemContainerStyle>
+                </ListBox>
+              </Border>
+            </Popup>
+
             <Grid x:Name="BeatBoardWorkspaceHost"
                   Visibility="Collapsed"
                   Margin="18,14,18,18">
@@ -3437,17 +3496,17 @@
                           BorderThickness="1"
                           CornerRadius="5">
                     <StackPanel Orientation="Horizontal">
-                      <ToggleButton x:Name="BeatBoardBoardViewButton"
-                                    Content="Board"
+                      <ToggleButton x:Name="BeatBoardHorizontalViewButton"
+                                    Content="Horizontal"
                                     Style="{StaticResource BeatBoardViewToggleButtonStyle}"
                                     IsChecked="True"
-                                    ToolTip="Hierarchical board layout"
-                                    Click="BeatBoardBoardViewButton_Click" />
-                      <ToggleButton x:Name="BeatBoardOutlineViewButton"
-                                    Content="Outline"
+                                    ToolTip="Horizontal hierarchical layout"
+                                    Click="BeatBoardHorizontalViewButton_Click" />
+                      <ToggleButton x:Name="BeatBoardVerticalViewButton"
+                                    Content="Vertical"
                                     Style="{StaticResource BeatBoardViewToggleButtonStyle}"
                                     ToolTip="Vertical chronological layout"
-                                    Click="BeatBoardOutlineViewButton_Click" />
+                                    Click="BeatBoardVerticalViewButton_Click" />
                     </StackPanel>
                   </Border>
                 </StackPanel>
@@ -3478,7 +3537,7 @@
                                   ItemsSource="{Binding SelectedDocument.VisibleBoardElements}"
                                   ItemTemplateSelector="{StaticResource BeatBoardCardTemplateSelector}"
                                   ItemContainerStyle="{StaticResource BeatBoardBoardItemContainerStyle}"
-                                  AlternationCount="9999"
+                                  AlternationCount="2"
                                   AllowDrop="True"
                                   PreviewMouseLeftButtonDown="BeatBoard_PreviewMouseLeftButtonDown"
                                   PreviewMouseLeftButtonUp="BeatBoard_PreviewMouseLeftButtonUp"
@@ -3618,7 +3677,7 @@
 
       <GridSplitter x:Name="SyntaxQuickReferenceSplitter"
                     Grid.Column="3"
-                    Width="6"
+                    Width="2"
                     HorizontalAlignment="Stretch"
                     Background="{DynamicResource SurfaceBorder}"
                     Visibility="Collapsed" />

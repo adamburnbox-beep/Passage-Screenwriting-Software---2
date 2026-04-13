@@ -76,8 +76,8 @@ public partial class MainWindow : Window
 
     private enum BeatBoardViewMode
     {
-        Board,
-        Outline
+        Horizontal,
+        Vertical
     }
 
     private enum BeatBoardDropOperation
@@ -95,9 +95,9 @@ public partial class MainWindow : Window
     private const double ParagraphStyleTolerance = 0.5;
     private const int EditorFormattingDelayMilliseconds = 50;
     private const int EditorDocumentSyncDelayMilliseconds = 180;
-    private const double OutlineBeatBoardDragGhostMaxWidth = 420.0;
-    private const double OutlineBeatBoardDragGhostMaxHeight = 148.0;
-    private const double OutlineBeatBoardDragGhostMaxHotspotX = 160.0;
+    private const double VerticalBeatBoardDragGhostMaxWidth = 420.0;
+    private const double VerticalBeatBoardDragGhostMaxHeight = 148.0;
+    private const double VerticalBeatBoardDragGhostMaxHotspotX = 160.0;
     private const double BeatBoardVerticalWheelStep = 36.0;
     private const double BeatBoardHorizontalWheelStep = 56.0;
     private const double MinimumEditorPageWidth = 1.0;
@@ -162,7 +162,7 @@ public partial class MainWindow : Window
     private double _syntaxQuickReferenceWidth = SyntaxQuickReferenceDefaultWidth;
     private WriteMode currentMode = WriteMode.Screenplay;
     private WorkspaceSurface _currentWorkspaceSurface = WorkspaceSurface.Editor;
-    private BeatBoardViewMode _currentBeatBoardViewMode = BeatBoardViewMode.Board;
+    private BeatBoardViewMode _currentBeatBoardViewMode = BeatBoardViewMode.Horizontal;
     private Point? _beatBoardDragStartPoint;
     private ScreenplayElement? _beatBoardDragSourceElement;
     private FrameworkElement? _beatBoardDragGhostElement;
@@ -543,14 +543,14 @@ public partial class MainWindow : Window
         ClearPendingBeatBoardClick();
     }
 
-    private void BeatBoardBoardViewButton_Click(object sender, RoutedEventArgs e)
+    private void BeatBoardHorizontalViewButton_Click(object sender, RoutedEventArgs e)
     {
-        SetBeatBoardViewMode(BeatBoardViewMode.Board);
+        SetBeatBoardViewMode(BeatBoardViewMode.Horizontal);
     }
 
-    private void BeatBoardOutlineViewButton_Click(object sender, RoutedEventArgs e)
+    private void BeatBoardVerticalViewButton_Click(object sender, RoutedEventArgs e)
     {
-        SetBeatBoardViewMode(BeatBoardViewMode.Outline);
+        SetBeatBoardViewMode(BeatBoardViewMode.Vertical);
     }
 
     private void BeatBoardTypeMenuItem_Click(object sender, RoutedEventArgs e)
@@ -809,17 +809,17 @@ public partial class MainWindow : Window
 
         if (BeatBoard is not null)
         {
-            var isOutlineView = _currentBeatBoardViewMode == BeatBoardViewMode.Outline;
+            var isVerticalView = _currentBeatBoardViewMode == BeatBoardViewMode.Vertical;
             BeatBoard.ItemTemplateSelector = (DataTemplateSelector)FindResource(
-                isOutlineView
+                isVerticalView
                     ? "BeatBoardOutlineCardTemplateSelector"
                     : "BeatBoardCardTemplateSelector");
             BeatBoard.ItemContainerStyle = (Style)FindResource(
-                isOutlineView
+                isVerticalView
                     ? "BeatBoardOutlineItemContainerStyle"
                     : "BeatBoardBoardItemContainerStyle");
             BeatBoard.ItemsPanel = (ItemsPanelTemplate)FindResource(
-                isOutlineView
+                isVerticalView
                     ? "BeatBoardOutlineItemsPanelTemplate"
                     : "BeatBoardWrapItemsPanelTemplate");
             BeatBoard.Items.Refresh();
@@ -829,14 +829,14 @@ public partial class MainWindow : Window
             ScheduleBeatBoardRefresh();
         }
 
-        if (BeatBoardBoardViewButton is not null)
+        if (BeatBoardHorizontalViewButton is not null)
         {
-            BeatBoardBoardViewButton.IsChecked = _currentBeatBoardViewMode == BeatBoardViewMode.Board;
+            BeatBoardHorizontalViewButton.IsChecked = _currentBeatBoardViewMode == BeatBoardViewMode.Horizontal;
         }
 
-        if (BeatBoardOutlineViewButton is not null)
+        if (BeatBoardVerticalViewButton is not null)
         {
-            BeatBoardOutlineViewButton.IsChecked = _currentBeatBoardViewMode == BeatBoardViewMode.Outline;
+            BeatBoardVerticalViewButton.IsChecked = _currentBeatBoardViewMode == BeatBoardViewMode.Vertical;
         }
     }
 
@@ -867,7 +867,7 @@ public partial class MainWindow : Window
         var surfaceWidth = Math.Max(300.0, BeatBoardSurfaceRoot.ActualWidth);
         BeatBoardContentHost.MinWidth = surfaceWidth;
 
-        if (_currentBeatBoardViewMode == BeatBoardViewMode.Outline)
+        if (_currentBeatBoardViewMode == BeatBoardViewMode.Vertical)
         {
             BeatBoardScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
             BeatBoardContentHost.Width = surfaceWidth;
@@ -914,7 +914,7 @@ public partial class MainWindow : Window
         double scale = ViewModel.BoardZoomScale;
         double delta = -e.Delta / 120.0 * step * EditorWheelScrollMultiplier * Math.Max(0.01, scale);
 
-        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0 && _currentBeatBoardViewMode == BeatBoardViewMode.Board)
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0 && _currentBeatBoardViewMode == BeatBoardViewMode.Horizontal)
         {
             scrollViewer.ScrollToHorizontalOffset(Math.Clamp(scrollViewer.HorizontalOffset + delta, 0, scrollViewer.ScrollableWidth));
             return;
@@ -1458,12 +1458,12 @@ public partial class MainWindow : Window
             return true;
         }
 
-        if (_currentBeatBoardViewMode == BeatBoardViewMode.Outline)
+        if (_currentBeatBoardViewMode == BeatBoardViewMode.Vertical)
         {
-            return TryGetBeatBoardOutlineDropLocation(boardPosition, itemLayouts, out dropLocation);
+            return TryGetBeatBoardVerticalDropLocation(boardPosition, itemLayouts, out dropLocation);
         }
 
-        return TryGetBeatBoardBoardDropLocation(boardPosition, itemLayouts, out dropLocation);
+        return TryGetBeatBoardHorizontalDropLocation(boardPosition, itemLayouts, out dropLocation);
     }
 
     private bool TryGetBeatBoardNestDropLocation(
@@ -1495,7 +1495,7 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private bool TryGetBeatBoardOutlineDropLocation(
+    private bool TryGetBeatBoardVerticalDropLocation(
         Point boardPosition,
         IReadOnlyList<BeatBoardItemLayout> itemLayouts,
         out BeatBoardDropLocation dropLocation)
@@ -1537,7 +1537,7 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private bool TryGetBeatBoardBoardDropLocation(
+    private bool TryGetBeatBoardHorizontalDropLocation(
         Point boardPosition,
         IReadOnlyList<BeatBoardItemLayout> itemLayouts,
         out BeatBoardDropLocation dropLocation)
@@ -1602,7 +1602,7 @@ public partial class MainWindow : Window
 
     private Rect CreateBeatBoardNestZone(Rect targetBounds)
     {
-        if (_currentBeatBoardViewMode == BeatBoardViewMode.Outline)
+        if (_currentBeatBoardViewMode == BeatBoardViewMode.Vertical)
         {
             const double outlineHorizontalInset = 22.0;
             const double outlineVerticalInset = 12.0;
@@ -1625,16 +1625,16 @@ public partial class MainWindow : Window
 
     private void ApplyBeatBoardDragPreviewConstraints()
     {
-        if (_currentBeatBoardViewMode != BeatBoardViewMode.Outline)
+        if (_currentBeatBoardViewMode != BeatBoardViewMode.Vertical)
         {
             return;
         }
 
         _beatBoardDragSourceSize = new Size(
-            Math.Min(OutlineBeatBoardDragGhostMaxWidth, Math.Max(280.0, _beatBoardDragSourceSize.Width)),
-            Math.Min(OutlineBeatBoardDragGhostMaxHeight, Math.Max(96.0, _beatBoardDragSourceSize.Height)));
+            Math.Min(VerticalBeatBoardDragGhostMaxWidth, Math.Max(280.0, _beatBoardDragSourceSize.Width)),
+            Math.Min(VerticalBeatBoardDragGhostMaxHeight, Math.Max(96.0, _beatBoardDragSourceSize.Height)));
         _beatBoardDragPointerOffset = new Point(
-            Math.Min(_beatBoardDragPointerOffset.X, OutlineBeatBoardDragGhostMaxHotspotX),
+            Math.Min(_beatBoardDragPointerOffset.X, VerticalBeatBoardDragGhostMaxHotspotX),
             Math.Clamp(_beatBoardDragPointerOffset.Y, 0.0, Math.Max(0.0, _beatBoardDragSourceSize.Height - 1.0)));
     }
 
@@ -1938,7 +1938,7 @@ public partial class MainWindow : Window
         if (BeatBoardScrollViewer is not null &&
             BeatBoardScrollViewer.IsMouseOver &&
             _currentWorkspaceSurface == WorkspaceSurface.BeatBoard &&
-            _currentBeatBoardViewMode == BeatBoardViewMode.Board)
+            _currentBeatBoardViewMode == BeatBoardViewMode.Horizontal)
         {
             handled = true;
             ScrollBeatBoard(BeatBoardScrollViewer, horizontalDelta: wheelSteps * BeatBoardHorizontalWheelStep);
@@ -2872,7 +2872,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        EditorBox.CaretBrush = string.Equals(ThemeManager.AppliedThemeName, ThemeManager.DarkThemeName, StringComparison.Ordinal)
+        EditorBox.CaretBrush = (string.Equals(ThemeManager.AppliedThemeName, ThemeManager.DarkThemeName, StringComparison.Ordinal) ||
+                               string.Equals(ThemeManager.AppliedThemeName, ThemeManager.EReaderDarkThemeName, StringComparison.Ordinal))
             ? Brushes.White
             : Brushes.Black;
     }
@@ -4185,6 +4186,7 @@ public partial class MainWindow : Window
         }
 
         ScheduleSentenceCapitalizationCheck();
+        HandleAutoCompleteOnTextChanged();
 
         if (_editorTextChangedProcessingPending)
         {
@@ -4215,6 +4217,14 @@ public partial class MainWindow : Window
         if (EditorBox is null)
         {
             return;
+        }
+
+        if (ViewModel.IsAutoCompleteOpen)
+        {
+            if (HandleAutoCompleteKeyDown(e))
+            {
+                return;
+            }
         }
 
         if (currentMode == WriteMode.Screenplay &&
@@ -5367,7 +5377,8 @@ public partial class MainWindow : Window
         _suppressThemeSelectionChanged = true;
         try
         {
-            ThemeComboBox.SelectedIndex = GetThemeSelectionIndex(ThemeManager.CurrentThemeName);
+            ThemeComboBox.ItemsSource = ThemeManager.AvailableThemes;
+            ThemeComboBox.SelectedItem = ThemeManager.CurrentThemeName;
         }
         finally
         {
@@ -5375,17 +5386,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static int GetThemeSelectionIndex(string themeName)
-    {
-        return themeName switch
-        {
-            ThemeManager.LightThemeName => 0,
-            ThemeManager.DarkThemeName => 1,
-            ThemeManager.EReaderThemeName => 2,
-            ThemeManager.EReaderDarkThemeName => 3,
-            _ => 4
-        };
-    }
+
 
     private void ThemeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -5394,23 +5395,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        switch (comboBox.SelectedIndex)
+        if (comboBox.SelectedItem is string themeName)
         {
-            case 0:
-                ThemeManager.SetTheme(ThemeManager.LightThemeName);
-                break;
-            case 1:
-                ThemeManager.SetTheme(ThemeManager.DarkThemeName);
-                break;
-            case 2:
-                ThemeManager.SetTheme(ThemeManager.EReaderThemeName);
-                break;
-            case 3:
-                ThemeManager.SetTheme(ThemeManager.EReaderDarkThemeName);
-                break;
-            default:
-                ThemeManager.SetTheme(ThemeManager.SystemThemeName);
-                break;
+            ThemeManager.SetTheme(themeName);
         }
     }
 
@@ -6009,9 +5996,14 @@ public partial class MainWindow : Window
             LeftDockColumn.Width = collapsed ? new GridLength(52) : new GridLength(LeftDockExpandedWidth);
         }
 
+        if (LeftSplitterColumn is not null)
+        {
+            LeftSplitterColumn.Width = collapsed ? new GridLength(0) : new GridLength(2);
+        }
+
         if (LeftSplitter is not null)
         {
-            LeftSplitter.Width = collapsed ? 0 : 6;
+            LeftSplitter.Width = collapsed ? 0 : 2;
         }
 
         if (LeftDockTabs is not null)
@@ -6053,7 +6045,7 @@ public partial class MainWindow : Window
 
         if (SyntaxQuickReferenceSplitterColumn is not null)
         {
-            SyntaxQuickReferenceSplitterColumn.Width = visible ? new GridLength(6.0) : new GridLength(0.0);
+            SyntaxQuickReferenceSplitterColumn.Width = visible ? new GridLength(2.0) : new GridLength(0.0);
         }
 
         if (SyntaxQuickReferenceSplitter is not null)
@@ -6510,5 +6502,154 @@ public partial class MainWindow : Window
     private static bool HasShiftModifier()
     {
         return System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift);
+    }
+
+    private void HandleAutoCompleteOnTextChanged()
+    {
+        if (EditorBox is null || currentMode != WriteMode.Screenplay)
+        {
+            ViewModel.IsAutoCompleteOpen = false;
+            return;
+        }
+
+        var caretIndex = GetEditorCaretIndex();
+        var lineIndex = GetEditorLineIndexFromCharacterIndex(caretIndex);
+        var lineText = RichTextBoxTextUtilities.GetLineText(EditorBox, lineIndex);
+        var lineStart = GetEditorCharacterIndexFromLineIndex(lineIndex);
+        var prefixLen = caretIndex - lineStart;
+
+        if (prefixLen < 0 || prefixLen > lineText.Length)
+        {
+            ViewModel.IsAutoCompleteOpen = false;
+            return;
+        }
+
+        var prefix = lineText.Substring(0, prefixLen);
+        var elementType = ViewModel.GetLatestEffectiveLineType(lineIndex + 1);
+        var elementTypeName = elementType.ToString();
+
+        // If it's an Action line but starts with INT. or EXT., treat it as a Scene Heading for suggestions
+        if (elementTypeName == "Action" && prefix.Length >= 3)
+        {
+            var upperPrefix = prefix.ToUpperInvariant();
+            if (upperPrefix.StartsWith("INT.") || upperPrefix.StartsWith("EXT.") || upperPrefix.StartsWith("I/E."))
+            {
+                elementTypeName = "SceneHeading";
+            }
+        }
+
+        ViewModel.UpdateSuggestions(prefix, elementTypeName);
+
+        if (ViewModel.IsAutoCompleteOpen)
+        {
+            PositionAutoCompletePopup();
+        }
+    }
+
+    private bool HandleAutoCompleteKeyDown(System.Windows.Input.KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case System.Windows.Input.Key.Up:
+                if (ViewModel.AutoCompleteSuggestions.Count > 0)
+                {
+                    ViewModel.SelectedSuggestionIndex = (ViewModel.SelectedSuggestionIndex - 1 + ViewModel.AutoCompleteSuggestions.Count) % ViewModel.AutoCompleteSuggestions.Count;
+                    e.Handled = true;
+                    return true;
+                }
+                break;
+            case System.Windows.Input.Key.Down:
+                if (ViewModel.AutoCompleteSuggestions.Count > 0)
+                {
+                    ViewModel.SelectedSuggestionIndex = (ViewModel.SelectedSuggestionIndex + 1) % ViewModel.AutoCompleteSuggestions.Count;
+                    e.Handled = true;
+                    return true;
+                }
+                break;
+            case System.Windows.Input.Key.Enter:
+            case System.Windows.Input.Key.Tab:
+                if (ViewModel.IsAutoCompleteOpen && ViewModel.SelectedSuggestionIndex >= 0 && ViewModel.SelectedSuggestionIndex < ViewModel.AutoCompleteSuggestions.Count)
+                {
+                    ApplyAutoCompleteSuggestion(ViewModel.AutoCompleteSuggestions[ViewModel.SelectedSuggestionIndex]);
+                    e.Handled = true;
+                    return true;
+                }
+                break;
+            case System.Windows.Input.Key.Escape:
+                ViewModel.IsAutoCompleteOpen = false;
+                e.Handled = true;
+                return true;
+        }
+        return false;
+    }
+
+    private void PositionAutoCompletePopup()
+    {
+        if (EditorBox is null || AutoCompletePopup is null) return;
+
+        // Ensure we are using the correct placement mode for precise relative positioning
+        AutoCompletePopup.Placement = PlacementMode.Top;
+        AutoCompletePopup.PlacementTarget = EditorBox;
+
+        var caretRect = EditorBox.CaretPosition.GetCharacterRect(LogicalDirection.Forward);
+        
+        // PlacementRectangle defines the area relative to which the popup is placed.
+        // We define a tiny 0x0 rectangle a bit to the right of the caret.
+        // Placement="Top" will then put the bottom of the popup above this rectangle.
+        AutoCompletePopup.PlacementRectangle = new Rect(caretRect.Left + 24, caretRect.Top - 4, 0, 0);
+        
+        // Reset offsets since we are using PlacementRectangle
+        AutoCompletePopup.HorizontalOffset = 0;
+        AutoCompletePopup.VerticalOffset = 0;
+    }
+
+    private void SuggestionsListBox_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (SuggestionsListBox is null) return;
+
+        // Find the ListBoxItem that was clicked
+        var element = e.OriginalSource as DependencyObject;
+        while (element != null && !(element is ListBoxItem))
+        {
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        if (element is ListBoxItem item && item.Content is string suggestion)
+        {
+            ApplyAutoCompleteSuggestion(suggestion);
+        }
+    }
+
+    private void ApplyAutoCompleteSuggestion(string suggestion)
+    {
+        if (EditorBox is null) return;
+
+        var caretIndex = GetEditorCaretIndex();
+        var lineIndex = GetEditorLineIndexFromCharacterIndex(caretIndex);
+        var lineStart = GetEditorCharacterIndexFromLineIndex(lineIndex);
+        var lineText = RichTextBoxTextUtilities.GetLineText(EditorBox, lineIndex);
+
+        try
+        {
+            _isSynchronizingEditorDocument = true;
+            
+            var linePointerStart = RichTextBoxTextUtilities.GetTextPointerAtOffset(EditorBox, lineStart);
+            var linePointerEnd = RichTextBoxTextUtilities.GetTextPointerAtOffset(EditorBox, lineStart + lineText.Length);
+            
+            var range = new TextRange(linePointerStart, linePointerEnd);
+            range.Text = suggestion;
+            
+            // Move caret to end of suggestion
+            EditorBox.CaretPosition = linePointerStart.GetPositionAtOffset(suggestion.Length) ?? linePointerEnd;
+        }
+        finally
+        {
+            _isSynchronizingEditorDocument = false;
+            ViewModel.IsAutoCompleteOpen = false;
+        }
+        
+        // Trigger formatting
+        QueueEditorFormattingForActiveParagraph(force: true);
+        ScheduleEditorViewportRefresh(ensureCaretVisible: true);
     }
 }

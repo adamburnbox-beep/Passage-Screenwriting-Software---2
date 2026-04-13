@@ -13,6 +13,13 @@ public static class ThemeManager
     public const string EReaderDarkThemeName = "E-Reader Dark";
     public const string SystemThemeName = "System Default";
 
+    public static IEnumerable<string> AvailableThemes { get; } = new[]
+    {
+        EReaderThemeName,
+        EReaderDarkThemeName,
+        SystemThemeName
+    };
+
     private const string ThemeFolder = "Themes";
     private const string LightThemeFile = "LightTheme.xaml";
     private const string DarkThemeFile = "DarkTheme.xaml";
@@ -26,9 +33,9 @@ public static class ThemeManager
         Interval = TimeSpan.FromSeconds(1)
     };
 
-    private static string _requestedThemeName = DarkThemeName;
-    private static string _appliedThemeName = DarkThemeName;
-    private static string _lastObservedSystemTheme = DarkThemeName;
+    private static string _requestedThemeName = EReaderDarkThemeName;
+    private static string _appliedThemeName = EReaderDarkThemeName;
+    private static string _lastObservedSystemTheme = EReaderDarkThemeName;
     private static bool _followSystemTheme;
 
     static ThemeManager()
@@ -46,7 +53,7 @@ public static class ThemeManager
     {
         var normalizedThemeName = NormalizeThemeName(themeName);
         var resolvedThemeName = normalizedThemeName == SystemThemeName
-            ? GetWindowsSystemTheme()
+            ? MapSystemThemeToInternalTheme(GetWindowsSystemTheme())
             : normalizedThemeName;
 
         RunOnDispatcher(() =>
@@ -57,6 +64,11 @@ public static class ThemeManager
             ApplyThemeDictionary(resolvedThemeName);
             UpdateSystemThemeWatcher();
         });
+    }
+
+    private static string MapSystemThemeToInternalTheme(string systemTheme)
+    {
+        return systemTheme == DarkThemeName ? EReaderDarkThemeName : EReaderThemeName;
     }
 
     public static string GetWindowsSystemTheme()
@@ -123,7 +135,7 @@ public static class ThemeManager
     {
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            return DarkThemeName;
+            return EReaderThemeName;
         }
 
         if (string.Equals(themeName, DarkThemeName, StringComparison.OrdinalIgnoreCase))
@@ -149,7 +161,12 @@ public static class ThemeManager
             return SystemThemeName;
         }
 
-        return LightThemeName;
+        if (string.Equals(themeName, LightThemeName, StringComparison.OrdinalIgnoreCase))
+        {
+            return LightThemeName;
+        }
+
+        return EReaderThemeName;
     }
 
     private static void UpdateSystemThemeWatcher()
@@ -183,8 +200,9 @@ public static class ThemeManager
         }
 
         _lastObservedSystemTheme = currentSystemTheme;
-        _appliedThemeName = currentSystemTheme;
-        ApplyThemeDictionary(currentSystemTheme);
+        var mappedTheme = MapSystemThemeToInternalTheme(currentSystemTheme);
+        _appliedThemeName = mappedTheme;
+        ApplyThemeDictionary(mappedTheme);
     }
 
     private static void RunOnDispatcher(Action action)

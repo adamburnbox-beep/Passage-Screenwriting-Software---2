@@ -108,6 +108,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double _boardZoomPercent = DefaultBoardZoomPercent;
     private bool _isBoardSyncRequired;
     private bool _isBoardModeActive;
+    private bool _isAutoCompleteOpen;
+    private int _selectedSuggestionIndex = -1;
+    private readonly ObservableCollection<string> _autoCompleteSuggestions = new();
+    private readonly HashSet<string> _uniqueSceneHeadings = new();
+    private readonly HashSet<string> _uniqueCharacterNames = new();
     private bool _isBoardDropIndicatorVisible;
     private ScreenplayElement? _boardDropTargetElement;
     private ScreenplayElement? _selectedBoardElement;
@@ -224,6 +229,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(ActiveZoomDisplayText));
             }
         }
+    }
+
+    public ObservableCollection<string> AutoCompleteSuggestions => _autoCompleteSuggestions;
+
+    public bool IsAutoCompleteOpen
+    {
+        get => _isAutoCompleteOpen;
+        set => SetProperty(ref _isAutoCompleteOpen, value);
+    }
+
+    public int SelectedSuggestionIndex
+    {
+        get => _selectedSuggestionIndex;
+        set => SetProperty(ref _selectedSuggestionIndex, value);
     }
 
     public bool HasVisibleBoardItems => VisibleBoardElements.Count > 0;
@@ -1991,6 +2010,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         UpdateBoardSyncRequiredState(parsed.Elements);
+        UpdateUniqueScreenplayElements(parsed.Elements);
 
         if (changed)
         {
@@ -1998,6 +2018,88 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         RefreshGoalState();
+    }
+
+    private void UpdateUniqueScreenplayElements(IReadOnlyList<ScreenplayElement> elements)
+    {
+        _uniqueSceneHeadings.Clear();
+        _uniqueCharacterNames.Clear();
+
+        foreach (var element in elements)
+        {
+            switch (element.Type)
+            {
+                case ScreenplayElementType.SceneHeading:
+                    var heading = element.Text.Trim();
+                    if (!string.IsNullOrWhiteSpace(heading))
+                    {
+                        _uniqueSceneHeadings.Add(heading.ToUpperInvariant());
+                    }
+                    break;
+                case ScreenplayElementType.Character:
+                    if (element is CharacterElement character)
+                    {
+                        var name = character.CharacterName.Trim();
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            _uniqueCharacterNames.Add(name.ToUpperInvariant());
+                        }
+                    }
+                    break;
+                case ScreenplayElementType.Dialogue:
+                    if (element is DialogueElement dialogue)
+                    {
+                        var name = dialogue.CharacterName.Trim();
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            _uniqueCharacterNames.Add(name.ToUpperInvariant());
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    public void UpdateSuggestions(string prefix, string elementTypeName)
+    {
+        _autoCompleteSuggestions.Clear();
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            IsAutoCompleteOpen = false;
+            return;
+        }
+
+        var normalizedPrefix = prefix.Trim().ToUpperInvariant();
+        IEnumerable<string> source = Array.Empty<string>();
+
+        if (elementTypeName == "SceneHeading")
+        {
+            source = _uniqueSceneHeadings;
+        }
+        else if (elementTypeName == "Character")
+        {
+            source = _uniqueCharacterNames;
+        }
+
+        var matches = source
+            .Where(s => s.StartsWith(normalizedPrefix) && !string.Equals(s, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(s => s)
+            .Take(10)
+            .ToList();
+
+        if (matches.Count > 0)
+        {
+            foreach (var match in matches)
+            {
+                _autoCompleteSuggestions.Add(match);
+            }
+            SelectedSuggestionIndex = 0;
+            IsAutoCompleteOpen = true;
+        }
+        else
+        {
+            IsAutoCompleteOpen = false;
+        }
     }
 
     private TimeSpan GetRefreshDelay()
