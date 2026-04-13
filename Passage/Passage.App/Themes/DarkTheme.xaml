@@ -39,8 +39,8 @@
   <SolidColorBrush x:Key="BeatBoardActBoundaryBrush" Color="#FFD66A6A" />
   <SolidColorBrush x:Key="BeatBoardSequenceSeparatorBrush" Color="#FFF0C689" />
   <SolidColorBrush x:Key="BeatBoardLaneSeparator" Color="#4DFFFFFF" />
-  <SolidColorBrush x:Key="BeatBoardActLaneBackground" Color="#0CFFFFFF" />
-  <SolidColorBrush x:Key="BeatBoardSequenceLaneBackground" Color="#1A0055FF" />
+  <SolidColorBrush x:Key="BeatBoardActLaneBackground" Color="#800A080C" />
+  <SolidColorBrush x:Key="BeatBoardSequenceLaneBackground" Color="#80221F30" />
 
   <SolidColorBrush x:Key="HeaderText" Color="#FFF5F8FC" />
   <SolidColorBrush x:Key="SecondaryText" Color="#FFBAC5D4" />
@@ -55,27 +55,27 @@
   <SolidColorBrush x:Key="OutlineNoteBorder" Color="#FF4F6C60" />
   <SolidColorBrush x:Key="OutlineSceneBorder" Color="#FF39424D" />
   <SolidColorBrush x:Key="OutlineCardBorder" Color="#FF2E353F" />
-  <SolidColorBrush x:Key="BeatBoardActCardBackground" Color="#FF24203A" />
-  <SolidColorBrush x:Key="BeatBoardOutlineActCardBackground" Color="#1E24203A" />
-  <SolidColorBrush x:Key="BeatBoardOutlineActCardCollapsedBackground" Color="#1624203A" />
-  <SolidColorBrush x:Key="BeatBoardSequenceCardBackground" Color="#FF172836" />
-  <SolidColorBrush x:Key="BeatBoardOutlineSequenceCardBackground" Color="#18172836" />
-  <SolidColorBrush x:Key="BeatBoardSceneCardBackground" Color="#FF221A17" />
+  <SolidColorBrush x:Key="BeatBoardActCardBackground" Color="#FF1A121D" />
+  <SolidColorBrush x:Key="BeatBoardOutlineActCardBackground" Color="#1E1A121D" />
+  <SolidColorBrush x:Key="BeatBoardOutlineActCardCollapsedBackground" Color="#161A121D" />
+  <SolidColorBrush x:Key="BeatBoardSequenceCardBackground" Color="#FF221F30" />
+  <SolidColorBrush x:Key="BeatBoardOutlineSequenceCardBackground" Color="#18221F30" />
+  <SolidColorBrush x:Key="BeatBoardSceneCardBackground" Color="#FF171D27" />
   <SolidColorBrush x:Key="BeatBoardSceneCardBorder" Color="#FFD8A561" />
   <SolidColorBrush x:Key="BeatBoardSceneCardAccentForeground" Color="#FFF0C689" />
-  <SolidColorBrush x:Key="BeatBoardOutlineSceneCardBackground" Color="#18221A17" />
-  <SolidColorBrush x:Key="BeatBoardNoteCardBackground" Color="#FF18231F" />
+  <SolidColorBrush x:Key="BeatBoardOutlineSceneCardBackground" Color="#18171D27" />
+  <SolidColorBrush x:Key="BeatBoardNoteCardBackground" Color="#FF120D15" />
   <SolidColorBrush x:Key="BeatBoardNoteCardBorder" Color="#FF3F5B4E" />
   <SolidColorBrush x:Key="BeatBoardNoteCardAccentForeground" Color="#FFA9C8B8" />
   <SolidColorBrush x:Key="BeatBoardNoteCardContentForeground" Color="#FFDCEAE2" />
-  <SolidColorBrush x:Key="BeatBoardOutlineNoteCardBackground" Color="#1818231F" />
-  <SolidColorBrush x:Key="BeatBoardDefaultCardBackground" Color="#FF171C22" />
+  <SolidColorBrush x:Key="BeatBoardOutlineNoteCardBackground" Color="#18120D15" />
+  <SolidColorBrush x:Key="BeatBoardDefaultCardBackground" Color="#FF111418" />
   <SolidColorBrush x:Key="BeatBoardDefaultCardBorder" Color="#FF2E353F" />
   <SolidColorBrush x:Key="BeatBoardOutlineDefaultCardBackground" Color="#18171C22" />
   <SolidColorBrush x:Key="BeatBoardOutlineDefaultCardBorder" Color="#FF2E353F" />
   <SolidColorBrush x:Key="BeatBoardDefaultCardAccentForeground" Color="#FFBEC9D6" />
-  <SolidColorBrush x:Key="BeatBoardGhostLayerBackground" Color="#FF0F1318" />
-  <SolidColorBrush x:Key="BeatBoardGhostCardBackground" Color="#FF171C22" />
+  <SolidColorBrush x:Key="BeatBoardGhostLayerBackground" Color="#FF0A080C" />
+  <SolidColorBrush x:Key="BeatBoardGhostCardBackground" Color="#FF151118" />
   <SolidColorBrush x:Key="BeatBoardGhostTitleForeground" Color="#FFF5F8FC" />
   <SolidColorBrush x:Key="BeatBoardGhostDescriptionForeground" Color="#FFBAC5D4" />
 

@@ -11,8 +11,10 @@ public sealed class BeatBoardWrapPanel : Panel
     private const double SequenceWidth = 200.0;
     private const double SceneWidth = 180.0;
     private const double HorizontalGap = 16.0;
-    private const double VerticalGap = 16.0;
+    private const double VerticalGap = 24.0;
     private const double TrailingGutterWidth = 18.0;
+    private const double BoardPadding = 32.0;
+    private const double LanePadding = 16.0;
 
     private readonly List<Rect> _arrangedChildBounds = new();
     private readonly List<double> _actBoundariesY = new();
@@ -116,7 +118,7 @@ public sealed class BeatBoardWrapPanel : Panel
             }
         }
 
-        return new Size(maxMeasuredWidth + TrailingGutterWidth, totalMeasuredHeight);
+        return new Size(maxMeasuredWidth + TrailingGutterWidth + (BoardPadding * 2), totalMeasuredHeight + (BoardPadding * 2));
     }
 
     protected override Size ArrangeOverride(Size finalSize)
@@ -126,7 +128,7 @@ public sealed class BeatBoardWrapPanel : Panel
         _sequenceBoundaries.Clear();
         _actLaneRects.Clear();
         _sequenceLaneRects.Clear();
-        var currentY = 0.0;
+        var currentY = BoardPadding;
 
         for (var i = 0; i < InternalChildren.Count; i++)
         {
@@ -134,7 +136,7 @@ public sealed class BeatBoardWrapPanel : Panel
             {
                 if (InternalChildren[i] is UIElement nonElement)
                 {
-                    var bounds = new Rect(0, currentY, nonElement.DesiredSize.Width, nonElement.DesiredSize.Height);
+                    var bounds = new Rect(BoardPadding, currentY, nonElement.DesiredSize.Width, nonElement.DesiredSize.Height);
                     nonElement.Arrange(bounds);
                     _arrangedChildBounds[i] = bounds;
                     currentY += bounds.Height + VerticalGap;
@@ -165,7 +167,6 @@ public sealed class BeatBoardWrapPanel : Panel
                     {
                         double rowTop = actTop + actRunningHeight;
                         double rowHeight = seqChild.DesiredSize.Height;
-
                         int sceneIndex = actEndIndex + 1;
                         while (sceneIndex < InternalChildren.Count && 
                                TryGetScreenplayElement(InternalChildren[sceneIndex], out var sceneElement) && 
@@ -176,30 +177,31 @@ public sealed class BeatBoardWrapPanel : Panel
                             sceneIndex++;
                         }
 
-                        var seqBounds = new Rect(currentActWidth + HorizontalGap, rowTop, SequenceWidth, seqChild.DesiredSize.Height);
+                        var seqBounds = new Rect(BoardPadding + currentActWidth + HorizontalGap, rowTop, SequenceWidth, seqChild.DesiredSize.Height);
                         seqChild.Arrange(seqBounds);
                         _arrangedChildBounds[actEndIndex] = seqBounds;
 
                         // Track Sequence Lane Background
-                        _sequenceLaneRects.Add(new Rect(currentActWidth + (HorizontalGap / 2), rowTop - (VerticalGap / 4), finalSize.Width - currentActWidth - (HorizontalGap / 2), rowHeight + (VerticalGap / 2)));
+                        _sequenceLaneRects.Add(new Rect(BoardPadding + currentActWidth + (HorizontalGap / 2), rowTop - LanePadding, finalSize.Width - BoardPadding - currentActWidth - (HorizontalGap / 2) - LanePadding, rowHeight + (LanePadding * 2)));
 
-                        double currentSceneX = currentActWidth + SequenceWidth + (HorizontalGap * 2);
+                        double currentSceneX = BoardPadding + currentActWidth + SequenceWidth + (HorizontalGap * 2);
                         for (int k = actEndIndex + 1; k < sceneIndex; k++)
                         {
-                            var sChild = InternalChildren[k];
-                            var sBounds = new Rect(currentSceneX, rowTop, SceneWidth, sChild.DesiredSize.Height);
-                            sChild.Arrange(sBounds);
-                            _arrangedChildBounds[k] = sBounds;
+                            var sceneChild = InternalChildren[k];
+                            var sceneBounds = new Rect(currentSceneX, rowTop, SceneWidth, sceneChild.DesiredSize.Height);
+                            sceneChild.Arrange(sceneBounds);
+                            _arrangedChildBounds[k] = sceneBounds;
                             currentSceneX += SceneWidth + HorizontalGap;
                         }
 
+                        _sequenceBoundaries.Add((BoardPadding + currentActWidth + (HorizontalGap / 2), rowTop + rowHeight + (VerticalGap / 2)));
                         actRunningHeight += rowHeight + VerticalGap;
                         internalRowBottoms.Add(actTop + actRunningHeight - (VerticalGap / 2));
                         actEndIndex = sceneIndex;
                     }
                     else
                     {
-                        var bounds = new Rect(currentActWidth + HorizontalGap, actTop + actRunningHeight, seqChild.DesiredSize.Width, seqChild.DesiredSize.Height);
+                        var bounds = new Rect(BoardPadding + currentActWidth + HorizontalGap, actTop + actRunningHeight, seqChild.DesiredSize.Width, seqChild.DesiredSize.Height);
                         seqChild.Arrange(bounds);
                         _arrangedChildBounds[actEndIndex] = bounds;
                         actRunningHeight += bounds.Height + VerticalGap;
@@ -208,23 +210,12 @@ public sealed class BeatBoardWrapPanel : Panel
                     }
                 }
 
-                // Perfect Spanning Logic: 
-                // The height of the card is the distance from top of first row to bottom of last row.
-                // If we have content, the card should span from actTop (same as first row) 
                 // to exactly the end of the content (minus trailing gap).
-                double cardHeight = actRunningHeight > 0 ? actRunningHeight - VerticalGap : actChild.DesiredSize.Height;
-                var actBounds = new Rect(0, actTop, currentActWidth, cardHeight);
+                double contentHeight = actRunningHeight > 0 ? actRunningHeight - VerticalGap : actChild.DesiredSize.Height;
+                double cardHeight = Math.Max(actChild.DesiredSize.Height, contentHeight);
+                var actBounds = new Rect(BoardPadding, actTop, currentActWidth, cardHeight);
                 actChild.Arrange(actBounds);
                 _arrangedChildBounds[i] = actBounds;
-
-                // Dividers: Add all internal row bottoms to sequence boundaries EXCEPT the last one
-                if (internalRowBottoms.Count > 1)
-                {
-                    for (int j = 0; j < internalRowBottoms.Count - 1; j++)
-                    {
-                        _sequenceBoundaries.Add((currentActWidth + HorizontalGap, internalRowBottoms[j]));
-                    }
-                }
 
                 // Add the absolute bottom of the Act block to the Act boundaries
                 double actBlockBottom = actTop + Math.Max(actRunningHeight, actChild.DesiredSize.Height + VerticalGap);
@@ -232,14 +223,14 @@ public sealed class BeatBoardWrapPanel : Panel
                 _actBoundariesY.Add(actBoundaryY);
 
                 // Track Act Lane Background
-                _actLaneRects.Add(new Rect(0, actTop - (VerticalGap / 4), finalSize.Width, actBoundaryY - actTop + (VerticalGap / 4)));
+                _actLaneRects.Add(new Rect(BoardPadding - LanePadding, actTop - LanePadding, finalSize.Width - (BoardPadding - LanePadding) * 2, actBoundaryY - actTop + (VerticalGap / 4) + LanePadding));
 
                 currentY = actBlockBottom;
                 i = actEndIndex - 1;
             }
-            else
+            else // Lone element
             {
-                var bounds = new Rect(0, currentY, actChild.DesiredSize.Width, actChild.DesiredSize.Height);
+                var bounds = new Rect(BoardPadding, currentY, actChild.DesiredSize.Width, actChild.DesiredSize.Height);
                 actChild.Arrange(bounds);
                 _arrangedChildBounds[i] = bounds;
                 currentY += bounds.Height + VerticalGap;
@@ -281,18 +272,32 @@ public sealed class BeatBoardWrapPanel : Panel
         if (separatorBrush != null)
         {
             var separatorPen = new Pen(separatorBrush, 1.0);
+            separatorPen.StartLineCap = separatorPen.EndLineCap = PenLineCap.Round;
             separatorPen.Freeze();
+
+            // Glow pen (minimal spread and more transparent)
+            var glowBrush = separatorBrush.Clone();
+            glowBrush.Opacity *= 0.3; // Reduce opacity for the minimal glow layer
+            var glowPen = new Pen(glowBrush, 2.5);
+            glowPen.StartLineCap = glowPen.EndLineCap = PenLineCap.Round;
+            glowPen.Freeze();
 
             // Act Boundaries
             foreach (var y in _actBoundariesY)
             {
-                dc.DrawLine(separatorPen, new Point(0, y), new Point(ActualWidth, y));
+                var startPoint = new Point(BoardPadding, y);
+                var endPoint = new Point(ActualWidth - (BoardPadding - LanePadding), y);
+                dc.DrawLine(glowPen, startPoint, endPoint);
+                dc.DrawLine(separatorPen, startPoint, endPoint);
             }
 
             // Sequence Separators
             foreach (var boundary in _sequenceBoundaries)
             {
-                dc.DrawLine(separatorPen, new Point(boundary.X, boundary.Y), new Point(ActualWidth, boundary.Y));
+                var startPoint = new Point(boundary.X, boundary.Y);
+                var endPoint = new Point(ActualWidth - (BoardPadding - LanePadding), boundary.Y);
+                dc.DrawLine(glowPen, startPoint, endPoint);
+                dc.DrawLine(separatorPen, startPoint, endPoint);
             }
         }
     }

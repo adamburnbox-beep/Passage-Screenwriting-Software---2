@@ -492,7 +492,7 @@
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
       <Setter Property="Padding" Value="18,15" />
       <Setter Property="CornerRadius" Value="18" />
-      <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+      <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
       <Style.Triggers>
         <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
@@ -500,7 +500,7 @@
         </DataTrigger>
         <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
           <Setter Property="Padding" Value="18,10" />
-          <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+          <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
           <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
         </DataTrigger>
       </Style.Triggers>
@@ -509,7 +509,7 @@
     <Style x:Key="BeatBoardOutlineSequenceCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+      <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceCardBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
       <Style.Triggers>
         <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
@@ -521,7 +521,7 @@
     <Style x:Key="BeatBoardOutlineSceneCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+      <Setter Property="Background" Value="{DynamicResource BeatBoardSceneCardBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
       <Style.Triggers>
         <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
@@ -533,7 +533,7 @@
     <Style x:Key="BeatBoardOutlineNoteCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+      <Setter Property="Background" Value="{DynamicResource BeatBoardNoteCardBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
       <Setter Property="CornerRadius" Value="10" />
       <Style.Triggers>
@@ -546,7 +546,7 @@
     <Style x:Key="BeatBoardOutlineDefaultCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+      <Setter Property="Background" Value="{DynamicResource BeatBoardDefaultCardBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
       <Style.Triggers>
         <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
@@ -609,13 +609,13 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="24,20" />
             <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardActLaneBackground}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BeatBoardLaneSeparator}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="4,2,4,2" />
                 <Setter Property="CornerRadius" Value="10" />
-                <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+                <Setter Property="Background" Value="{DynamicResource BeatBoardActCardBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -760,8 +760,7 @@
     </DataTemplate>
 
     <DataTemplate x:Key="BeatBoardSequenceCardTemplate">
-      <Border Margin="0,0,0,16"
-                Width="200"
+      <Border Width="200"
                 BorderThickness="1"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
@@ -770,13 +769,13 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="20,16" />
             <Setter Property="CornerRadius" Value="16" />
-            <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceLaneBackground}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceCardBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BeatBoardLaneSeparator}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="4,2,4,2" />
                 <Setter Property="CornerRadius" Value="10" />
-                <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+                <Setter Property="Background" Value="{DynamicResource BeatBoardSequenceCardBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -924,7 +923,6 @@
     <DataTemplate x:Key="BeatBoardSceneCardTemplate">
       <Border Width="180"
                 MaxWidth="180"
-                Margin="0,0,0,16"
                 BorderThickness="1"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
@@ -933,11 +931,12 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="14,12" />
             <Setter Property="CornerRadius" Value="15" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardSceneCardBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="14,8" />
+                <Setter Property="Background" Value="{DynamicResource BeatBoardSceneCardBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -1141,7 +1140,6 @@
     <DataTemplate x:Key="BeatBoardNoteCardTemplate">
       <Border Width="180"
                 MaxWidth="180"
-                Margin="0,0,0,16"
                 BorderThickness="1"
                 Cursor="Hand"
                 MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
@@ -1150,11 +1148,12 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="14,13" />
             <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardNoteCardBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="14,10" />
+                <Setter Property="Background" Value="{DynamicResource BeatBoardNoteCardBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
@@ -1298,7 +1297,6 @@
     <DataTemplate x:Key="BeatBoardDefaultCardTemplate">
       <Border Width="272"
               MaxWidth="272"
-              Margin="0,0,0,16"
               BorderThickness="1"
               Cursor="Hand"
               MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
@@ -1307,11 +1305,12 @@
           <Style TargetType="Border">
             <Setter Property="Padding" Value="15,14" />
             <Setter Property="CornerRadius" Value="14" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+            <Setter Property="Background" Value="{DynamicResource BeatBoardDefaultCardBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
                 <Setter Property="Padding" Value="15,10" />
+                <Setter Property="Background" Value="{DynamicResource BeatBoardDefaultCardBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
               </DataTrigger>
               <MultiDataTrigger>
