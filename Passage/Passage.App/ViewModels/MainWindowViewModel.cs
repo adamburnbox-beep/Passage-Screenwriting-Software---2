@@ -131,6 +131,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public MainWindowViewModel()
     {
         OutlineRoots = new ObservableCollection<OutlineNodeViewModel>();
+        OutlineNodes = new ObservableCollection<OutlineNodeViewModel>();
         NotesRoots = new ObservableCollection<OutlineNodeViewModel>();
         BoardElements = new ObservableCollection<ScreenplayElement>();
         VisibleBoardElements = new ObservableCollection<ScreenplayElement>();
@@ -204,6 +205,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<OutlineNodeViewModel> OutlineRoots { get; private set; }
+
+    public ObservableCollection<OutlineNodeViewModel> OutlineNodes { get; private set; }
 
     public ObservableCollection<OutlineNodeViewModel> NotesRoots { get; private set; }
 
@@ -1955,8 +1958,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         PopulateBodyText(parsed.Elements);
 
-        var outlineRoots = BuildOutlineTree(parsed.Elements, expandedOutline);
-        var noteRoots = BuildNotesTree(parsed.Elements, expandedNotes);
+        var outlineRoots = BuildOutlineTree(parsed.Elements, expandedOutline, line => SelectedOutlineLineNumber = line);
+        var noteRoots = BuildNotesTree(parsed.Elements, expandedNotes, line => SelectedOutlineLineNumber = line);
         var boardElements = BuildBoardElements(parsed.Elements, BoardElements, IsBoardSyncRequired);
         var titlePageEntries = parsed.TitlePage.Entries.ToArray();
         var previewElements = parsed.Elements
@@ -1969,17 +1972,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             .ToArray();
         var changed = false;
 
-        if (!OutlineTreesEqual(OutlineRoots, outlineRoots))
+        bool outlineChanged = !OutlineTreesEqual(OutlineRoots, outlineRoots);
+        bool notesChanged = !OutlineTreesEqual(NotesRoots, noteRoots);
+
+        if (outlineChanged)
         {
             OutlineRoots = new ObservableCollection<OutlineNodeViewModel>(outlineRoots);
             OnPropertyChanged(nameof(OutlineRoots));
             changed = true;
         }
 
-        if (!OutlineTreesEqual(NotesRoots, noteRoots))
+        if (notesChanged)
         {
             NotesRoots = new ObservableCollection<OutlineNodeViewModel>(noteRoots);
             OnPropertyChanged(nameof(NotesRoots));
+            changed = true;
+        }
+
+        if (outlineChanged || notesChanged)
+        {
+            var flatNodes = new List<OutlineNodeViewModel>();
+            FlattenOutlineNodesRecursive(outlineRoots, flatNodes);
+            FlattenOutlineNodesRecursive(noteRoots, flatNodes);
+            
+            var sortedFlatNodes = flatNodes.OrderBy(n => n.LineNumber).ToList();
+            OutlineNodes = new ObservableCollection<OutlineNodeViewModel>(sortedFlatNodes);
+            OnPropertyChanged(nameof(OutlineNodes));
             changed = true;
         }
 
@@ -2576,9 +2594,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return $"{kind}_{text}";
     }
 
+    private void FlattenOutlineNodesRecursive(IEnumerable<OutlineNodeViewModel> nodes, List<OutlineNodeViewModel> flatList)
+    {
+        foreach (var node in nodes)
+        {
+            flatList.Add(node);
+            if (node.Children.Count > 0)
+            {
+                FlattenOutlineNodesRecursive(node.Children, flatList);
+            }
+        }
+    }
+
     private static IReadOnlyList<OutlineNodeViewModel> BuildOutlineTree(
         IReadOnlyList<ScreenplayElement> elements,
-        ISet<string>? expandedKeys = null)
+        ISet<string>? expandedKeys = null,
+        Action<int>? navigateAction = null)
     {
         var roots = new List<OutlineNodeViewModel>();
         var sectionStack = new Stack<OutlineNodeViewModel>();
@@ -2599,7 +2630,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         section.Text,
                         section.StartLine,
                         section.SectionDepth,
-                        section.BodyText);
+                        section.BodyText,
+                        navigateAction);
 
                     if (HasExpandedOutlineKey(
                             expandedKeys,
@@ -2631,7 +2663,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         sceneHeading.Text,
                         sceneHeading.StartLine,
                         sectionLevel: null,
-                        sceneHeading.BodyText);
+                        sceneHeading.BodyText,
+                        navigateAction);
 
                     if (HasExpandedOutlineKey(
                             expandedKeys,
@@ -2662,7 +2695,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static IReadOnlyList<OutlineNodeViewModel> BuildNotesTree(
         IReadOnlyList<ScreenplayElement> elements,
-        ISet<string>? expandedKeys = null)
+        ISet<string>? expandedKeys = null,
+        Action<int>? navigateAction = null)
     {
         var roots = new List<OutlineNodeViewModel>();
 
@@ -2678,7 +2712,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 note.Text,
                 note.StartLine,
                 sectionLevel: null,
-                note.BodyText);
+                note.BodyText,
+                navigateAction);
 
             if (HasExpandedOutlineKey(
                     expandedKeys,

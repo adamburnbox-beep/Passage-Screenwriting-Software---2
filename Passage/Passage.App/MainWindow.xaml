@@ -2824,23 +2824,78 @@
                 </Border>
 
                 <Grid Grid.Row="1">
-                  <TreeView x:Name="OutlineTree" 
-                            AllowDrop="True" 
-                            VirtualizingPanel.IsVirtualizing="False"
-                            ItemsSource="{Binding OutlineRoots}"
-                            AlternationCount="2"
-                            HorizontalContentAlignment="Stretch"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                            ScrollViewer.VerticalScrollBarVisibility="Auto"
-                            SelectedItemChanged="OutlineTree_SelectedItemChanged"
-                            Focusable="False"
-                            IsTabStop="False"
-                            ItemContainerStyle="{StaticResource WorkspaceTreeItemStyle}"
-                            ItemTemplate="{StaticResource WorkspaceNodeTemplate}"
-                            TextOptions.TextFormattingMode="Ideal">
-                  </TreeView>
+                  <ScrollViewer x:Name="OutlineScrollViewer" 
+                                VerticalScrollBarVisibility="Auto" 
+                                HorizontalScrollBarVisibility="Disabled" 
+                                VirtualizingPanel.ScrollUnit="Pixel"
+                                PreviewMouseWheel="OutlineScrollViewer_PreviewMouseWheel">
+                    <ItemsControl x:Name="OutlineCards" 
+                                  ItemsSource="{Binding OutlineNodes}"
+                                  AlternationCount="2"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Focusable="False"
+                                  IsTabStop="False">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Style="{StaticResource BeatBoardOutlineSequenceCardBorderStyle}"
+                                Cursor="Hand"
+                                Margin="0,0,0,8">
+                          <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding NavigateCommand}" />
+                          </Border.InputBindings>
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
+                                            Margin="0"
+                                            IsHitTestVisible="False">
+                                  <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                                             Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                                             Foreground="{DynamicResource SecondaryText}" />
+                                </StackPanel>
+                              </StackPanel>
+                              <Grid>
+                                <TextBlock Text="{Binding Title}"
+                                           Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+                              </Grid>
+                              <TextBlock Text="{Binding Synopsis}">
+                                <TextBlock.Style>
+                                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                      <DataTrigger Binding="{Binding HasBodyText}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                      </DataTrigger>
+                                      <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                      </DataTrigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </TextBlock.Style>
+                              </TextBlock>
+                            </StackPanel>
+                  
+                            <ToggleButton Grid.Column="1"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                          Style="{StaticResource WorkspaceExpandToggleStyle}"
+                                          Margin="12,0,0,0"
+                                          VerticalAlignment="Top" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
 
                   <TextBlock Text="{Binding OutlineEmptyMessage}"
                              HorizontalAlignment="Center"
@@ -2887,7 +2942,7 @@
                             BorderThickness="0"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                            SelectedItemChanged="OutlineTree_SelectedItemChanged"
+                            PreviewMouseWheel="WorkspaceTree_PreviewMouseWheel"
                             Focusable="False"
                             IsTabStop="False"
                             ItemContainerStyle="{StaticResource WorkspaceTreeItemStyle}"
@@ -3037,13 +3092,16 @@
                     </Style>
                   </Grid.Resources>
 
-                  <ListBox Grid.Row="0"
+                  <ListBox x:Name="ScratchpadListBox"
+                           Grid.Row="0"
                            ItemsSource="{Binding ScratchpadElements}"
                            SelectedItem="{Binding SelectedScratchpadElement, Mode=TwoWay}"
                            Background="Transparent"
                            BorderThickness="0"
                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                           VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                           VirtualizingPanel.ScrollUnit="Pixel" 
+                           ScrollViewer.VerticalScrollBarVisibility="Auto"
+                           PreviewMouseWheel="WorkspaceListBox_PreviewMouseWheel">
                     <ListBox.ItemContainerStyle>
                       <Style TargetType="ListBoxItem"
                              BasedOn="{StaticResource {x:Type ListBoxItem}}">

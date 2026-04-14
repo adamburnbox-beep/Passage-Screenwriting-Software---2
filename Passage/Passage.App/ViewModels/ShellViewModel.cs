@@ -113,6 +113,8 @@ public sealed class ShellViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(GoalTimerState));
             OnPropertyChanged(nameof(GoalTimerPrimaryButtonText));
             OnPropertyChanged(nameof(GoalTimerSecondaryButtonText));
+            OnPropertyChanged(nameof(OutlineNodes));
+            OnPropertyChanged(nameof(HasOutlineItems));
             OnPropertyChanged(nameof(SelectedOutlineLineNumber));
             OnPropertyChanged(nameof(CurrentLineNumber));
             OnPropertyChanged(nameof(CurrentElementType));
@@ -148,6 +150,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     public string WindowTitle => SelectedDocument?.WindowTitle ?? "Passage";
 
     public ObservableCollection<OutlineNodeViewModel> OutlineRoots => SelectedDocument?.OutlineRoots ?? _emptyOutline;
+    public ObservableCollection<OutlineNodeViewModel> OutlineNodes => SelectedDocument?.OutlineNodes ?? _emptyOutline;
 
     public ObservableCollection<OutlineNodeViewModel> NotesRoots => SelectedDocument?.NotesRoots ?? _emptyNotes;
 
@@ -156,6 +159,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     public ObservableCollection<ScreenplayElement> ScratchpadElements => SelectedDocument?.ScratchpadElements ?? _emptyScratchpad;
 
     public bool HasBoardItems => SelectedDocument?.BoardElements.Count > 0;
+    public bool HasOutlineItems => SelectedDocument?.OutlineNodes.Count > 0;
 
     public bool IsBoardSyncRequired => SelectedDocument?.IsBoardSyncRequired ?? false;
 
@@ -316,8 +320,6 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     public string GoalTimerPrimaryButtonText => SelectedDocument?.GoalTimerPrimaryButtonText ?? "Start";
 
     public string GoalTimerSecondaryButtonText => SelectedDocument?.GoalTimerSecondaryButtonText ?? "Reset";
-
-    public bool HasOutlineItems => SelectedDocument?.OutlineRoots.Count > 0;
 
     public bool HasNoteItems => SelectedDocument?.NotesRoots.Count > 0;
 
@@ -846,6 +848,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
         if (e.PropertyName is nameof(MainWindowViewModel.GoalProgressSummaryText)
             or nameof(MainWindowViewModel.OutlineRoots)
+            or nameof(MainWindowViewModel.OutlineNodes)
             or nameof(MainWindowViewModel.NotesRoots)
             or nameof(MainWindowViewModel.BoardElements)
             or nameof(MainWindowViewModel.ScratchpadElements)
@@ -853,6 +856,10 @@ public sealed class ShellViewModel : INotifyPropertyChanged
             or nameof(MainWindowViewModel.PreviewElements))
         {
             RefreshStatusState();
+            if (e.PropertyName == nameof(MainWindowViewModel.OutlineNodes))
+            {
+                OnPropertyChanged(nameof(HasOutlineItems));
+            }
         }
 
         if (e.PropertyName is nameof(MainWindowViewModel.DocumentText)
@@ -931,6 +938,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WindowTitle)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OutlineRoots)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OutlineNodes)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesRoots)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BoardElements)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasBoardItems)));

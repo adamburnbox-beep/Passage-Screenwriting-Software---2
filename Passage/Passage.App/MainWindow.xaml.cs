@@ -111,7 +111,6 @@ public partial class MainWindow : Window
 
     private ShellViewModel ViewModel => (ShellViewModel)DataContext;
     private bool _suppressCaretContextUpdates;
-    private bool _suppressOutlineSelectionNavigation;
     private bool _editorViewportRefreshPending;
     private bool _ensureCaretVisibleAfterRefresh;
     private bool _editorInteractionRefreshPending;
@@ -2597,23 +2596,64 @@ public partial class MainWindow : Window
 
         if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
         {
-            // Zoom could be added here later if needed
             return;
         }
 
         e.Handled = true;
 
-        // Use the same multiplier logic as the editor for consistent trackpad sensitivity
-        double step = 16.0;
-        if (EditorBox is not null)
-        {
-            var lineSpacing = 1.2;
-            try { lineSpacing = EditorBox.FontFamily.LineSpacing; } catch { }
-            step = Math.Max(12.0, EditorBox.FontSize * lineSpacing);
-        }
-
+        double step = GetEditorWheelScrollStep();
         double delta = -e.Delta / 120.0 * step * EditorWheelScrollMultiplier;
         PreviewWorkspaceHost.ScrollToVerticalOffset(Math.Clamp(PreviewWorkspaceHost.VerticalOffset + delta, 0, PreviewWorkspaceHost.ScrollableHeight));
+    }
+
+    private void OutlineScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (OutlineScrollViewer is null || e.Delta == 0) return;
+
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        double step = GetEditorWheelScrollStep();
+        double delta = -e.Delta / 120.0 * step * EditorWheelScrollMultiplier;
+        OutlineScrollViewer.ScrollToVerticalOffset(Math.Clamp(OutlineScrollViewer.VerticalOffset + delta, 0, OutlineScrollViewer.ScrollableHeight));
+    }
+
+    private void WorkspaceTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not DependencyObject d || e.Delta == 0) return;
+        var scrollViewer = FindDescendant<ScrollViewer>(d);
+        if (scrollViewer == null) return;
+
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        double step = GetEditorWheelScrollStep();
+        double delta = -e.Delta / 120.0 * step * EditorWheelScrollMultiplier;
+        scrollViewer.ScrollToVerticalOffset(Math.Clamp(scrollViewer.VerticalOffset + delta, 0, scrollViewer.ScrollableHeight));
+    }
+
+    private void WorkspaceListBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not DependencyObject d || e.Delta == 0) return;
+        var scrollViewer = FindDescendant<ScrollViewer>(d);
+        if (scrollViewer == null) return;
+
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        double step = GetEditorWheelScrollStep();
+        double delta = -e.Delta / 120.0 * step * EditorWheelScrollMultiplier;
+        scrollViewer.ScrollToVerticalOffset(Math.Clamp(scrollViewer.VerticalOffset + delta, 0, scrollViewer.ScrollableHeight));
     }
 
     private void TitlePage_Click(object sender, RoutedEventArgs e)
@@ -3480,6 +3520,9 @@ public partial class MainWindow : Window
 
         var paragraphLookup = CreateParagraphLookup(paragraphResults.Select(result => result.LineNumber));
 
+        var anchorIndex = GetEditorSelectionAnchorIndex();
+        var caretIndex = GetEditorCaretIndex();
+
         _isFormatting = true;
         try
         {
@@ -3500,6 +3543,8 @@ public partial class MainWindow : Window
         {
             EditorBox.EndChange();
             _isFormatting = false;
+
+            SetEditorSelection(anchorIndex, caretIndex);
         }
 
         ScheduleEditorViewportRefresh(ensureCaretVisible: EditorBox.IsKeyboardFocusWithin);
@@ -3540,6 +3585,17 @@ public partial class MainWindow : Window
             {
                 paragraph.Inlines.Add(new Run(after));
             }
+        }
+        else
+        {
+            var boldEntireParagraph = paragraphFormatting.ScreenplayType == ScreenplayElementType.SceneHeading ||
+                                    paragraphFormatting.ScreenplayType == ScreenplayElementType.Section;
+
+            ApplyParagraphRunFormatting(
+                paragraph,
+                text,
+                boldEntireParagraph,
+                paragraphFormatting.BoldSpans);
         }
     }
 
@@ -5022,35 +5078,7 @@ public partial class MainWindow : Window
         ScheduleEditorInteractionRefresh(ensureCaretVisible: true);
     }
 
-    private void OutlineTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        if (_suppressOutlineSelectionNavigation)
-        {
-            return;
-        }
 
-        if (sender is not TreeView treeView)
-        {
-            return;
-        }
-
-        // Outline refreshes rebuild the tree and can re-raise selection changes for the
-        // previously selected node. Ignore those synthetic changes so typing doesn't
-        // trigger another navigation back to the selected outline card.
-        if (!treeView.IsKeyboardFocusWithin && Mouse.LeftButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        if (e.NewValue is not OutlineNodeViewModel node)
-        {
-            return;
-        }
-
-        ViewModel.SelectedOutlineLineNumber = node.LineNumber;
-        RestoreOutlineSelection(node.LineNumber);
-        NavigateEditorToLine(node.LineNumber);
-    }
 
     private Point _workspaceDragStartPoint;
     private bool _isWorkspaceDragging;
@@ -5348,6 +5376,15 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(ShellViewModel.CurrentLineNumber))
         {
             RestoreOutlineSelection(ViewModel.CurrentLineNumber);
+        }
+
+        if (e.PropertyName == nameof(ShellViewModel.SelectedOutlineLineNumber))
+        {
+            if (ViewModel.SelectedOutlineLineNumber.HasValue)
+            {
+                RestoreOutlineSelection(ViewModel.SelectedOutlineLineNumber.Value);
+                NavigateEditorToLine(ViewModel.SelectedOutlineLineNumber.Value);
+            }
         }
     }
 
@@ -6355,29 +6392,11 @@ public partial class MainWindow : Window
 
     private void RestoreOutlineSelection(int lineNumber)
     {
-        _suppressOutlineSelectionNavigation = true;
-        try
-        {
-            ClearTreeSelection(OutlineTree);
-            ClearTreeSelection(NotesTree);
+        ClearTreeSelection(NotesTree);
 
-            var activeNode = ViewModel.SelectedDocument?.FindActiveOutlineNode(lineNumber);
-            if (activeNode != null)
-            {
-                if (OutlineTree is not null && TrySelectSpecificNode(OutlineTree, activeNode))
-                {
-                    return;
-                }
-            }
-
-            if (NotesTree is not null)
-            {
-                _ = TrySelectOutlineNode(NotesTree, lineNumber);
-            }
-        }
-        finally
+        if (NotesTree is not null)
         {
-            _suppressOutlineSelectionNavigation = false;
+            _ = TrySelectOutlineNode(NotesTree, lineNumber);
         }
     }
 

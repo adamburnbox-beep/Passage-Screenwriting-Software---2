@@ -2,6 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using Passage.App.Utilities;
 
 namespace Passage.App.ViewModels;
 
@@ -29,14 +31,18 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
         string text,
         int lineNumber,
         int? sectionLevel = null,
-        string? bodyText = null)
+        string? bodyText = null,
+        Action<int>? navigateAction = null,
+        string? sceneNumber = null)
     {
         Kind = kind;
         Text = text;
         LineNumber = lineNumber;
         SectionLevel = sectionLevel;
         BodyText = (bodyText ?? string.Empty).ReplaceLineEndings("\n").Trim();
+        SceneNumber = sceneNumber;
         Children = new ObservableCollection<OutlineNodeViewModel>();
+        NavigateCommand = new DelegateCommand<object>(_ => navigateAction?.Invoke(LineNumber));
     }
 
     public OutlineNodeKind Kind { get; }
@@ -56,11 +62,19 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
 
     public string Text { get; }
 
+    public string Title => Text;
+
     public string DisplayText => Text.ReplaceLineEndings(" ").Trim();
 
     public string BodyText { get; }
 
+    public string Synopsis => BodyText;
+
+    public string? SceneNumber { get; set; }
+
     public bool HasBodyText => BodyText.Length > 0;
+
+    public ICommand NavigateCommand { get; }
 
     public string ToolTipText => HasBodyText
         ? $"{Text}{Environment.NewLine}{BodyText}"
