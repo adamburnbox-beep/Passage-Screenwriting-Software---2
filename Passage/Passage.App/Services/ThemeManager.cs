@@ -15,9 +15,9 @@ public static class ThemeManager
 
     public static IEnumerable<string> AvailableThemes { get; } = new[]
     {
+        SystemThemeName,
         EReaderThemeName,
-        EReaderDarkThemeName,
-        SystemThemeName
+        EReaderDarkThemeName
     };
 
     private const string ThemeFolder = "Themes";
@@ -41,6 +41,15 @@ public static class ThemeManager
     static ThemeManager()
     {
         SystemThemeTimer.Tick += SystemThemeTimer_Tick;
+        SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+    }
+
+    private static void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category == UserPreferenceCategory.General && _followSystemTheme)
+        {
+            RunOnDispatcher(SyncToSystemTheme);
+        }
     }
 
     public static event EventHandler? ThemeChanged;
@@ -193,6 +202,11 @@ public static class ThemeManager
             return;
         }
 
+        SyncToSystemTheme();
+    }
+
+    private static void SyncToSystemTheme()
+    {
         var currentSystemTheme = GetWindowsSystemTheme();
         if (string.Equals(currentSystemTheme, _lastObservedSystemTheme, StringComparison.OrdinalIgnoreCase))
         {

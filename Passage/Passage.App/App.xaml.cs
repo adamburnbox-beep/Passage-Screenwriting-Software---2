@@ -31,7 +31,7 @@ public partial class App : Application
 
         try
         {
-            ThemeManager.SetTheme(ThemeManager.EReaderDarkThemeName);
+            ThemeManager.SetTheme(ThemeManager.SystemThemeName);
             StartupDiagnostics.Write("Theme initialized.");
 
             RecoveryDocument? recoveredDocument = null;

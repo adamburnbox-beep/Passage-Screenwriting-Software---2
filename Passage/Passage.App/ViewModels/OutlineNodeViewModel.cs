@@ -25,6 +25,7 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
 {
     private bool _isExpanded;
     private bool _isDragOver;
+    private int _level;
 
     public OutlineNodeViewModel(
         OutlineNodeKind kind,
@@ -33,7 +34,8 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
         int? sectionLevel = null,
         string? bodyText = null,
         Action<int>? navigateAction = null,
-        string? sceneNumber = null)
+        string? sceneNumber = null,
+        int level = 0)
     {
         Kind = kind;
         Text = text;
@@ -41,6 +43,7 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
         SectionLevel = sectionLevel;
         BodyText = (bodyText ?? string.Empty).ReplaceLineEndings("\n").Trim();
         SceneNumber = sceneNumber;
+        Level = level;
         Children = new ObservableCollection<OutlineNodeViewModel>();
         NavigateCommand = new DelegateCommand<object>(_ => navigateAction?.Invoke(LineNumber));
     }
@@ -94,6 +97,12 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
     {
         get => _isDragOver;
         set => SetProperty(ref _isDragOver, value);
+    }
+
+    public int Level
+    {
+        get => _level;
+        set => SetProperty(ref _level, value);
     }
 
     public ObservableCollection<OutlineNodeViewModel> Children { get; }

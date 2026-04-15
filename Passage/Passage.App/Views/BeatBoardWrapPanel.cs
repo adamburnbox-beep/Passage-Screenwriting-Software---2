@@ -356,7 +356,8 @@ public sealed class BeatBoardWrapPanel : Panel
         var seqLaneBrush = TryFindResource("BeatBoardSequenceLaneBackground") as Brush;
         var separatorBrush = TryFindResource("BeatBoardLaneSeparator") as Brush;
 
-        // Draw Act Lane Backgrounds
+        // Draw Act Lane Backgrounds (Removed as per request)
+        /*
         if (actLaneBrush != null)
         {
             foreach (var rect in _actLaneRects)
@@ -364,8 +365,10 @@ public sealed class BeatBoardWrapPanel : Panel
                 dc.DrawRoundedRectangle(actLaneBrush, null, rect, 8, 8);
             }
         }
+        */
 
-        // Draw Sequence Lane Backgrounds
+        // Draw Sequence Lane Backgrounds (Removed as per request)
+        /*
         if (seqLaneBrush != null)
         {
             foreach (var rect in _sequenceLaneRects)
@@ -373,6 +376,7 @@ public sealed class BeatBoardWrapPanel : Panel
                 dc.DrawRoundedRectangle(seqLaneBrush, null, rect, 8, 8);
             }
         }
+        */
 
         // Draw Separator Lines
         if (separatorBrush != null)

@@ -2631,7 +2631,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         section.StartLine,
                         section.SectionDepth,
                         section.BodyText,
-                        navigateAction);
+                        navigateAction,
+                        level: section.SectionDepth - 1);
 
                     if (HasExpandedOutlineKey(
                             expandedKeys,
@@ -2664,7 +2665,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         sceneHeading.StartLine,
                         sectionLevel: null,
                         sceneHeading.BodyText,
-                        navigateAction);
+                        navigateAction,
+                        level: sectionStack.Count);
 
                     if (HasExpandedOutlineKey(
                             expandedKeys,
@@ -2713,7 +2715,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 note.StartLine,
                 sectionLevel: null,
                 note.BodyText,
-                navigateAction);
+                navigateAction,
+                level: 0);
 
             if (HasExpandedOutlineKey(
                     expandedKeys,

@@ -161,7 +161,7 @@ public partial class MainWindow : Window
     private double _syntaxQuickReferenceWidth = SyntaxQuickReferenceDefaultWidth;
     private WriteMode currentMode = WriteMode.Screenplay;
     private WorkspaceSurface _currentWorkspaceSurface = WorkspaceSurface.Editor;
-    private BeatBoardViewMode _currentBeatBoardViewMode = BeatBoardViewMode.Horizontal;
+    private BeatBoardViewMode _currentBeatBoardViewMode = BeatBoardViewMode.Vertical;
     private Point? _beatBoardDragStartPoint;
     private ScreenplayElement? _beatBoardDragSourceElement;
     private FrameworkElement? _beatBoardDragGhostElement;
