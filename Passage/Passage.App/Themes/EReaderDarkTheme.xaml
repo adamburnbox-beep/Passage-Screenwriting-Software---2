@@ -121,4 +121,5 @@
       </Setter.Value>
     </Setter>
   </Style>
+  <SolidColorBrush x:Key="WorkspaceHierarchyIndentBrush" Color="#FFFFFF" />
 </ResourceDictionary>

@@ -164,7 +164,7 @@
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
     <DataTemplate x:Key="WorkspaceGhostTemplate" DataType="{x:Type vm:OutlineNodeViewModel}">
-      <Border Padding="12,10"
+      <Border Padding="4,10"
               CornerRadius="10"
               Width="240"
               Height="60"
@@ -174,19 +174,67 @@
               Opacity="0.5">
         <Grid>
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="28" />
+            <ColumnDefinition Width="18" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" 
                      Text="{Binding LineNumber}"
                      Foreground="{DynamicResource MutedText}"
                      FontSize="10.5" />
-          <StackPanel Grid.Column="1" Margin="4,0,0,0">
+
+          <Border x:Name="HierarchyIndent"
+                  Grid.Column="1"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Stretch"
+                  Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
+                  Width="0"
+                  Margin="0,0,2,0">
+            <Border.Style>
+              <Style TargetType="Border">
+                <Style.Triggers>
+                  <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                      <Condition Binding="{Binding Kind}" Value="Section" />
+                      <Condition Binding="{Binding SectionLevel}" Value="1" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Width" Value="2" />
+                  </MultiDataTrigger>
+                  <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                      <Condition Binding="{Binding Kind}" Value="Section" />
+                      <Condition Binding="{Binding SectionLevel}" Value="2" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Width" Value="4" />
+                  </MultiDataTrigger>
+                  <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
+                    <Setter Property="Width" Value="7" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Kind}" Value="Note">
+                    <Setter Property="Width" Value="0" />
+                    <Setter Property="Visibility" Value="Collapsed" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Border.Style>
+          </Border>
+          <StackPanel Grid.Column="2" Margin="0,0,0,0">
             <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
                        Foreground="{DynamicResource SecondaryText}"
                        FontSize="9.5"
-                       FontWeight="SemiBold" />
-            <TextBlock Text="{Binding Heading}"
+                       FontWeight="SemiBold">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Kind}" Value="Note">
+                      <Setter Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Text="{Binding DisplayText}"
                        Foreground="{DynamicResource HeaderText}"
                        FontSize="13.5"
                        FontWeight="Bold"
@@ -450,8 +498,8 @@
     </Style>
 
     <Style x:Key="BeatBoardOutlineCardBorderBaseStyle" TargetType="Border">
-      <Setter Property="Margin" Value="0,0,0,4" />
-      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
       <Setter Property="CornerRadius" Value="0" />
       <Setter Property="BorderThickness" Value="0,0,0,1" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
@@ -462,64 +510,15 @@
           <Setter Property="Background" Value="{DynamicResource EInkCardSecondaryBackground}" />
         </Trigger>
         <DataTrigger Binding="{Binding Level}" Value="0">
-          <Setter Property="BorderThickness" Value="4,0,0,1" />
+          <Setter Property="BorderThickness" Value="0,0,0,1" />
           <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="1">
-          <Setter Property="Padding" Value="32,10,12,10" />
+          <Setter Property="BorderThickness" Value="0,0,0,1" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="2">
-          <Setter Property="Padding" Value="52,10,12,10" />
+          <Setter Property="BorderThickness" Value="0,0,0,1" />
         </DataTrigger>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding IsCollapsed}" Value="True" />
-            <Condition Binding="{Binding Level}" Value="0" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="Padding" Value="12,3" />
-          <Setter Property="Margin" Value="0,0,0,2" />
-        </MultiDataTrigger>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding IsCollapsed}" Value="True" />
-            <Condition Binding="{Binding Level}" Value="1" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="Padding" Value="32,3,12,3" />
-          <Setter Property="Margin" Value="0,0,0,2" />
-        </MultiDataTrigger>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding IsCollapsed}" Value="True" />
-            <Condition Binding="{Binding Level}" Value="2" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="Padding" Value="52,3,12,3" />
-          <Setter Property="Margin" Value="0,0,0,2" />
-        </MultiDataTrigger>
-        
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding IsExpanded}" Value="False" />
-            <Condition Binding="{Binding Level}" Value="0" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="Padding" Value="12,3" />
-          <Setter Property="Margin" Value="0,0,0,2" />
-        </MultiDataTrigger>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding IsExpanded}" Value="False" />
-            <Condition Binding="{Binding Level}" Value="1" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="Padding" Value="32,3,12,3" />
-          <Setter Property="Margin" Value="0,0,0,2" />
-        </MultiDataTrigger>
-        <MultiDataTrigger>
-          <MultiDataTrigger.Conditions>
-            <Condition Binding="{Binding IsExpanded}" Value="False" />
-            <Condition Binding="{Binding Level}" Value="2" />
-          </MultiDataTrigger.Conditions>
-          <Setter Property="Padding" Value="52,3,12,3" />
-          <Setter Property="Margin" Value="0,0,0,2" />
-        </MultiDataTrigger>
         <MultiDataTrigger>
           <MultiDataTrigger.Conditions>
             <Condition Value="True">
@@ -540,7 +539,7 @@
     <Style x:Key="BeatBoardOutlineActCardBorderStyle"
            TargetType="Border"
            BasedOn="{StaticResource BeatBoardOutlineCardBorderBaseStyle}">
-      <Setter Property="Padding" Value="16,14" />
+      <Setter Property="Padding" Value="8,14" />
       <Style.Triggers>
         <DataTrigger Binding="{Binding Level}" Value="0">
           <Setter Property="BorderThickness" Value="8,0,0,1" />
@@ -1487,85 +1486,88 @@
               Cursor="Hand"
               MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-              <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
-                          PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
-                          Margin="0">
-                <StackPanel.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
-                  </ContextMenu>
-                </StackPanel.ContextMenu>
-                <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
-                      Fill="{DynamicResource SecondaryText}" />
-                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                           Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
-                           Foreground="{DynamicResource SecondaryText}" />
+        <Border Padding="4,10">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
+                            PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
+                            Margin="0">
+                  <StackPanel.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
+                    </ContextMenu>
+                  </StackPanel.ContextMenu>
+                  <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
+                        Fill="{DynamicResource SecondaryText}" />
+                  <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                             Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                             Foreground="{DynamicResource SecondaryText}" />
+                </StackPanel>
+                <Button x:Name="EditButton"
+                        Click="BeatBoardEditButton_Click"
+                        Style="{StaticResource BeatBoardBoardEditButtonStyle}"
+                        Foreground="{DynamicResource SecondaryText}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        ToolTip="Edit card">
+                  <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
+                </Button>
               </StackPanel>
-              <Button x:Name="EditButton"
-                      Click="BeatBoardEditButton_Click"
-                      Style="{StaticResource BeatBoardBoardEditButtonStyle}"
-                      Foreground="{DynamicResource SecondaryText}"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      ToolTip="Edit card">
-                <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
-              </Button>
-            </StackPanel>
-            <Grid>
-              <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         FontSize="18" />
-              <TextBlock x:Name="HeadingPlaceholder"
-                         Text="NEW ACT TITLE"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         FontSize="18"
-                         Opacity="0.4"
-                         FontStyle="Italic"
-                         Visibility="Collapsed" />
-            </Grid>
-            <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="NEW ACT TITLE"
-                     FontSize="18"
-                     CharacterCasing="Upper" />
-            <TextBlock x:Name="DescriptionTextBlock"
-                       Text="{Binding BoardDescription}"
-                       Foreground="{DynamicResource SecondaryText}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineDescriptionTextBox"
-                     Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
-                     Margin="0,6,0,0" />
-          </StackPanel>
 
-          <Button Grid.Column="1"
-                  Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding}"
-                  Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
-                  Foreground="{DynamicResource SecondaryText}"
-                  Margin="12,0,0,0"
-                  VerticalAlignment="Top" />
-        </Grid>
+              <Grid>
+                <TextBlock x:Name="HeadingTextBlock"
+                           Text="{Binding Heading}"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           FontSize="18" />
+                <TextBlock x:Name="HeadingPlaceholder"
+                           Text="NEW ACT TITLE"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           FontSize="18"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
+              <TextBox x:Name="InlineHeadingTextBox"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="NEW ACT TITLE"
+                       FontSize="18"
+                       CharacterCasing="Upper" />
+              <TextBlock x:Name="DescriptionTextBlock"
+                         Text="{Binding BoardDescription}"
+                         Foreground="{DynamicResource SecondaryText}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBox x:Name="InlineDescriptionTextBox"
+                       Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
+                       Margin="0,6,0,0" />
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding}"
+                    Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
+                    Foreground="{DynamicResource SecondaryText}"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Top" />
+          </Grid>
+        </Border>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
@@ -1601,81 +1603,83 @@
               Cursor="Hand"
               MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-              <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
-                          PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
-                          Margin="0">
-                <StackPanel.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
-                  </ContextMenu>
-                </StackPanel.ContextMenu>
-                <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
-                      Fill="{DynamicResource SecondaryText}" />
-                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                           Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
-                           Foreground="{DynamicResource SecondaryText}" />
+        <Border Padding="4,10">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
+                            PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
+                            Margin="0">
+                  <StackPanel.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
+                    </ContextMenu>
+                  </StackPanel.ContextMenu>
+                  <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
+                        Fill="{DynamicResource SecondaryText}" />
+                  <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                             Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                             Foreground="{DynamicResource SecondaryText}" />
+                </StackPanel>
+                <Button x:Name="EditButton"
+                        Click="BeatBoardEditButton_Click"
+                        Style="{StaticResource BeatBoardBoardEditButtonStyle}"
+                        Foreground="{DynamicResource SecondaryText}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        ToolTip="Edit card">
+                  <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
+                </Button>
               </StackPanel>
-              <Button x:Name="EditButton"
-                      Click="BeatBoardEditButton_Click"
-                      Style="{StaticResource BeatBoardBoardEditButtonStyle}"
-                      Foreground="{DynamicResource SecondaryText}"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      ToolTip="Edit card">
-                <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
-              </Button>
+              <Grid>
+                <TextBlock x:Name="HeadingTextBlock"
+                           Text="{Binding Heading}"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+                <TextBlock x:Name="HeadingPlaceholder"
+                           Text="NEW SEQUENCE TITLE"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
+              <TextBox x:Name="InlineHeadingTextBox"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="NEW SEQUENCE TITLE"
+                       CharacterCasing="Upper" />
+              <TextBlock x:Name="DescriptionTextBlock"
+                         Text="{Binding BoardDescription}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBox x:Name="InlineDescriptionTextBox"
+                       Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
+                       Margin="0,6,0,0" />
             </StackPanel>
-            <Grid>
-              <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
-              <TextBlock x:Name="HeadingPlaceholder"
-                         Text="NEW SEQUENCE TITLE"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         Opacity="0.4"
-                         FontStyle="Italic"
-                         Visibility="Collapsed" />
-            </Grid>
-            <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="NEW SEQUENCE TITLE"
-                     CharacterCasing="Upper" />
-            <TextBlock x:Name="DescriptionTextBlock"
-                       Text="{Binding BoardDescription}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineDescriptionTextBox"
-                     Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
-                     Margin="0,6,0,0" />
-          </StackPanel>
 
-          <Button Grid.Column="1"
-                  Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding}"
-                  Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
-                  Foreground="{DynamicResource SecondaryText}"
-                  Margin="12,0,0,0"
-                  VerticalAlignment="Top" />
-        </Grid>
+            <Button Grid.Column="1"
+                    Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding}"
+                    Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
+                    Foreground="{DynamicResource SecondaryText}"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Top" />
+          </Grid>
+        </Border>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
@@ -1711,59 +1715,103 @@
               Cursor="Hand"
               MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-              <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
-                          PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
-                          Margin="0">
-                <StackPanel.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
-                  </ContextMenu>
-                </StackPanel.ContextMenu>
-                <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
-                      Fill="{DynamicResource SecondaryText}" />
-                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                           Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
-                           Foreground="{DynamicResource SecondaryText}" />
+        <Border Padding="4,10">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
+                            PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
+                            Margin="0">
+                  <StackPanel.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
+                    </ContextMenu>
+                  </StackPanel.ContextMenu>
+                  <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
+                        Fill="{DynamicResource SecondaryText}" />
+                  <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                             Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                             Foreground="{DynamicResource SecondaryText}" />
+                </StackPanel>
+                <Button x:Name="EditButton"
+                        Click="BeatBoardEditButton_Click"
+                        Style="{StaticResource BeatBoardBoardEditButtonStyle}"
+                        Foreground="{DynamicResource SecondaryText}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        ToolTip="Edit card">
+                  <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
+                </Button>
               </StackPanel>
-              <Button x:Name="EditButton"
-                      Click="BeatBoardEditButton_Click"
-                      Style="{StaticResource BeatBoardBoardEditButtonStyle}"
-                      Foreground="{DynamicResource SecondaryText}"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      ToolTip="Edit card">
-                <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
-              </Button>
-            </StackPanel>
-            <Grid>
-              <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
-              <TextBlock x:Name="HeadingPlaceholder"
-                         Text="SCENE SUMMARY"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         Opacity="0.4"
-                         FontStyle="Italic"
-                         Visibility="Collapsed" />
-            </Grid>
-            <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="SCENE SUMMARY" />
-            <Grid>
-              <TextBlock x:Name="SceneHeadingTextBlock"
-                         Text="{Binding ScriptHeading}">
+              <Grid>
+                <TextBlock x:Name="HeadingTextBlock"
+                           Text="{Binding Heading}"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+                <TextBlock x:Name="HeadingPlaceholder"
+                           Text="SCENE SUMMARY"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
+              <TextBox x:Name="InlineHeadingTextBox"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="SCENE SUMMARY" />
+              <Grid>
+                <TextBlock x:Name="SceneHeadingTextBlock"
+                           Text="{Binding ScriptHeading}">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineSceneHeadingStyle}">
+                      <Setter Property="Visibility" Value="Visible" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <TextBlock x:Name="SceneHeadingPlaceholder"
+                           Text="NEW SCENE"
+                           Style="{StaticResource BeatBoardOutlineSceneHeadingStyle}"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
+              <Grid x:Name="InlineSceneHeadingHost" Visibility="Collapsed" Margin="0,5,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="InlineSceneHeadingPrefixCombo"
+                          Style="{StaticResource BeatBoardInlineComboBoxStyle}"
+                          Visibility="Visible"
+                          Width="64"
+                          Margin="0,0,8,0">
+                  <ComboBoxItem Content="INT." />
+                  <ComboBoxItem Content="EXT." />
+                </ComboBox>
+                <TextBox x:Name="InlineSceneHeadingTextBox"
+                         Grid.Column="1"
+                         Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                         Tag="NEW SCENE"
+                         Visibility="Visible"
+                         FontSize="10.5"
+                         Foreground="{DynamicResource MutedText}"
+                         Margin="0"
+                         CharacterCasing="Upper" />
+              </Grid>
+              <TextBlock x:Name="DescriptionTextBlock"
+                         Text="{Binding BoardDescription}">
                 <TextBlock.Style>
-                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineSceneHeadingStyle}">
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
                     <Setter Property="Visibility" Value="Visible" />
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
@@ -1773,62 +1821,20 @@
                   </Style>
                 </TextBlock.Style>
               </TextBlock>
-              <TextBlock x:Name="SceneHeadingPlaceholder"
-                         Text="NEW SCENE"
-                         Style="{StaticResource BeatBoardOutlineSceneHeadingStyle}"
-                         Opacity="0.4"
-                         FontStyle="Italic"
-                         Visibility="Collapsed" />
-            </Grid>
-            <Grid x:Name="InlineSceneHeadingHost" Visibility="Collapsed" Margin="0,5,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <ComboBox x:Name="InlineSceneHeadingPrefixCombo"
-                        Style="{StaticResource BeatBoardInlineComboBoxStyle}"
-                        Visibility="Visible"
-                        Width="64"
-                        Margin="0,0,8,0">
-                <ComboBoxItem Content="INT." />
-                <ComboBoxItem Content="EXT." />
-              </ComboBox>
-              <TextBox x:Name="InlineSceneHeadingTextBox"
-                       Grid.Column="1"
-                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                       Tag="NEW SCENE"
-                       Visibility="Visible"
-                       FontSize="10.5"
-                       Foreground="{DynamicResource MutedText}"
-                       Margin="0"
-                       CharacterCasing="Upper" />
-            </Grid>
-            <TextBlock x:Name="DescriptionTextBlock"
-                       Text="{Binding BoardDescription}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineDescriptionTextBox"
-                     Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
-                     Margin="0,6,0,0" />
-          </StackPanel>
+              <TextBox x:Name="InlineDescriptionTextBox"
+                       Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
+                       Margin="0,6,0,0" />
+            </StackPanel>
 
-          <Button Grid.Column="1"
-                  Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding}"
-                  Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
-                  Foreground="{DynamicResource SecondaryText}"
-                  Margin="12,0,0,0"
-                  VerticalAlignment="Top" />
-        </Grid>
+            <Button Grid.Column="1"
+                    Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding}"
+                    Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
+                    Foreground="{DynamicResource SecondaryText}"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Top" />
+          </Grid>
+        </Border>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
@@ -1875,83 +1881,85 @@
               Cursor="Hand"
               MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-              <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
-                          PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
-                          Margin="0">
-                <StackPanel.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
-                  </ContextMenu>
-                </StackPanel.ContextMenu>
-                <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
-                      Fill="{DynamicResource SecondaryText}" />
-                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                           Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
-                           Foreground="{DynamicResource SecondaryText}" />
+        <Border Padding="4,10">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
+                            PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
+                            Margin="0">
+                  <StackPanel.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
+                    </ContextMenu>
+                  </StackPanel.ContextMenu>
+                  <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
+                        Fill="{DynamicResource SecondaryText}" />
+                  <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                             Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                             Foreground="{DynamicResource SecondaryText}" />
+                </StackPanel>
+                <Button x:Name="EditButton"
+                        Click="BeatBoardEditButton_Click"
+                        Style="{StaticResource BeatBoardBoardEditButtonStyle}"
+                        Foreground="{DynamicResource SecondaryText}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        ToolTip="Edit card">
+                  <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
+                </Button>
               </StackPanel>
-              <Button x:Name="EditButton"
-                      Click="BeatBoardEditButton_Click"
-                      Style="{StaticResource BeatBoardBoardEditButtonStyle}"
-                      Foreground="{DynamicResource SecondaryText}"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      ToolTip="Edit card">
-                <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
-              </Button>
+              <Grid>
+                <TextBlock x:Name="HeadingTextBlock"
+                           Text="{Binding Heading}"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
+                <TextBlock x:Name="HeadingPlaceholder"
+                           Text="NEW NOTE"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           Foreground="{DynamicResource BeatBoardNoteCardContentForeground}"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
+              <TextBox x:Name="InlineHeadingTextBox"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="NEW NOTE" />
+              <TextBlock x:Name="DescriptionTextBlock"
+                         Text="{Binding BoardDescription}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
+                    <Setter Property="Foreground" Value="{DynamicResource BeatBoardNoteCardContentForeground}" />
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBox x:Name="InlineDescriptionTextBox"
+                       Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
+                       Margin="0,6,0,0" />
             </StackPanel>
-            <Grid>
-              <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         Foreground="{DynamicResource BeatBoardNoteCardContentForeground}" />
-              <TextBlock x:Name="HeadingPlaceholder"
-                         Text="NEW NOTE"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         Foreground="{DynamicResource BeatBoardNoteCardContentForeground}"
-                         Opacity="0.4"
-                         FontStyle="Italic"
-                         Visibility="Collapsed" />
-            </Grid>
-            <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="NEW NOTE" />
-            <TextBlock x:Name="DescriptionTextBlock"
-                       Text="{Binding BoardDescription}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
-                  <Setter Property="Foreground" Value="{DynamicResource BeatBoardNoteCardContentForeground}" />
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineDescriptionTextBox"
-                     Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
-                     Margin="0,6,0,0" />
-          </StackPanel>
 
-          <Button Grid.Column="1"
-                  Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding}"
-                  Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
-                  Foreground="{DynamicResource SecondaryText}"
-                  Margin="12,0,0,0"
-                  VerticalAlignment="Top" />
-        </Grid>
+            <Button Grid.Column="1"
+                    Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding}"
+                    Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
+                    Foreground="{DynamicResource SecondaryText}"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Top" />
+          </Grid>
+        </Border>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
@@ -1987,80 +1995,82 @@
               Cursor="Hand"
               MouseLeftButtonDown="BeatBoardCard_MouseLeftButtonDown"
               MouseLeftButtonUp="BeatBoardCard_MouseLeftButtonUp">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-              <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
-                          PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
-                          Margin="0">
-                <StackPanel.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
-                    <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
-                  </ContextMenu>
-                </StackPanel.ContextMenu>
-                <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
-                      Fill="{DynamicResource BeatBoardDefaultCardAccentForeground}" />
-                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                           Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
-                           Foreground="{DynamicResource BeatBoardDefaultCardAccentForeground}" />
+        <Border Padding="4,10">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <StackPanel Style="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}"
+                            PreviewMouseLeftButtonDown="BeatBoardTypeSelector_PreviewMouseLeftButtonDown"
+                            Margin="0">
+                  <StackPanel.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Act" Tag="Act" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Sequence" Tag="Sequence" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Scene" Tag="Scene" Click="BeatBoardTypeMenuItem_Click" />
+                      <MenuItem Header="Note" Tag="Note" Click="BeatBoardTypeMenuItem_Click" />
+                    </ContextMenu>
+                  </StackPanel.ContextMenu>
+                  <Path Style="{StaticResource BeatBoardTypeSelectorTriangleStyle}"
+                        Fill="{DynamicResource BeatBoardDefaultCardAccentForeground}" />
+                  <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                             Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                             Foreground="{DynamicResource BeatBoardDefaultCardAccentForeground}" />
+                </StackPanel>
+                <Button x:Name="EditButton"
+                        Click="BeatBoardEditButton_Click"
+                        Style="{StaticResource BeatBoardBoardEditButtonStyle}"
+                        Foreground="{DynamicResource BeatBoardDefaultCardAccentForeground}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        ToolTip="Edit card">
+                  <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
+                </Button>
               </StackPanel>
-              <Button x:Name="EditButton"
-                      Click="BeatBoardEditButton_Click"
-                      Style="{StaticResource BeatBoardBoardEditButtonStyle}"
-                      Foreground="{DynamicResource BeatBoardDefaultCardAccentForeground}"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      ToolTip="Edit card">
-                <Path x:Name="EditIconPath" Style="{StaticResource BeatBoardCompactPencilIconStyle}" />
-              </Button>
+              <Grid>
+                <TextBlock x:Name="HeadingTextBlock"
+                           Text="{Binding Heading}"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+                <TextBlock x:Name="HeadingPlaceholder"
+                           Text="NEW BEAT TITLE"
+                           Style="{StaticResource BeatBoardOutlineHeadingStyle}"
+                           Opacity="0.4"
+                           FontStyle="Italic"
+                           Visibility="Collapsed" />
+              </Grid>
+              <TextBox x:Name="InlineHeadingTextBox"
+                       Style="{StaticResource BeatBoardInlineTextBoxStyle}"
+                       Tag="NEW BEAT TITLE" />
+              <TextBlock x:Name="DescriptionTextBlock"
+                         Text="{Binding BoardDescription}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBox x:Name="InlineDescriptionTextBox"
+                       Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
+                       Margin="0,6,0,0" />
             </StackPanel>
-            <Grid>
-              <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
-              <TextBlock x:Name="HeadingPlaceholder"
-                         Text="NEW HEADING"
-                         Style="{StaticResource BeatBoardOutlineHeadingStyle}"
-                         Opacity="0.4"
-                         FontStyle="Italic"
-                         Visibility="Collapsed" />
-            </Grid>
-            <TextBox x:Name="InlineHeadingTextBox"
-                     Style="{StaticResource BeatBoardInlineTextBoxStyle}"
-                     Tag="NEW HEADING" />
-            <TextBlock x:Name="DescriptionTextBlock"
-                       Text="{Binding BoardDescription}">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <TextBox x:Name="InlineDescriptionTextBox"
-                     Style="{StaticResource BeatBoardInlineDescriptionTextBoxStyle}"
-                     Margin="0,6,0,0" />
-          </StackPanel>
 
-          <Button Grid.Column="1"
-                  Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                  CommandParameter="{Binding}"
-                  Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
-                  Foreground="{DynamicResource BeatBoardDefaultCardAccentForeground}"
-                  Margin="12,0,0,0"
-                  VerticalAlignment="Top" />
-        </Grid>
+            <Button Grid.Column="1"
+                    Command="{Binding DataContext.SelectedDocument.ToggleBoardElementCollapsedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding}"
+                    Style="{StaticResource BeatBoardCollapseChevronButtonStyle}"
+                    Foreground="{DynamicResource SecondaryText}"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Top" />
+          </Grid>
+        </Border>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Path=(app:MainWindow.IsEditing), RelativeSource={RelativeSource Self}}" Value="True">
@@ -2612,7 +2622,7 @@
                                       ClickMode="Press"
                                       IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
                                       VerticalAlignment="Top"
-                                      Margin="4,12,4,0">
+                                      Margin="0,12,2,0">
                           <ToggleButton.Style>
                             <Style TargetType="ToggleButton">
                               <Setter Property="Template">
@@ -2662,7 +2672,7 @@
                       </Grid>
                       <ControlTemplate.Triggers>
                         <Trigger Property="HasItems" Value="False">
-                          <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                          <Setter TargetName="Expander" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                         <Trigger Property="IsExpanded" Value="True">
                           <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
@@ -2677,9 +2687,9 @@
                 <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Margin" Value="0,0,12,5" />
-                <Setter Property="Padding" Value="12,10" />
-                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Margin" Value="0,0,12,0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="0,10,10,0" />
                 <Setter Property="MinHeight" Value="54" />
                 <Style.Triggers>
                   <Trigger Property="ItemsControl.AlternationIndex" Value="1">
@@ -2693,7 +2703,7 @@
                     <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
                   </DataTrigger>
                   <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                    <Setter Property="Padding" Value="12,4" />
+                    <Setter Property="Padding" Value="0" />
                     <Setter Property="MinHeight" Value="28" />
                     <Setter Property="Margin" Value="0,0,12,2" />
                   </DataTrigger>
@@ -2706,13 +2716,13 @@
                     <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
                   </DataTrigger>
                   <DataTrigger Binding="{Binding Level}" Value="1">
-                    <Setter Property="Margin" Value="15,0,12,5" />
+                    <Setter Property="Margin" Value="6,0,12,0" />
                   </DataTrigger>
                   <DataTrigger Binding="{Binding Level}" Value="2">
-                    <Setter Property="Margin" Value="30,0,12,5" />
+                    <Setter Property="Margin" Value="12,0,12,0" />
                   </DataTrigger>
                   <DataTrigger Binding="{Binding Level}" Value="3">
-                    <Setter Property="Margin" Value="45,0,12,5" />
+                    <Setter Property="Margin" Value="18,0,12,0" />
                   </DataTrigger>
 
                   <!-- Collapsed overrides for indented items -->
@@ -2721,21 +2731,21 @@
                       <Condition Binding="{Binding IsExpanded}" Value="False" />
                       <Condition Binding="{Binding Level}" Value="1" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Margin" Value="15,0,12,2" />
+                    <Setter Property="Margin" Value="6,0,12,0" />
                   </MultiDataTrigger>
                   <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                       <Condition Binding="{Binding IsExpanded}" Value="False" />
                       <Condition Binding="{Binding Level}" Value="2" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Margin" Value="30,0,12,2" />
+                    <Setter Property="Margin" Value="12,0,12,0" />
                   </MultiDataTrigger>
                   <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                       <Condition Binding="{Binding IsExpanded}" Value="False" />
                       <Condition Binding="{Binding Level}" Value="3" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Margin" Value="45,0,12,2" />
+                    <Setter Property="Margin" Value="18,0,12,0" />
                   </MultiDataTrigger>
                 </Style.Triggers>
               </Style>
@@ -2766,100 +2776,152 @@
                         Style="{StaticResource WorkspaceNodeCardBorderStyle}">
 
                   <Grid>
-                    <Grid.RowDefinitions>
-                      <RowDefinition Height="Auto" />
-                      <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="28" />
-                      <ColumnDefinition Width="*" />
                       <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,1,0,0">
-                      <TextBlock Text="{Binding LineNumber}"
-                                 Foreground="{DynamicResource MutedText}"
-                                 FontWeight="SemiBold"
-                                 VerticalAlignment="Top"
-                                 FontSize="10.5" />
-                    </StackPanel>
+                    <Border Grid.Column="0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Stretch"
+                            Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
+                            Margin="0,-1">
+                      <Border.Style>
+                        <Style TargetType="Border">
+                          <Setter Property="Width" Value="0" />
+                          <Style.Triggers>
+                            <!-- Note: The Note trigger handles the 'Do not apply to Note cards' requirement -->
+                            <DataTrigger Binding="{Binding Kind}" Value="Note">
+                              <Setter Property="Width" Value="0" />
+                              <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <MultiDataTrigger>
+                              <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Kind}" Value="Section" />
+                                <Condition Binding="{Binding SectionLevel}" Value="1" />
+                              </MultiDataTrigger.Conditions>
+                              <Setter Property="Width" Value="4" />
+                            </MultiDataTrigger>
+                            <MultiDataTrigger>
+                              <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Kind}" Value="Section" />
+                                <Condition Binding="{Binding SectionLevel}" Value="2" />
+                              </MultiDataTrigger.Conditions>
+                              <Setter Property="Width" Value="8" />
+                            </MultiDataTrigger>
+                            <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
+                              <Setter Property="Width" Value="12" />
+                            </DataTrigger>
+                            <!-- Catch-all for other levels if needed, using Level property -->
+                            <MultiDataTrigger>
+                              <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Width, RelativeSource={RelativeSource Self}}" Value="0" />
+                                <Condition Binding="{Binding Kind}" Value="Section" />
+                              </MultiDataTrigger.Conditions>
+                              <Setter Property="Width" Value="4" />
+                            </MultiDataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Border.Style>
+                    </Border>
 
-                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="4,0,4,0">
-                      <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                          <Setter Property="Orientation" Value="Vertical" />
+                    <Border Grid.Column="1">
+                      <Border.Style>
+                        <Style TargetType="Border">
+                          <Setter Property="Padding" Value="4,10" />
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                              <Setter Property="Orientation" Value="Horizontal" />
+                              <Setter Property="Padding" Value="4,4" />
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
-                      </StackPanel.Style>
-                      <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}">
-                        <TextBlock.Style>
-                          <Style TargetType="TextBlock" BasedOn="{StaticResource WorkspaceNodeKindLabelStyle}">
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                                <Setter Property="Margin" Value="0,0,0,0" />
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </TextBlock.Style>
-                      </TextBlock>
-                      <TextBlock Text="•" 
-                                 Foreground="{DynamicResource MutedText}" 
-                                 VerticalAlignment="Center" 
-                                 Margin="8,0">
-                        <TextBlock.Style>
-                          <Style TargetType="TextBlock">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                                <Setter Property="Visibility" Value="Visible" />
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </TextBlock.Style>
-                      </TextBlock>
-                      <TextBlock x:Name="HeadingText"
-                                 Text="{Binding DisplayText}"
-                                 TextWrapping="NoWrap"
-                                 TextTrimming="CharacterEllipsis"
-                                 Foreground="{DynamicResource WindowForeground}"
-                                 FontSize="10.5"
-                                 VerticalAlignment="Center">
-                        <TextBlock.Style>
-                          <Style TargetType="TextBlock">
-                            <Setter Property="FontWeight" Value="Normal" />
-                            <Setter Property="FontStyle" Value="Normal" />
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding Kind}" Value="Section">
-                                <Setter Property="FontWeight" Value="SemiBold" />
-                              </DataTrigger>
-                              <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                                <Setter Property="FontWeight" Value="Bold" />
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </TextBlock.Style>
-                      </TextBlock>
-                    </StackPanel>
+                      </Border.Style>
+                      <Grid>
+                        <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="18" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <ToggleButton Grid.Row="0" Grid.Column="2"
-                                  Style="{StaticResource WorkspaceExpandToggleStyle}"
-                                  IsChecked="{Binding IsExpanded, Mode=TwoWay}"
-                                  VerticalAlignment="Top"
-                                  Margin="0,-2,-4,0" />
+                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,1,0,0">
+                          <TextBlock Text="{Binding LineNumber}"
+                                     Foreground="{DynamicResource MutedText}"
+                                     FontWeight="SemiBold"
+                                     VerticalAlignment="Top"
+                                     FontSize="10.5" />
+                        </StackPanel>
 
-                    <!-- Expanded Content -->
-                    <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                               x:Name="FullContentText"
-                               Text="{Binding BodyText}"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource WindowForeground}"
-                               FontSize="11.5"
-                               Margin="4,8,0,2"
-                               Visibility="Collapsed" />
+                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,4,0">
+                          <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                              <Setter Property="Orientation" Value="Vertical" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                  <Setter Property="Orientation" Value="Horizontal" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </StackPanel.Style>
+                          <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock" BasedOn="{StaticResource WorkspaceNodeKindLabelStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                    <Setter Property="Margin" Value="0,0,0,0" />
+                                  </DataTrigger>
+                                  <DataTrigger Binding="{Binding Kind}" Value="Note">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                          <TextBlock x:Name="HeadingText"
+                                     Text="{Binding DisplayText}"
+                                     TextWrapping="NoWrap"
+                                     TextTrimming="CharacterEllipsis"
+                                     Foreground="{DynamicResource WindowForeground}"
+                                     FontSize="10.5"
+                                     VerticalAlignment="Center">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Normal" />
+                                <Setter Property="FontStyle" Value="Normal" />
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding Kind}" Value="Section">
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                  </DataTrigger>
+                                  <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </StackPanel>
+
+                        <ToggleButton Grid.Row="0" Grid.Column="2"
+                                      Style="{StaticResource WorkspaceExpandToggleStyle}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                      VerticalAlignment="Top"
+                                      Margin="0,-2,-4,0" />
+
+                        <!-- Expanded Content -->
+                        <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                   x:Name="FullContentText"
+                                   Text="{Binding BodyText}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource WindowForeground}"
+                                   FontSize="11.5"
+                                   Margin="4,8,0,2"
+                                   Visibility="Collapsed" />
+                      </Grid>
+                    </Border>
                   </Grid>
                 </Border>
                 <HierarchicalDataTemplate.Triggers>
@@ -2937,76 +2999,121 @@
                           </Border.InputBindings>
                           <Grid>
                             <Grid.ColumnDefinitions>
-                              <ColumnDefinition Width="*" />
                               <ColumnDefinition Width="Auto" />
+                              <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel>
-                              <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                  <Setter Property="Orientation" Value="Vertical" />
+
+                            <Border Grid.Column="0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Stretch"
+                                    Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
+                                    Margin="0,-1">
+                              <Border.Style>
+                                <Style TargetType="Border">
+                                  <Setter Property="Width" Value="0" />
+                                  <Setter Property="CornerRadius" Value="0" />
                                   <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                                      <Setter Property="Orientation" Value="Horizontal" />
+                                    <DataTrigger Binding="{Binding Kind}" Value="Note">
+                                      <Setter Property="Width" Value="0" />
+                                      <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <MultiDataTrigger>
+                                      <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Kind}" Value="Section" />
+                                        <Condition Binding="{Binding SectionLevel}" Value="1" />
+                                      </MultiDataTrigger.Conditions>
+                                      <Setter Property="Width" Value="4" />
+                                    </MultiDataTrigger>
+                                    <MultiDataTrigger>
+                                      <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Kind}" Value="Section" />
+                                        <Condition Binding="{Binding SectionLevel}" Value="2" />
+                                      </MultiDataTrigger.Conditions>
+                                      <Setter Property="Width" Value="8" />
+                                    </MultiDataTrigger>
+                                    <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
+                                      <Setter Property="Width" Value="12" />
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>
-                              </StackPanel.Style>
-                              <StackPanel Margin="0,0,0,4"
-                                          IsHitTestVisible="False">
-                                <StackPanel.Style>
-                                  <Style TargetType="StackPanel" BasedOn="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}">
-                                    <Style.Triggers>
-                                      <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                                        <Setter Property="Margin" Value="0" />
-                                      </DataTrigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </StackPanel.Style>
-                                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                                           Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
-                                           Foreground="{DynamicResource SecondaryText}" />
-                              </StackPanel>
-                              <TextBlock Text="•" 
-                                         Foreground="{DynamicResource MutedText}" 
-                                         VerticalAlignment="Center" 
-                                         Margin="8,0">
-                                <TextBlock.Style>
-                                  <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                      <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                              </Border.Style>
+                            </Border>
+
+                            <Border Grid.Column="1">
+                              <Border.Style>
+                                <Style TargetType="Border">
+                                  <Setter Property="Padding" Value="10,12" />
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                      <Setter Property="Padding" Value="10,4" />
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Border.Style>
+                              <Grid>
+                                <Grid.ColumnDefinitions>
+                                  <ColumnDefinition Width="*" />
+                                  <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                  <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                      <Setter Property="Orientation" Value="Vertical" />
+                                      <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                          <Setter Property="Orientation" Value="Horizontal" />
+                                        </DataTrigger>
+                                      </Style.Triggers>
+                                    </Style>
+                                  </StackPanel.Style>
+                                  <StackPanel Margin="0,0,0,4"
+                                              IsHitTestVisible="False">
+                                    <StackPanel.Style>
+                                      <Style TargetType="StackPanel" BasedOn="{StaticResource BeatBoardOutlineTypeSelectorHostStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                          <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                            <Setter Property="Margin" Value="0" />
+                                          </DataTrigger>
+                                          <DataTrigger Binding="{Binding Kind}" Value="Note">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                          </DataTrigger>
+                                        </Style.Triggers>
+                                      </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                                               Style="{StaticResource BeatBoardOutlineTypeSelectorStyle}"
+                                               Foreground="{DynamicResource SecondaryText}" />
+                                  </StackPanel>
+                                  <Grid VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}"
+                                               Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+                                  </Grid>
+                                  <TextBlock Text="{Binding Synopsis}">
+                                    <TextBlock.Style>
+                                      <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
                                         <Setter Property="Visibility" Value="Visible" />
-                                      </DataTrigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </TextBlock.Style>
-                              </TextBlock>
-                              <Grid VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Title}"
-                                           Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
+                                        <Style.Triggers>
+                                          <DataTrigger Binding="{Binding HasBodyText}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                          </DataTrigger>
+                                          <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                          </DataTrigger>
+                                        </Style.Triggers>
+                                      </Style>
+                                    </TextBlock.Style>
+                                  </TextBlock>
+                                </StackPanel>
+
+                                <ToggleButton Grid.Column="1"
+                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                              Style="{StaticResource WorkspaceExpandToggleStyle}"
+                                              Margin="12,0,0,0"
+                                              VerticalAlignment="Top" />
                               </Grid>
-                              <TextBlock Text="{Binding Synopsis}">
-                                <TextBlock.Style>
-                                  <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineDescriptionStyle}">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                      <DataTrigger Binding="{Binding HasBodyText}" Value="False">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                      </DataTrigger>
-                                      <DataTrigger Binding="{Binding IsExpanded}" Value="False">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                      </DataTrigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </TextBlock.Style>
-                              </TextBlock>
-                            </StackPanel>
-                  
-                            <ToggleButton Grid.Column="1"
-                                          IsChecked="{Binding IsExpanded, Mode=TwoWay}"
-                                          Style="{StaticResource WorkspaceExpandToggleStyle}"
-                                          Margin="12,0,0,0"
-                                          VerticalAlignment="Top" />
+                            </Border>
                           </Grid>
                         </Border>
                       </DataTemplate>
@@ -3235,63 +3342,99 @@
 
                     <ListBox.ItemTemplate>
                       <DataTemplate>
-                        <Border Background="{DynamicResource SurfaceRaisedBackground}"
+                        <Border x:Name="ScratchpadCardBorder"
+                                Background="{DynamicResource SurfaceRaisedBackground}"
                                 BorderBrush="{DynamicResource SurfaceMutedBorder}"
                                 BorderThickness="1"
+                                Padding="0"
                                 CornerRadius="8">
-                          <Border.Style>
-                            <Style TargetType="Border">
-                              <Setter Property="Padding" Value="12" />
-                              <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                                  <Setter Property="Padding" Value="10,4" />
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </Border.Style>
                           <Grid>
-                            <Grid.RowDefinitions>
-                              <RowDefinition Height="Auto" />
-                              <RowDefinition Height="Auto" />
-                              <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="Auto" />
+                              <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                            <Grid>
-                              <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                              </Grid.ColumnDefinitions>
+                            <!-- Scratchpad Hierarchy Line (Scene-like = 12px) -->
+                            <Border Grid.Column="0"
+                                    Width="12"
+                                    Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
+                                    CornerRadius="8,0,0,8" />
 
-                              <StackPanel>
-                                <StackPanel.Style>
-                                  <Style TargetType="StackPanel">
-                                    <Setter Property="Orientation" Value="Vertical" />
-                                    <Style.Triggers>
-                                      <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                                        <Setter Property="Orientation" Value="Horizontal" />
-                                      </DataTrigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </StackPanel.Style>
-                                <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
-                                           Foreground="{DynamicResource ControlAccent}"
-                                           FontSize="8"
-                                           FontWeight="SemiBold">
-                                  <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                      <Setter Property="Margin" Value="0,0,0,3" />
-                                      <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                                          <Setter Property="Margin" Value="0" />
-                                        </DataTrigger>
-                                      </Style.Triggers>
-                                    </Style>
-                                  </TextBlock.Style>
-                                </TextBlock>
-                                <TextBlock Text="•" 
-                                           Foreground="{DynamicResource MutedText}" 
-                                           VerticalAlignment="Center" 
-                                           Margin="8,0">
+                            <Border Grid.Column="1"
+                                    Padding="10,12">
+                              <Grid>
+                                <Grid.RowDefinitions>
+                                  <RowDefinition Height="Auto" />
+                                  <RowDefinition Height="Auto" />
+                                  <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                  <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                  </Grid.ColumnDefinitions>
+
+                                  <StackPanel Grid.Column="0">
+                                    <StackPanel.Style>
+                                      <Style TargetType="StackPanel">
+                                        <Setter Property="Orientation" Value="Vertical" />
+                                        <Style.Triggers>
+                                          <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                                            <Setter Property="Orientation" Value="Horizontal" />
+                                          </DataTrigger>
+                                        </Style.Triggers>
+                                      </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
+                                               Foreground="{DynamicResource ControlAccent}"
+                                               FontSize="8"
+                                               FontWeight="SemiBold">
+                                      <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource WorkspaceNodeKindLabelStyle}">
+                                          <Setter Property="Margin" Value="0,0,0,3" />
+                                          <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                                              <Setter Property="Margin" Value="0,0,8,0" />
+                                            </DataTrigger>
+                                          </Style.Triggers>
+                                        </Style>
+                                      </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Heading}"
+                                               Foreground="{DynamicResource HeaderText}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                  </StackPanel>
+
+                                  <ToggleButton Grid.Column="1"
+                                                Margin="10,0,0,0"
+                                                VerticalAlignment="Top"
+                                                IsChecked="{Binding IsCollapsed, Mode=TwoWay, Converter={StaticResource InvertBooleanConverter}}">
+                                    <ToggleButton.Style>
+                                      <Style TargetType="ToggleButton"
+                                             BasedOn="{StaticResource ScratchpadActionToggleButtonStyle}">
+                                        <Setter Property="MinWidth" Value="68" />
+                                        <Setter Property="Content" Value="Collapse" />
+                                        <Style.Triggers>
+                                          <Trigger Property="IsChecked" Value="False">
+                                            <Setter Property="Content" Value="Expand" />
+                                          </Trigger>
+                                        </Style.Triggers>
+                                      </Style>
+                                    </ToggleButton.Style>
+                                  </ToggleButton>
+                                </Grid>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding PreviewText}"
+                                           Foreground="{DynamicResource MutedText}"
+                                           FontSize="11.5"
+                                           Margin="0,10,0,0"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis">
                                   <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                       <Setter Property="Visibility" Value="Collapsed" />
@@ -3303,73 +3446,26 @@
                                     </Style>
                                   </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="{Binding Heading}"
-                                           Foreground="{DynamicResource HeaderText}"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           TextWrapping="Wrap"
-                                           VerticalAlignment="Center" />
-                              </StackPanel>
 
-                              <ToggleButton Grid.Column="1"
-                                            Margin="10,0,0,0"
-                                            VerticalAlignment="Top"
-                                            IsChecked="{Binding IsCollapsed, Mode=TwoWay}">
-                                <ToggleButton.Style>
-                                  <Style TargetType="ToggleButton"
-                                         BasedOn="{StaticResource ScratchpadActionToggleButtonStyle}">
-                                    <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
-                                    <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
-                                    <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
-                                    <Setter Property="Padding" Value="8,3" />
-                                    <Setter Property="MinWidth" Value="68" />
-                                    <Setter Property="Content" Value="Collapse" />
-                                    <Style.Triggers>
-                                      <Trigger Property="IsChecked" Value="True">
-                                        <Setter Property="Content" Value="Expand" />
-                                      </Trigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </ToggleButton.Style>
-                              </ToggleButton>
-                            </Grid>
-
-                            <TextBlock Grid.Row="1"
-                                       Text="{Binding PreviewText}"
-                                       Foreground="{DynamicResource MutedText}"
-                                       FontSize="11.5"
-                                       Margin="0,10,0,0"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis">
-                              <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                  <Setter Property="Visibility" Value="Visible" />
-                                  <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsCollapsed}" Value="False">
-                                      <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                  </Style.Triggers>
-                                </Style>
-                              </TextBlock.Style>
-                            </TextBlock>
-
-                            <TextBlock Grid.Row="2"
-                                       Text="{Binding Description}"
-                                       Foreground="{DynamicResource WindowForeground}"
-                                       FontSize="11.5"
-                                       Margin="0,8,0,0"
-                                       TextWrapping="Wrap">
-                              <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                  <Setter Property="Visibility" Value="Visible" />
-                                  <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                                      <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                  </Style.Triggers>
-                                </Style>
-                              </TextBlock.Style>
-                            </TextBlock>
+                                <TextBlock Grid.Row="2"
+                                           Text="{Binding Description}"
+                                           Foreground="{DynamicResource WindowForeground}"
+                                           FontSize="11.5"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap">
+                                  <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                      <Setter Property="Visibility" Value="Visible" />
+                                      <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                                          <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                      </Style.Triggers>
+                                    </Style>
+                                  </TextBlock.Style>
+                                </TextBlock>
+                              </Grid>
+                            </Border>
                           </Grid>
                         </Border>
                       </DataTemplate>
