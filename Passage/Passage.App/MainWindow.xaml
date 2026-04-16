@@ -2800,17 +2800,17 @@
                                 <Condition Binding="{Binding Kind}" Value="Section" />
                                 <Condition Binding="{Binding SectionLevel}" Value="1" />
                               </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="4" />
+                              <Setter Property="Width" Value="10" />
                             </MultiDataTrigger>
                             <MultiDataTrigger>
                               <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding Kind}" Value="Section" />
                                 <Condition Binding="{Binding SectionLevel}" Value="2" />
                               </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="8" />
+                              <Setter Property="Width" Value="14" />
                             </MultiDataTrigger>
                             <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                              <Setter Property="Width" Value="12" />
+                              <Setter Property="Width" Value="18" />
                             </DataTrigger>
                             <!-- Catch-all for other levels if needed, using Level property -->
                             <MultiDataTrigger>
@@ -3022,17 +3022,17 @@
                                         <Condition Binding="{Binding Kind}" Value="Section" />
                                         <Condition Binding="{Binding SectionLevel}" Value="1" />
                                       </MultiDataTrigger.Conditions>
-                                      <Setter Property="Width" Value="4" />
+                                      <Setter Property="Width" Value="10" />
                                     </MultiDataTrigger>
                                     <MultiDataTrigger>
                                       <MultiDataTrigger.Conditions>
                                         <Condition Binding="{Binding Kind}" Value="Section" />
                                         <Condition Binding="{Binding SectionLevel}" Value="2" />
                                       </MultiDataTrigger.Conditions>
-                                      <Setter Property="Width" Value="8" />
+                                      <Setter Property="Width" Value="14" />
                                     </MultiDataTrigger>
                                     <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                                      <Setter Property="Width" Value="12" />
+                                      <Setter Property="Width" Value="18" />
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>
@@ -3849,7 +3849,8 @@
                               PreviewMouseWheel="BeatBoardScrollViewer_PreviewMouseWheel"
                               CanContentScroll="False">
                   <Grid x:Name="BeatBoardContentHost"
-                        MinWidth="300">
+                        MinWidth="300"
+                        HorizontalAlignment="Center">
                     <Grid.LayoutTransform>
                       <ScaleTransform ScaleX="{Binding SelectedDocument.BoardZoomScale}"
                                       ScaleY="{Binding SelectedDocument.BoardZoomScale}" />

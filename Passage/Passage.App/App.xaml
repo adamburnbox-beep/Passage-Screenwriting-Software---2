@@ -11,7 +11,7 @@
       <Style TargetType="{x:Type Window}">
         <Setter Property="FontFamily" Value="Courier Prime, Courier New, Courier" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="Icon" Value="pack://application:,,,/Assets/AppIcon.png" />
+        <Setter Property="Icon" Value="pack://application:,,,/Assets/AppIcon.ico" />
         <Setter Property="Background" Value="{DynamicResource WindowBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
       </Style>

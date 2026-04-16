@@ -863,16 +863,19 @@ public partial class MainWindow : Window
             return;
         }
 
-        var surfaceWidth = Math.Max(300.0, BeatBoardSurfaceRoot.ActualWidth);
-        BeatBoardContentHost.MinWidth = surfaceWidth;
-
         if (_currentBeatBoardViewMode == BeatBoardViewMode.Vertical)
         {
-            BeatBoardScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            BeatBoardContentHost.Width = surfaceWidth;
+            // Vertical cards should be narrower and centered
+            // Using a fixed width prevents them from stretching too wide and overlap with scrollbar
+            const double verticalViewWidth = 900.0;
+            BeatBoardScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            BeatBoardContentHost.Width = verticalViewWidth;
+            BeatBoardContentHost.MinWidth = 0;
             return;
         }
 
+        var surfaceWidth = Math.Max(300.0, BeatBoardSurfaceRoot.ActualWidth);
+        BeatBoardContentHost.MinWidth = surfaceWidth;
         BeatBoardScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
         BeatBoardContentHost.Width = double.NaN;
     }
