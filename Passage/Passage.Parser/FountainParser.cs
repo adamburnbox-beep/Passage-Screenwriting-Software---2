@@ -904,6 +904,18 @@ public sealed class FountainParser
             }
             return text.Replace(match.Value, "").Trim();
         }
+
+        // Fallback for stripped brackets (common in Notes)
+        var bareMatch = Regex.Match(text, @"id:([a-f\d\-]+)$", RegexOptions.IgnoreCase);
+        if (bareMatch.Success)
+        {
+            if (Guid.TryParse(bareMatch.Groups[1].Value, out var parsedId))
+            {
+                id = parsedId;
+            }
+            return text[..bareMatch.Index].Trim();
+        }
+
         return text;
     }
 

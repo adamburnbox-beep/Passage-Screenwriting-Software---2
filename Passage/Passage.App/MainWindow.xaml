@@ -228,9 +228,6 @@
                 <Style TargetType="TextBlock">
                   <Setter Property="Visibility" Value="Collapsed" />
                   <Style.Triggers>
-                    <DataTrigger Binding="{Binding Kind}" Value="Note">
-                      <Setter Property="Visibility" Value="Visible" />
-                    </DataTrigger>
                   </Style.Triggers>
                 </Style>
               </TextBlock.Style>
@@ -2875,9 +2872,6 @@
                                   <DataTrigger Binding="{Binding IsExpanded}" Value="False">
                                     <Setter Property="Margin" Value="0,0,0,0" />
                                   </DataTrigger>
-                                  <DataTrigger Binding="{Binding Kind}" Value="Note">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                  </DataTrigger>
                                 </Style.Triggers>
                               </Style>
                             </TextBlock.Style>
@@ -3076,9 +3070,6 @@
                                         <Style.Triggers>
                                           <DataTrigger Binding="{Binding IsExpanded}" Value="False">
                                             <Setter Property="Margin" Value="0" />
-                                          </DataTrigger>
-                                          <DataTrigger Binding="{Binding Kind}" Value="Note">
-                                            <Setter Property="Visibility" Value="Visible" />
                                           </DataTrigger>
                                         </Style.Triggers>
                                       </Style>

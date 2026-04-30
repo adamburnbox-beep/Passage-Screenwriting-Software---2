@@ -2013,11 +2013,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             changed = true;
         }
 
-        if (outlineChanged || notesChanged)
+        if (outlineChanged)
         {
             var flatNodes = new List<OutlineNodeViewModel>();
             FlattenOutlineNodesRecursive(outlineRoots, flatNodes);
-            FlattenOutlineNodesRecursive(noteRoots, flatNodes);
             
             var sortedFlatNodes = flatNodes.OrderBy(n => n.LineNumber).ToList();
             OutlineNodes = new ObservableCollection<OutlineNodeViewModel>(sortedFlatNodes);
@@ -2733,6 +2732,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 continue;
             }
 
+            if (string.IsNullOrWhiteSpace(note.Text))
+            {
+                continue;
+            }
+
             var noteNode = new OutlineNodeViewModel(
                 OutlineNodeKind.Note,
                 note.Text,
@@ -2802,6 +2806,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             return text.Replace(idMatch.Value, "").Trim();
         }
+
+        // Matches id:guid pattern (if brackets already stripped)
+        var bareMatch = System.Text.RegularExpressions.Regex.Match(text, @"\s*id:[a-f\d\-]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (bareMatch.Success)
+        {
+            return text.Replace(bareMatch.Value, "").Trim();
+        }
+
         return text;
     }
 
@@ -3266,18 +3278,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var trimmed = synopsis.Text.Trim();
         var baseLine = trimmed.Length == 0 ? "=" : $"= {trimmed}";
         // Only append ID if not already present (idempotent)
-        return baseLine.Contains("[[id:", StringComparison.OrdinalIgnoreCase)
-            ? baseLine
-            : $"{baseLine} [[id:{synopsis.Id}]]";
+        if (System.Text.RegularExpressions.Regex.IsMatch(baseLine, @"id:[a-f\d\-]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            return baseLine;
+        }
+        return $"{baseLine} id:{synopsis.Id}";
     }
 
     private static string AppendIdComment(string rawText, Guid id)
     {
         if (string.IsNullOrWhiteSpace(rawText)) return rawText;
-        if (rawText.Contains("[[id:", StringComparison.OrdinalIgnoreCase)) return rawText;
+        if (System.Text.RegularExpressions.Regex.IsMatch(rawText, @"id:[a-f\d\-]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) return rawText;
         
         var lines = rawText.Split('\n');
-        lines[0] = lines[0].TrimEnd() + $" [[id:{id}]]";
+        var firstLine = lines[0].TrimEnd();
+        
+        if (firstLine.EndsWith("]]"))
+        {
+            // For notes, put the ID inside the existing brackets to keep it contained
+            lines[0] = firstLine[..^2].TrimEnd() + $" id:{id}]]";
+        }
+        else
+        {
+            lines[0] = firstLine + $" [[id:{id}]]";
+        }
+        
         return string.Join("\n", lines);
     }
 
@@ -3397,7 +3422,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var trimmedDescription = NormalizeBoardCardDescription(description);
 
         // Step A: Header + ID line
-        lines.Add($"[[{trimmedHeading}]] [[id:{id}]]");
+        lines.Add($"[[{trimmedHeading} id:{id}]]");
 
         // Step B: Synopsis (Description)
         if (HasMeaningfulBoardDescription(trimmedDescription))
