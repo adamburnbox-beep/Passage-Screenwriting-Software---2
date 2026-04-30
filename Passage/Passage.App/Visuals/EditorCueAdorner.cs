@@ -231,6 +231,8 @@ public sealed class EditorCueAdorner : Adorner
 
     public event EventHandler? LayoutChanged;
 
+    public bool IsDraggingOver { get; set; }
+
     public bool HasPendingLayoutRefresh => _layoutRefreshPending;
 
     public void NotifyParsedLayoutChanged(bool immediate = false)
@@ -1387,7 +1389,7 @@ public sealed class EditorCueAdorner : Adorner
 
     private void DrawCaret(DrawingContext drawingContext)
     {
-        if (!_editor.IsKeyboardFocused || GetSelectionLength() > 0 || !_isCaretVisible)
+        if ((!_editor.IsKeyboardFocused && !IsDraggingOver) || GetSelectionLength() > 0 || (!_isCaretVisible && !IsDraggingOver))
         {
             return;
         }

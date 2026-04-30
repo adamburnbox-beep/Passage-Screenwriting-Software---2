@@ -176,6 +176,7 @@ public partial class MainWindow : Window
     private bool _suppressNextBeatBoardCardClick;
     private bool _suppressNextBeatBoardCardMouseUp;
     private bool _beatBoardRefreshPending;
+    private Point _scratchpadDragStartPoint;
     private MainWindowViewModel? _observedBeatBoardDocument;
     private bool IsScreenplayMode => currentMode == WriteMode.Screenplay;
 
@@ -6673,5 +6674,148 @@ public partial class MainWindow : Window
         // Trigger formatting
         QueueEditorFormattingForActiveParagraph(force: true);
         ScheduleEditorViewportRefresh(ensureCaretVisible: true);
+    }
+
+    private void ScratchpadListBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _scratchpadDragStartPoint = e.GetPosition(null);
+    }
+
+    private void ScratchpadListBox_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var mousePos = e.GetPosition(null);
+        var diff = _scratchpadDragStartPoint - mousePos;
+
+        if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+            Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+        {
+            var listBoxItem = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
+            if (listBoxItem?.DataContext is ScreenplayElement element)
+            {
+                var dragData = new DataObject();
+                dragData.SetData("ScratchpadElement", element);
+                dragData.SetData(typeof(ScreenplayElement), element);
+                DragDrop.DoDragDrop(listBoxItem, dragData, DragDropEffects.Move);
+            }
+        }
+    }
+
+    private void EditorBox_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent("ScratchpadElement") || e.Data.GetDataPresent(typeof(ScreenplayElement)))
+        {
+            e.Effects = DragDropEffects.Move;
+
+            if (_editorCueAdorner != null)
+            {
+                _editorCueAdorner.IsDraggingOver = true;
+            }
+
+            var dropPoint = e.GetPosition(EditorBox);
+            TextPointer? pointer = null;
+
+            if (_editorCueAdorner != null && IsScreenplayMode)
+            {
+                if (_editorCueAdorner.TryGetCharacterIndexFromPoint(dropPoint, out int charIndex))
+                {
+                    pointer = GetEditorTextPointerAtOffset(charIndex);
+                }
+            }
+
+            if (pointer == null)
+            {
+                pointer = EditorBox.GetPositionFromPoint(dropPoint, true);
+            }
+
+            if (pointer != null)
+            {
+                // Snap to start of line/paragraph as requested to match cursor position better
+                EditorBox.CaretPosition = pointer.Paragraph?.ContentStart ?? pointer;
+            }
+            
+            InvalidateEditorCueOverlay();
+            e.Handled = true;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
+    }
+
+    private void EditorBox_DragLeave(object sender, DragEventArgs e)
+    {
+        if (_editorCueAdorner != null)
+        {
+            _editorCueAdorner.IsDraggingOver = false;
+            InvalidateEditorCueOverlay();
+        }
+    }
+
+    private void EditorBox_Drop(object sender, DragEventArgs e)
+    {
+        if (_editorCueAdorner != null)
+        {
+            _editorCueAdorner.IsDraggingOver = false;
+        }
+
+        var element = e.Data.GetData("ScratchpadElement") as ScreenplayElement ?? 
+                      e.Data.GetData(typeof(ScreenplayElement)) as ScreenplayElement;
+
+        if (element != null)
+        {
+            var dropPoint = e.GetPosition(EditorBox);
+            TextPointer? pointer = null;
+
+            if (_editorCueAdorner != null && IsScreenplayMode)
+            {
+                if (_editorCueAdorner.TryGetCharacterIndexFromPoint(dropPoint, out int charIndex))
+                {
+                    pointer = GetEditorTextPointerAtOffset(charIndex);
+                }
+            }
+
+            if (pointer == null)
+            {
+                pointer = EditorBox.GetPositionFromPoint(dropPoint, true);
+            }
+
+            if (pointer != null)
+            {
+                // Ensure we drop at the start of the line
+                pointer = pointer.Paragraph?.ContentStart ?? pointer;
+
+                var textToInsert = element.RawText;
+                if (!textToInsert.EndsWith(Environment.NewLine) && !textToInsert.EndsWith("\n"))
+                {
+                    textToInsert += Environment.NewLine;
+                }
+
+                try
+                {
+                    EditorBox.BeginChange();
+                    var range = new TextRange(pointer, pointer);
+                    range.Text = textToInsert;
+                    
+                    // Remove from scratchpad
+                    ViewModel.ScratchpadElements.Remove(element);
+                }
+                finally
+                {
+                    EditorBox.EndChange();
+                }
+                
+                // Refresh ViewModel state
+                ViewModel.DocumentText = GetEditorText();
+                ViewModel.RefreshParsedSnapshotNow();
+            }
+        }
+
+        e.Handled = true;
     }
 }

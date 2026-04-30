@@ -161,6 +161,7 @@
 
     <local:UppercaseConverter x:Key="UppercaseConverter" />
     <local:EqualityConverter x:Key="EqualityConverter" />
+    <local:InvertBooleanConverter x:Key="InvertBooleanConverter" />
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
     <DataTemplate x:Key="WorkspaceGhostTemplate" DataType="{x:Type vm:OutlineNodeViewModel}">
@@ -3320,12 +3321,14 @@
                            Grid.Row="0"
                            ItemsSource="{Binding ScratchpadElements}"
                            SelectedItem="{Binding SelectedScratchpadElement, Mode=TwoWay}"
-                           Background="Transparent"
+                             Background="Transparent"
                            BorderThickness="0"
                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                            VirtualizingPanel.ScrollUnit="Pixel" 
                            ScrollViewer.VerticalScrollBarVisibility="Auto"
-                           PreviewMouseWheel="WorkspaceListBox_PreviewMouseWheel">
+                           PreviewMouseWheel="WorkspaceListBox_PreviewMouseWheel"
+                           PreviewMouseLeftButtonDown="ScratchpadListBox_PreviewMouseLeftButtonDown"
+                           PreviewMouseMove="ScratchpadListBox_PreviewMouseMove">
                     <ListBox.ItemContainerStyle>
                       <Style TargetType="ListBoxItem"
                              BasedOn="{StaticResource {x:Type ListBoxItem}}">
@@ -3629,6 +3632,10 @@
                                IsHitTestVisible="True"
                                IsDocumentEnabled="True"
                                IsInactiveSelectionHighlightEnabled="True"
+                               AllowDrop="True"
+                               PreviewDragOver="EditorBox_DragOver"
+                               PreviewDragLeave="EditorBox_DragLeave"
+                               PreviewDrop="EditorBox_Drop"
                                AcceptsReturn="True"
                                AcceptsTab="True"
                                InputMethod.IsInputMethodEnabled="False"

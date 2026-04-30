@@ -127,6 +127,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private (ScreenplayElement dragged, ScreenplayElement target, bool insertAfter)? _lastPreviewRequest;
     private (ScreenplayElement dragged, ScreenplayElement target, bool insertAfter)? _pendingPreviewRequest;
     private readonly DispatcherTimer _reorderPreviewTimer;
+    private bool _suppressScratchpadRefresh;
 
     public MainWindowViewModel()
     {
@@ -141,14 +142,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _scratchpadView.Filter = ShouldIncludeScratchpadElement;
         ScratchpadElements.CollectionChanged += (_, _) =>
         {
+            if (_suppressScratchpadRefresh || _scratchpadView is null)
+            {
+                return;
+            }
+
             if (_selectedScratchpadElement is not null &&
                 !ScratchpadElements.Contains(_selectedScratchpadElement))
             {
                 SelectedScratchpadElement = null;
             }
-
-            _scratchpadView.Refresh();
-            OnPropertyChanged(nameof(ScratchpadElements));
         };
         MoveToScratchpadCommand = new DelegateCommand<RichTextBox>(
             execute: ExecuteMoveToScratchpad,
@@ -889,52 +892,73 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var textRange = new TextRange(richTextBox.Selection.Start, richTextBox.Selection.End);
-        if (textRange.Start.CompareTo(textRange.End) == 0)
-        {
-            return false;
-        }
-
-        var selectionLength = RichTextBoxTextUtilities.GetSelectionLength(richTextBox);
-        if (selectionLength <= 0)
-        {
-            return false;
-        }
-
-        var selectionStart = RichTextBoxTextUtilities.GetSelectionStart(richTextBox);
-        var scriptText = RichTextBoxTextUtilities.GetPlainText(richTextBox);
-        if (selectionStart < 0 || selectionStart >= scriptText.Length)
-        {
-            return false;
-        }
-
-        var selectedText = textRange.Text;
-        if (string.IsNullOrWhiteSpace(selectedText))
-        {
-            return false;
-        }
-
-        var parsedSelection = _parser.Parse(selectedText);
-        var scratchpadItems = BuildScratchpadElementsFromSnippet(selectedText, parsedSelection.Elements).ToArray();
-
-        AdjustLineTypeOverridesForRemovedRange(scriptText, selectionStart, selectionLength);
-
         try
         {
-            richTextBox.BeginChange();
-            textRange.Text = string.Empty;
-        }
-        finally
-        {
-            richTextBox.EndChange();
-        }
+            var textRange = new TextRange(richTextBox.Selection.Start, richTextBox.Selection.End);
+            if (textRange.Start.CompareTo(textRange.End) == 0)
+            {
+                return false;
+            }
 
-        var documentTextAfterMove = RichTextBoxTextUtilities.GetPlainText(richTextBox);
-        AddScratchpadCards(scratchpadItems);
-        RecordScratchpadMove(scriptText, documentTextAfterMove, scratchpadItems);
-        DocumentText = documentTextAfterMove;
-        RefreshParsedSnapshotNow();
-        return true;
+            var selectionLength = RichTextBoxTextUtilities.GetSelectionLength(richTextBox);
+            if (selectionLength <= 0)
+            {
+                return false;
+            }
+
+            var selectionStart = RichTextBoxTextUtilities.GetSelectionStart(richTextBox);
+            var scriptText = RichTextBoxTextUtilities.GetPlainText(richTextBox);
+            if (selectionStart < 0 || selectionStart >= scriptText.Length)
+            {
+                return false;
+            }
+
+            var selectedText = textRange.Text;
+            if (string.IsNullOrWhiteSpace(selectedText))
+            {
+                return false;
+            }
+
+            var parsedSelection = _parser.Parse(selectedText);
+            var scratchpadItems = BuildScratchpadElementsFromSnippet(selectedText, parsedSelection.Elements).ToArray();
+
+            AdjustLineTypeOverridesForRemovedRange(scriptText, selectionStart, selectionLength);
+
+            try
+            {
+                richTextBox.BeginChange();
+                textRange.Text = string.Empty;
+            }
+            finally
+            {
+                richTextBox.EndChange();
+            }
+
+            var documentTextAfterMove = RichTextBoxTextUtilities.GetPlainText(richTextBox);
+
+            // Update document state first
+            DocumentText = documentTextAfterMove;
+            RefreshParsedSnapshotNow();
+            RecordScratchpadMove(scriptText, documentTextAfterMove, scratchpadItems);
+
+            // Then update scratchpad collection
+            _suppressScratchpadRefresh = true;
+            try
+            {
+                AddScratchpadCards(scratchpadItems);
+            }
+            finally
+            {
+                _suppressScratchpadRefresh = false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Crash in TryMoveToScratchpad: {ex.Message}");
+            return false;
+        }
     }
 
     public void SynchronizeScratchpadWithUndoRedo(string? documentText)
@@ -4120,7 +4144,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var endLineNumber = GetLineIndexFromCharacterIndex(scriptText, endCharacterIndex) + 1;
         var removedLineBreakCount = 0;
 
-        foreach (var character in scriptText.AsSpan(removalStart, removalLength))
+        var safeRemovalLength = Math.Max(0, Math.Min(removalLength, scriptText.Length - removalStart));
+        if (safeRemovalLength <= 0)
+        {
+            return;
+        }
+
+        foreach (var character in scriptText.AsSpan(removalStart, safeRemovalLength))
         {
             if (character == '\n')
             {

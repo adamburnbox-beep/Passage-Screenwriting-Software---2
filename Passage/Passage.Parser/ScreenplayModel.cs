@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace Passage.Parser;
 
@@ -107,24 +109,49 @@ public sealed class TitlePageData
 
 public enum ScreenplayElementType
 {
+    Action,
+    SceneHeading,
+    Dialogue,
+    Character,
+    Parenthetical,
+    Transition,
     Section,
     Synopsis,
     Note,
-    Boneyard,
     CenteredText,
     Lyrics,
-    SceneHeading,
-    Action,
-    Transition,
-    Character,
-    Parenthetical,
-    Dialogue,
+    Boneyard,
     TitlePageCentered,
     TitlePageContact
 }
 
-public abstract class ScreenplayElement
+public abstract class ScreenplayElement : INotifyPropertyChanged
 {
+    private int _level;
+    private bool _isCollapsed;
+    private string? _bodyText;
+    private bool _isSuppressed;
+    private bool _isDraft;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (Equals(storage, value))
+        {
+            return false;
+        }
+
+        storage = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
     protected ScreenplayElement(
         ScreenplayElementType type,
         string text,
@@ -148,7 +175,7 @@ public abstract class ScreenplayElement
         RawText = rawText ?? throw new ArgumentNullException(nameof(rawText));
         LineIndex = lineIndex;
         EndLineIndex = endLineIndex;
-        Level = level < 0 ? throw new ArgumentOutOfRangeException(nameof(level)) : level;
+        _level = level < 0 ? throw new ArgumentOutOfRangeException(nameof(level)) : level;
     }
 
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -159,15 +186,35 @@ public abstract class ScreenplayElement
 
     public string RawText { get; }
 
-    public int Level { get; set; }
+    public int Level
+    {
+        get => _level;
+        set => SetProperty(ref _level, value);
+    }
 
-    public bool IsCollapsed { get; set; }
+    public bool IsCollapsed
+    {
+        get => _isCollapsed;
+        set => SetProperty(ref _isCollapsed, value);
+    }
 
-    public string? BodyText { get; set; }
+    public string? BodyText
+    {
+        get => _bodyText;
+        set => SetProperty(ref _bodyText, value);
+    }
 
-    public bool IsSuppressed { get; set; }
+    public bool IsSuppressed
+    {
+        get => _isSuppressed;
+        set => SetProperty(ref _isSuppressed, value);
+    }
 
-    public bool IsDraft { get; set; }
+    public bool IsDraft
+    {
+        get => _isDraft;
+        set => SetProperty(ref _isDraft, value);
+    }
 
     public virtual string Heading => Type switch
     {

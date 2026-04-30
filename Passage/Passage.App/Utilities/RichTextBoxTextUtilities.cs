@@ -311,7 +311,7 @@ internal static class RichTextBoxTextUtilities
         var paragraphStart = 0;
         var paragraphIndex = 0;
 
-        foreach (var paragraph in editor.Document.Blocks.OfType<Paragraph>())
+        foreach (var paragraph in GetAllParagraphs(editor.Document))
         {
             var paragraphText = GetParagraphText(paragraph);
             if (paragraphIndex > 0)
@@ -328,6 +328,39 @@ internal static class RichTextBoxTextUtilities
 
         cache.PlainText = builder.ToString();
         return cache;
+    }
+
+    private static IEnumerable<Paragraph> GetAllParagraphs(FlowDocument document)
+    {
+        return GetParagraphsFromBlocks(document.Blocks);
+    }
+
+    private static IEnumerable<Paragraph> GetParagraphsFromBlocks(BlockCollection blocks)
+    {
+        foreach (var block in blocks)
+        {
+            if (block is Paragraph p)
+            {
+                yield return p;
+            }
+            else if (block is Section s)
+            {
+                foreach (var innerP in GetParagraphsFromBlocks(s.Blocks))
+                {
+                    yield return innerP;
+                }
+            }
+            else if (block is List l)
+            {
+                foreach (var listItem in l.ListItems)
+                {
+                    foreach (var innerP in GetParagraphsFromBlocks(listItem.Blocks))
+                    {
+                        yield return innerP;
+                    }
+                }
+            }
+        }
     }
 
     private static string GetParagraphText(Paragraph paragraph)
