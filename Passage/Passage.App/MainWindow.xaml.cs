@@ -2916,8 +2916,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        EditorBox.CaretBrush = (string.Equals(ThemeManager.AppliedThemeName, ThemeManager.DarkThemeName, StringComparison.Ordinal) ||
-                               string.Equals(ThemeManager.AppliedThemeName, ThemeManager.EReaderDarkThemeName, StringComparison.Ordinal))
+        EditorBox.CaretBrush = string.Equals(ThemeManager.AppliedThemeName, ThemeManager.DarkThemeName, StringComparison.Ordinal)
             ? Brushes.White
             : Brushes.Black;
     }
@@ -3548,6 +3547,39 @@ public partial class MainWindow : Window
             EditorBox.EndChange();
             _isFormatting = false;
 
+            // Clamp restored caret and anchor indices for Parenthetical elements
+            var caretLineIndex = RichTextBoxTextUtilities.GetLineIndexFromCharacterIndex(EditorBox, caretIndex);
+            var caretLineNumber = caretLineIndex + 1;
+            var caretParagraph = RichTextBoxTextUtilities.GetParagraphAtLineIndex(EditorBox, caretLineIndex);
+            if (caretParagraph is not null)
+            {
+                var caretElementType = ResolveScreenplayParagraphType(caretParagraph, caretLineNumber);
+                if (caretElementType == ScreenplayElementType.Parenthetical)
+                {
+                    var start = RichTextBoxTextUtilities.GetCharacterIndexFromLineIndex(EditorBox, caretLineIndex);
+                    var length = RichTextBoxTextUtilities.GetLineText(EditorBox, caretLineIndex).Length;
+                    var min = start + 1;
+                    var max = start + Math.Max(1, length - 1);
+                    caretIndex = Math.Clamp(caretIndex, min, max);
+                }
+            }
+
+            var anchorLineIndex = RichTextBoxTextUtilities.GetLineIndexFromCharacterIndex(EditorBox, anchorIndex);
+            var anchorLineNumber = anchorLineIndex + 1;
+            var anchorParagraph = RichTextBoxTextUtilities.GetParagraphAtLineIndex(EditorBox, anchorLineIndex);
+            if (anchorParagraph is not null)
+            {
+                var anchorElementType = ResolveScreenplayParagraphType(anchorParagraph, anchorLineNumber);
+                if (anchorElementType == ScreenplayElementType.Parenthetical)
+                {
+                    var start = RichTextBoxTextUtilities.GetCharacterIndexFromLineIndex(EditorBox, anchorLineIndex);
+                    var length = RichTextBoxTextUtilities.GetLineText(EditorBox, anchorLineIndex).Length;
+                    var min = start + 1;
+                    var max = start + Math.Max(1, length - 1);
+                    anchorIndex = Math.Clamp(anchorIndex, min, max);
+                }
+            }
+
             SetEditorSelection(anchorIndex, caretIndex);
         }
 
@@ -3559,13 +3591,55 @@ public partial class MainWindow : Window
         ApplyParagraphLayout(paragraph, paragraphFormatting.ScreenplayType);
 
         var text = paragraphFormatting.Text ?? string.Empty;
-        var match = IdCommentRegex.Match(text);
-        
-        if (match.Success)
+        if (paragraphFormatting.ScreenplayType == ScreenplayElementType.Parenthetical)
         {
-            var before = text.Substring(0, match.Index);
-            var idTag = match.Value;
-            var after = text.Substring(match.Index + match.Length);
+            var match = IdCommentRegex.Match(text);
+            if (match.Success)
+            {
+                var content = text.Substring(0, match.Index);
+                var idTag = match.Value;
+                var after = text.Substring(match.Index + match.Length);
+
+                var stripped = content;
+                while (true)
+                {
+                    var trimmed = stripped.Trim();
+                    if (trimmed.StartsWith("(") && trimmed.EndsWith(")"))
+                    {
+                        stripped = trimmed.Substring(1, trimmed.Length - 2);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                text = $"({stripped.Trim()}){idTag}{after}";
+            }
+            else
+            {
+                var stripped = text;
+                while (true)
+                {
+                    var trimmed = stripped.Trim();
+                    if (trimmed.StartsWith("(") && trimmed.EndsWith(")"))
+                    {
+                        stripped = trimmed.Substring(1, trimmed.Length - 2);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                text = $"({stripped.Trim()})";
+            }
+        }
+
+        var matchId = IdCommentRegex.Match(text);
+        if (matchId.Success)
+        {
+            var before = text.Substring(0, matchId.Index);
+            var idTag = matchId.Value;
+            var after = text.Substring(matchId.Index + matchId.Length);
 
             // Rebuild inlines to ensure the ID tag is in an atomic UI container
             paragraph.Inlines.Clear();
@@ -4489,8 +4563,7 @@ public partial class MainWindow : Window
 
         if (!TryGetEditorCharacterIndexFromPoint(e.GetPosition(EditorBox), out var characterIndex))
         {
-            ClearEditorMouseSelectionState(releaseCapture: true);
-            return;
+            characterIndex = GetEditorText().Length;
         }
 
         EditorBox.Focus();
@@ -4538,7 +4611,7 @@ public partial class MainWindow : Window
 
         if (!TryGetEditorCharacterIndexFromPoint(e.GetPosition(EditorBox), out var characterIndex))
         {
-            return;
+            characterIndex = GetEditorText().Length;
         }
 
         SetEditorSelection(_editorMouseSelectionAnchorIndex.Value, characterIndex);
@@ -4554,12 +4627,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (TryGetEditorCharacterIndexFromPoint(e.GetPosition(EditorBox), out var characterIndex))
+        if (!TryGetEditorCharacterIndexFromPoint(e.GetPosition(EditorBox), out var characterIndex))
         {
-            SetEditorSelection(_editorMouseSelectionAnchorIndex.Value, characterIndex);
-            InvalidateEditorCueOverlay();
-            e.Handled = true;
+            characterIndex = GetEditorText().Length;
         }
+
+        SetEditorSelection(_editorMouseSelectionAnchorIndex.Value, characterIndex);
+        InvalidateEditorCueOverlay();
+        e.Handled = true;
 
         ClearEditorMouseSelectionState(releaseCapture: true);
     }
@@ -4718,23 +4793,75 @@ public partial class MainWindow : Window
                 EditorBox.Selection.Text = string.Empty;
             }
 
-            var insertionPosition = EditorBox.CaretPosition.GetInsertionPosition(LogicalDirection.Forward)
-                ?? EditorBox.CaretPosition.GetInsertionPosition(LogicalDirection.Backward)
-                ?? EditorBox.Document.ContentEnd;
-            var paragraphBreakPosition = insertionPosition.InsertParagraphBreak();
-            newParagraph = ResolveInsertedParagraph(
-                currentParagraph,
-                previousParagraphBeforeInsert,
-                nextParagraphBeforeInsert,
-                paragraphBreakPosition);
-
-            if (newParagraph is null)
+            if (currentElementType == ScreenplayElementType.Parenthetical)
             {
-                return;
-            }
+                var caretIndex = GetEditorCaretIndex();
+                var paragraphStart = RichTextBoxTextUtilities.GetCharacterIndexFromLineIndex(EditorBox, currentLineNumber - 1);
+                var offsetInParagraph = Math.Clamp(caretIndex - paragraphStart, 0, lineText.Length);
 
-            ApplyScreenplayEnterParagraphLayout(newParagraph, continuationType);
-            EditorBox.CaretPosition = newParagraph.ContentStart;
+                var before = lineText.Substring(0, offsetInParagraph);
+                var after = lineText.Substring(offsetInParagraph);
+
+                string StripParentheses(string s)
+                {
+                    var stripped = s;
+                    while (true)
+                    {
+                        var trimmed = stripped.Trim();
+                        if (trimmed.StartsWith("(") && trimmed.EndsWith(")"))
+                        {
+                            stripped = trimmed.Substring(1, trimmed.Length - 2);
+                        }
+                        else if (trimmed.StartsWith("("))
+                        {
+                            stripped = trimmed.Substring(1);
+                        }
+                        else if (trimmed.EndsWith(")"))
+                        {
+                            stripped = trimmed.Substring(0, trimmed.Length - 1);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    return stripped.Trim();
+                }
+
+                var parentheticalText = $"({StripParentheses(before)})";
+                var cleanAfter = StripParentheses(after);
+
+                var currentRange = new TextRange(currentParagraph.ContentStart, currentParagraph.ContentEnd);
+                currentRange.Text = parentheticalText;
+
+                newParagraph = new Paragraph();
+                newParagraph.Inlines.Add(new Run(cleanAfter));
+
+                EditorBox.Document.Blocks.InsertAfter(currentParagraph, newParagraph);
+
+                ApplyScreenplayEnterParagraphLayout(newParagraph, continuationType);
+                EditorBox.CaretPosition = newParagraph.ContentStart;
+            }
+            else
+            {
+                var insertionPosition = EditorBox.CaretPosition.GetInsertionPosition(LogicalDirection.Forward)
+                    ?? EditorBox.CaretPosition.GetInsertionPosition(LogicalDirection.Backward)
+                    ?? EditorBox.Document.ContentEnd;
+                var paragraphBreakPosition = insertionPosition.InsertParagraphBreak();
+                newParagraph = ResolveInsertedParagraph(
+                    currentParagraph,
+                    previousParagraphBeforeInsert,
+                    nextParagraphBeforeInsert,
+                    paragraphBreakPosition);
+
+                if (newParagraph is null)
+                {
+                    return;
+                }
+
+                ApplyScreenplayEnterParagraphLayout(newParagraph, continuationType);
+                EditorBox.CaretPosition = newParagraph.ContentStart;
+            }
         }
         finally
         {
@@ -4899,6 +5026,31 @@ public partial class MainWindow : Window
                 _editorCueAdorner.Visibility == Visibility.Visible &&
                 _editorCueAdorner.TryGetCharacterIndexFromPoint(point, out characterIndex))
             {
+                return true;
+            }
+        }
+
+        if (EditorBox.Document is not null)
+        {
+            var lastParagraph = EditorBox.Document.Blocks.OfType<Paragraph>().LastOrDefault();
+            if (lastParagraph is not null)
+            {
+                var isEmpty = lastParagraph.ContentStart.CompareTo(lastParagraph.ContentEnd) == 0;
+                var endPointer = isEmpty ? lastParagraph.ContentStart : lastParagraph.ContentEnd;
+                var direction = isEmpty ? LogicalDirection.Forward : LogicalDirection.Backward;
+                var endRect = endPointer.GetCharacterRect(direction);
+                if (!endRect.IsEmpty && endRect.Bottom > 0 && point.Y >= endRect.Bottom)
+                {
+                    characterIndex = RichTextBoxTextUtilities.GetTextOffset(EditorBox, EditorBox.Document.ContentEnd);
+                    return true;
+                }
+            }
+
+            var startPointer = EditorBox.Document.ContentStart;
+            var startRect = startPointer.GetCharacterRect(LogicalDirection.Forward);
+            if (!startRect.IsEmpty && point.Y <= startRect.Top)
+            {
+                characterIndex = 0;
                 return true;
             }
         }
@@ -6558,6 +6710,17 @@ public partial class MainWindow : Window
             if (upperPrefix.StartsWith("INT.") || upperPrefix.StartsWith("EXT.") || upperPrefix.StartsWith("I/E."))
             {
                 elementTypeName = "SceneHeading";
+            }
+        }
+
+        if (elementTypeName == "SceneHeading")
+        {
+            var isSceneHeadingPrefix = prefix.StartsWith(".") || 
+                                       Passage.Core.TextAnalysis.LooksLikeSceneHeadingStart(prefix.AsSpan(), allowPartialPrefixMatch: true);
+            if (!isSceneHeadingPrefix)
+            {
+                ViewModel.IsAutoCompleteOpen = false;
+                return;
             }
         }
 

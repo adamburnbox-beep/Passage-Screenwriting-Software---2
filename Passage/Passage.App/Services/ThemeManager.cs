@@ -9,22 +9,18 @@ public static class ThemeManager
 {
     public const string LightThemeName = "Light";
     public const string DarkThemeName = "Dark";
-    public const string EReaderThemeName = "E-Reader";
-    public const string EReaderDarkThemeName = "E-Reader Dark";
     public const string SystemThemeName = "System Default";
 
     public static IEnumerable<string> AvailableThemes { get; } = new[]
     {
         SystemThemeName,
-        EReaderThemeName,
-        EReaderDarkThemeName
+        LightThemeName,
+        DarkThemeName
     };
 
     private const string ThemeFolder = "Themes";
     private const string LightThemeFile = "LightTheme.xaml";
     private const string DarkThemeFile = "DarkTheme.xaml";
-    private const string EReaderThemeFile = "EReaderTheme.xaml";
-    private const string EReaderDarkThemeFile = "EReaderDarkTheme.xaml";
     private const string WindowsThemeKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private const string AppsUseLightThemeValueName = "AppsUseLightTheme";
 
@@ -33,9 +29,9 @@ public static class ThemeManager
         Interval = TimeSpan.FromSeconds(1)
     };
 
-    private static string _requestedThemeName = EReaderDarkThemeName;
-    private static string _appliedThemeName = EReaderDarkThemeName;
-    private static string _lastObservedSystemTheme = EReaderDarkThemeName;
+    private static string _requestedThemeName = DarkThemeName;
+    private static string _appliedThemeName = DarkThemeName;
+    private static string _lastObservedSystemTheme = DarkThemeName;
     private static bool _followSystemTheme;
 
     static ThemeManager()
@@ -77,7 +73,7 @@ public static class ThemeManager
 
     private static string MapSystemThemeToInternalTheme(string systemTheme)
     {
-        return systemTheme == DarkThemeName ? EReaderDarkThemeName : EReaderThemeName;
+        return systemTheme == DarkThemeName ? DarkThemeName : LightThemeName;
     }
 
     public static string GetWindowsSystemTheme()
@@ -134,8 +130,6 @@ public static class ThemeManager
         return NormalizeThemeName(themeName) switch
         {
             DarkThemeName => DarkThemeFile,
-            EReaderThemeName => EReaderThemeFile,
-            EReaderDarkThemeName => EReaderDarkThemeFile,
             _ => LightThemeFile
         };
     }
@@ -144,24 +138,14 @@ public static class ThemeManager
     {
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            return EReaderThemeName;
+            return LightThemeName;
         }
 
-        if (string.Equals(themeName, DarkThemeName, StringComparison.OrdinalIgnoreCase))
-        {
-            return DarkThemeName;
-        }
-
-        if (string.Equals(themeName, EReaderThemeName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(themeName, "EReader", StringComparison.OrdinalIgnoreCase))
-        {
-            return EReaderThemeName;
-        }
-
-        if (string.Equals(themeName, EReaderDarkThemeName, StringComparison.OrdinalIgnoreCase) ||
+        if (string.Equals(themeName, DarkThemeName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(themeName, "E-Reader Dark", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(themeName, "EReaderDark", StringComparison.OrdinalIgnoreCase))
         {
-            return EReaderDarkThemeName;
+            return DarkThemeName;
         }
 
         if (string.Equals(themeName, SystemThemeName, StringComparison.OrdinalIgnoreCase) ||
@@ -170,12 +154,14 @@ public static class ThemeManager
             return SystemThemeName;
         }
 
-        if (string.Equals(themeName, LightThemeName, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(themeName, LightThemeName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(themeName, "E-Reader", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(themeName, "EReader", StringComparison.OrdinalIgnoreCase))
         {
             return LightThemeName;
         }
 
-        return EReaderThemeName;
+        return LightThemeName;
     }
 
     private static void UpdateSystemThemeWatcher()

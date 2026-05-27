@@ -325,6 +325,7 @@
 
     <Style x:Key="BeatBoardCollapseChevronButtonStyle" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="0" />
@@ -356,10 +357,11 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ChevronHost" Property="Background" Value="#18FFFFFF" />
+                <Setter TargetName="ChevronHost" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="ChevronHost" Property="Background" Value="#28FFFFFF" />
+                <Setter TargetName="ChevronHost" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
               </Trigger>
               <DataTrigger Binding="{Binding DataContext.IsCollapsed, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
                 <Setter TargetName="ChevronPath" Property="RenderTransform">
@@ -376,7 +378,7 @@
 
     <Style x:Key="BeatBoardIconButtonStyle" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="#FFE7DCCF" />
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="0" />
@@ -398,13 +400,14 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="IconHost" Property="Background" Value="#18FFFFFF" />
+                <Setter TargetName="IconHost" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="IconHost" Property="Background" Value="#28FFFFFF" />
+                <Setter TargetName="IconHost" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Foreground" Value="#7FAFA296" />
+                <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
                 <Setter TargetName="IconHost" Property="Background" Value="#10000000" />
               </Trigger>
             </ControlTemplate.Triggers>
@@ -1039,7 +1042,7 @@
           <StackPanel Grid.Row="1">
             <Grid>
               <TextBlock x:Name="HeadingTextBlock"
-                         Text="{Binding Heading}"
+                         Text="{Binding Heading, Converter={StaticResource UppercaseConverter}}"
                          Style="{StaticResource BeatBoardHeadingStyle}"
                          FontSize="13" />
               <TextBlock x:Name="HeadingPlaceholder"
@@ -1056,7 +1059,7 @@
                      FontSize="13" />
             <Grid>
               <TextBlock x:Name="SceneHeadingTextBlock"
-                         Text="{Binding ScriptHeading}">
+                         Text="{Binding ScriptHeading, Converter={StaticResource UppercaseConverter}}">
                 <TextBlock.Style>
                   <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardSceneHeadingStyle}">
                     <Setter Property="Visibility" Value="Visible" />
@@ -1750,7 +1753,7 @@
               </StackPanel>
               <Grid>
                 <TextBlock x:Name="HeadingTextBlock"
-                           Text="{Binding Heading}"
+                           Text="{Binding Heading, Converter={StaticResource UppercaseConverter}}"
                            Style="{StaticResource BeatBoardOutlineHeadingStyle}" />
                 <TextBlock x:Name="HeadingPlaceholder"
                            Text="SCENE SUMMARY"
@@ -1764,7 +1767,7 @@
                        Tag="SCENE SUMMARY" />
               <Grid>
                 <TextBlock x:Name="SceneHeadingTextBlock"
-                           Text="{Binding ScriptHeading}">
+                           Text="{Binding ScriptHeading, Converter={StaticResource UppercaseConverter}}">
                   <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource BeatBoardOutlineSceneHeadingStyle}">
                       <Setter Property="Visibility" Value="Visible" />
@@ -2232,7 +2235,8 @@
                         <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
                       </Trigger>
                       <Trigger Property="IsPressed" Value="True">
-                        <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                        <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                        <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
                       </Trigger>
                       <Trigger Property="IsEnabled" Value="False">
                         <Setter Property="Opacity" Value="0.55" />
@@ -3263,7 +3267,7 @@
                         </Setter.Value>
                       </Setter>
                     </Style>
-
+ 
                     <Style x:Key="ScratchpadActionToggleButtonStyle" TargetType="ToggleButton">
                       <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
                       <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
@@ -3688,19 +3692,20 @@
                          SelectedIndex="{Binding SelectedSuggestionIndex}"
                          Background="Transparent"
                          BorderThickness="0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          PreviewMouseLeftButtonUp="SuggestionsListBox_PreviewMouseLeftButtonUp">
                   <ListBox.ItemTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding}"
                                  Padding="8,4"
-                                 Foreground="{DynamicResource EditorForeground}"
+                                 Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                  FontSize="13"
                                  FontFamily="Courier Prime, Inter, Segoe UI" />
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                   <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
+                      <Setter Property="Foreground" Value="{DynamicResource EditorForeground}" />
                       <Setter Property="Template">
                         <Setter.Value>
                           <ControlTemplate TargetType="ListBoxItem">

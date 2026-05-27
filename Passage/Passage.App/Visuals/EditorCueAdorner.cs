@@ -1106,6 +1106,11 @@ public sealed class EditorCueAdorner : Adorner
         foreach (var index in candidateIndices)
         {
             var layout = _pageFlow.Lines[index];
+            if (layout.SourceLineIndex < 0)
+            {
+                continue;
+            }
+
             var candidate = _layoutRefreshPending && _pendingSourceLines is not null
                 ? CreateTransientLineLayout(layout)
                 : layout;
@@ -1134,6 +1139,43 @@ public sealed class EditorCueAdorner : Adorner
             if (weightedDistance <= 0.0)
             {
                 break;
+            }
+        }
+
+        if (closestLine is null)
+        {
+            for (var index = 0; index < _pageFlow.Lines.Count; index++)
+            {
+                var layout = _pageFlow.Lines[index];
+                if (layout.SourceLineIndex < 0)
+                {
+                    continue;
+                }
+
+                var candidate = _layoutRefreshPending && _pendingSourceLines is not null
+                    ? CreateTransientLineLayout(layout)
+                    : layout;
+
+                var horizontalDistance = point.X < candidate.Page.BodyRect.Left
+                    ? candidate.Page.BodyRect.Left - point.X
+                    : point.X > candidate.Page.BodyRect.Right
+                        ? point.X - candidate.Page.BodyRect.Right
+                        : 0.0;
+
+                var verticalDistance = point.Y < candidate.Top
+                    ? candidate.Top - point.Y
+                    : point.Y > candidate.Bottom
+                        ? point.Y - candidate.Bottom
+                        : 0.0;
+
+                var weightedDistance = (verticalDistance * verticalDistance * 4.0) + (horizontalDistance * horizontalDistance);
+                if (weightedDistance >= closestDistance)
+                {
+                    continue;
+                }
+
+                closestDistance = weightedDistance;
+                closestLine = candidate;
             }
         }
 

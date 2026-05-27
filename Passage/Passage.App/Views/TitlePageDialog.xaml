@@ -24,7 +24,7 @@
             <Setter Property="Margin" Value="0,0,0,3" />
         </Style>
 
-        <Style x:Key="FieldTextBoxStyle" TargetType="TextBox">
+        <Style x:Key="FieldTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
             <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
@@ -138,7 +138,7 @@
 
         <!-- Bottom Row: Buttons -->
         <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,15,0,0">
-            <Button Content="Delete Page" HorizontalAlignment="Left" Foreground="White" Background="#d0021b" BorderThickness="0" Padding="15,6" x:Name="DeleteButton" Click="DeleteButton_Click" />
+            <Button Content="Delete Page" Style="{StaticResource DestructiveButtonStyle}" HorizontalAlignment="Left" Padding="15,6" x:Name="DeleteButton" Click="DeleteButton_Click" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Cancel" Click="CancelButton_Click" Style="{StaticResource DarkChromeButtonStyle}" Padding="15,6" Margin="0,0,10,0" x:Name="CancelButton" />
                 <Button Content="Update Page" Click="OkButton_Click" Style="{StaticResource DarkChromeButtonStyle}" BorderBrush="{DynamicResource ControlAccent}" Padding="15,6" FontWeight="Bold" x:Name="UpdateButton" IsDefault="True" />

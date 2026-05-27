@@ -181,15 +181,113 @@ internal static class RichTextBoxTextUtilities
     public static bool TryGetCharacterIndexFromPoint(RichTextBox editor, Point point, out int characterIndex)
     {
         ArgumentNullException.ThrowIfNull(editor);
+        characterIndex = 0;
 
-        var position = editor.GetPositionFromPoint(point, true);
-        if (position is null)
+        if (editor.Document is null)
+        {
+            return false;
+        }
+
+        var cache = GetDocumentCache(editor);
+        if (cache.Paragraphs.Count == 0)
+        {
+            characterIndex = 0;
+            return true;
+        }
+
+        // Find the paragraph that covers point.Y vertically
+        ParagraphInfo? targetParagraph = null;
+        double closestDistance = double.PositiveInfinity;
+        ParagraphInfo? closestParagraph = null;
+
+        foreach (var pInfo in cache.Paragraphs)
+        {
+            var startRect = pInfo.Paragraph.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+            var endRect = pInfo.Paragraph.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
+            if (startRect.IsEmpty || endRect.IsEmpty)
+            {
+                continue;
+            }
+
+            var top = Math.Min(startRect.Top, endRect.Top);
+            var bottom = Math.Max(startRect.Bottom, endRect.Bottom);
+
+            if (point.Y >= top && point.Y <= bottom)
+            {
+                targetParagraph = pInfo;
+                break;
+            }
+
+            double distance;
+            if (point.Y < top)
+            {
+                distance = top - point.Y;
+            }
+            else
+            {
+                distance = point.Y - bottom;
+            }
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestParagraph = pInfo;
+            }
+        }
+
+        if (targetParagraph == null)
+        {
+            targetParagraph = closestParagraph;
+        }
+
+        if (targetParagraph == null)
         {
             characterIndex = 0;
             return false;
         }
 
-        characterIndex = GetTextOffset(editor, position);
+        // If the paragraph is empty, place the caret on it
+        if (targetParagraph.Length == 0)
+        {
+            characterIndex = targetParagraph.Start;
+            return true;
+        }
+
+        // Attempt hit-testing
+        var position = editor.GetPositionFromPoint(point, true);
+        if (position is null || position.Paragraph != targetParagraph.Paragraph)
+        {
+            // Try centered Y in target paragraph
+            var startRect = targetParagraph.Paragraph.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+            var endRect = targetParagraph.Paragraph.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
+            if (!startRect.IsEmpty && !endRect.IsEmpty)
+            {
+                var top = Math.Min(startRect.Top, endRect.Top);
+                var bottom = Math.Max(startRect.Bottom, endRect.Bottom);
+                var centerY = (top + bottom) / 2.0;
+                position = editor.GetPositionFromPoint(new Point(point.X, centerY), true);
+            }
+        }
+
+        if (position is not null)
+        {
+            var offset = GetTextOffset(editor, position);
+            characterIndex = Math.Clamp(offset, targetParagraph.Start, targetParagraph.Start + targetParagraph.Length);
+            return true;
+        }
+
+        // Fallback: snap based on point.X relative to paragraph bounds
+        var fallbackStartRect = targetParagraph.Paragraph.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+        var fallbackEndRect = targetParagraph.Paragraph.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
+        if (!fallbackStartRect.IsEmpty && point.X < fallbackStartRect.Left)
+        {
+            characterIndex = targetParagraph.Start;
+        }
+        else
+        {
+            characterIndex = targetParagraph.Start + targetParagraph.Length;
+        }
+
         return true;
     }
 
@@ -256,6 +354,19 @@ internal static class RichTextBoxTextUtilities
         }
 
         return cache.Paragraphs[lineIndex].Text;
+    }
+
+    public static Paragraph? GetParagraphAtLineIndex(RichTextBox editor, int lineIndex)
+    {
+        ArgumentNullException.ThrowIfNull(editor);
+
+        var cache = GetDocumentCache(editor);
+        if (lineIndex < 0 || lineIndex >= cache.Paragraphs.Count)
+        {
+            return null;
+        }
+
+        return cache.Paragraphs[lineIndex].Paragraph;
     }
 
     public static void SetPlainText(RichTextBox editor, string text)

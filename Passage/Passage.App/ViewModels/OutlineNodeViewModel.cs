@@ -38,7 +38,7 @@ public sealed class OutlineNodeViewModel : INotifyPropertyChanged
         int level = 0)
     {
         Kind = kind;
-        Text = text;
+        Text = kind == OutlineNodeKind.SceneHeading ? (text ?? string.Empty).ToUpperInvariant() : text;
         LineNumber = lineNumber;
         SectionLevel = sectionLevel;
         BodyText = (bodyText ?? string.Empty).ReplaceLineEndings("\n").Trim();
