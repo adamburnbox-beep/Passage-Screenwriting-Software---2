@@ -2150,7 +2150,7 @@
             Background="{DynamicResource SurfaceBackground}"
             BorderBrush="{DynamicResource SurfaceBorder}"
             BorderThickness="0,0,0,1"
-            Padding="8,6,8,8">
+            Padding="10,7,10,9">
       <DockPanel LastChildFill="False">
         <Menu DockPanel.Dock="Top"
               Background="Transparent"
@@ -2221,6 +2221,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             Padding="{TemplateBinding Padding}"
+                            CornerRadius="4"
                             SnapsToDevicePixels="True">
                       <ContentPresenter HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
@@ -2526,7 +2527,7 @@
           <Border Background="{DynamicResource SurfaceBackground}"
                   BorderBrush="{DynamicResource SurfaceMutedBorder}"
                   BorderThickness="0,0,0,1"
-                  Padding="16,12">
+                  Padding="16,14">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -2535,19 +2536,21 @@
 
               <TextBlock x:Name="LeftDockTitleText"
                          Text="Workspace"
-                         FontSize="17"
+                         FontSize="14"
                          FontWeight="SemiBold"
-                         Foreground="{DynamicResource HeaderText}" />
+                         Foreground="{DynamicResource HeaderText}"
+                         VerticalAlignment="Center" />
 
               <Button x:Name="LeftDockToggleButton"
                       Grid.Column="1"
                       Click="ToggleLeftDock_Click"
-                      Padding="8,2"
-                      MinWidth="28"
-                      Content="&lt;"
+                      Padding="7,2"
+                      MinWidth="26"
+                      Content="‹"
+                      FontSize="14"
                       ToolTip="Collapse left dock"
-                      Background="{DynamicResource ControlBackground}"
-                      BorderBrush="{DynamicResource ControlBorder}" />
+                      Background="Transparent"
+                      BorderBrush="{DynamicResource SurfaceBorder}" />
             </Grid>
           </Border>
 
@@ -4022,7 +4025,7 @@
             Background="{DynamicResource SurfaceBackground}"
             BorderBrush="{DynamicResource SurfaceBorder}"
             BorderThickness="0,1,0,0"
-            Padding="14,8">
+            Padding="16,7">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
