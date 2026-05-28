@@ -99,9 +99,6 @@
         <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource SurfaceRaisedBackground}" BorderBrush="{DynamicResource ControlBorder}" BorderThickness="1" CornerRadius="0">
             <Viewbox Margin="20">
                 <Border Width="850" Height="1100" Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="1">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="10" Color="Black" ShadowDepth="2" Opacity="0.3" />
-                    </Border.Effect>
                     <Grid Margin="100,72,72,72">
                         <!-- Main Content Centered Vertically -->
                         <StackPanel VerticalAlignment="Center">

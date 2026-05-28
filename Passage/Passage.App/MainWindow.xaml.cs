@@ -5551,6 +5551,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (ThemeComboBox is not null)
+        {
+            _suppressThemeSelectionChanged = true;
+            try
+            {
+                ThemeComboBox.SelectedItem = ThemeManager.CurrentThemeName;
+            }
+            finally
+            {
+                _suppressThemeSelectionChanged = false;
+            }
+        }
+
         ApplyEditorModeVisualState();
         SetBeatBoardDeleteButtonState(isActive: false);
 

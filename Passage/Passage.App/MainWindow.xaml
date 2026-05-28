@@ -122,7 +122,7 @@
                      IsOpen="{TemplateBinding IsDropDownOpen}"
                      AllowsTransparency="True"
                      Focusable="False"
-                     PopupAnimation="Slide">
+                     PopupAnimation="None">
                 <Border x:Name="DropDownBorder"
                         Background="{DynamicResource SurfaceBackground}"
                         BorderBrush="{DynamicResource ControlBorder}"
@@ -408,7 +408,7 @@
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
-                <Setter TargetName="IconHost" Property="Background" Value="#10000000" />
+                <Setter TargetName="IconHost" Property="Background" Value="#FFF0F0F0" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -2221,7 +2221,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             Padding="{TemplateBinding Padding}"
-                            CornerRadius="6"
+                            CornerRadius="0"
                             SnapsToDevicePixels="True">
                       <ContentPresenter HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
@@ -2249,6 +2249,12 @@
               </Setter>
             </Style>
 
+            <Style TargetType="ToggleButton" BasedOn="{StaticResource DarkChromeToggleButtonStyle}">
+              <Setter Property="Padding" Value="10,5" />
+              <Setter Property="MinWidth" Value="86" />
+              <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
             <Style x:Key="ThemeSelectorComboBoxStyle" TargetType="ComboBox">
               <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
               <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
@@ -2269,27 +2275,12 @@
                         <ColumnDefinition Width="24" />
                       </Grid.ColumnDefinitions>
 
-                      <ToggleButton x:Name="DropDownToggle"
-                                    Grid.ColumnSpan="2"
-                                    Focusable="False"
-                                    ClickMode="Press"
-                                    IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    OverridesDefaultStyle="True">
-                        <ToggleButton.Template>
-                          <ControlTemplate TargetType="{x:Type ToggleButton}">
-                            <Border Background="Transparent" />
-                          </ControlTemplate>
-                        </ToggleButton.Template>
-                      </ToggleButton>
-
                       <Border x:Name="ComboBorder"
                               Grid.ColumnSpan="2"
                               Background="{TemplateBinding Background}"
                               BorderBrush="{TemplateBinding BorderBrush}"
                               BorderThickness="{TemplateBinding BorderThickness}"
-                              CornerRadius="6"
+                              CornerRadius="0"
                               SnapsToDevicePixels="True"
                               IsHitTestVisible="False" />
 
@@ -2311,7 +2302,7 @@
                               Background="{DynamicResource SurfaceMutedBackground}"
                               BorderBrush="{DynamicResource ControlBorder}"
                               BorderThickness="1,0,0,0"
-                              CornerRadius="0,2,2,0"
+                              CornerRadius="0"
                               IsHitTestVisible="False">
                         <Path Data="M 0 0 L 5 5 L 10 0 Z"
                               Fill="{DynamicResource ControlForeground}"
@@ -2319,13 +2310,29 @@
                               VerticalAlignment="Center" />
                       </Border>
 
+                      <ToggleButton x:Name="DropDownToggle"
+                                    Grid.ColumnSpan="2"
+                                    Focusable="False"
+                                    ClickMode="Press"
+                                    IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    VerticalAlignment="Stretch"
+                                    OverridesDefaultStyle="True">
+                        <ToggleButton.Template>
+                          <ControlTemplate TargetType="{x:Type ToggleButton}">
+                            <Border Background="Transparent" />
+                          </ControlTemplate>
+                        </ToggleButton.Template>
+                      </ToggleButton>
+
                       <Popup x:Name="PART_Popup"
                              AllowsTransparency="True"
                              Focusable="False"
                              IsOpen="{TemplateBinding IsDropDownOpen}"
                              Placement="Bottom"
-                             PlacementTarget="{Binding ElementName=DropDownToggle}"
-                             PopupAnimation="Fade"
+                             PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                             PopupAnimation="None"
                              StaysOpen="False">
                         <Border Background="{DynamicResource SurfaceBackground}"
                                 BorderBrush="{DynamicResource ControlBorder}"
@@ -2418,23 +2425,18 @@
           <Button x:Name="SyntaxQuickReferenceToggleButton"
                   Click="ToggleSyntaxQuickReference_Click"
                   ToolTip="Show syntax quick reference"
-                  Style="{StaticResource DarkChromeButtonStyle}"
-                  Padding="12,3"
                   VerticalAlignment="Center"
                   Content="Show Syntax"
                   Margin="0,0,8,0" />
 
           <Button Content="Title Page"
                   Click="TitlePage_Click"
-                  Style="{StaticResource DarkChromeButtonStyle}"
-                  Padding="12,3"
                   VerticalAlignment="Center"
                   Margin="0,0,12,0" />
 
           <ToggleButton x:Name="PreviewModeToggleButton"
                         Content="Preview"
                         Click="PreviewModeToggleButton_Click"
-                        Style="{StaticResource DarkChromeToggleButtonStyle}"
                         Margin="0,0,12,0" />
 
             <TextBlock Text="Theme"
@@ -2576,7 +2578,7 @@
                                 Background="{DynamicResource SurfaceBackground}"
                                 BorderBrush="{DynamicResource SurfaceBorder}"
                                 BorderThickness="1"
-                                CornerRadius="8"
+                                CornerRadius="0"
                                 Padding="12">
                           <ContentPresenter x:Name="PART_SelectedContentHost"
                                             ContentSource="SelectedContent" />
@@ -2607,7 +2609,7 @@
                               BorderThickness="0,0,0,3"
                               Padding="{TemplateBinding Padding}"
                               Margin="{TemplateBinding Margin}"
-                              CornerRadius="6">
+                              CornerRadius="0">
                         <ContentPresenter x:Name="ContentSite"
                                           ContentSource="Header"
                                           HorizontalAlignment="Center"
@@ -2641,7 +2643,7 @@
                 <Setter Property="Template">
                   <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                      <Border x:Name="ChevronHost" Background="Transparent" CornerRadius="10">
+                      <Border x:Name="ChevronHost" Background="Transparent" CornerRadius="0">
                         <Path x:Name="ChevronPath"
                               Data="M 4 3 L 12 9 L 4 15 Z"
                               Width="9"
@@ -2654,7 +2656,7 @@
                       </Border>
                       <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                          <Setter TargetName="ChevronHost" Property="Background" Value="#18FFFFFF" />
+                          <Setter TargetName="ChevronHost" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
                           <Setter TargetName="ChevronPath" Property="Fill" Value="{DynamicResource HeaderText}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
@@ -2762,7 +2764,7 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Margin" Value="0,0,12,0" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="CornerRadius" Value="0" />
                 <Setter Property="MinHeight" Value="54" />
                 <Style.Triggers>
                   <Trigger Property="ItemsControl.AlternationIndex" Value="1">
@@ -3324,7 +3326,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="4"
+                                    CornerRadius="0"
                                     Padding="{TemplateBinding Padding}"
                                     SnapsToDevicePixels="True">
                               <ContentPresenter HorizontalAlignment="Center"
@@ -3363,7 +3365,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="4"
+                                    CornerRadius="0"
                                     Padding="{TemplateBinding Padding}"
                                     SnapsToDevicePixels="True">
                               <ContentPresenter HorizontalAlignment="Center"
@@ -3425,7 +3427,7 @@
                                 BorderBrush="{DynamicResource SurfaceMutedBorder}"
                                 BorderThickness="1"
                                 Padding="0"
-                                CornerRadius="8">
+                                CornerRadius="0">
                           <Grid>
                             <Grid.ColumnDefinitions>
                               <ColumnDefinition Width="Auto" />
@@ -3436,7 +3438,7 @@
                             <Border Grid.Column="0"
                                     Width="12"
                                     Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
-                                    CornerRadius="8,0,0,8" />
+                                    CornerRadius="0" />
 
                             <Border Grid.Column="1"
                                     Padding="10,12">
@@ -3646,7 +3648,7 @@
                                   Background="{TemplateBinding Background}"
                                   BorderBrush="{TemplateBinding BorderBrush}"
                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                  CornerRadius="6"
+                                  CornerRadius="0"
                                   Padding="{TemplateBinding Padding}">
                             <ContentPresenter x:Name="WorkspaceModeContent"
                                               HorizontalAlignment="Center"
@@ -3703,9 +3705,7 @@
                       BorderThickness="1"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Top">
-                <Border.Effect>
-                  <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.1" Color="#000000" />
-                </Border.Effect>
+
                 <Border.LayoutTransform>
                   <ScaleTransform ScaleX="{Binding EditorZoomScale}"
                                   ScaleY="{Binding EditorZoomScale}" />
@@ -3768,11 +3768,11 @@
                    PlacementTarget="{Binding ElementName=EditorBox}"
                    IsOpen="{Binding IsAutoCompleteOpen}"
                    AllowsTransparency="True"
-                   PopupAnimation="Fade">
+                   PopupAnimation="None">
               <Border Background="{DynamicResource ControlBackground}"
                       BorderBrush="{DynamicResource ControlAccent}"
                       BorderThickness="1"
-                      CornerRadius="6"
+                      CornerRadius="0"
                       Padding="1"
                       MinWidth="200"
                       MaxHeight="300"
@@ -3803,7 +3803,7 @@
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="2"
-                                    CornerRadius="2">
+                                    CornerRadius="0">
                               <ContentPresenter />
                             </Border>
                             <ControlTemplate.Triggers>
@@ -3908,7 +3908,7 @@
                   <Border Margin="12,0,0,0"
                           BorderBrush="{DynamicResource ControlBorder}"
                           BorderThickness="1"
-                          CornerRadius="5">
+                          CornerRadius="0">
                     <StackPanel Orientation="Horizontal">
                       <ToggleButton x:Name="BeatBoardVerticalViewButton"
                                     Content="Vertical"
@@ -4037,10 +4037,7 @@
                             VirtualizingPanel.IsVirtualizing="True">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Width="612" Height="792" Margin="0,0,0,20" Background="{DynamicResource WindowBackground}" CornerRadius="2">
-                      <Border.Effect>
-                        <DropShadowEffect Color="Black" BlurRadius="10" Opacity="0.1" ShadowDepth="2" />
-                      </Border.Effect>
+                    <Border Width="612" Height="792" Margin="0,0,0,20" Background="{DynamicResource WindowBackground}" CornerRadius="0">
                       <Grid>
                         <ItemsControl ItemsSource="{Binding Lines}">
                           <ItemsControl.ItemsPanel>

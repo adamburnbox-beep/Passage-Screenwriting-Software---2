@@ -29,6 +29,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     private readonly DispatcherTimer _sessionSaveTimer;
     private MainWindowViewModel? _selectedDocument;
     private bool _suppressSessionSave;
+    private bool _allowNullSelectedDocument;
 
     public ShellViewModel(RecoveryDocument? recoveredDocument = null)
     {
@@ -51,6 +52,11 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         get => _selectedDocument;
         set
         {
+            if (value is null && !_allowNullSelectedDocument)
+            {
+                return;
+            }
+
             if (ReferenceEquals(_selectedDocument, value))
             {
                 return;
@@ -508,7 +514,15 @@ public sealed class ShellViewModel : INotifyPropertyChanged
             }
             else
             {
-                SelectedDocument = null;
+                _allowNullSelectedDocument = true;
+                try
+                {
+                    SelectedDocument = null;
+                }
+                finally
+                {
+                    _allowNullSelectedDocument = false;
+                }
             }
         }
 
