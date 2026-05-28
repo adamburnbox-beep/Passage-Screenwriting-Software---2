@@ -27,3 +27,42 @@ project.assets.json
 # OS generated
 Thumbs.db
 .DS_Store
+
+# Build logs & temp output
+*.log
+Passage/build*.txt
+Passage/*_errors.txt
+Passage/final_errors.txt
+Passage/last_build_errors.txt
+Passage/Passage.App/build_output.txt
+app-*-diag.log
+build.full.log
+build.noworkload.log
+build-check.log
+status.txt
+build_errors*.txt
+build_output.txt
+errors.txt
+final_errors.txt
+msbuild*.log
+
+# Temp scripts & patches
+fix.cs
+patch_*.cs
+patch_*.ps1
+test.cs
+
+# AI / context dumps
+project_context_master.md
+model_capabilities.yaml
+
+# Shadow build directories (from verify workflows)
+**/obj-recheck/
+**/verify-obj/
+**/verify-build/
+**/build-verify/
+**/artifacts/
+
+# Compiled binaries & workload overlays
+Passage_App_Build/
+.sdk-overlay/
