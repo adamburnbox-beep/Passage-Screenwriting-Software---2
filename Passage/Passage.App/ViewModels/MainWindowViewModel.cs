@@ -169,6 +169,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             execute: ExecuteExpandAllOutlineNodes);
         CollapseAllOutlineNodesCommand = new DelegateCommand<object>(
             execute: ExecuteCollapseAllOutlineNodes);
+        ExpandAllNotesNodesCommand = new DelegateCommand<object>(
+            execute: ExecuteExpandAllNotesNodes);
+        CollapseAllNotesNodesCommand = new DelegateCommand<object>(
+            execute: ExecuteCollapseAllNotesNodes);
         CreateNewCardCommand = new DelegateCommand<object>(
             execute: ExecuteCreateNewCard);
         SyncBoardToScriptCommand = new DelegateCommand<object>(
@@ -321,6 +325,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ExpandAllOutlineNodesCommand { get; }
 
     public ICommand CollapseAllOutlineNodesCommand { get; }
+
+    public ICommand ExpandAllNotesNodesCommand { get; }
+
+    public ICommand CollapseAllNotesNodesCommand { get; }
 
     public ICommand CreateNewCardCommand { get; }
 
@@ -1148,6 +1156,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return SetOutlineExpansionState(OutlineRoots, isExpanded);
     }
 
+    public bool TrySetAllNotesNodesExpanded(bool isExpanded)
+    {
+        return SetOutlineExpansionState(NotesRoots, isExpanded);
+    }
+
     public bool TrySetBoardElementLevel(ScreenplayElement? element, int level)
     {
         if (element is null || level < 0)
@@ -1731,6 +1744,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void ExecuteCollapseAllOutlineNodes(object? _)
     {
         _ = TrySetAllOutlineNodesExpanded(isExpanded: false);
+    }
+
+    private void ExecuteExpandAllNotesNodes(object? _)
+    {
+        _ = TrySetAllNotesNodesExpanded(isExpanded: true);
+    }
+
+    private void ExecuteCollapseAllNotesNodes(object? _)
+    {
+        _ = TrySetAllNotesNodesExpanded(isExpanded: false);
     }
 
     private void ExecuteCreateNewCard(object? _)
