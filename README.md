@@ -1,6 +1,5 @@
-<<<<<<< HEAD
-# Passage-Screenwriting-Software---2
-=======
+# Passage Screenwriting Software
+
 <div align="center">
 
 <picture>
@@ -604,4 +603,3 @@ Run validation scripts to verify GSD structure:
 [![GitHub](https://img.shields.io/badge/GitHub-toonight-181717?style=flat-square&logo=github)](https://github.com/toonight/get-shit-done-for-antigravity)
 
 </div>
->>>>>>> 3cb5243bc5954e52bd03f8f5bdac42f242f6afef
