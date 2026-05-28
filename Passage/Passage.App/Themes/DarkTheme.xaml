@@ -90,6 +90,7 @@
   <SolidColorBrush x:Key="BeatBoardGhostTitleForeground" Color="#FFFFFFFF" />
   <SolidColorBrush x:Key="BeatBoardGhostDescriptionForeground" Color="#FFBFBFBF" />
 
+  <SolidColorBrush x:Key="EditorBackground" Color="#FF161616" />
   <SolidColorBrush x:Key="EditorPageBackground" Color="#FF000000" />
   <SolidColorBrush x:Key="EditorPageBorder" Color="#FF222222" />
   <SolidColorBrush x:Key="EditorPageShadow" Color="#08000000" />

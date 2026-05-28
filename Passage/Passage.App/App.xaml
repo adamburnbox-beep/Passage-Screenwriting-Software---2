@@ -137,7 +137,7 @@
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
                       SnapsToDevicePixels="True"
-                      CornerRadius="0">
+                      CornerRadius="6">
                 <ContentPresenter HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   RecognizesAccessKey="True" />
@@ -184,7 +184,7 @@
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
-                      CornerRadius="0"
+                      CornerRadius="6"
                       SnapsToDevicePixels="True">
                 <ContentPresenter HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
@@ -224,7 +224,7 @@
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
                       SnapsToDevicePixels="True"
-                      CornerRadius="0">
+                      CornerRadius="6">
                 <ContentPresenter HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   RecognizesAccessKey="True" />
@@ -265,7 +265,7 @@
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
-                      CornerRadius="0"
+                      CornerRadius="6"
                       SnapsToDevicePixels="True">
                 <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
               </Border>
@@ -324,7 +324,7 @@
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="0"
+                        CornerRadius="6"
                         SnapsToDevicePixels="True"
                         IsHitTestVisible="False" />
 
@@ -346,7 +346,7 @@
                         Background="{DynamicResource SurfaceMutedBackground}"
                         BorderBrush="{DynamicResource ControlBorder}"
                         BorderThickness="1,0,0,0"
-                        CornerRadius="0"
+                        CornerRadius="0,6,6,0"
                         IsHitTestVisible="False">
                   <Path Data="M 0 0 L 5 5 L 10 0 Z"
                         Fill="{DynamicResource ControlForeground}"
@@ -365,6 +365,7 @@
                   <Border Background="{DynamicResource SurfaceBackground}"
                           BorderBrush="{DynamicResource ControlBorder}"
                           BorderThickness="1"
+                          CornerRadius="6"
                           Margin="0,2,0,0"
                           MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                     <ScrollViewer CanContentScroll="True"

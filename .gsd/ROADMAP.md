@@ -6,8 +6,8 @@ updated: 2026-05-28T12:17:00+10:00
 
 # Roadmap
 
-> **Current Phase:** None
-> **Status:** ✅ Complete
+> **Current Phase:** 5 - UI Redesign
+> **Status:** 🔄 Planning
 
 ## Must-Haves (from SPEC)
 
@@ -16,6 +16,7 @@ updated: 2026-05-28T12:17:00+10:00
 - [x] Page count, word count, and session goal timer tracking.
 - [x] Outline navigator sidebar and interactive beat board cards view.
 - [x] Crash recovery and persistent session storage.
+- [ ] Mapped UI redesign for a premium, Windows 11-style e-ink experience.
 
 ---
 
@@ -45,6 +46,12 @@ updated: 2026-05-28T12:17:00+10:00
 
 ---
 
+### Phase 5: UI Redesign
+**Status:** ⬜ Not Started
+**Objective:** Polish UI elements, redesign workspace panels and tabs, update buttons/banners, separate page backgrounds from container, and modernize window control templates while retaining the e-ink aesthetic.
+
+---
+
 ## Progress Summary
 
 | Phase | Status | Plans | Complete |
@@ -53,6 +60,7 @@ updated: 2026-05-28T12:17:00+10:00
 | 2 | ✅ | 1/1 | 100% |
 | 3 | ✅ | 1/1 | 100% |
 | 4 | ✅ | 1/1 | 100% |
+| 5 | ⬜ | 0/1 | 0% |
 
 ---
 
@@ -64,3 +72,4 @@ updated: 2026-05-28T12:17:00+10:00
 | 2 | 2026-05-08 | 2026-05-12 | 4 days |
 | 3 | 2026-05-13 | 2026-05-20 | 7 days |
 | 4 | 2026-05-21 | 2026-05-27 | 6 days |
+| 5 | 2026-05-28 | — | — |

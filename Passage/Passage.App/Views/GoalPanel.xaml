@@ -49,7 +49,7 @@
                       Background="{TemplateBinding Background}"
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="0"
+                      CornerRadius="6"
                       SnapsToDevicePixels="True"
                       IsHitTestVisible="False" />
 
@@ -70,7 +70,7 @@
                       Background="{DynamicResource SurfaceMutedBackground}"
                       BorderBrush="{DynamicResource ControlBorder}"
                       BorderThickness="1,0,0,0"
-                      CornerRadius="0"
+                      CornerRadius="0,6,6,0"
                       IsHitTestVisible="False">
                 <Path Data="M 0 0 L 5 5 L 10 0 Z"
                       Fill="{DynamicResource ControlForeground}"
@@ -89,6 +89,7 @@
                 <Border Background="{DynamicResource SurfaceBackground}"
                         BorderBrush="{DynamicResource ControlBorder}"
                         BorderThickness="1"
+                        CornerRadius="6"
                         Margin="0,2,0,0"
                         MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                   <ScrollViewer CanContentScroll="True"
@@ -183,11 +184,11 @@
                 <!-- Background track circle -->
                 <Ellipse Width="100" Height="100"
                          Stroke="{DynamicResource SurfaceBorder}"
-                         StrokeThickness="2" />
+                         StrokeThickness="4" />
                 
                 <!-- Progress Arc -->
                 <Path Stroke="{DynamicResource ControlAccent}"
-                      StrokeThickness="4"
+                      StrokeThickness="6"
                       StrokeStartLineCap="Round"
                       StrokeEndLineCap="Round"
                       Data="{Binding SessionGoalProgressPercent, Converter={StaticResource ProgressToArcConverter}}" />
@@ -323,11 +324,11 @@
                 <!-- Background track circle -->
                 <Ellipse Width="100" Height="100"
                          Stroke="{DynamicResource SurfaceBorder}"
-                         StrokeThickness="2" />
+                         StrokeThickness="4" />
                 
                 <!-- Progress Arc -->
                 <Path Stroke="{DynamicResource ControlAccent}"
-                      StrokeThickness="4"
+                      StrokeThickness="6"
                       StrokeStartLineCap="Round"
                       StrokeEndLineCap="Round"
                       Data="{Binding GoalProgressPercent, Converter={StaticResource ProgressToArcConverter}}" />

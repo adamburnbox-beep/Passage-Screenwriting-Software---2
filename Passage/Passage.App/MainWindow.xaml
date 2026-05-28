@@ -2221,7 +2221,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             Padding="{TemplateBinding Padding}"
-                            CornerRadius="4"
+                            CornerRadius="6"
                             SnapsToDevicePixels="True">
                       <ContentPresenter HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
@@ -2288,7 +2288,7 @@
                               Background="{TemplateBinding Background}"
                               BorderBrush="{TemplateBinding BorderBrush}"
                               BorderThickness="{TemplateBinding BorderThickness}"
-                              CornerRadius="2"
+                              CornerRadius="6"
                               SnapsToDevicePixels="True"
                               IsHitTestVisible="False" />
 
@@ -2553,7 +2553,6 @@
                       BorderBrush="{DynamicResource SurfaceBorder}" />
             </Grid>
           </Border>
-
           <TabControl x:Name="LeftDockTabs"
                       Grid.Row="1"
                       Margin="10"
@@ -2570,11 +2569,13 @@
                         </Grid.RowDefinitions>
                         <TabPanel Grid.Row="0"
                                   IsItemsHost="True"
-                                  Panel.ZIndex="1" />
+                                  Panel.ZIndex="1"
+                                  Margin="0,0,0,8" />
                         <Border Grid.Row="1"
                                 Background="{DynamicResource SurfaceBackground}"
-                                BorderBrush="{DynamicResource ControlBorder}"
+                                BorderBrush="{DynamicResource SurfaceBorder}"
                                 BorderThickness="1"
+                                CornerRadius="8"
                                 Padding="12">
                           <ContentPresenter x:Name="PART_SelectedContentHost"
                                             ContentSource="SelectedContent" />
@@ -2587,11 +2588,11 @@
 
               <Style TargetType="{x:Type TabItem}">
                 <Setter Property="Padding" Value="16,8" />
-                <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="Margin" Value="0,0,8,0" />
                 <Setter Property="HeaderTemplate">
                   <Setter.Value>
                     <DataTemplate>
-                      <TextBlock Text="{Binding}" FontSize="12.5" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding}" FontSize="12.5" />
                     </DataTemplate>
                   </Setter.Value>
                 </Setter>
@@ -2599,11 +2600,12 @@
                   <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TabItem}">
                       <Border x:Name="TabBorder"
-                              Background="{DynamicResource SurfaceMutedBackground}"
-                              BorderBrush="{DynamicResource SurfaceBorder}"
-                              BorderThickness="1,1,1,0"
+                              Background="Transparent"
+                              BorderBrush="Transparent"
+                              BorderThickness="0,0,0,3"
                               Padding="{TemplateBinding Padding}"
-                              Margin="{TemplateBinding Margin}">
+                              Margin="{TemplateBinding Margin}"
+                              CornerRadius="6">
                         <ContentPresenter x:Name="ContentSite"
                                           ContentSource="Header"
                                           HorizontalAlignment="Center"
@@ -2611,13 +2613,11 @@
                       </Border>
                       <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
-                          <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
-                          <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
-                          <Setter Property="Panel.ZIndex" Value="100" />
-                          <Setter TargetName="TabBorder" Property="Margin" Value="0,0,4,-1" />
+                          <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                          <Setter Property="TextElement.FontWeight" Value="SemiBold" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                          <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                          <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
                         </Trigger>
                       </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -3642,7 +3642,7 @@
                                   Background="{TemplateBinding Background}"
                                   BorderBrush="{TemplateBinding BorderBrush}"
                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                  CornerRadius="4"
+                                  CornerRadius="6"
                                   Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
