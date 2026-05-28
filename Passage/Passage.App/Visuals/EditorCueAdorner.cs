@@ -1486,7 +1486,7 @@ public sealed class EditorCueAdorner : Adorner
             return;
         }
 
-        var gapBrush = ResolveBrush("SurfaceRaisedBackground", _pageFillBrush);
+        var gapBrush = ResolveBrush("EditorBackground", _pageFillBrush);
 
         for (var i = 0; i < _pageFlow.Pages.Count - 1; i++)
         {
