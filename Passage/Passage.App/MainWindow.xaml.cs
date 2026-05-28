@@ -89,7 +89,7 @@ public partial class MainWindow : Window
     private const double PreferredStartupWidth = 1320.0;
     private const double PreferredStartupHeight = 800.0;
     private const double WorkAreaPadding = 32.0;
-    private const double LeftDockExpandedWidth = 270.0;
+    private const double LeftDockExpandedWidth = 295.0;
     private const double SyntaxQuickReferenceMinimumWidth = 280.0;
     private const double SyntaxQuickReferenceDefaultWidth = 320.0;
     private const double ParagraphStyleTolerance = 0.5;
@@ -6186,7 +6186,7 @@ public partial class MainWindow : Window
 
         if (LeftDockColumn is not null)
         {
-            LeftDockColumn.Width = collapsed ? new GridLength(52) : new GridLength(LeftDockExpandedWidth);
+            LeftDockColumn.Width = collapsed ? new GridLength(70) : new GridLength(LeftDockExpandedWidth);
         }
 
         if (LeftSplitterColumn is not null)

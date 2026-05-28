@@ -2590,6 +2590,7 @@
               <Style TargetType="{x:Type TabItem}">
                 <Setter Property="Padding" Value="16,8" />
                 <Setter Property="Margin" Value="0,0,8,0" />
+                <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
                 <Setter Property="HeaderTemplate">
                   <Setter.Value>
                     <DataTemplate>
@@ -2616,9 +2617,11 @@
                         <Trigger Property="IsSelected" Value="True">
                           <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
                           <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+                          <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                           <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+                          <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
                         </Trigger>
                       </ControlTemplate.Triggers>
                     </ControlTemplate>
