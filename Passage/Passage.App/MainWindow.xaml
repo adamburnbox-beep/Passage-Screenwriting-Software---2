@@ -184,32 +184,41 @@
                      Foreground="{DynamicResource MutedText}"
                      FontSize="10.5" />
 
-          <Border x:Name="HierarchyIndent"
-                  Grid.Column="1"
-                  HorizontalAlignment="Left"
-                  VerticalAlignment="Stretch"
-                  Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
-                  Width="0"
-                  Margin="0,0,2,0">
-            <Border.Style>
-              <Style TargetType="Border">
+          <Rectangle x:Name="HierarchyIndent"
+                     Grid.Column="1"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Stretch"
+                     Width="4"
+                     Fill="{DynamicResource HeaderText}"
+                     Stroke="Transparent"
+                     StrokeThickness="0"
+                     Margin="0,0,4,0"
+                     SnapsToDevicePixels="True">
+            <Rectangle.Style>
+              <Style TargetType="Rectangle">
                 <Style.Triggers>
                   <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                       <Condition Binding="{Binding Kind}" Value="Section" />
                       <Condition Binding="{Binding SectionLevel}" Value="1" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Width" Value="2" />
+                    <Setter Property="Width" Value="4" />
+                    <Setter Property="Fill" Value="{DynamicResource HeaderText}" />
                   </MultiDataTrigger>
                   <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                       <Condition Binding="{Binding Kind}" Value="Section" />
                       <Condition Binding="{Binding SectionLevel}" Value="2" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Width" Value="4" />
+                    <Setter Property="Width" Value="2" />
+                    <Setter Property="Fill" Value="{DynamicResource HeaderText}" />
                   </MultiDataTrigger>
                   <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                    <Setter Property="Width" Value="7" />
+                    <Setter Property="Width" Value="1" />
+                    <Setter Property="Fill" Value="Transparent" />
+                    <Setter Property="Stroke" Value="{DynamicResource SecondaryText}" />
+                    <Setter Property="StrokeThickness" Value="1" />
+                    <Setter Property="StrokeDashArray" Value="3,3" />
                   </DataTrigger>
                   <DataTrigger Binding="{Binding Kind}" Value="Note">
                     <Setter Property="Width" Value="0" />
@@ -217,8 +226,8 @@
                   </DataTrigger>
                 </Style.Triggers>
               </Style>
-            </Border.Style>
-          </Border>
+            </Rectangle.Style>
+          </Rectangle>
           <StackPanel Grid.Column="2" Margin="0,0,0,0">
             <TextBlock Text="{Binding KindLabel, Converter={StaticResource UppercaseConverter}}"
                        Foreground="{DynamicResource SecondaryText}"
@@ -2371,48 +2380,52 @@
           <Button Click="New_Click"
                   ToolTip="New document (Ctrl+N)"
                   VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE710;"
                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                         Margin="0,0,6,0" />
-              <TextBlock Text="New" />
+                         Margin="0,0,6,0"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="New" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
           <Button Click="Open_Click"
                   ToolTip="Open document (Ctrl+O)"
                   VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE8E5;"
                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                         Margin="0,0,6,0" />
-              <TextBlock Text="Open" />
+                         Margin="0,0,6,0"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="Open" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
           <Button Click="Save_Click"
                   ToolTip="Save document (Ctrl+S)"
                   VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE74E;"
                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                         Margin="0,0,6,0" />
-              <TextBlock Text="Save" />
+                         Margin="0,0,6,0"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="Save" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
           <Button Click="Find_Click"
                   ToolTip="Find and replace (Ctrl+F)"
                   VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE721;"
                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                         Margin="0,0,6,0" />
-              <TextBlock Text="Find" />
+                         Margin="0,0,6,0"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="Find" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
@@ -2478,7 +2491,7 @@
                        VerticalAlignment="Center"
                        Margin="0,0,8,0"
                        Foreground="{DynamicResource SecondaryText}" />
-            <ComboBox Width="220"
+            <ComboBox Width="158"
                       Style="{StaticResource ThemeSelectorComboBoxStyle}"
                       ItemsSource="{Binding Documents}"
                       SelectedItem="{Binding SelectedDocument, Mode=TwoWay}"
@@ -2761,7 +2774,7 @@
               <Style x:Key="WorkspaceNodeCardBorderStyle" TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource SurfaceMutedBorder}" />
-                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderThickness" Value="0,1,1,1" />
                 <Setter Property="Margin" Value="0,0,12,0" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="CornerRadius" Value="0" />
@@ -2786,42 +2799,6 @@
                     <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
                     <Setter Property="Opacity" Value="0.25" />
                   </DataTrigger>
-                  <DataTrigger Binding="{Binding Level}" Value="0">
-                    <Setter Property="BorderThickness" Value="4,1,1,1" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource HierarchyIndicatorBrush}" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Level}" Value="1">
-                    <Setter Property="Margin" Value="6,0,12,0" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Level}" Value="2">
-                    <Setter Property="Margin" Value="12,0,12,0" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Level}" Value="3">
-                    <Setter Property="Margin" Value="18,0,12,0" />
-                  </DataTrigger>
-
-                  <!-- Collapsed overrides for indented items -->
-                  <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                      <Condition Binding="{Binding IsExpanded}" Value="False" />
-                      <Condition Binding="{Binding Level}" Value="1" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Margin" Value="6,0,12,0" />
-                  </MultiDataTrigger>
-                  <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                      <Condition Binding="{Binding IsExpanded}" Value="False" />
-                      <Condition Binding="{Binding Level}" Value="2" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Margin" Value="12,0,12,0" />
-                  </MultiDataTrigger>
-                  <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                      <Condition Binding="{Binding IsExpanded}" Value="False" />
-                      <Condition Binding="{Binding Level}" Value="3" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Margin" Value="18,0,12,0" />
-                  </MultiDataTrigger>
                 </Style.Triggers>
               </Style>
 
@@ -2855,50 +2832,50 @@
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-
-                    <Border Grid.Column="0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Stretch"
-                            Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
-                            Margin="0,-1">
-                      <Border.Style>
-                        <Style TargetType="Border">
-                          <Setter Property="Width" Value="0" />
-                          <Style.Triggers>
-                            <!-- Note: The Note trigger handles the 'Do not apply to Note cards' requirement -->
-                            <DataTrigger Binding="{Binding Kind}" Value="Note">
-                              <Setter Property="Width" Value="0" />
-                              <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                            <MultiDataTrigger>
-                              <MultiDataTrigger.Conditions>
-                                <Condition Binding="{Binding Kind}" Value="Section" />
-                                <Condition Binding="{Binding SectionLevel}" Value="1" />
-                              </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="14" />
-                            </MultiDataTrigger>
-                            <MultiDataTrigger>
-                              <MultiDataTrigger.Conditions>
-                                <Condition Binding="{Binding Kind}" Value="Section" />
-                                <Condition Binding="{Binding SectionLevel}" Value="2" />
-                              </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="16" />
-                            </MultiDataTrigger>
-                            <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                              <Setter Property="Width" Value="22" />
-                            </DataTrigger>
-                            <!-- Catch-all for other levels if needed, using Level property -->
-                            <MultiDataTrigger>
-                              <MultiDataTrigger.Conditions>
-                                <Condition Binding="{Binding Width, RelativeSource={RelativeSource Self}}" Value="0" />
-                                <Condition Binding="{Binding Kind}" Value="Section" />
-                              </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="4" />
-                            </MultiDataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </Border.Style>
-                    </Border>
+                     <!-- Variable Left Border Accent -->
+                     <Rectangle Grid.Column="0"
+                                VerticalAlignment="Stretch"
+                                SnapsToDevicePixels="True"
+                                Margin="0,-1">
+                       <Rectangle.Style>
+                         <Style TargetType="Rectangle">
+                           <Setter Property="Width" Value="0" />
+                           <Setter Property="Fill" Value="Transparent" />
+                           <Style.Triggers>
+                             <DataTrigger Binding="{Binding Kind}" Value="Note">
+                               <Setter Property="Width" Value="0" />
+                               <Setter Property="Visibility" Value="Collapsed" />
+                             </DataTrigger>
+                             <!-- Act Cards (Section Level 1) -->
+                             <MultiDataTrigger>
+                               <MultiDataTrigger.Conditions>
+                                 <Condition Binding="{Binding Kind}" Value="Section" />
+                                 <Condition Binding="{Binding SectionLevel}" Value="1" />
+                               </MultiDataTrigger.Conditions>
+                               <Setter Property="Width" Value="4" />
+                               <Setter Property="Fill" Value="{DynamicResource HeaderText}" />
+                             </MultiDataTrigger>
+                             <!-- Sequence Cards (Section Level 2) -->
+                             <MultiDataTrigger>
+                               <MultiDataTrigger.Conditions>
+                                 <Condition Binding="{Binding Kind}" Value="Section" />
+                                 <Condition Binding="{Binding SectionLevel}" Value="2" />
+                               </MultiDataTrigger.Conditions>
+                               <Setter Property="Width" Value="2" />
+                               <Setter Property="Fill" Value="{DynamicResource HeaderText}" />
+                             </MultiDataTrigger>
+                             <!-- Scene Cards (SceneHeading) -->
+                             <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
+                               <Setter Property="Width" Value="1" />
+                               <Setter Property="Fill" Value="Transparent" />
+                               <Setter Property="Stroke" Value="{DynamicResource SecondaryText}" />
+                               <Setter Property="StrokeThickness" Value="1" />
+                               <Setter Property="StrokeDashArray" Value="3,3" />
+                             </DataTrigger>
+                           </Style.Triggers>
+                         </Style>
+                       </Rectangle.Style>
+                     </Rectangle>
 
                     <Border Grid.Column="1">
                       <Border.Style>
@@ -3019,30 +2996,26 @@
                   <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0"
-                        HorizontalAlignment="Right"
-                        Margin="0,0,12,8"
-                        Style="{StaticResource UtilityActionGroupBorderStyle}">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Cards"
-                               Style="{StaticResource UtilityActionGroupLabelStyle}" />
-                    <Button Command="{Binding SelectedDocument.ExpandAllOutlineNodesCommand}"
-                            Content="Expand All"
-                            Style="{StaticResource UtilityActionButtonStyle}"
-                            Margin="0,0,6,0"
-                            FontSize="10.5"
-                            FontWeight="SemiBold"
-                            IsEnabled="{Binding HasOutlineItems}"
-                            ToolTip="Expand every outline card" />
-                    <Button Command="{Binding SelectedDocument.CollapseAllOutlineNodesCommand}"
-                            Content="Collapse All"
-                            Style="{StaticResource UtilityActionButtonStyle}"
-                            FontSize="10.5"
-                            FontWeight="SemiBold"
-                            IsEnabled="{Binding HasOutlineItems}"
-                            ToolTip="Collapse every outline card" />
-                  </StackPanel>
-                </Border>
+                <StackPanel Grid.Row="0"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,8">
+                  <Button Command="{Binding SelectedDocument.ExpandAllOutlineNodesCommand}"
+                          Content="Expand All"
+                          Style="{StaticResource UtilityActionButtonStyle}"
+                          Margin="0,0,6,0"
+                          FontSize="10.5"
+                          FontWeight="SemiBold"
+                          IsEnabled="{Binding HasOutlineItems}"
+                          ToolTip="Expand every outline card" />
+                  <Button Command="{Binding SelectedDocument.CollapseAllOutlineNodesCommand}"
+                          Content="Collapse All"
+                          Style="{StaticResource UtilityActionButtonStyle}"
+                          FontSize="10.5"
+                          FontWeight="SemiBold"
+                          IsEnabled="{Binding HasOutlineItems}"
+                          ToolTip="Collapse every outline card" />
+                </StackPanel>
 
                 <Grid Grid.Row="1">
                   <ScrollViewer x:Name="OutlineScrollViewer" 
@@ -3083,42 +3056,50 @@
                               <ColumnDefinition Width="Auto" />
                               <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-
-                            <Border Grid.Column="0"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Stretch"
-                                    Background="{DynamicResource ControlBorder}"
-                                    Margin="0,-1">
-                              <Border.Style>
-                                <Style TargetType="Border">
-                                  <Setter Property="Width" Value="0" />
-                                  <Setter Property="CornerRadius" Value="0" />
-                                  <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Kind}" Value="Note">
-                                      <Setter Property="Width" Value="0" />
-                                      <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                    <MultiDataTrigger>
-                                      <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding Kind}" Value="Section" />
-                                        <Condition Binding="{Binding SectionLevel}" Value="1" />
-                                      </MultiDataTrigger.Conditions>
-                                      <Setter Property="Width" Value="10" />
-                                    </MultiDataTrigger>
-                                    <MultiDataTrigger>
-                                      <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding Kind}" Value="Section" />
-                                        <Condition Binding="{Binding SectionLevel}" Value="2" />
-                                      </MultiDataTrigger.Conditions>
-                                      <Setter Property="Width" Value="18" />
-                                    </MultiDataTrigger>
-                                    <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                                      <Setter Property="Width" Value="24" />
-                                    </DataTrigger>
-                                  </Style.Triggers>
-                                </Style>
-                              </Border.Style>
-                            </Border>
+                             <!-- Variable Left Border Accent -->
+                             <Rectangle Grid.Column="0"
+                                        VerticalAlignment="Stretch"
+                                        SnapsToDevicePixels="True"
+                                        Margin="0,-1">
+                               <Rectangle.Style>
+                                 <Style TargetType="Rectangle">
+                                   <Setter Property="Width" Value="0" />
+                                   <Setter Property="Fill" Value="Transparent" />
+                                   <Style.Triggers>
+                                     <DataTrigger Binding="{Binding Kind}" Value="Note">
+                                       <Setter Property="Width" Value="0" />
+                                       <Setter Property="Visibility" Value="Collapsed" />
+                                     </DataTrigger>
+                                     <!-- Act Cards (Section Level 1) -->
+                                     <MultiDataTrigger>
+                                       <MultiDataTrigger.Conditions>
+                                         <Condition Binding="{Binding Kind}" Value="Section" />
+                                         <Condition Binding="{Binding SectionLevel}" Value="1" />
+                                       </MultiDataTrigger.Conditions>
+                                       <Setter Property="Width" Value="8" />
+                                       <Setter Property="Fill" Value="{DynamicResource HeaderText}" />
+                                     </MultiDataTrigger>
+                                     <!-- Sequence Cards (Section Level 2) -->
+                                     <MultiDataTrigger>
+                                       <MultiDataTrigger.Conditions>
+                                         <Condition Binding="{Binding Kind}" Value="Section" />
+                                         <Condition Binding="{Binding SectionLevel}" Value="2" />
+                                       </MultiDataTrigger.Conditions>
+                                       <Setter Property="Width" Value="4" />
+                                       <Setter Property="Fill" Value="{DynamicResource HeaderText}" />
+                                     </MultiDataTrigger>
+                                     <!-- Scene Cards (SceneHeading) -->
+                                     <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
+                                       <Setter Property="Width" Value="1" />
+                                       <Setter Property="Fill" Value="Transparent" />
+                                       <Setter Property="Stroke" Value="{DynamicResource SecondaryText}" />
+                                       <Setter Property="StrokeThickness" Value="1" />
+                                       <Setter Property="StrokeDashArray" Value="3,3" />
+                                     </DataTrigger>
+                                   </Style.Triggers>
+                                 </Style>
+                               </Rectangle.Style>
+                             </Rectangle>
 
                             <Border Grid.Column="1">
                               <Border.Style>

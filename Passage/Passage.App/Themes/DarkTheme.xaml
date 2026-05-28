@@ -132,7 +132,7 @@
   </Style>
 
   <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#FFFFFFFF" />
-  <SolidColorBrush x:Key="WorkspaceHierarchyIndentBrush" Color="#FF000000" />
+  <SolidColorBrush x:Key="WorkspaceHierarchyIndentBrush" Color="#{DynamicResource SurfaceBorder}" />
   <SolidColorBrush x:Key="ReferencePanelBackgroundBrush" Color="#FF0A0A0A" />
   <SolidColorBrush x:Key="ReferenceCardBackgroundBrush" Color="#FF000000" />
   <SolidColorBrush x:Key="ReferenceBorderBrush" Color="#FF333333" />

@@ -120,15 +120,108 @@
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="GoalTabControlStyle" TargetType="{x:Type TabControl}">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type TabControl}">
+            <Grid KeyboardNavigation.TabNavigation="Local">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
+              <StackPanel Grid.Row="0"
+                          IsItemsHost="True"
+                          Orientation="Horizontal"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,8" />
+              <Border Grid.Row="1"
+                      Background="Transparent"
+                      BorderThickness="0">
+                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                  ContentSource="SelectedContent" />
+              </Border>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="GoalTabItemStyle" TargetType="{x:Type TabItem}">
+      <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+      <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinWidth" Value="80" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="HeaderTemplate">
+        <Setter.Value>
+          <DataTemplate>
+            <TextBlock Text="{Binding}"
+                       FontSize="10.5"
+                       FontWeight="SemiBold"
+                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TabItem}}" />
+          </DataTemplate>
+        </Setter.Value>
+      </Setter>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type TabItem}">
+            <Border x:Name="TabBorder"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="1"
+                    Padding="{TemplateBinding Padding}"
+                    CornerRadius="0"
+                    SnapsToDevicePixels="True">
+              <ContentPresenter x:Name="ContentSite"
+                                ContentSource="Header"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
+                <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
+              </Trigger>
+              <MultiTrigger>
+                <MultiTrigger.Conditions>
+                  <Condition Property="IsSelected" Value="True" />
+                  <Condition Property="IsMouseOver" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+              </MultiTrigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.55" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </UserControl.Resources>
 
   <Grid MinHeight="360" Margin="4,8,4,4">
-    <TabControl Background="Transparent"
-                BorderThickness="0"
+    <TabControl Style="{StaticResource GoalTabControlStyle}"
                 SelectedIndex="0">
       
       <!-- SESSION TAB -->
-      <TabItem Header="Session">
+      <TabItem Header="Session" Style="{StaticResource GoalTabItemStyle}">
         <Grid Margin="0,16,0,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -263,7 +356,7 @@
       </TabItem>
 
       <!-- OVERALL TAB -->
-      <TabItem Header="Overall">
+      <TabItem Header="Overall" Style="{StaticResource GoalTabItemStyle}" Margin="0">
         <Grid Margin="0,16,0,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

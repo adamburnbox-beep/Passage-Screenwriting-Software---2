@@ -6205,12 +6205,13 @@ public partial class MainWindow : Window
 
         if (LeftSplitterColumn is not null)
         {
-            LeftSplitterColumn.Width = collapsed ? new GridLength(0) : new GridLength(2);
+            LeftSplitterColumn.Width = new GridLength(2);
         }
 
         if (LeftSplitter is not null)
         {
-            LeftSplitter.Width = collapsed ? 0 : 2;
+            LeftSplitter.Width = 2;
+            LeftSplitter.IsEnabled = !collapsed;
         }
 
         if (LeftDockTabs is not null)
