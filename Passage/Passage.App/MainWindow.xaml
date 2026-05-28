@@ -2758,7 +2758,7 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Margin" Value="0,0,12,0" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="CornerRadius" Value="0,10,10,0" />
+                <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="MinHeight" Value="54" />
                 <Style.Triggers>
                   <Trigger Property="ItemsControl.AlternationIndex" Value="1">
