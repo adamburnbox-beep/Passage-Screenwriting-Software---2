@@ -136,42 +136,34 @@
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
 
-          <!-- Config inputs (spacious, heights adjusted to avoid layout clipping) -->
-          <Grid Grid.Row="0" Margin="0,0,0,24">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition Width="100" />
-            </Grid.ColumnDefinitions>
+          <!-- Config inputs stacked vertically for generous e-ink tablet aesthetics -->
+          <StackPanel Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="GOAL TYPE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,6" />
+            <ComboBox ItemsSource="{Binding SessionGoalTypes}"
+                      SelectedItem="{Binding SessionSelectedGoalType, Mode=TwoWay}"
+                      Style="{StaticResource GoalTypeComboBoxStyle}"
+                      Height="36"
+                      Margin="0,0,0,16">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
 
-            <StackPanel Grid.Column="0">
-              <TextBlock Text="GOAL TYPE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
-              <ComboBox ItemsSource="{Binding SessionGoalTypes}"
-                        SelectedItem="{Binding SessionSelectedGoalType, Mode=TwoWay}"
-                        Style="{StaticResource GoalTypeComboBoxStyle}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </StackPanel>
-
-            <StackPanel Grid.Column="2">
-              <TextBlock Text="TARGET" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
-              <TextBox Text="{Binding SessionGoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                       PreviewTextInput="GoalTargetValue_PreviewTextInput"
-                       DataObject.Pasting="GoalTargetValue_Pasting"
-                       Height="36"
-                       Padding="10,0,10,0"
-                       VerticalContentAlignment="Center"
-                       Background="{DynamicResource ControlBackground}"
-                       BorderBrush="{DynamicResource ControlBorder}"
-                       BorderThickness="1"
-                       Foreground="{DynamicResource GoalValueText}"
-                       FontSize="12.5" />
-            </StackPanel>
-          </Grid>
+            <TextBlock Text="TARGET" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,6" />
+            <TextBox Text="{Binding SessionGoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     PreviewTextInput="GoalTargetValue_PreviewTextInput"
+                     DataObject.Pasting="GoalTargetValue_Pasting"
+                     Height="36"
+                     Padding="10,0,10,0"
+                     VerticalContentAlignment="Center"
+                     Background="{DynamicResource ControlBackground}"
+                     BorderBrush="{DynamicResource ControlBorder}"
+                     BorderThickness="1"
+                     Foreground="{DynamicResource GoalValueText}"
+                     FontSize="12.5" />
+          </StackPanel>
 
           <!-- Dashboard Stats Grid -->
           <Grid Grid.Row="1" Margin="0,0,0,16">
@@ -277,42 +269,34 @@
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
 
-          <!-- Config inputs (padding adjusted to fix clipping) -->
-          <Grid Grid.Row="0" Margin="0,0,0,24">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition Width="100" />
-            </Grid.ColumnDefinitions>
+          <!-- Config inputs stacked vertically for generous e-ink tablet aesthetics -->
+          <StackPanel Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="GOAL TYPE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,6" />
+            <ComboBox ItemsSource="{Binding GoalTypes}"
+                      SelectedItem="{Binding SelectedGoalType, Mode=TwoWay}"
+                      Style="{StaticResource GoalTypeComboBoxStyle}"
+                      Height="36"
+                      Margin="0,0,0,16">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
 
-            <StackPanel Grid.Column="0">
-              <TextBlock Text="GOAL TYPE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
-              <ComboBox ItemsSource="{Binding GoalTypes}"
-                        SelectedItem="{Binding SelectedGoalType, Mode=TwoWay}"
-                        Style="{StaticResource GoalTypeComboBoxStyle}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </StackPanel>
-
-            <StackPanel Grid.Column="2">
-              <TextBlock Text="TARGET" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
-              <TextBox Text="{Binding GoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                       PreviewTextInput="GoalTargetValue_PreviewTextInput"
-                       DataObject.Pasting="GoalTargetValue_Pasting"
-                       Height="36"
-                       Padding="10,0,10,0"
-                       VerticalContentAlignment="Center"
-                       Background="{DynamicResource ControlBackground}"
-                       BorderBrush="{DynamicResource ControlBorder}"
-                       BorderThickness="1"
-                       Foreground="{DynamicResource WindowForeground}"
-                       FontSize="12.5" />
-            </StackPanel>
-          </Grid>
+            <TextBlock Text="TARGET" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,6" />
+            <TextBox Text="{Binding GoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     PreviewTextInput="GoalTargetValue_PreviewTextInput"
+                     DataObject.Pasting="GoalTargetValue_Pasting"
+                     Height="36"
+                     Padding="10,0,10,0"
+                     VerticalContentAlignment="Center"
+                     Background="{DynamicResource ControlBackground}"
+                     BorderBrush="{DynamicResource ControlBorder}"
+                     BorderThickness="1"
+                     Foreground="{DynamicResource WindowForeground}"
+                     FontSize="12.5" />
+          </StackPanel>
 
           <!-- Dashboard Stats Grid -->
           <Grid Grid.Row="1" Margin="0,0,0,16">

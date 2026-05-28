@@ -3653,12 +3653,12 @@
                             <Trigger Property="IsChecked" Value="True">
                               <Setter TargetName="WorkspaceModeBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
                               <Setter TargetName="WorkspaceModeBorder" Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
-                              <Setter TargetName="WorkspaceModeBorder" Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+                              <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                               <Setter TargetName="WorkspaceModeBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
                               <Setter TargetName="WorkspaceModeBorder" Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
-                              <Setter TargetName="WorkspaceModeBorder" Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+                              <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                               <Setter Property="Opacity" Value="0.55" />
