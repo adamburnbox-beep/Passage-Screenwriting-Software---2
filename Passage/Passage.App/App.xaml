@@ -144,8 +144,9 @@
               </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
-                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
+                  <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
                 </Trigger>
                 <Trigger Property="IsKeyboardFocused" Value="True">
                   <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
@@ -192,12 +193,14 @@
               </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="IsChecked" Value="True">
-                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
-                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
+                  <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
                 </Trigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
-                    <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                  <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+                  <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
+                  <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter Property="Opacity" Value="0.55" />

@@ -14,7 +14,8 @@
       <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="10,0,10,0" />
       <Setter Property="MinWidth" Value="140" />
       <Setter Property="OverridesDefaultStyle" Value="True" />
       <Setter Property="SnapsToDevicePixels" Value="True" />
@@ -161,7 +162,8 @@
               <TextBox Text="{Binding SessionGoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                        PreviewTextInput="GoalTargetValue_PreviewTextInput"
                        DataObject.Pasting="GoalTargetValue_Pasting"
-                       Padding="8,6"
+                       Height="36"
+                       Padding="10,0,10,0"
                        VerticalContentAlignment="Center"
                        Background="{DynamicResource ControlBackground}"
                        BorderBrush="{DynamicResource ControlBorder}"
@@ -301,7 +303,8 @@
               <TextBox Text="{Binding GoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                        PreviewTextInput="GoalTargetValue_PreviewTextInput"
                        DataObject.Pasting="GoalTargetValue_Pasting"
-                       Padding="8,6"
+                       Height="36"
+                       Padding="10,0,10,0"
                        VerticalContentAlignment="Center"
                        Background="{DynamicResource ControlBackground}"
                        BorderBrush="{DynamicResource ControlBorder}"
