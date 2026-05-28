@@ -129,6 +129,7 @@ public partial class MainWindow : Window
     private bool _sentenceCapitalizationCheckPending;
     private Vector _pendingEditorWheelDelta;
     private const double EditorWheelScrollMultiplier = 0.6;
+    private const double EditorWindowWheelScrollMultiplier = 1.8;
     private const int WM_MOUSEHWHEEL = 0x020E;
     private bool _hasPendingZoomViewportAnchor;
     private double _pendingZoomViewportAnchorSourceScale;
@@ -5646,7 +5647,7 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             QueueEditorWheelScroll(
-                horizontalDelta: e.Delta / 120.0 * GetEditorWheelScrollStep() * EditorWheelScrollMultiplier * Math.Max(0.01, ViewModel.EditorZoomScale));
+                horizontalDelta: e.Delta / 120.0 * GetEditorWheelScrollStep() * EditorWindowWheelScrollMultiplier * Math.Max(0.01, ViewModel.EditorZoomScale));
             return;
         }
 
@@ -5654,7 +5655,7 @@ public partial class MainWindow : Window
 
         // Keep wheel movement tied to the editor's line height, but much gentler than the default jump.
         QueueEditorWheelScroll(
-            verticalDelta: -e.Delta / 120.0 * GetEditorWheelScrollStep() * EditorWheelScrollMultiplier * Math.Max(0.01, ViewModel.EditorZoomScale));
+            verticalDelta: -e.Delta / 120.0 * GetEditorWheelScrollStep() * EditorWindowWheelScrollMultiplier * Math.Max(0.01, ViewModel.EditorZoomScale));
     }
 
     private void EditorScrollHost_SizeChanged(object sender, SizeChangedEventArgs e)

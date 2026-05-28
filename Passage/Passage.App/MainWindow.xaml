@@ -2374,7 +2374,7 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE710;"
-                         Foreground="{DynamicResource ControlAccent}"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                          Margin="0,0,6,0" />
               <TextBlock Text="New" />
             </StackPanel>
@@ -2386,7 +2386,7 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE8E5;"
-                         Foreground="{DynamicResource ControlAccent}"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                          Margin="0,0,6,0" />
               <TextBlock Text="Open" />
             </StackPanel>
@@ -2398,7 +2398,7 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE74E;"
-                         Foreground="{DynamicResource ControlAccent}"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                          Margin="0,0,6,0" />
               <TextBlock Text="Save" />
             </StackPanel>
@@ -2410,7 +2410,7 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock FontFamily="Segoe MDL2 Assets"
                          Text="&#xE721;"
-                         Foreground="{DynamicResource ControlAccent}"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                          Margin="0,0,6,0" />
               <TextBlock Text="Find" />
             </StackPanel>
@@ -3587,7 +3587,7 @@
                     <TextBlock FontFamily="Segoe MDL2 Assets"
                                Text="&#xE74D;"
                                FontSize="15"
-                               Foreground="{DynamicResource ControlForeground}"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
                   </Button>
@@ -4037,7 +4037,7 @@
                             VirtualizingPanel.IsVirtualizing="True">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Width="612" Height="792" Margin="0,0,0,20" Background="{DynamicResource WindowBackground}" CornerRadius="0">
+                    <Border Width="612" Height="792" Margin="0,0,0,20" Background="{DynamicResource WindowBackground}" BorderBrush="LightGray" BorderThickness="1" CornerRadius="0">
                       <Grid>
                         <ItemsControl ItemsSource="{Binding Lines}">
                           <ItemsControl.ItemsPanel>
@@ -4073,7 +4073,7 @@
                         <TextBlock Text="{Binding PageNumberLabel}" 
                                    FontFamily="Courier Prime, Courier New, Courier" 
                                    FontSize="12" 
-                                   Foreground="{DynamicResource EditorForeground}" 
+                                   Foreground="Black" 
                                    HorizontalAlignment="Right" 
                                    VerticalAlignment="Top" 
                                    Margin="0,36,72,0" />
