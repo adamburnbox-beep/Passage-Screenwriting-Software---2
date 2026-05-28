@@ -6,7 +6,7 @@
       <Setter Property="Background" Value="{DynamicResource ReferenceCardBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ReferenceBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="CornerRadius" Value="0" />
       <Setter Property="Padding" Value="16" />
       <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
@@ -36,7 +36,7 @@
       <Setter Property="Background" Value="{DynamicResource ReferencePanelBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ReferenceBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="CornerRadius" Value="0" />
       <Setter Property="Padding" Value="10,5" />
       <Setter Property="Margin" Value="0,0,12,0" />
       <Setter Property="MinWidth" Value="84" />
@@ -66,7 +66,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="6">
+                    CornerRadius="0">
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
             </Border>

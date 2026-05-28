@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## [Visual Studio / .NET Core / WPF]
 # Target directories
 Bin/
@@ -23,3 +24,18 @@ x86/
 *.nuget.props
 *.nuget.targets
 project.assets.json
+=======
+# GSD State Files
+.gsd/ARCHITECTURE.md
+.gsd/DECISIONS.md
+.gsd/JOURNAL.md
+.gsd/ROADMAP.md
+.gsd/SPEC.md
+.gsd/STACK.md
+.gsd/STATE.md
+.gsd/TODO.md
+
+# OS generated
+Thumbs.db
+.DS_Store
+>>>>>>> 3cb5243bc5954e52bd03f8f5bdac42f242f6afef

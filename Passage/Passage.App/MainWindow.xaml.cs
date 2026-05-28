@@ -89,7 +89,7 @@ public partial class MainWindow : Window
     private const double PreferredStartupWidth = 1320.0;
     private const double PreferredStartupHeight = 800.0;
     private const double WorkAreaPadding = 32.0;
-    private const double LeftDockExpandedWidth = 245.0;
+    private const double LeftDockExpandedWidth = 270.0;
     private const double SyntaxQuickReferenceMinimumWidth = 280.0;
     private const double SyntaxQuickReferenceDefaultWidth = 320.0;
     private const double ParagraphStyleTolerance = 0.5;

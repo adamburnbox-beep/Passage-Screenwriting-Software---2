@@ -21,7 +21,7 @@
                 BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}"
                 Padding="{TemplateBinding Padding}"
-                CornerRadius="2">
+                CornerRadius="0">
           <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
         </Border>
         <TextBlock x:Name="Placeholder"
@@ -83,7 +83,7 @@
                             Background="{TemplateBinding Background}" 
                             BorderBrush="{TemplateBinding BorderBrush}" 
                             BorderThickness="{TemplateBinding BorderThickness}" 
-                            CornerRadius="2">
+                            CornerRadius="0">
                       <Grid>
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
@@ -166,7 +166,7 @@
 
     <DataTemplate x:Key="WorkspaceGhostTemplate" DataType="{x:Type vm:OutlineNodeViewModel}">
       <Border Padding="4,10"
-              CornerRadius="10"
+              CornerRadius="0"
               Width="240"
               Height="60"
               Background="{DynamicResource SurfaceMutedBackground}"
@@ -247,8 +247,8 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Padding" Value="7,5" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="10,6" />
       <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
 
@@ -340,7 +340,7 @@
           <ControlTemplate TargetType="Button">
             <Border x:Name="ChevronHost"
                     Background="Transparent"
-                    CornerRadius="10">
+                    CornerRadius="0">
               <Path x:Name="ChevronPath"
                     Data="M 4 3 L 12 9 L 4 15 Z"
                     Width="10"
@@ -394,7 +394,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="10">
+                    CornerRadius="0">
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
             </Border>
@@ -480,7 +480,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="4"
+                    CornerRadius="0"
                     Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
@@ -2506,7 +2506,7 @@
     <Grid Grid.Row="2"
           x:Name="MainLayoutGrid">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition x:Name="LeftDockColumn" Width="265" />
+        <ColumnDefinition x:Name="LeftDockColumn" Width="600" />
         <ColumnDefinition x:Name="LeftSplitterColumn" Width="2" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition x:Name="SyntaxQuickReferenceSplitterColumn" Width="0" />
@@ -2515,7 +2515,7 @@
 
       <Border x:Name="LeftDockBorder"
               Grid.Column="0"
-              Background="{DynamicResource SurfaceMutedBackground}"
+              Background="{DynamicResource SurfaceRaisedBackground}"
               BorderBrush="{DynamicResource SurfaceMutedBorder}"
               BorderThickness="0,0,1,0">
         <Grid>
@@ -2524,8 +2524,8 @@
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
 
-          <Border Background="{DynamicResource SurfaceBackground}"
-                  BorderBrush="{DynamicResource SurfaceMutedBorder}"
+          <Border Background="{DynamicResource SurfaceRaisedBackground}"
+                  BorderBrush="{DynamicResource SurfaceBorder}"
                   BorderThickness="0,0,0,1"
                   Padding="16,14">
             <Grid>
@@ -2545,7 +2545,7 @@
                       Grid.Column="1"
                       Click="ToggleLeftDock_Click"
                       Padding="7,2"
-                      MinWidth="26"
+                      MinWidth="24"
                       Content="‹"
                       FontSize="14"
                       ToolTip="Collapse left dock"
@@ -2556,11 +2556,75 @@
 
           <TabControl x:Name="LeftDockTabs"
                       Grid.Row="1"
-                      Margin="10,10,10,10"
-                      Background="Transparent"
-                      BorderThickness="0"
+                      Margin="10"
                       SelectedIndex="0">
             <TabControl.Resources>
+              <Style TargetType="{x:Type TabControl}">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabControl}">
+                      <Grid KeyboardNavigation.TabNavigation="Local">
+                        <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TabPanel Grid.Row="0"
+                                  IsItemsHost="True"
+                                  Panel.ZIndex="1" />
+                        <Border Grid.Row="1"
+                                Background="{DynamicResource SurfaceBackground}"
+                                BorderBrush="{DynamicResource ControlBorder}"
+                                BorderThickness="1"
+                                Padding="12">
+                          <ContentPresenter x:Name="PART_SelectedContentHost"
+                                            ContentSource="SelectedContent" />
+                        </Border>
+                      </Grid>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+
+              <Style TargetType="{x:Type TabItem}">
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="HeaderTemplate">
+                  <Setter.Value>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" FontSize="12.5" FontWeight="SemiBold" />
+                    </DataTemplate>
+                  </Setter.Value>
+                </Setter>
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                      <Border x:Name="TabBorder"
+                              Background="{DynamicResource SurfaceMutedBackground}"
+                              BorderBrush="{DynamicResource SurfaceBorder}"
+                              BorderThickness="1,1,1,0"
+                              Padding="{TemplateBinding Padding}"
+                              Margin="{TemplateBinding Margin}">
+                        <ContentPresenter x:Name="ContentSite"
+                                          ContentSource="Header"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                          <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                          <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+                          <Setter Property="Panel.ZIndex" Value="100" />
+                          <Setter TargetName="TabBorder" Property="Margin" Value="0,0,4,-1" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                        </Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+
               <Style x:Key="WorkspaceExpandToggleStyle" TargetType="ToggleButton">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="Transparent" />
@@ -2805,17 +2869,17 @@
                                 <Condition Binding="{Binding Kind}" Value="Section" />
                                 <Condition Binding="{Binding SectionLevel}" Value="1" />
                               </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="10" />
+                              <Setter Property="Width" Value="14" />
                             </MultiDataTrigger>
                             <MultiDataTrigger>
                               <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding Kind}" Value="Section" />
                                 <Condition Binding="{Binding SectionLevel}" Value="2" />
                               </MultiDataTrigger.Conditions>
-                              <Setter Property="Width" Value="14" />
+                              <Setter Property="Width" Value="16" />
                             </MultiDataTrigger>
                             <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                              <Setter Property="Width" Value="18" />
+                              <Setter Property="Width" Value="22" />
                             </DataTrigger>
                             <!-- Catch-all for other levels if needed, using Level property -->
                             <MultiDataTrigger>
@@ -2943,7 +3007,7 @@
             </TabControl.Resources>
 
             <TabItem Header="Outline">
-              <Grid Margin="-8,8,4,4">
+              <Grid Margin="-14,4,4,4">
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="*" />
@@ -2994,8 +3058,17 @@
                       </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Style="{StaticResource BeatBoardOutlineSequenceCardBorderStyle}"
-                                Cursor="Hand">
+                        <Border Cursor="Hand">
+                          <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource BeatBoardOutlineSequenceCardBorderStyle}">
+                              <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                              <Style.Triggers>
+                                <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                  <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                                </Trigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Border.Style>
                           <Border.InputBindings>
                             <MouseBinding MouseAction="LeftClick" Command="{Binding NavigateCommand}" />
                           </Border.InputBindings>
@@ -3008,7 +3081,7 @@
                             <Border Grid.Column="0"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Stretch"
-                                    Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
+                                    Background="{DynamicResource ControlBorder}"
                                     Margin="0,-1">
                               <Border.Style>
                                 <Style TargetType="Border">
@@ -3031,10 +3104,10 @@
                                         <Condition Binding="{Binding Kind}" Value="Section" />
                                         <Condition Binding="{Binding SectionLevel}" Value="2" />
                                       </MultiDataTrigger.Conditions>
-                                      <Setter Property="Width" Value="14" />
+                                      <Setter Property="Width" Value="18" />
                                     </MultiDataTrigger>
                                     <DataTrigger Binding="{Binding Kind}" Value="SceneHeading">
-                                      <Setter Property="Width" Value="18" />
+                                      <Setter Property="Width" Value="24" />
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>
@@ -3153,7 +3226,7 @@
             </TabItem>
 
             <TabItem Header="Notes">
-              <Grid Margin="-8,8,4,4">
+              <Grid Margin="-8,4,4,4">
                 <Grid>
                   <TreeView x:Name="NotesTree" 
                             AllowDrop="True" 
@@ -3205,7 +3278,7 @@
             </TabItem>
 
             <TabItem Header="Scratchpad">
-              <Grid Margin="0,8,4,4">
+              <Grid Margin="0,4,4,4">
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="*" />
@@ -3517,7 +3590,7 @@
             </TabItem>
 
             <TabItem Header="Goal">
-              <views:GoalPanel Margin="2,8,2,2" />
+              <views:GoalPanel Margin="2,4,2,2" />
             </TabItem>
           </TabControl>
         </Grid>
@@ -3607,6 +3680,7 @@
 
           <Grid>
             <ScrollViewer x:Name="EditorScrollHost"
+                          Background="{DynamicResource SurfaceBackground}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Auto"
                           CanContentScroll="False"
@@ -3614,15 +3688,21 @@
                           PreviewMouseWheel="EditorScrollHost_PreviewMouseWheel"
                           ScrollChanged="EditorScrollHost_ScrollChanged"
                           SizeChanged="EditorScrollHost_SizeChanged">
-              <Grid x:Name="EditorDocumentHost"
-                    Width="800"
-                    Margin="0"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Top">
-                <Grid.LayoutTransform>
+              <Border x:Name="EditorDocumentHost"
+                      Width="800"
+                      Margin="0,40"
+                      Background="{DynamicResource EditorPageBackground}"
+                      BorderBrush="{DynamicResource EditorPageBorder}"
+                      BorderThickness="1"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Top">
+                <Border.Effect>
+                  <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.1" Color="#000000" />
+                </Border.Effect>
+                <Border.LayoutTransform>
                   <ScaleTransform ScaleX="{Binding EditorZoomScale}"
                                   ScaleY="{Binding EditorZoomScale}" />
-                </Grid.LayoutTransform>
+                </Border.LayoutTransform>
                 <AdornerDecorator>
                   <RichTextBox x:Name="EditorBox"
                                Padding="50"
@@ -3673,7 +3753,7 @@
                     </FlowDocument>
                   </RichTextBox>
                 </AdornerDecorator>
-              </Grid>
+              </Border>
             </ScrollViewer>
 
             <Popup x:Name="AutoCompletePopup"

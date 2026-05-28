@@ -2,18 +2,20 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:Passage.App.Converters"
+             xmlns:local="clr-namespace:Passage.App.Views"
              x:Name="GoalRoot">
   <UserControl.Resources>
     <converters:GoalTypeLabelConverter x:Key="GoalTypeLabelConverter" />
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    <local:ProgressToArcConverter x:Key="ProgressToArcConverter" />
 
     <Style x:Key="GoalTypeComboBoxStyle" TargetType="ComboBox">
       <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
       <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="6,2" />
-      <Setter Property="MinWidth" Value="160" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="MinWidth" Value="140" />
       <Setter Property="OverridesDefaultStyle" Value="True" />
       <Setter Property="SnapsToDevicePixels" Value="True" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -47,7 +49,7 @@
                       Background="{TemplateBinding Background}"
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="2"
+                      CornerRadius="0"
                       SnapsToDevicePixels="True"
                       IsHitTestVisible="False" />
 
@@ -68,7 +70,7 @@
                       Background="{DynamicResource SurfaceMutedBackground}"
                       BorderBrush="{DynamicResource ControlBorder}"
                       BorderThickness="1,0,0,0"
-                      CornerRadius="0,2,2,0"
+                      CornerRadius="0"
                       IsHitTestVisible="False">
                 <Path Data="M 0 0 L 5 5 L 10 0 Z"
                       Fill="{DynamicResource ControlForeground}"
@@ -118,380 +120,259 @@
     </Style>
   </UserControl.Resources>
 
-  <Border Padding="14,12"
-          CornerRadius="10"
-          Background="{DynamicResource SurfaceBackground}"
-          BorderBrush="{DynamicResource SurfaceBorder}"
-          BorderThickness="1"
-          MinHeight="360">
-    <StackPanel>
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-
-        <StackPanel>
-          <TextBlock Text="Goal"
-                     FontSize="14"
-                     FontWeight="SemiBold"
-                     Foreground="{DynamicResource HeaderText}" />
-        </StackPanel>
-      </Grid>
-
-      <TabControl Margin="0,12,0,0"
-                  Background="Transparent"
-                  BorderThickness="0"
-                  SelectedIndex="0">
-        <TabItem Header="Session">
-          <Border Padding="12"
-                  CornerRadius="10"
-                  Background="{DynamicResource GoalSuccessBackground}"
-                  BorderBrush="{DynamicResource GoalSuccessBorder}"
-                  BorderThickness="1">
-        <Grid>
+  <Grid MinHeight="360" Margin="4,8,4,4">
+    <TabControl Background="Transparent"
+                BorderThickness="0"
+                SelectedIndex="0">
+      
+      <!-- SESSION TAB -->
+      <TabItem Header="Session">
+        <Grid Margin="0,16,0,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.ColumnSpan="2">
-            <TextBlock Text="Session"
-                       FontSize="12.5"
-                       FontWeight="SemiBold"
-                       Foreground="{DynamicResource GoalSuccessForeground}" />
-          </StackPanel>
-
-          <StackPanel Grid.Row="1"
-                      Grid.ColumnSpan="2"
-                      Margin="0,10,0,0">
-            <TextBlock Text="Type"
-                       Foreground="{DynamicResource SecondaryText}"
-                       FontSize="11"
-                       FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding SessionGoalTypes}"
-                      SelectedItem="{Binding SessionSelectedGoalType, Mode=TwoWay}"
-                      Margin="0,4,0,0"
-                      Padding="8,5"
-                      Background="{DynamicResource ControlBackground}"
-                      BorderBrush="{DynamicResource ControlBorder}"
-                      Foreground="{DynamicResource GoalValueText}"
-                      FontSize="12.5"
-                      Style="{StaticResource GoalTypeComboBoxStyle}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </StackPanel>
-
-          <Grid Grid.Row="2"
-                Grid.ColumnSpan="2"
-                Margin="0,10,0,0">
+          <!-- Config inputs (spacious, heights adjusted to avoid layout clipping) -->
+          <Grid Grid.Row="0" Margin="0,0,0,24">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="96" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="100" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel>
-              <TextBlock Text="Target"
-                         Foreground="{DynamicResource SecondaryText}"
-                         FontSize="11"
-                         FontWeight="SemiBold" />
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="GOAL TYPE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
+              <ComboBox ItemsSource="{Binding SessionGoalTypes}"
+                        SelectedItem="{Binding SessionSelectedGoalType, Mode=TwoWay}"
+                        Style="{StaticResource GoalTypeComboBoxStyle}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="TARGET" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
               <TextBox Text="{Binding SessionGoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                        PreviewTextInput="GoalTargetValue_PreviewTextInput"
                        DataObject.Pasting="GoalTargetValue_Pasting"
-                       Margin="0,4,0,0"
-                       Padding="8,5"
+                       Padding="8,6"
+                       VerticalContentAlignment="Center"
                        Background="{DynamicResource ControlBackground}"
                        BorderBrush="{DynamicResource ControlBorder}"
+                       BorderThickness="1"
                        Foreground="{DynamicResource GoalValueText}"
                        FontSize="12.5" />
             </StackPanel>
-
-            <StackPanel Grid.Column="1"
-                        Margin="10,0,0,0">
-              <TextBlock Text="{Binding SessionGoalTargetUnitLabel}"
-                         Foreground="{DynamicResource GoalLabelText}"
-                         FontSize="11"
-                         FontWeight="SemiBold" />
-              <TextBlock Text="{Binding SessionGoalProgressPercent, StringFormat={}{0:0}%}"
-                         Margin="0,4,0,0"
-                         Foreground="{DynamicResource GoalValueText}"
-                         FontSize="13"
-                         FontWeight="SemiBold" />
-            </StackPanel>
           </Grid>
 
-          <ProgressBar Grid.Row="3"
-                       Grid.ColumnSpan="2"
-                       Height="10"
-                       Margin="0,10,0,0"
-                       Minimum="0"
-                       Maximum="100"
-                       Value="{Binding SessionGoalProgressPercent, Mode=OneWay}" />
-
-          <Grid Grid.Row="4"
-                Grid.ColumnSpan="2"
-                Margin="0,10,0,0">
+          <!-- Dashboard Stats Grid -->
+          <Grid Grid.Row="1" Margin="0,0,0,16">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel>
-              <TextBlock Text="Current"
-                         Foreground="{DynamicResource SecondaryText}"
-                         FontSize="10.5"
-                         FontWeight="SemiBold" />
-              <TextBlock Text="{Binding SessionGoalCurrentDisplayText}"
-                         Foreground="{DynamicResource GoalValueText}"
-                         FontSize="12.5"
-                         Margin="0,2,0,0"
-                         TextWrapping="Wrap" />
+            <!-- Left: Circular Progress Bar (110x110 canvas size) -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <Grid Width="110" Height="110">
+                <!-- Background track circle -->
+                <Ellipse Width="100" Height="100"
+                         Stroke="{DynamicResource SurfaceBorder}"
+                         StrokeThickness="2" />
+                
+                <!-- Progress Arc -->
+                <Path Stroke="{DynamicResource ControlAccent}"
+                      StrokeThickness="4"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Data="{Binding SessionGoalProgressPercent, Converter={StaticResource ProgressToArcConverter}}" />
+
+                <!-- Center text content based on goal type -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                  <!-- Timer display -->
+                  <TextBlock Text="{Binding GoalTimerRemainingText}"
+                             FontSize="20"
+                             FontWeight="SemiBold"
+                             HorizontalAlignment="Center"
+                             Foreground="{DynamicResource HeaderText}"
+                             Visibility="{Binding IsTimerGoal, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                  
+                  <!-- Normal percentage display -->
+                  <TextBlock Text="{Binding SessionGoalProgressPercent, StringFormat={}{0:0}%}"
+                             FontSize="24"
+                             FontWeight="SemiBold"
+                             HorizontalAlignment="Center"
+                             Foreground="{DynamicResource HeaderText}"
+                             Visibility="{Binding IsTimerGoal, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                </StackPanel>
+              </Grid>
+              
+              <TextBlock Text="PROGRESS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" Margin="0,8,0,0" />
             </StackPanel>
 
-            <StackPanel Grid.Column="1">
-              <TextBlock Text="Target"
-                         Foreground="{DynamicResource SecondaryText}"
-                         FontSize="10.5"
-                         FontWeight="SemiBold" />
+            <!-- Right: Text Stats Block -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <!-- Current Value -->
+              <TextBlock Text="{Binding SessionGoalCurrentDisplayText}"
+                         FontSize="24"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource HeaderText}" />
+              <TextBlock Text="CURRENT" FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+              
+              <!-- Target Value -->
               <TextBlock Text="{Binding SessionGoalTargetDisplayText}"
-                         Foreground="{DynamicResource GoalValueText}"
-                         FontSize="12.5"
-                         Margin="0,2,0,0"
-                         TextWrapping="Wrap" />
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource SecondaryText}" />
+              <TextBlock Text="TARGET" FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Actions & States -->
+          <StackPanel Grid.Row="2" Margin="0,8,0,0">
+            <WrapPanel HorizontalAlignment="Center" Margin="0,0,0,8">
+              <Button Content="Reset Goal"
+                      Click="GoalResetSession_Click"
+                      Style="{StaticResource DarkChromeButtonStyle}"
+                      Padding="12,5"
+                      Margin="0,0,8,0" />
+              
+              <StackPanel Orientation="Horizontal" Visibility="{Binding IsTimerGoal, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Button Content="{Binding GoalTimerPrimaryButtonText}"
+                        Click="GoalPrimaryTimerButton_Click"
+                        Style="{StaticResource DarkChromeButtonStyle}"
+                        Padding="12,5"
+                        Margin="0,0,8,0" />
+                <Button Content="{Binding GoalTimerSecondaryButtonText}"
+                        Click="GoalSecondaryTimerButton_Click"
+                        Style="{StaticResource DarkChromeButtonStyle}"
+                        Padding="12,5" />
+              </StackPanel>
+            </WrapPanel>
+            
+            <TextBlock Text="{Binding SessionGoalStateText}"
+                       Foreground="{DynamicResource SecondaryText}"
+                       FontSize="11.5"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+      </TabItem>
+
+      <!-- OVERALL TAB -->
+      <TabItem Header="Overall">
+        <Grid Margin="0,16,0,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <!-- Config inputs (padding adjusted to fix clipping) -->
+          <Grid Grid.Row="0" Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="100" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="GOAL TYPE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
+              <ComboBox ItemsSource="{Binding GoalTypes}"
+                        SelectedItem="{Binding SelectedGoalType, Mode=TwoWay}"
+                        Style="{StaticResource GoalTypeComboBoxStyle}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
             </StackPanel>
 
             <StackPanel Grid.Column="2">
-              <TextBlock Text="State"
-                         Foreground="{DynamicResource SecondaryText}"
-                         FontSize="10.5"
-                         FontWeight="SemiBold" />
-              <TextBlock Text="{Binding SessionGoalStateText}"
-                         Foreground="{DynamicResource GoalValueText}"
-                         FontSize="12.5"
-                         Margin="0,2,0,0"
-                         TextWrapping="Wrap" />
-            </StackPanel>
-          </Grid>
-
-          <StackPanel Grid.Row="5"
-                      Grid.ColumnSpan="2"
-                      Margin="0,10,0,0">
-            <Button Content="Reset Session Goal"
-                    Click="GoalResetSession_Click"
-                    Padding="10,4"
-                    MinWidth="148"
-                    HorizontalAlignment="Left" />
-
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsTimerGoal, Converter={StaticResource BooleanToVisibilityConverter}}">
-              <TextBlock Text="Timer"
-                         Foreground="{DynamicResource SecondaryText}"
-                         FontSize="11"
-                         FontWeight="SemiBold"
-                         Margin="0,0,0,6" />
-
-              <WrapPanel>
-                <Button Content="{Binding GoalTimerPrimaryButtonText}"
-                        Click="GoalPrimaryTimerButton_Click"
-                        Margin="0,0,6,0"
-                        Padding="10,4"
-                        MinWidth="76" />
-                <Button Content="{Binding GoalTimerSecondaryButtonText}"
-                        Click="GoalSecondaryTimerButton_Click"
-                        Margin="0,0,6,0"
-                        Padding="10,4"
-                        MinWidth="76" />
-              </WrapPanel>
-
-              <StackPanel Orientation="Horizontal"
-                          Margin="0,8,0,0">
-                <TextBlock Text="Elapsed "
-                           Foreground="{DynamicResource SecondaryText}"
-                           FontSize="11.5"
-                           FontWeight="SemiBold" />
-                <TextBlock Text="{Binding GoalTimerElapsedText}"
-                           Foreground="{DynamicResource WindowForeground}"
-                           FontSize="11.5"
-                           Margin="0,0,18,0" />
-                <TextBlock Text="Remaining "
-                           Foreground="{DynamicResource SecondaryText}"
-                           FontSize="11.5"
-                           FontWeight="SemiBold" />
-                <TextBlock Text="{Binding GoalTimerRemainingText}"
-                           Foreground="{DynamicResource WindowForeground}"
-                           FontSize="11.5" />
-              </StackPanel>
-            </StackPanel>
-          </StackPanel>
-        </Grid>
-          </Border>
-        </TabItem>
-
-        <TabItem Header="Overall">
-          <Border Padding="12"
-                  CornerRadius="10"
-                  Background="{DynamicResource GoalOverallBackground}"
-                  BorderBrush="{DynamicResource GoalOverallBorder}"
-                  BorderThickness="1">
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-
-          <StackPanel Grid.ColumnSpan="2">
-            <TextBlock Text="Overall"
-                       FontSize="12.5"
-                       FontWeight="SemiBold"
-                       Foreground="{DynamicResource HeaderText}" />
-            <TextBlock Text="Counts the full document total across sessions."
-                       FontSize="11"
-                       Foreground="{DynamicResource MutedText}"
-                       Margin="0,2,0,0"
-                       TextWrapping="Wrap" />
-          </StackPanel>
-
-          <StackPanel Grid.Row="1"
-                      Grid.ColumnSpan="2"
-                      Margin="0,10,0,0">
-            <TextBlock Text="Type"
-                       Foreground="{DynamicResource GoalLabelText}"
-                       FontSize="11"
-                       FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding GoalTypes}"
-                      SelectedItem="{Binding SelectedGoalType, Mode=TwoWay}"
-                      Margin="0,4,0,0"
-                      Padding="8,5"
-                      Background="{DynamicResource ControlBackground}"
-                      BorderBrush="{DynamicResource ControlBorder}"
-                      Foreground="{DynamicResource WindowForeground}"
-                      FontSize="12.5"
-                      Style="{StaticResource GoalTypeComboBoxStyle}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Converter={StaticResource GoalTypeLabelConverter}}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </StackPanel>
-
-          <Grid Grid.Row="2"
-                Grid.ColumnSpan="2"
-                Margin="0,10,0,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="96" />
-            </Grid.ColumnDefinitions>
-
-            <StackPanel>
-              <TextBlock Text="Target"
-                         Foreground="{DynamicResource GoalLabelText}"
-                         FontSize="11"
-                         FontWeight="SemiBold" />
+              <TextBlock Text="TARGET" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" Margin="0,0,0,4" />
               <TextBox Text="{Binding GoalTargetValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                        PreviewTextInput="GoalTargetValue_PreviewTextInput"
                        DataObject.Pasting="GoalTargetValue_Pasting"
-                       Margin="0,4,0,0"
-                       Padding="8,5"
+                       Padding="8,6"
+                       VerticalContentAlignment="Center"
                        Background="{DynamicResource ControlBackground}"
                        BorderBrush="{DynamicResource ControlBorder}"
+                       BorderThickness="1"
                        Foreground="{DynamicResource WindowForeground}"
                        FontSize="12.5" />
             </StackPanel>
-
-            <StackPanel Grid.Column="1"
-                        Margin="10,0,0,0">
-              <TextBlock Text="{Binding GoalTargetUnitLabel}"
-                         Foreground="{DynamicResource SecondaryText}"
-                         FontSize="11"
-                         FontWeight="SemiBold" />
-              <TextBlock Text="{Binding GoalProgressPercent, StringFormat={}{0:0}%}"
-                         Margin="0,4,0,0"
-                         Foreground="{DynamicResource WindowForeground}"
-                         FontSize="13"
-                         FontWeight="SemiBold" />
-            </StackPanel>
           </Grid>
 
-          <ProgressBar Grid.Row="3"
-                       Grid.ColumnSpan="2"
-                       Height="10"
-                       Margin="0,10,0,0"
-                       Minimum="0"
-                       Maximum="100"
-                       Value="{Binding GoalProgressPercent, Mode=OneWay}" />
-
-          <Grid Grid.Row="4"
-                Grid.ColumnSpan="2"
-                Margin="0,10,0,0">
+          <!-- Dashboard Stats Grid -->
+          <Grid Grid.Row="1" Margin="0,0,0,16">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel>
-              <TextBlock Text="Current"
-                         Foreground="{DynamicResource GoalLabelText}"
-                         FontSize="10.5"
-                         FontWeight="SemiBold" />
+            <!-- Left: Circular Progress Bar -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <Grid Width="110" Height="110">
+                <!-- Background track circle -->
+                <Ellipse Width="100" Height="100"
+                         Stroke="{DynamicResource SurfaceBorder}"
+                         StrokeThickness="2" />
+                
+                <!-- Progress Arc -->
+                <Path Stroke="{DynamicResource ControlAccent}"
+                      StrokeThickness="4"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Data="{Binding GoalProgressPercent, Converter={StaticResource ProgressToArcConverter}}" />
+
+                <!-- Center text content -->
+                <TextBlock Text="{Binding GoalProgressPercent, StringFormat={}{0:0}%}"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource HeaderText}" />
+              </Grid>
+              
+              <TextBlock Text="PROGRESS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" Margin="0,8,0,0" />
+            </StackPanel>
+
+            <!-- Right: Text Stats Block -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <!-- Current Value -->
               <TextBlock Text="{Binding GoalCurrentDisplayText}"
-                         Foreground="{DynamicResource WindowForeground}"
-                         FontSize="12.5"
-                         Margin="0,2,0,0"
-                         TextWrapping="Wrap" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="1">
-              <TextBlock Text="Target"
-                         Foreground="{DynamicResource GoalLabelText}"
-                         FontSize="10.5"
-                         FontWeight="SemiBold" />
+                         FontSize="24"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource HeaderText}" />
+              <TextBlock Text="CURRENT" FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+              
+              <!-- Target Value -->
               <TextBlock Text="{Binding GoalTargetDisplayText}"
-                         Foreground="{DynamicResource WindowForeground}"
-                         FontSize="12.5"
-                         Margin="0,2,0,0"
-                         TextWrapping="Wrap" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="2">
-              <TextBlock Text="State"
-                         Foreground="{DynamicResource GoalLabelText}"
-                         FontSize="10.5"
-                         FontWeight="SemiBold" />
-              <TextBlock Text="{Binding GoalStateText}"
-                         Foreground="{DynamicResource WindowForeground}"
-                         FontSize="12.5"
-                         Margin="0,2,0,0"
-                         TextWrapping="Wrap" />
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource SecondaryText}" />
+              <TextBlock Text="TARGET" FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" />
             </StackPanel>
           </Grid>
 
+          <!-- State Info -->
+          <StackPanel Grid.Row="2" Margin="0,8,0,0">
+            <TextBlock Text="{Binding GoalStateText}"
+                       Foreground="{DynamicResource SecondaryText}"
+                       FontSize="11.5"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
         </Grid>
-          </Border>
-        </TabItem>
-      </TabControl>
-    </StackPanel>
-  </Border>
+      </TabItem>
+    </TabControl>
+  </Grid>
 </UserControl>

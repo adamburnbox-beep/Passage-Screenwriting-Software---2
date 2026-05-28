@@ -27,7 +27,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
         <Setter Property="BorderThickness" Value="0,1,0,0" />
-        <Setter Property="Padding" Value="4" />
+        <Setter Property="Padding" Value="1" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
@@ -75,8 +75,8 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0,0,0,2" />
         <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
-        <Setter Property="Padding" Value="14,6" />
-        <Setter Property="Margin" Value="0,0,12,0" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Margin" Value="0,0,16,0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
@@ -125,7 +125,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="Padding" Value="12,6" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
@@ -137,7 +137,7 @@
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
                       SnapsToDevicePixels="True"
-                      CornerRadius="4">
+                      CornerRadius="0">
                 <ContentPresenter HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   RecognizesAccessKey="True" />
@@ -173,7 +173,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="Padding" Value="12,6" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
@@ -184,7 +184,7 @@
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
-                      CornerRadius="4"
+                      CornerRadius="0"
                       SnapsToDevicePixels="True">
                 <ContentPresenter HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
@@ -224,7 +224,7 @@
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
                       SnapsToDevicePixels="True"
-                      CornerRadius="4">
+                      CornerRadius="0">
                 <ContentPresenter HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   RecognizesAccessKey="True" />
@@ -253,7 +253,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Padding" Value="10,6" />
         <Setter Property="CaretBrush" Value="{DynamicResource ControlAccent}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource EditorSelection}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
@@ -265,7 +265,7 @@
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
                       Padding="{TemplateBinding Padding}"
-                      CornerRadius="2"
+                      CornerRadius="0"
                       SnapsToDevicePixels="True">
                 <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
               </Border>
@@ -290,7 +290,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="Padding" Value="8,4" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -324,7 +324,7 @@
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="2"
+                        CornerRadius="0"
                         SnapsToDevicePixels="True"
                         IsHitTestVisible="False" />
 
@@ -346,7 +346,7 @@
                         Background="{DynamicResource SurfaceMutedBackground}"
                         BorderBrush="{DynamicResource ControlBorder}"
                         BorderThickness="1,0,0,0"
-                        CornerRadius="0,2,2,0"
+                        CornerRadius="0"
                         IsHitTestVisible="False">
                   <Path Data="M 0 0 L 5 5 L 10 0 Z"
                         Fill="{DynamicResource ControlForeground}"
@@ -441,7 +441,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="2"
+                  CornerRadius="0"
                   Padding="{TemplateBinding Padding}">
             <ContentPresenter ContentSource="Header"
                               RecognizesAccessKey="True"
@@ -458,7 +458,7 @@
             <Border Background="{DynamicResource SurfaceBackground}"
                     BorderBrush="{DynamicResource ControlBorder}"
                     BorderThickness="1"
-                    CornerRadius="2"
+                    CornerRadius="0"
                     Margin="0,2,0,0"
                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                     Padding="4">
@@ -489,7 +489,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="2"
+                  CornerRadius="0"
                   Padding="{TemplateBinding Padding}">
             <Grid>
               <Grid.ColumnDefinitions>
@@ -540,7 +540,7 @@
             <Border Background="{DynamicResource SurfaceBackground}"
                     BorderBrush="{DynamicResource ControlBorder}"
                     BorderThickness="1"
-                    CornerRadius="2"
+                    CornerRadius="0"
                     Padding="4">
               <StackPanel IsItemsHost="True"
                           KeyboardNavigation.DirectionalNavigation="Cycle" />
@@ -588,7 +588,7 @@
               <Border Background="{TemplateBinding Background}"
                       BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="2"
+                      CornerRadius="0"
                       Padding="{TemplateBinding Padding}"
                       SnapsToDevicePixels="True">
                 <StackPanel IsItemsHost="True"
@@ -604,22 +604,22 @@
         <Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Padding" Value="10,7" />
         <Setter Property="Template" Value="{StaticResource SubmenuMenuItemTemplate}" />
         <Style.Triggers>
           <Trigger Property="Role" Value="TopLevelHeader">
-            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Padding" Value="10,6" />
             <Setter Property="Template" Value="{StaticResource TopLevelMenuItemTemplate}" />
           </Trigger>
           <Trigger Property="Role" Value="TopLevelItem">
-            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Padding" Value="10,6" />
             <Setter Property="Template" Value="{StaticResource TopLevelMenuItemTemplate}" />
           </Trigger>
         </Style.Triggers>
       </Style>
 
       <Style TargetType="{x:Type Separator}">
-        <Setter Property="Margin" Value="8,4" />
+        <Setter Property="Margin" Value="10,6" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type Separator}">
@@ -673,7 +673,7 @@
       <Style TargetType="{x:Type ListBoxItem}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
-        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Padding" Value="12,8" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -769,7 +769,7 @@
               <Border x:Name="ThumbBorder"
                       Margin="1"
                       Background="{TemplateBinding Background}"
-                      CornerRadius="3"
+                      CornerRadius="0"
                       SnapsToDevicePixels="True" />
               <ControlTemplate.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -799,7 +799,7 @@
               <Border x:Name="ThumbBorder"
                       Margin="1"
                       Background="{TemplateBinding Background}"
-                      CornerRadius="3"
+                      CornerRadius="0"
                       SnapsToDevicePixels="True" />
               <ControlTemplate.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -915,12 +915,12 @@
                 <Border Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="2" />
+                        CornerRadius="0" />
                 <!-- PART_Indicator is automatically sized by WPF's ProgressBar -->
                 <Border x:Name="PART_Indicator"
                         Background="{TemplateBinding Foreground}"
                         HorizontalAlignment="Left"
-                        CornerRadius="2" />
+                        CornerRadius="0" />
               </Grid>
               <ControlTemplate.Triggers>
                 <Trigger Property="Orientation" Value="Vertical">
