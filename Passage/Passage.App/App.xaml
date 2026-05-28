@@ -117,7 +117,6 @@
       </Style>
 
       <Style TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
       </Style>
 
       <Style x:Key="DarkChromeButtonStyle" TargetType="{x:Type Button}">
