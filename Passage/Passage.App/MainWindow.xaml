@@ -21,7 +21,7 @@
                 BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}"
                 Padding="{TemplateBinding Padding}"
-                CornerRadius="0">
+                CornerRadius="8">
           <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
         </Border>
         <TextBlock x:Name="Placeholder"
@@ -83,7 +83,7 @@
                             Background="{TemplateBinding Background}" 
                             BorderBrush="{TemplateBinding BorderBrush}" 
                             BorderThickness="{TemplateBinding BorderThickness}" 
-                            CornerRadius="0">
+                            CornerRadius="8">
                       <Grid>
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
@@ -166,7 +166,7 @@
 
     <DataTemplate x:Key="WorkspaceGhostTemplate" DataType="{x:Type vm:OutlineNodeViewModel}">
       <Border Padding="4,10"
-              CornerRadius="0"
+              CornerRadius="8"
               Width="240"
               Height="60"
               Background="{DynamicResource SurfaceMutedBackground}"
@@ -256,7 +256,7 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="10,6" />
       <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
@@ -349,7 +349,7 @@
           <ControlTemplate TargetType="Button">
             <Border x:Name="ChevronHost"
                     Background="Transparent"
-                    CornerRadius="0">
+                    CornerRadius="4">
               <Path x:Name="ChevronPath"
                     Data="M 4 3 L 12 9 L 4 15 Z"
                     Width="10"
@@ -403,7 +403,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="0">
+                    CornerRadius="4">
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
             </Border>
@@ -489,7 +489,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="0"
+                    CornerRadius="6"
                     Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center" />
@@ -508,13 +508,18 @@
     </Style>
 
     <Style x:Key="BeatBoardOutlineCardBorderBaseStyle" TargetType="Border">
-      <Setter Property="Margin" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,8" />
       <Setter Property="Padding" Value="0" />
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="BorderThickness" Value="1" />
       <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="Background" Value="{DynamicResource EInkCardPrimaryBackground}" />
+      <Setter Property="Effect">
+        <Setter.Value>
+          <DropShadowEffect BlurRadius="6" Color="#000000" Opacity="0.04" ShadowDepth="2" Direction="270" />
+        </Setter.Value>
+      </Setter>
       <Style.Triggers>
         <Trigger Property="ItemsControl.AlternationIndex" Value="1">
           <Setter Property="Background" Value="{DynamicResource EInkCardSecondaryBackground}" />
@@ -653,7 +658,12 @@
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="20,16" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Effect">
+              <Setter.Value>
+                <DropShadowEffect BlurRadius="8" Color="#000000" Opacity="0.05" ShadowDepth="2" Direction="270" />
+              </Setter.Value>
+            </Setter>
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
@@ -811,7 +821,12 @@
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="16,12" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Effect">
+              <Setter.Value>
+                <DropShadowEffect BlurRadius="8" Color="#000000" Opacity="0.05" ShadowDepth="2" Direction="270" />
+              </Setter.Value>
+            </Setter>
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
@@ -971,7 +986,12 @@
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="12,10" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Effect">
+              <Setter.Value>
+                <DropShadowEffect BlurRadius="8" Color="#000000" Opacity="0.05" ShadowDepth="2" Direction="270" />
+              </Setter.Value>
+            </Setter>
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
@@ -1187,7 +1207,12 @@
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="12,10" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Effect">
+              <Setter.Value>
+                <DropShadowEffect BlurRadius="8" Color="#000000" Opacity="0.05" ShadowDepth="2" Direction="270" />
+              </Setter.Value>
+            </Setter>
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
@@ -1343,7 +1368,12 @@
         <Border.Style>
           <Style TargetType="Border">
             <Setter Property="Padding" Value="12,10" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Effect">
+              <Setter.Value>
+                <DropShadowEffect BlurRadius="8" Color="#000000" Opacity="0.05" ShadowDepth="2" Direction="270" />
+              </Setter.Value>
+            </Setter>
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Style.Triggers>
@@ -2230,7 +2260,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             Padding="{TemplateBinding Padding}"
-                            CornerRadius="0"
+                            CornerRadius="8"
                             SnapsToDevicePixels="True">
                       <ContentPresenter HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
@@ -2289,7 +2319,7 @@
                               Background="{TemplateBinding Background}"
                               BorderBrush="{TemplateBinding BorderBrush}"
                               BorderThickness="{TemplateBinding BorderThickness}"
-                              CornerRadius="0"
+                              CornerRadius="8"
                               SnapsToDevicePixels="True"
                               IsHitTestVisible="False" />
 
@@ -2308,9 +2338,9 @@
                                         TextElement.Foreground="{TemplateBinding Foreground}" />
 
                       <Border Grid.Column="1"
-                              Background="{DynamicResource SurfaceMutedBackground}"
-                              BorderBrush="{DynamicResource ControlBorder}"
-                              BorderThickness="1,0,0,0"
+                              Background="Transparent"
+                              BorderBrush="Transparent"
+                              BorderThickness="0"
                               CornerRadius="0"
                               IsHitTestVisible="False">
                         <Path Data="M 0 0 L 5 5 L 10 0 Z"
@@ -2595,7 +2625,7 @@
                           </Border>
                           <Border BorderBrush="{DynamicResource SurfaceBorder}"
                                   BorderThickness="1"
-                                  CornerRadius="0"
+                                  CornerRadius="8"
                                   IsHitTestVisible="False" />
                         </Grid>
                       </Grid>
@@ -2624,7 +2654,7 @@
                               BorderThickness="0,0,0,3"
                               Padding="{TemplateBinding Padding}"
                               Margin="{TemplateBinding Margin}"
-                              CornerRadius="0">
+                              CornerRadius="4,4,0,0">
                         <ContentPresenter x:Name="ContentSite"
                                           ContentSource="Header"
                                           HorizontalAlignment="Center"
@@ -2658,7 +2688,7 @@
                 <Setter Property="Template">
                   <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                      <Border x:Name="ChevronHost" Background="Transparent" CornerRadius="0">
+                      <Border x:Name="ChevronHost" Background="Transparent" CornerRadius="4">
                         <Path x:Name="ChevronPath"
                               Data="M 4 3 L 12 9 L 4 15 Z"
                               Width="9"
@@ -2779,7 +2809,7 @@
                 <Setter Property="BorderThickness" Value="0,0,0,1" />
                 <Setter Property="Margin" Value="0" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Style.Triggers>
                   <Trigger Property="ItemsControl.AlternationIndex" Value="1">
@@ -3328,7 +3358,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="0"
+                                    CornerRadius="8"
                                     Padding="{TemplateBinding Padding}"
                                     SnapsToDevicePixels="True">
                               <ContentPresenter HorizontalAlignment="Center"
@@ -3367,7 +3397,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="0"
+                                    CornerRadius="8"
                                     Padding="{TemplateBinding Padding}"
                                     SnapsToDevicePixels="True">
                               <ContentPresenter HorizontalAlignment="Center"
@@ -3429,7 +3459,10 @@
                                 BorderBrush="{DynamicResource SurfaceMutedBorder}"
                                 BorderThickness="1"
                                 Padding="0"
-                                CornerRadius="0">
+                                CornerRadius="8">
+                          <Border.Effect>
+                            <DropShadowEffect BlurRadius="6" Color="#000000" Opacity="0.04" ShadowDepth="2" Direction="270" />
+                          </Border.Effect>
                           <Grid>
                             <Grid.ColumnDefinitions>
                               <ColumnDefinition Width="Auto" />
@@ -3440,7 +3473,7 @@
                             <Border Grid.Column="0"
                                     Width="12"
                                     Background="{DynamicResource WorkspaceHierarchyIndentBrush}"
-                                    CornerRadius="0" />
+                                    CornerRadius="8,0,0,8" />
 
                             <Border Grid.Column="1"
                                     Padding="10,12">
@@ -3650,7 +3683,7 @@
                                   Background="{TemplateBinding Background}"
                                   BorderBrush="{TemplateBinding BorderBrush}"
                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                  CornerRadius="0"
+                                  CornerRadius="8"
                                   Padding="{TemplateBinding Padding}">
                             <ContentPresenter x:Name="WorkspaceModeContent"
                                               HorizontalAlignment="Center"
@@ -3707,6 +3740,9 @@
                       BorderThickness="1"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Top">
+                <Border.Effect>
+                  <DropShadowEffect BlurRadius="12" Color="#000000" Opacity="0.08" ShadowDepth="3" Direction="270" />
+                </Border.Effect>
 
                 <Border.LayoutTransform>
                   <ScaleTransform ScaleX="{Binding EditorZoomScale}"
@@ -3774,7 +3810,7 @@
               <Border Background="{DynamicResource ControlBackground}"
                       BorderBrush="{DynamicResource ControlAccent}"
                       BorderThickness="1"
-                      CornerRadius="0"
+                      CornerRadius="8"
                       Padding="1"
                       MinWidth="200"
                       MaxHeight="300"
@@ -3805,7 +3841,7 @@
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="2"
-                                    CornerRadius="0">
+                                    CornerRadius="6">
                               <ContentPresenter />
                             </Border>
                             <ControlTemplate.Triggers>
@@ -3910,7 +3946,7 @@
                   <Border Margin="12,0,0,0"
                           BorderBrush="{DynamicResource ControlBorder}"
                           BorderThickness="1"
-                          CornerRadius="0">
+                          CornerRadius="6">
                     <StackPanel Orientation="Horizontal">
                       <ToggleButton x:Name="BeatBoardVerticalViewButton"
                                     Content="Vertical"
@@ -4039,7 +4075,10 @@
                             VirtualizingPanel.IsVirtualizing="True">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Width="612" Height="792" Margin="0,0,0,20" Background="{DynamicResource WindowBackground}" BorderBrush="LightGray" BorderThickness="1" CornerRadius="0">
+                    <Border Width="612" Height="792" Margin="0,0,0,20" Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="1" CornerRadius="4">
+                      <Border.Effect>
+                        <DropShadowEffect BlurRadius="10" Color="#000000" Opacity="0.06" ShadowDepth="2" Direction="270" />
+                      </Border.Effect>
                       <Grid>
                         <ItemsControl ItemsSource="{Binding Lines}">
                           <ItemsControl.ItemsPanel>
