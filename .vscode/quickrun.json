@@ -1,0 +1,13 @@
+{
+  "commands": [
+    {
+      "id": "16b3532f-2fd4-4936-8b7b-904ff6fa45ef",
+      "label": "Run Passage",
+      "customCommand": "dotnet run --project \"Passage/Passage.App/Passage.App.csproj\"",
+      "icon": "play",
+      "notes": "Opens the Passage proj file",
+      "terminalMode": "reuse"
+    }
+  ],
+  "groups": []
+}
