@@ -79,25 +79,25 @@
                             ClickMode="Press">
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="templateRoot" 
-                            Background="{TemplateBinding Background}" 
-                            BorderBrush="{TemplateBinding BorderBrush}" 
-                            BorderThickness="{TemplateBinding BorderThickness}" 
+                    <Border x:Name="templateRoot"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="8">
                       <Grid>
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
                           <ColumnDefinition Width="18" />
                         </Grid.ColumnDefinitions>
-                        <ContentPresenter Grid.Column="0" 
-                                          Margin="{TemplateBinding Padding}" 
-                                          VerticalAlignment="Center" 
-                                          HorizontalAlignment="Left" 
+                        <ContentPresenter Grid.Column="0"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Left"
                                           SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-                        <Path Grid.Column="1" 
-                              Data="M0,0 L4,4 L8,0 Z" 
-                              Fill="{DynamicResource MutedText}" 
-                              HorizontalAlignment="Center" 
+                        <Path Grid.Column="1"
+                              Data="M0,0 L4,4 L8,0 Z"
+                              Fill="{DynamicResource MutedText}"
+                              HorizontalAlignment="Center"
                               VerticalAlignment="Center" />
                       </Grid>
                     </Border>
@@ -179,7 +179,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" 
+          <TextBlock Grid.Column="0"
                      Text="{Binding LineNumber}"
                      Foreground="{DynamicResource MutedText}"
                      FontSize="10.5" />
@@ -2783,7 +2783,7 @@
                                            x:Name="PART_Header"
                                            ContentSource="Header"
                                            HorizontalAlignment="Stretch" />
-                        
+
                         <ItemsPresenter x:Name="ItemsHost"
                                         Grid.Column="1"
                                         Grid.Row="1"
@@ -3043,12 +3043,12 @@
                 </StackPanel>
 
                 <Grid Grid.Row="1">
-                  <ScrollViewer x:Name="OutlineScrollViewer" 
-                                VerticalScrollBarVisibility="Auto" 
-                                HorizontalScrollBarVisibility="Disabled" 
+                  <ScrollViewer x:Name="OutlineScrollViewer"
+                                VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled"
                                 VirtualizingPanel.ScrollUnit="Pixel"
                                 PreviewMouseWheel="OutlineScrollViewer_PreviewMouseWheel">
-                    <ItemsControl x:Name="OutlineCards" 
+                    <ItemsControl x:Name="OutlineCards"
                                   ItemsSource="{Binding OutlineNodes}"
                                   AlternationCount="2"
                                   Background="Transparent"
@@ -3226,7 +3226,7 @@
                       </Style>
                     </TextBlock.Style>
                   </TextBlock>
- 
+
                   <Canvas x:Name="WorkspaceDragCanvas" IsHitTestVisible="False">
                     <ContentControl x:Name="WorkspaceGhostVisual"
                                     Visibility="Collapsed"
@@ -3266,8 +3266,8 @@
                 </StackPanel>
 
                 <Grid Grid.Row="1">
-                  <TreeView x:Name="NotesTree" 
-                            AllowDrop="True" 
+                  <TreeView x:Name="NotesTree"
+                            AllowDrop="True"
                             VirtualizingPanel.IsVirtualizing="False"
                             ItemsSource="{Binding NotesRoots}"
                             AlternationCount="2"
@@ -3304,7 +3304,7 @@
                       </Style>
                     </TextBlock.Style>
                   </TextBlock>
- 
+
                   <Canvas x:Name="NotesDragCanvas" IsHitTestVisible="False">
                     <ContentControl x:Name="NotesGhostVisual"
                                     Visibility="Collapsed"
@@ -3381,7 +3381,7 @@
                         </Setter.Value>
                       </Setter>
                     </Style>
- 
+
                     <Style x:Key="ScratchpadActionToggleButtonStyle" TargetType="ToggleButton">
                       <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
                       <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
@@ -3433,7 +3433,7 @@
                              Background="Transparent"
                            BorderThickness="0"
                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                           VirtualizingPanel.ScrollUnit="Pixel" 
+                           VirtualizingPanel.ScrollUnit="Pixel"
                            ScrollViewer.VerticalScrollBarVisibility="Auto"
                            PreviewMouseWheel="WorkspaceListBox_PreviewMouseWheel"
                            PreviewMouseLeftButtonDown="ScratchpadListBox_PreviewMouseLeftButtonDown"
@@ -4111,12 +4111,12 @@
                             </Style>
                           </ItemsControl.ItemContainerStyle>
                         </ItemsControl>
-                        <TextBlock Text="{Binding PageNumberLabel}" 
-                                   FontFamily="Courier Prime, Courier New, Courier" 
-                                   FontSize="12" 
-                                   Foreground="Black" 
-                                   HorizontalAlignment="Right" 
-                                   VerticalAlignment="Top" 
+                        <TextBlock Text="{Binding PageNumberLabel}"
+                                   FontFamily="Courier Prime, Courier New, Courier"
+                                   FontSize="12"
+                                   Foreground="Black"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Top"
                                    Margin="0,36,72,0" />
                       </Grid>
                     </Border>
@@ -4225,5 +4225,3 @@
     </Border>
   </Grid>
 </Window>
-
-
