@@ -1,0 +1,122 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Passage.App.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="850" d:DesignHeight="700"
+        x:Class="Passage.App.Views.TitlePageDialog"
+        x:DataType="vm:TitlePageViewModel"
+        Title="Title Page" Width="850" Height="700"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource SurfaceBackground}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="380" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Side: Inputs -->
+        <ScrollViewer Grid.Row="0" Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,20,0">
+            <StackPanel Spacing="10" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="Title" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Title, Mode=TwoWay}" Height="80" TextWrapping="Wrap" AcceptsReturn="True" FontSize="16" FontWeight="Bold" FontFamily="Courier Prime, Courier" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Episode" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Episode, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Credit" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Credit, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Author" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Author, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Source" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Source, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Contact" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Contact, Mode=TwoWay}" Height="100" TextWrapping="Wrap" AcceptsReturn="True" PlaceholderText="Your Name, Address, Phone No." />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Draft date" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding DraftDate, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Revision" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Revision, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Notes" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
+                    <TextBox Text="{Binding Notes, Mode=TwoWay}" Height="60" TextWrapping="Wrap" AcceptsReturn="True" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Right Side: Preview -->
+        <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource SurfaceRaisedBackground}" BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="1" CornerRadius="8">
+            <Viewbox Margin="20">
+                <Border Width="850" Height="1100" Background="{DynamicResource SurfaceBackground}" BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="1">
+                    <Grid Margin="100,72,72,72">
+                        <!-- Main Content Centered Vertically -->
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding UppercaseTitle}" 
+                                       HorizontalAlignment="Center" 
+                                       TextAlignment="Center"
+                                       FontSize="28" 
+                                       FontWeight="Bold" 
+                                       FontFamily="Courier Prime, Courier" />
+                            
+                            <TextBlock Text="{Binding Episode}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Episode, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,12,0,0" />
+                            
+                            <Border Height="80" /> <!-- Spacer between Title/Episode and Author info -->
+                            
+                            <TextBlock Text="{Binding Credit}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Credit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding Author}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Author, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,8,0,0"/>
+                            
+                            <TextBlock Text="{Binding Source}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Source, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,24,0,0" />
+                        </StackPanel>
+                        
+                        <!-- Bottom Info -->
+                        <Grid VerticalAlignment="Bottom">
+                            <StackPanel HorizontalAlignment="Left" MaxWidth="400">
+                                <TextBlock Text="{Binding Revision}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Revision, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Text="{Binding DraftDate}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding DraftDate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Text="{Binding Contact}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Contact, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Notes}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Viewbox>
+        </Border>
+
+        <!-- Bottom Row: Buttons -->
+        <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,15,0,0">
+            <Button Content="Delete Page" Click="DeleteClick" Background="#4A1D1D" Foreground="White" HorizontalAlignment="Left" Padding="15,6" x:Name="DeleteButton" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" Click="CancelClick" Padding="15,6" x:Name="CancelButton" />
+                <Button Content="Update Page" Click="OkClick" FontWeight="Bold" Padding="15,6" x:Name="UpdateButton" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

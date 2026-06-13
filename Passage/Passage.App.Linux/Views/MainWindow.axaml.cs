@@ -1,0 +1,1111 @@
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Passage.App.ViewModels;
+using Passage.Parser;
+using Passage.App.Services;
+
+namespace Passage.App.Views;
+
+public partial class MainWindow : Window
+{
+    public static OutlineNodeViewModel? DraggedOutlineNode { get; set; }
+    public static BeatBoardCardViewModel? DraggedBeatBoardCard { get; set; }
+
+    private static readonly System.Text.RegularExpressions.Regex TransitionRegex = new(
+        @"^(?:FADE IN|FADE OUT|CUT TO|DISSOLVE TO|SMASH CUT TO|MATCH CUT TO|WIPE TO|JUMP CUT TO|FADE TO BLACK)(?:[:.])?$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private bool _isLeftDockCollapsed = false;
+    private double _leftDockExpandedWidth = 300;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        DataContext = new MainWindowViewModel(this);
+
+        // Add keyboard shortcuts
+        AddKeyboardShortcuts();
+
+        // On Linux we run inside a private rootful Xwayland (see Program.cs) with no
+        // window manager, and COSMIC auto-tiles the Xwayland window — so its X-root
+        // size is dictated by the tile and changes as tiles are rearranged. The normal
+        // "maximize" state is ignored here. To behave like a native tiled window we
+        // make Passage always fill the X-root and follow its size changes (RandR ->
+        // Avalonia Screens.Changed). The fixed XAML size/min-size would fight this.
+        if (OperatingSystem.IsLinux())
+        {
+            MinWidth = 0;
+            MinHeight = 0;
+            Opened += (_, _) => Dispatcher.UIThread.Post(FillHostScreen, DispatcherPriority.Loaded);
+            Screens.Changed += (_, _) => Dispatcher.UIThread.Post(FillHostScreen, DispatcherPriority.Loaded);
+        }
+
+        // Add tunneling KeyDown handler for autocomplete
+        var editorBox = this.FindControl<TextBox>("EditorTextBox");
+        editorBox?.AddHandler(InputElement.KeyDownEvent, EditorBox_KeyDown, RoutingStrategies.Tunnel);
+
+        // Listen to EditorTextBox caret changes
+        if (editorBox != null)
+        {
+            editorBox.PropertyChanged += (sender, e) =>
+            {
+                if (e.Property == TextBox.CaretIndexProperty)
+                {
+                    if (DataContext is MainWindowViewModel vm)
+                    {
+                        vm.UpdateCaretStatus((int)(e.NewValue ?? 0));
+                    }
+                }
+            };
+        }
+    }
+
+    // Fills the host X screen (the Xwayland root) with the window, positioning it
+    // at the top-left. Used on Linux where there is no WM to honour maximization.
+    private void FillHostScreen()
+    {
+        bool diag = Environment.GetCommandLineArgs().Contains("--diag");
+
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen is null)
+        {
+            if (diag) Console.Error.WriteLine($"[diag] FillHostScreen: no screen found (ScreenCount={Screens.ScreenCount})");
+            return;
+        }
+
+        var area = screen.Bounds;          // full X-root (the tile), physical pixels
+        var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
+        double targetW = area.Width / scale;   // DIPs
+        double targetH = area.Height / scale;
+
+        Position = area.Position;
+        Width = targetW;
+        Height = targetH;
+
+        if (diag)
+            Console.Error.WriteLine($"[diag] FillHostScreen: root={area.Width}x{area.Height}@{area.X},{area.Y} scale={scale} -> set {targetW}x{targetH} DIP; ClientSize now={ClientSize}");
+    }
+
+    private void AddKeyboardShortcuts()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        // File Menu Shortcuts
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.N, KeyModifiers.Control), Command = vm.NewCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.O, KeyModifiers.Control), Command = vm.OpenCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.S, KeyModifiers.Control), Command = vm.SaveCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.S, KeyModifiers.Control | KeyModifiers.Shift), Command = vm.SaveAsCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.W, KeyModifiers.Control), Command = vm.CloseCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.Q, KeyModifiers.Control), Command = vm.ExitCommand });
+
+        // Edit Menu Shortcuts
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.Z, KeyModifiers.Control), Command = vm.UndoCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.Y, KeyModifiers.Control), Command = vm.RedoCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.F, KeyModifiers.Control), Command = vm.FindCommand });
+
+        // View Menu Shortcuts
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.OemPlus, KeyModifiers.Control), Command = vm.ZoomInCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.OemMinus, KeyModifiers.Control), Command = vm.ZoomOutCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.D0, KeyModifiers.Control), Command = vm.ResetZoomCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.F1), Command = vm.ToggleSyntaxPanelCommand });
+
+        // Navigate Menu Shortcuts
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.G, KeyModifiers.Control), Command = vm.GoToLineCommand });
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.G, KeyModifiers.Control | KeyModifiers.Shift), Command = vm.GoToSceneCommand });
+
+        // Mode toggle shortcut
+        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.M, KeyModifiers.Control), Command = vm.ToggleWriteModeCommand });
+    }
+
+    private void ToggleLeftDock_Click(object? sender, RoutedEventArgs e)
+    {
+        SetLeftDockCollapsed(!_isLeftDockCollapsed);
+    }
+
+    private void SetLeftDockCollapsed(bool collapsed)
+    {
+        _isLeftDockCollapsed = collapsed;
+
+        var grid = this.FindControl<Grid>("MainLayoutGrid");
+        var leftSplitter = this.FindControl<GridSplitter>("LeftSplitter");
+        var leftDockTabs = this.FindControl<TabControl>("LeftDockTabs");
+        var leftDockTitleText = this.FindControl<TextBlock>("LeftDockTitleText");
+        var leftDockToggleButton = this.FindControl<Button>("LeftDockToggleButton");
+
+        if (grid != null && grid.ColumnDefinitions.Count >= 3)
+        {
+            var leftDockColumn = grid.ColumnDefinitions[0];
+            var leftSplitterColumn = grid.ColumnDefinitions[1];
+
+            // Save current width before collapsing if it is not collapsed
+            if (!collapsed)
+            {
+                _leftDockExpandedWidth = leftDockColumn.Width.Value > 40 ? leftDockColumn.Width.Value : 300;
+            }
+
+            leftDockColumn.Width = collapsed ? new GridLength(40) : new GridLength(_leftDockExpandedWidth);
+            leftSplitterColumn.Width = collapsed ? new GridLength(0) : new GridLength(2);
+        }
+
+        if (leftSplitter != null)
+        {
+            leftSplitter.IsVisible = !collapsed;
+        }
+
+        if (leftDockTabs != null)
+        {
+            leftDockTabs.IsVisible = !collapsed;
+        }
+
+        if (leftDockTitleText != null)
+        {
+            leftDockTitleText.IsVisible = !collapsed;
+        }
+
+        if (leftDockToggleButton != null)
+        {
+            leftDockToggleButton.Content = collapsed ? ">" : "<";
+            ToolTip.SetTip(leftDockToggleButton, collapsed ? "Expand left dock" : "Collapse left dock");
+        }
+    }
+
+    private bool _isSyntaxPanelVisible = false;
+    private double _syntaxPanelExpandedWidth = 280;
+
+    public void ToggleSyntaxPanel()
+    {
+        SetSyntaxPanelVisible(!_isSyntaxPanelVisible);
+    }
+
+    private void SetSyntaxPanelVisible(bool visible)
+    {
+        _isSyntaxPanelVisible = visible;
+
+        var grid = this.FindControl<Grid>("MainLayoutGrid");
+        var rightSplitter = this.FindControl<GridSplitter>("RightSplitter");
+        var rightDockBorder = this.FindControl<Border>("RightDockBorder");
+
+        if (grid != null && grid.ColumnDefinitions.Count >= 5)
+        {
+            var splitterColumn = grid.ColumnDefinitions[3];
+            var panelColumn = grid.ColumnDefinitions[4];
+
+            if (visible)
+            {
+                splitterColumn.Width = GridLength.Auto;
+                panelColumn.Width = new GridLength(_syntaxPanelExpandedWidth);
+                panelColumn.MinWidth = 200;
+            }
+            else
+            {
+                // Save current width before hiding
+                if (panelColumn.Width.Value > 0)
+                {
+                    _syntaxPanelExpandedWidth = panelColumn.Width.Value;
+                }
+                splitterColumn.Width = new GridLength(0);
+                panelColumn.Width = new GridLength(0);
+                panelColumn.MinWidth = 0;
+            }
+        }
+
+        if (rightSplitter != null)
+        {
+            rightSplitter.IsVisible = visible;
+        }
+
+        if (rightDockBorder != null)
+        {
+            rightDockBorder.IsVisible = visible;
+        }
+    }
+
+
+    private void OutlineNode_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is StackPanel panel && panel.DataContext is OutlineNodeViewModel node)
+        {
+            NavigateToLine(node.LineNumber);
+        }
+    }
+
+    private void ScratchpadItem_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is ScreenplayElement element)
+        {
+            NavigateToLine(element.LineNumber);
+        }
+    }
+
+    private void BeatBoardCard_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is BeatBoardCardViewModel card)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.IsBoardModeActive = false;
+                NavigateToLine(card.LineNumber);
+            }
+        }
+    }
+
+    private void OnCutClick(object? sender, RoutedEventArgs e)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        textBox?.Cut();
+    }
+
+    private void OnCopyClick(object? sender, RoutedEventArgs e)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        textBox?.Copy();
+    }
+
+    private void OnPasteClick(object? sender, RoutedEventArgs e)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        textBox?.Paste();
+    }
+
+    public void NavigateToLine(int lineNumber)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        if (textBox == null || string.IsNullOrEmpty(textBox.Text)) return;
+
+        var text = textBox.Text;
+        var lineIndex = Math.Max(0, lineNumber - 1);
+
+        var currentIndex = 0;
+        var currentLine = 0;
+
+        while (currentLine < lineIndex && currentIndex < text.Length)
+        {
+            var nextNewline = text.IndexOf('\n', currentIndex);
+            if (nextNewline == -1) break;
+            currentIndex = nextNewline + 1;
+            currentLine++;
+        }
+
+        textBox.Focus();
+        textBox.SelectionStart = currentIndex;
+        textBox.SelectionEnd = currentIndex;
+        textBox.CaretIndex = currentIndex;
+    }
+
+    private void EditorBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        var textBox = sender as TextBox;
+        if (textBox == null || DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        if (!vm.IsScreenplayMode)
+        {
+            vm.IsAutoCompleteOpen = false;
+            return;
+        }
+
+        var caretIndex = textBox.CaretIndex;
+        var text = textBox.Text ?? "";
+
+        // Find line start and line text
+        var lineStart = 0;
+        var lineIndex = 0;
+        var currentIndex = 0;
+        while (currentIndex < caretIndex && currentIndex < text.Length)
+        {
+            var nextNewline = text.IndexOf('\n', currentIndex);
+            if (nextNewline == -1 || nextNewline >= caretIndex)
+            {
+                lineStart = currentIndex;
+                break;
+            }
+            currentIndex = nextNewline + 1;
+            lineIndex++;
+            lineStart = currentIndex;
+        }
+
+        var nextNewlineAfter = text.IndexOf('\n', lineStart);
+        var lineEnd = nextNewlineAfter == -1 ? text.Length : nextNewlineAfter;
+        var lineText = text.Substring(lineStart, lineEnd - lineStart).TrimEnd('\r');
+
+        // Dynamic capitalization of Scene Headings and Transitions
+        var trimmedLineText = lineText.TrimStart();
+        if (trimmedLineText.Length > 0)
+        {
+            var spaceIndex = trimmedLineText.IndexOfAny([' ', '\t']);
+            var firstToken = spaceIndex < 0 ? trimmedLineText : trimmedLineText.Substring(0, spaceIndex);
+
+            var hasSpaceOrDot = firstToken.Contains('.') || spaceIndex >= 0;
+            var isSceneHeading = (hasSpaceOrDot && Passage.Core.TextAnalysis.LooksLikeSceneHeadingStart(firstToken.AsSpan())) || trimmedLineText.StartsWith('.');
+
+            var isTransition = TransitionRegex.IsMatch(trimmedLineText) ||
+                               trimmedLineText.EndsWith("TO:", StringComparison.OrdinalIgnoreCase) ||
+                               trimmedLineText.EndsWith("TO.", StringComparison.OrdinalIgnoreCase);
+
+            if (isSceneHeading || isTransition)
+            {
+                if (lineText != lineText.ToUpperInvariant())
+                {
+                    var upperLine = lineText.ToUpperInvariant();
+                    var startOffset = lineStart;
+
+                    textBox.TextChanged -= EditorBox_TextChanged;
+                    try
+                    {
+                        var before = text.Substring(0, startOffset);
+                        var after = text.Substring(lineEnd);
+                        textBox.Text = before + upperLine + after;
+                        textBox.CaretIndex = caretIndex;
+                    }
+                    finally
+                    {
+                        textBox.TextChanged += EditorBox_TextChanged;
+                    }
+                    text = textBox.Text;
+                    lineText = upperLine;
+                }
+            }
+        }
+
+        var prefixLen = caretIndex - lineStart;
+
+        if (prefixLen < 0 || prefixLen > lineText.Length)
+        {
+            vm.IsAutoCompleteOpen = false;
+            return;
+        }
+
+        var prefix = lineText.Substring(0, prefixLen);
+        var elementType = vm.GetLatestEffectiveLineType(lineIndex + 1, lineText);
+        var elementTypeName = elementType.ToString();
+
+        // If it's an Action line but starts with INT. or EXT., treat it as a Scene Heading for suggestions
+        if (elementTypeName == "Action" && prefix.Length >= 3)
+        {
+            var upperPrefix = prefix.ToUpperInvariant();
+            if (upperPrefix.StartsWith("INT.") || upperPrefix.StartsWith("EXT.") || upperPrefix.StartsWith("I/E."))
+            {
+                elementTypeName = "SceneHeading";
+            }
+        }
+
+        if (elementTypeName == "SceneHeading")
+        {
+            var isSceneHeadingPrefix = prefix.StartsWith(".") ||
+                                       Passage.Core.TextAnalysis.LooksLikeSceneHeadingStart(prefix.AsSpan(), allowPartialPrefixMatch: true);
+            if (!isSceneHeadingPrefix)
+            {
+                vm.IsAutoCompleteOpen = false;
+                return;
+            }
+        }
+
+        vm.UpdateSuggestions(prefix, elementTypeName);
+
+        if (vm.IsAutoCompleteOpen)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => PositionAutoCompletePopup(), Avalonia.Threading.DispatcherPriority.Background);
+        }
+    }
+
+    private void EditorBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || !vm.IsAutoCompleteOpen)
+        {
+            return;
+        }
+
+        var count = vm.AutoCompleteSuggestions.Count;
+        if (count == 0) return;
+
+        switch (e.Key)
+        {
+            case Key.Up:
+                vm.SelectedSuggestionIndex = (vm.SelectedSuggestionIndex - 1 + count) % count;
+                e.Handled = true;
+                break;
+            case Key.Down:
+                vm.SelectedSuggestionIndex = (vm.SelectedSuggestionIndex + 1) % count;
+                e.Handled = true;
+                break;
+            case Key.Enter:
+            case Key.Tab:
+                if (vm.SelectedSuggestionIndex >= 0 && vm.SelectedSuggestionIndex < count)
+                {
+                    ApplyAutoCompleteSuggestion(vm.AutoCompleteSuggestions[vm.SelectedSuggestionIndex]);
+                    e.Handled = true;
+                }
+                break;
+            case Key.Escape:
+                vm.IsAutoCompleteOpen = false;
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void SuggestionsListBox_Tapped(object? sender, TappedEventArgs e)
+    {
+        var listBox = sender as ListBox;
+        if (listBox != null && listBox.SelectedItem is string suggestion)
+        {
+            ApplyAutoCompleteSuggestion(suggestion);
+        }
+    }
+
+    private void PositionAutoCompletePopup()
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        var popup = this.FindControl<Popup>("AutoCompletePopup");
+        if (textBox == null || popup == null) return;
+
+        // Find internal TextPresenter
+        var presenter = textBox.GetVisualDescendants().OfType<TextPresenter>().FirstOrDefault();
+        if (presenter == null) return;
+
+        // Use reflection to call GetCursorRectangle on TextPresenter
+        var type = typeof(TextPresenter);
+        var method = type.GetMethod("GetCursorRectangle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (method == null) return;
+
+        var caretRect = (Rect)method.Invoke(presenter, null)!;
+
+        // Translate caret position to EditorTextBox space
+        var point = presenter.TranslatePoint(caretRect.Position, textBox);
+        if (point.HasValue)
+        {
+            popup.Placement = PlacementMode.Top;
+            popup.PlacementTarget = textBox;
+            popup.HorizontalOffset = point.Value.X + 24;
+            popup.VerticalOffset = point.Value.Y - 4;
+        }
+    }
+
+    private void ApplyAutoCompleteSuggestion(string suggestion)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        if (textBox == null || DataContext is not MainWindowViewModel vm) return;
+
+        var caretIndex = textBox.CaretIndex;
+        var text = textBox.Text ?? "";
+
+        // Find line start and line end
+        var lineStart = 0;
+        var currentIndex = 0;
+        while (currentIndex < caretIndex && currentIndex < text.Length)
+        {
+            var nextNewline = text.IndexOf('\n', currentIndex);
+            if (nextNewline == -1 || nextNewline >= caretIndex)
+            {
+                lineStart = currentIndex;
+                break;
+            }
+            currentIndex = nextNewline + 1;
+            lineStart = currentIndex;
+        }
+
+        var nextNewlineAfter = text.IndexOf('\n', lineStart);
+        var lineEnd = nextNewlineAfter == -1 ? text.Length : nextNewlineAfter;
+
+        // Replace the line text with the suggestion
+        var prefix = text.Substring(0, lineStart);
+        var suffix = text.Substring(lineEnd);
+
+        textBox.Text = prefix + suggestion + suffix;
+        textBox.CaretIndex = lineStart + suggestion.Length;
+
+        vm.IsAutoCompleteOpen = false;
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        if (RecoveryStorage.TryReadRecovery(out var pendingRecoveryDocument) && pendingRecoveryDocument != null)
+        {
+            var prompt = new RecoveryPromptDialog();
+            _ = prompt.ShowDialog<bool>(this).ContinueWith(t =>
+            {
+                if (t.IsCompletedSuccessfully)
+                {
+                    var restore = t.Result;
+                    if (restore)
+                    {
+                        if (DataContext is MainWindowViewModel vm)
+                        {
+                            vm.LoadRecoveryDocument(pendingRecoveryDocument);
+                        }
+                    }
+                    else
+                    {
+                        RecoveryStorage.ClearRecoveryFile();
+                    }
+                }
+                else
+                {
+                    RecoveryStorage.ClearRecoveryFile();
+                }
+
+                // Re-focus the editor after the dialog closes. On Wayland the
+                // compositor does not automatically return keyboard focus to the
+                // parent window, so we must request it explicitly here.
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    var textBox = this.FindControl<TextBox>("EditorTextBox");
+                    textBox?.Focus();
+                }, Avalonia.Threading.DispatcherPriority.Input);
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+        else
+        {
+            if (SessionStorage.TryLoadSession(out var sessionState) && sessionState != null)
+            {
+                if (DataContext is MainWindowViewModel vm)
+                {
+                    vm.LoadSessionState(sessionState);
+                }
+
+                if (sessionState.WindowWidth.HasValue && sessionState.WindowHeight.HasValue)
+                {
+                    this.Width = sessionState.WindowWidth.Value;
+                    this.Height = sessionState.WindowHeight.Value;
+                }
+
+                if (sessionState.WindowX.HasValue && sessionState.WindowY.HasValue)
+                {
+                    this.Position = new PixelPoint(sessionState.WindowX.Value, sessionState.WindowY.Value);
+                }
+
+                if (!string.IsNullOrEmpty(sessionState.WindowState))
+                {
+                    if (Enum.TryParse<WindowState>(sessionState.WindowState, out var state))
+                    {
+                        this.WindowState = state;
+                    }
+                }
+            }
+
+            // Focus the EditorTextBox on startup (no dialog case)
+            var textBox = this.FindControl<TextBox>("EditorTextBox");
+            textBox?.Focus();
+        }
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.SaveSessionNow();
+            vm.StopRecoveryAutosave();
+        }
+    }
+
+    public async void ShowGoToLineDialog()
+    {
+        var dialog = new GoToLineDialog();
+        var result = await dialog.ShowDialog<bool>(this);
+        if (result)
+        {
+            NavigateToLine(dialog.LineNumber);
+        }
+    }
+
+    public async void ShowGoToSceneDialog()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var dialog = new GoToSceneDialog();
+        dialog.SetScenes(vm.OutlineRoots);
+        var lineNumber = await dialog.ShowDialog<int?>(this);
+        if (lineNumber.HasValue)
+        {
+            NavigateToLine(lineNumber.Value);
+        }
+    }
+
+    private FindReplaceDialog? _findReplaceDialog;
+
+    public void ShowFindReplaceDialog()
+    {
+        if (_findReplaceDialog != null)
+        {
+            _findReplaceDialog.Activate();
+            return;
+        }
+
+        _findReplaceDialog = new FindReplaceDialog();
+        _findReplaceDialog.Closed += (s, e) => _findReplaceDialog = null;
+
+        _findReplaceDialog.FindNextRequested += () =>
+        {
+            FindNext(_findReplaceDialog.SearchText, _findReplaceDialog.MatchCase, _findReplaceDialog.WholeWord);
+        };
+
+        _findReplaceDialog.ReplaceRequested += () =>
+        {
+            ReplaceCurrent(_findReplaceDialog.SearchText, _findReplaceDialog.ReplaceText, _findReplaceDialog.MatchCase, _findReplaceDialog.WholeWord);
+        };
+
+        _findReplaceDialog.ReplaceAllRequested += () =>
+        {
+            ReplaceAll(_findReplaceDialog.SearchText, _findReplaceDialog.ReplaceText, _findReplaceDialog.MatchCase, _findReplaceDialog.WholeWord);
+        };
+
+        _findReplaceDialog.Show(this);
+    }
+
+    public bool FindNext(string searchText, bool matchCase, bool wholeWord)
+    {
+        return FindText(searchText, forward: true, matchCase, wholeWord);
+    }
+
+    public bool FindPrevious(string searchText, bool matchCase, bool wholeWord)
+    {
+        return FindText(searchText, forward: false, matchCase, wholeWord);
+    }
+
+    private bool FindText(string searchText, bool forward, bool matchCase, bool wholeWord)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        if (textBox == null || string.IsNullOrEmpty(searchText))
+        {
+            return false;
+        }
+
+        var documentText = textBox.Text ?? string.Empty;
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+        int matchIndex = -1;
+        var start = Math.Min(textBox.SelectionStart, textBox.SelectionEnd);
+        var end = Math.Max(textBox.SelectionStart, textBox.SelectionEnd);
+
+        if (forward)
+        {
+            var startIndex = end;
+            if (startIndex > documentText.Length)
+            {
+                startIndex = documentText.Length;
+            }
+
+            matchIndex = FindTextIndex(documentText, searchText, startIndex, forward, comparison, wholeWord);
+            if (matchIndex < 0)
+            {
+                matchIndex = FindTextIndex(documentText, searchText, 0, forward, comparison, wholeWord);
+            }
+        }
+        else
+        {
+            var startIndex = Math.Max(0, start - 1);
+            matchIndex = FindTextIndex(documentText, searchText, startIndex, forward, comparison, wholeWord);
+            if (matchIndex < 0)
+            {
+                matchIndex = FindTextIndex(documentText, searchText, documentText.Length - 1, forward, comparison, wholeWord);
+            }
+        }
+
+        if (matchIndex < 0)
+        {
+            return false;
+        }
+
+        SelectEditorRange(textBox, matchIndex, searchText.Length);
+        return true;
+    }
+
+    private int FindTextIndex(string documentText, string searchText, int startIndex, bool forward, StringComparison comparison, bool wholeWord)
+    {
+        int index = startIndex;
+        while (true)
+        {
+            int foundIndex;
+            if (forward)
+            {
+                if (index > documentText.Length - searchText.Length) return -1;
+                foundIndex = documentText.IndexOf(searchText, index, comparison);
+            }
+            else
+            {
+                if (index < 0) return -1;
+                foundIndex = documentText.LastIndexOf(searchText, index, comparison);
+            }
+
+            if (foundIndex < 0) return -1;
+
+            if (wholeWord)
+            {
+                if (IsWholeWord(documentText, foundIndex, searchText.Length))
+                {
+                    return foundIndex;
+                }
+                else
+                {
+                    if (forward)
+                    {
+                        index = foundIndex + 1;
+                    }
+                    else
+                    {
+                        index = foundIndex - 1;
+                    }
+                }
+            }
+            else
+            {
+                return foundIndex;
+            }
+        }
+    }
+
+    private bool IsWholeWord(string text, int index, int length)
+    {
+        if (index > 0)
+        {
+            char prev = text[index - 1];
+            if (char.IsLetterOrDigit(prev) || prev == '_') return false;
+        }
+        if (index + length < text.Length)
+        {
+            char next = text[index + length];
+            if (char.IsLetterOrDigit(next) || next == '_') return false;
+        }
+        return true;
+    }
+
+    private void SelectEditorRange(TextBox textBox, int start, int length)
+    {
+        var textLength = (textBox.Text ?? string.Empty).Length;
+        var safeStart = Math.Max(0, Math.Min(start, textLength));
+        var safeLength = Math.Max(0, Math.Min(length, textLength - safeStart));
+
+        textBox.Focus();
+        textBox.SelectionStart = safeStart;
+        textBox.SelectionEnd = safeStart + safeLength;
+        textBox.CaretIndex = safeStart + safeLength;
+    }
+
+    public bool ReplaceCurrent(string searchText, string replacementText, bool matchCase, bool wholeWord)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        if (textBox == null || string.IsNullOrWhiteSpace(searchText))
+        {
+            return false;
+        }
+
+        if (!SelectionMatchesSearch(textBox, searchText) && !FindNext(searchText, matchCase, wholeWord))
+        {
+            return false;
+        }
+
+        var start = Math.Min(textBox.SelectionStart, textBox.SelectionEnd);
+        var replacement = replacementText ?? string.Empty;
+
+        var text = textBox.Text ?? string.Empty;
+        var end = Math.Max(textBox.SelectionStart, textBox.SelectionEnd);
+        textBox.Text = text.Substring(0, start) + replacement + text.Substring(end);
+
+        SelectEditorRange(textBox, start, replacement.Length);
+        return true;
+    }
+
+    public int ReplaceAll(string searchText, string replacementText, bool matchCase, bool wholeWord)
+    {
+        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        if (textBox == null || string.IsNullOrWhiteSpace(searchText))
+        {
+            return 0;
+        }
+
+        var source = textBox.Text ?? string.Empty;
+        var replacement = replacementText ?? string.Empty;
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var builder = new StringBuilder(source.Length);
+        var index = 0;
+        var replacements = 0;
+
+        while (index < source.Length)
+        {
+            var matchIndex = source.IndexOf(searchText, index, comparison);
+            if (matchIndex < 0)
+            {
+                builder.Append(source, index, source.Length - index);
+                break;
+            }
+
+            if (wholeWord && !IsWholeWord(source, matchIndex, searchText.Length))
+            {
+                builder.Append(source, index, matchIndex - index + 1);
+                index = matchIndex + 1;
+                continue;
+            }
+
+            builder.Append(source, index, matchIndex - index);
+            builder.Append(replacement);
+            replacements++;
+            index = matchIndex + searchText.Length;
+        }
+
+        if (replacements == 0)
+        {
+            return 0;
+        }
+
+        var caretIndex = textBox.CaretIndex;
+        var mappedCaret = MapCaretAfterReplaceAll(source, searchText, replacement, caretIndex, matchCase, wholeWord);
+
+        textBox.Text = builder.ToString();
+        SelectEditorRange(textBox, mappedCaret, 0);
+        return replacements;
+    }
+
+    private bool SelectionMatchesSearch(TextBox textBox, string searchText)
+    {
+        var start = Math.Min(textBox.SelectionStart, textBox.SelectionEnd);
+        var end = Math.Max(textBox.SelectionStart, textBox.SelectionEnd);
+        var length = end - start;
+        if (length != searchText.Length) return false;
+        var selectedText = (textBox.Text ?? string.Empty).Substring(start, length);
+        return string.Equals(selectedText, searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int MapCaretAfterReplaceAll(string source, string searchText, string replacementText, int caretIndex, bool matchCase, bool wholeWord)
+    {
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var sourceIndex = 0;
+        var targetIndex = 0;
+
+        while (sourceIndex < source.Length)
+        {
+            var matchIndex = source.IndexOf(searchText, sourceIndex, comparison);
+            if (matchIndex < 0)
+            {
+                if (caretIndex <= source.Length)
+                {
+                    return targetIndex + Math.Max(0, caretIndex - sourceIndex);
+                }
+
+                return targetIndex;
+            }
+
+            if (wholeWord && !IsWholeWordStatic(source, matchIndex, searchText.Length))
+            {
+                var step = matchIndex - sourceIndex + 1;
+                targetIndex += step;
+                sourceIndex = matchIndex + 1;
+                continue;
+            }
+
+            if (caretIndex < matchIndex)
+            {
+                return targetIndex + (caretIndex - sourceIndex);
+            }
+
+            targetIndex += matchIndex - sourceIndex;
+            sourceIndex = matchIndex;
+
+            if (caretIndex < matchIndex + searchText.Length)
+            {
+                return targetIndex + replacementText.Length;
+            }
+
+            targetIndex += replacementText.Length;
+            sourceIndex += searchText.Length;
+        }
+
+        return targetIndex;
+    }
+    private static bool IsWholeWordStatic(string text, int index, int length)
+    {
+        if (index > 0)
+        {
+            char prev = text[index - 1];
+            if (char.IsLetterOrDigit(prev) || prev == '_') return false;
+        }
+        if (index + length < text.Length)
+        {
+            char next = text[index + length];
+            if (char.IsLetterOrDigit(next) || next == '_') return false;
+        }
+        return true;
+    }
+
+    // Drag and Drop Event Handlers for Outline Nodes
+    private async void OutlineNode_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var properties = e.GetCurrentPoint(this).Properties;
+        if (!properties.IsLeftButtonPressed) return;
+
+        if (sender is Visual visual && visual.DataContext is OutlineNodeViewModel node)
+        {
+            DraggedOutlineNode = node;
+            var dragData = new DataTransfer();
+            dragData.Add(DataTransferItem.Create(DataFormat.Text, "OutlineNode"));
+            var result = await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
+        }
+    }
+
+    private OutlineNodeViewModel? _lastDragOverNode;
+
+    private void OutlineNode_DragOver(object? sender, DragEventArgs e)
+    {
+        if (DraggedOutlineNode == null)
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        if (sender is Visual visual && visual.DataContext is OutlineNodeViewModel targetNode)
+        {
+            if (DraggedOutlineNode == targetNode)
+            {
+                e.DragEffects = DragDropEffects.None;
+                return;
+            }
+
+            if (_lastDragOverNode != targetNode)
+            {
+                if (_lastDragOverNode != null)
+                {
+                    _lastDragOverNode.IsDragOver = false;
+                }
+                _lastDragOverNode = targetNode;
+                targetNode.IsDragOver = true;
+            }
+
+            e.DragEffects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+    }
+
+    private void OutlineNode_DragLeave(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Visual visual && visual.DataContext is OutlineNodeViewModel targetNode)
+        {
+            targetNode.IsDragOver = false;
+            if (_lastDragOverNode == targetNode)
+            {
+                _lastDragOverNode = null;
+            }
+        }
+    }
+
+    private void OutlineNode_Drop(object? sender, DragEventArgs e)
+    {
+        if (_lastDragOverNode != null)
+        {
+            _lastDragOverNode.IsDragOver = false;
+            _lastDragOverNode = null;
+        }
+
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        if (DraggedOutlineNode != null)
+        {
+            if (sender is Visual visual && visual.DataContext is OutlineNodeViewModel targetNode)
+            {
+                if (DraggedOutlineNode == targetNode) return;
+
+                var position = e.GetPosition(visual);
+                double height = visual.Bounds.Height;
+                WorkspaceDropPosition dropPos;
+
+                if (position.Y < height * 0.25)
+                {
+                    dropPos = WorkspaceDropPosition.Above;
+                }
+                else if (position.Y > height * 0.75)
+                {
+                    dropPos = WorkspaceDropPosition.Below;
+                }
+                else
+                {
+                    dropPos = WorkspaceDropPosition.Onto;
+                }
+
+                vm.MoveOutlineNodeText(DraggedOutlineNode, targetNode, dropPos);
+                e.Handled = true;
+            }
+        }
+        DraggedOutlineNode = null;
+    }
+
+    // Drag and Drop Event Handlers for Beat Board Cards
+    private async void BeatBoardCard_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var properties = e.GetCurrentPoint(this).Properties;
+        if (!properties.IsLeftButtonPressed) return;
+
+        var source = e.Source as Visual;
+        while (source != null)
+        {
+            if (source is TextBox || source is ComboBox || source is Button)
+            {
+                return;
+            }
+            source = source.GetVisualParent();
+        }
+
+        if (sender is Visual visual && visual.DataContext is BeatBoardCardViewModel card)
+        {
+            if (card.IsEditing) return;
+
+            DraggedBeatBoardCard = card;
+            var dragData = new DataTransfer();
+            dragData.Add(DataTransferItem.Create(DataFormat.Text, "BeatBoardCard"));
+            var result = await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
+        }
+    }
+
+    private void BeatBoardCard_DragOver(object? sender, DragEventArgs e)
+    {
+        if (DraggedBeatBoardCard == null)
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        if (sender is Visual visual && visual.DataContext is BeatBoardCardViewModel targetCard)
+        {
+            if (DraggedBeatBoardCard == targetCard)
+            {
+                e.DragEffects = DragDropEffects.None;
+                return;
+            }
+
+            e.DragEffects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+    }
+
+    private void BeatBoardCard_Drop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        if (DraggedBeatBoardCard != null)
+        {
+            if (sender is Visual visual && visual.DataContext is BeatBoardCardViewModel targetCard)
+            {
+                if (DraggedBeatBoardCard == targetCard) return;
+
+                var position = e.GetPosition(visual);
+                bool insertAfter = position.X > visual.Bounds.Width / 2;
+
+                vm.MoveBeatBoardCardText(DraggedBeatBoardCard, targetCard, insertAfter);
+                e.Handled = true;
+            }
+        }
+        DraggedBeatBoardCard = null;
+    }
+}

@@ -1,0 +1,649 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Passage.App.ViewModels"
+        xmlns:views="using:Passage.App.Views"
+        xmlns:export="using:Passage.Export"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1320" d:DesignHeight="800"
+        x:Class="Passage.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Passage"
+        Width="1320"
+        Height="800"
+        MinWidth="1100"
+        MinHeight="720"
+        Background="{DynamicResource ThemeBackground}">
+
+    <Window.Styles>
+        <Style Selector="Border.BeatBoardCard">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="scale(1.0)" />
+        </Style>
+        <Style Selector="Border.BeatBoardCard:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource CardAccent}" />
+            <Setter Property="RenderTransform" Value="scale(1.02)" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top" Background="Transparent" Margin="2,0,2,6">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New" Command="{Binding NewCommand}" />
+                <MenuItem Header="_Open..." Command="{Binding OpenCommand}" />
+                <MenuItem Header="_Save" Command="{Binding SaveCommand}" />
+                <MenuItem Header="Save _As..." Command="{Binding SaveAsCommand}" />
+                <MenuItem Header="_Close" Command="{Binding CloseCommand}" />
+                <Separator />
+                <MenuItem Header="_Export" ItemsSource="{Binding AvailableExporters}">
+                    <MenuItem.Styles>
+                        <Style Selector="MenuItem" x:DataType="export:IExporter" x:CompileBindings="False">
+                            <Setter Property="Header" Value="{Binding DisplayName}" />
+                            <Setter Property="Command" Value="{Binding $parent[Window].DataContext.ExportCommand}" />
+                            <Setter Property="CommandParameter" Value="{Binding}" />
+                        </Style>
+                    </MenuItem.Styles>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+            </MenuItem>
+
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" />
+                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" />
+                <Separator />
+                <MenuItem Header="_Find / Replace..." Command="{Binding FindCommand}" />
+            </MenuItem>
+
+            <MenuItem Header="_View">
+                <MenuItem Header="Zoom _In" Command="{Binding ZoomInCommand}" />
+                <MenuItem Header="Zoom _Out" Command="{Binding ZoomOutCommand}" />
+                <MenuItem Header="Reset _Zoom" Command="{Binding ResetZoomCommand}" />
+                <Separator />
+                <MenuItem Header="Syntax _Reference" Command="{Binding ToggleSyntaxPanelCommand}" />
+                <Separator />
+                <MenuItem Header="_Theme">
+                    <MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}" />
+                    <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}" />
+                </MenuItem>
+            </MenuItem>
+
+            <MenuItem Header="_Navigate">
+                <MenuItem Header="Go to _Line..." Command="{Binding GoToLineCommand}" />
+                <MenuItem Header="Go to _Scene..." Command="{Binding GoToSceneCommand}" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Toolbar -->
+        <StackPanel DockPanel.Dock="Top"
+                    Background="Transparent"
+                    Margin="2,0,2,0"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center">
+            <Button Command="{Binding NewCommand}"
+                    Content="New"
+                    Padding="10,5"
+                    Margin="0,0,6,0"
+                    MinWidth="86" />
+            <Button Command="{Binding OpenCommand}"
+                    Content="Open"
+                    Padding="10,5"
+                    Margin="0,0,6,0"
+                    MinWidth="86" />
+            <Button Command="{Binding SaveCommand}"
+                    Content="Save"
+                    Padding="10,5"
+                    Margin="0,0,6,0"
+                    MinWidth="86" />
+            <Button Content="Export"
+                    Padding="10,5"
+                    Margin="0,0,6,0"
+                    MinWidth="86">
+                <Button.Styles>
+                    <Style Selector="MenuItem" x:DataType="export:IExporter" x:CompileBindings="False">
+                        <Setter Property="Header" Value="{Binding DisplayName}" />
+                        <Setter Property="Command" Value="{Binding $parent[Window].DataContext.ExportCommand}" />
+                        <Setter Property="CommandParameter" Value="{Binding}" />
+                    </Style>
+                </Button.Styles>
+                <Button.Flyout>
+                    <MenuFlyout ItemsSource="{Binding AvailableExporters}" />
+                </Button.Flyout>
+            </Button>
+            <Button Command="{Binding EditTitlePageCommand}"
+                    Content="Title Page"
+                    Padding="10,5"
+                    Margin="0,0,6,0"
+                    MinWidth="86" />
+            <Button Command="{Binding ToggleSyntaxPanelCommand}"
+                    Content="Syntax"
+                    Padding="10,5"
+                    Margin="0,0,6,0"
+                    MinWidth="86" />
+        </StackPanel>
+
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{DynamicResource SurfaceBackground}"
+                BorderBrush="{DynamicResource SurfaceBorder}"
+                BorderThickness="0,1,0,0"
+                Padding="16,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="{DynamicResource MutedText}"
+                           FontSize="12"
+                           TextTrimming="CharacterEllipsis" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Line " Foreground="{DynamicResource SecondaryText}" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding CurrentLineNumber}" Foreground="{DynamicResource WindowForeground}" FontSize="12" />
+                    <TextBlock Text="  Type " Foreground="{DynamicResource SecondaryText}" FontSize="12" FontWeight="SemiBold" Margin="10,0,0,0" />
+                    <TextBlock Text="{Binding CurrentElementType}" Foreground="{DynamicResource WindowForeground}" FontSize="12" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Zoom " Foreground="{DynamicResource SecondaryText}" FontWeight="SemiBold" FontSize="12" Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding ActiveZoomDisplayText}" Foreground="{DynamicResource WindowForeground}" FontSize="12" Margin="0,0,12,0" />
+                    <TextBlock Text="{Binding ModeStatusText}" Foreground="{DynamicResource WindowForeground}" FontWeight="SemiBold" FontSize="12" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Workspace Layout Grid -->
+        <Grid Name="MainLayoutGrid">
+            <Grid.ColumnDefinitions>
+                <!-- Column 0: Collapsible Sidebar -->
+                <ColumnDefinition Width="300" MinWidth="40" />
+                <!-- Column 1: Left Resizing GridSplitter -->
+                <ColumnDefinition Width="Auto" />
+                <!-- Column 2: Main Editors -->
+                <ColumnDefinition Width="*" />
+                <!-- Column 3: Right Resizing GridSplitter -->
+                <ColumnDefinition Width="0" />
+                <!-- Column 4: Syntax Quick Reference Panel -->
+                <ColumnDefinition Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Collapsible Sidebar Dock -->
+            <Border Name="LeftDockBorder" Grid.Column="0" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource SurfaceBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Sidebar Header (Collapsible Panel Header) -->
+                    <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SurfaceBorder}" Padding="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Name="LeftDockTitleText" 
+                                       Text="Workspace" 
+                                       FontSize="14" 
+                                       FontWeight="SemiBold" 
+                                       Foreground="{DynamicResource HeaderText}" 
+                                       VerticalAlignment="Center" />
+                            
+                            <Button Name="LeftDockToggleButton" 
+                                    Grid.Column="1" 
+                                    Click="ToggleLeftDock_Click" 
+                                    Content="‹" 
+                                    Width="24" 
+                                    Height="24" 
+                                    HorizontalContentAlignment="Center" 
+                                    VerticalContentAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Sidebar TabControl -->
+                    <TabControl Name="LeftDockTabs" Grid.Row="1" Margin="5">
+                        <!-- Outline Tab -->
+                        <TabItem Header="Outline">
+                            <Grid>
+                                <TreeView Name="OutlineTree" ItemsSource="{Binding OutlineRoots}" DragDrop.AllowDrop="True">
+                                    <TreeView.ItemTemplate>
+                                        <TreeDataTemplate DataType="vm:OutlineNodeViewModel" ItemsSource="{Binding Children}">
+                                            <Border Background="Transparent"
+                                                    BorderThickness="1"
+                                                    BorderBrush="Transparent"
+                                                    CornerRadius="4"
+                                                    Padding="4,2"
+                                                    Classes.dragover="{Binding IsDragOver}"
+                                                    DragDrop.AllowDrop="True"
+                                                    PointerPressed="OutlineNode_PointerPressed"
+                                                    DragDrop.DragOver="OutlineNode_DragOver"
+                                                    DragDrop.DragLeave="OutlineNode_DragLeave"
+                                                    DragDrop.Drop="OutlineNode_Drop">
+                                                <Border.Styles>
+                                                    <Style Selector="Border.dragover">
+                                                        <Setter Property="Background" Value="#253584E4" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                                                    </Style>
+                                                </Border.Styles>
+                                                <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
+                                                    <TextBlock Text="{Binding KindLabel}" FontSize="9" Foreground="{DynamicResource ControlAccent}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="12" />
+                                                </StackPanel>
+                                            </Border>
+                                        </TreeDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
+                                <TextBlock Text="{Binding OutlineEmptyMessage}"
+                                           IsVisible="{Binding !HasOutlineItems}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Foreground="{DynamicResource MutedText}"
+                                           FontStyle="Italic"
+                                           TextWrapping="Wrap" />
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Notes Tab -->
+                        <TabItem Header="Notes">
+                            <Grid>
+                                <TreeView Name="NotesTree" ItemsSource="{Binding NotesRoots}" DragDrop.AllowDrop="True">
+                                    <TreeView.ItemTemplate>
+                                        <TreeDataTemplate DataType="vm:OutlineNodeViewModel" ItemsSource="{Binding Children}">
+                                            <Border Background="Transparent"
+                                                    BorderThickness="1"
+                                                    BorderBrush="Transparent"
+                                                    CornerRadius="4"
+                                                    Padding="4,2"
+                                                    Classes.dragover="{Binding IsDragOver}"
+                                                    DragDrop.AllowDrop="True"
+                                                    PointerPressed="OutlineNode_PointerPressed"
+                                                    DragDrop.DragOver="OutlineNode_DragOver"
+                                                    DragDrop.DragLeave="OutlineNode_DragLeave"
+                                                    DragDrop.Drop="OutlineNode_Drop">
+                                                <Border.Styles>
+                                                    <Style Selector="Border.dragover">
+                                                        <Setter Property="Background" Value="#253584E4" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+                                                    </Style>
+                                                </Border.Styles>
+                                                <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
+                                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="12" />
+                                                </StackPanel>
+                                            </Border>
+                                        </TreeDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
+                                <TextBlock Text="{Binding NotesEmptyMessage}"
+                                           IsVisible="{Binding !HasNoteItems}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Foreground="{DynamicResource MutedText}"
+                                           FontStyle="Italic"
+                                           TextWrapping="Wrap" />
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Scratchpad Tab -->
+                        <TabItem Header="Scratchpad">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                
+                                <TextBox Grid.Row="0" PlaceholderText="Search..." Text="{Binding ScratchpadSearchText, Mode=TwoWay}" Margin="0,0,0,5" />
+                                
+                                <ListBox Grid.Row="1" ItemsSource="{Binding ScratchpadElements}" SelectedItem="{Binding SelectedScratchpadElement, Mode=TwoWay}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" DoubleTapped="ScratchpadItem_DoubleTapped">
+                                                <StackPanel Margin="5">
+                                                    <TextBlock Text="{Binding Type}" FontSize="9" Foreground="{DynamicResource ControlAccent}" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                
+                                <TextBlock Grid.Row="1" Text="{Binding ScratchpadEmptyMessage}"
+                                           IsVisible="{Binding !HasScratchpadItems}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Foreground="{DynamicResource MutedText}"
+                                           FontStyle="Italic"
+                                           TextWrapping="Wrap" />
+                                
+                                <Button Grid.Row="2" Command="{Binding DeleteScratchpadCardCommand}" Content="Delete Selected" HorizontalAlignment="Right" Margin="0,5,0,0" />
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Goal Tab -->
+                        <TabItem Header="Goal">
+                            <views:GoalPanel />
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Border>
+
+            <!-- Collapsible GridSplitter -->
+            <GridSplitter Name="LeftSplitter" Grid.Column="1" Width="4" Background="{DynamicResource SurfaceBorder}" />
+
+            <!-- Main Editor Content Area -->
+            <TabControl Grid.Column="2">
+                <TabItem Header="Script" IsSelected="{Binding !IsBoardModeActive, Mode=TwoWay}">
+                    <Grid>
+                        <!-- Editor Area -->
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      Background="{DynamicResource SurfaceBackground}">
+                            <Border Name="EditorDocumentHost"
+                                    Width="816"
+                                    MinHeight="1056"
+                                    Margin="0,40"
+                                    Background="{DynamicResource SurfaceRaisedBackground}"
+                                    BorderBrush="{DynamicResource EditorPageBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    BoxShadow="0 4 12 0 #20000000"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Top">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleX="{Binding EditorZoomScale}"
+                                                    ScaleY="{Binding EditorZoomScale}" />
+                                </Border.RenderTransform>
+                                <TextBox Name="EditorTextBox"
+                                         Text="{Binding EditorContent, Mode=TwoWay}"
+                                         AcceptsReturn="True"
+                                         AcceptsTab="True"
+                                         TextWrapping="Wrap"
+                                         FontFamily="Courier Prime, Courier New, Courier"
+                                         FontSize="16"
+                                         Padding="72,96,72,96"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         HorizontalAlignment="Stretch"
+                                         TextChanged="EditorBox_TextChanged">
+                                    <TextBox.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuItem Header="Cut" Click="OnCutClick" />
+                                            <MenuItem Header="Copy" Click="OnCopyClick" />
+                                            <MenuItem Header="Paste" Click="OnPasteClick" />
+                                            <Separator />
+                                            <MenuItem Header="Find / Replace..." Command="{Binding FindCommand}" />
+                                            <Separator />
+                                            <MenuItem Header="Classify As Action" Command="{Binding ClassifyAsActionCommand}" />
+                                            <MenuItem Header="Classify As Scene Heading" Command="{Binding ClassifyAsSceneHeadingCommand}" />
+                                            <MenuItem Header="Classify As Character" Command="{Binding ClassifyAsCharacterCommand}" />
+                                            <MenuItem Header="Classify As Dialogue" Command="{Binding ClassifyAsDialogueCommand}" />
+                                            <MenuItem Header="Classify As Parenthetical" Command="{Binding ClassifyAsParentheticalCommand}" />
+                                            <MenuItem Header="Classify As Transition" Command="{Binding ClassifyAsTransitionCommand}" />
+                                            <MenuItem Header="Classify As Note" Command="{Binding ClassifyAsNoteCommand}" />
+                                        </MenuFlyout>
+                                    </TextBox.ContextFlyout>
+                                </TextBox>
+                            </Border>
+                        </ScrollViewer>
+
+                        <!-- Autocomplete Suggestions Popup -->
+                        <Popup Name="AutoCompletePopup"
+                               Placement="Top"
+                               PlacementTarget="{Binding ElementName=EditorTextBox}"
+                               IsOpen="{Binding IsAutoCompleteOpen, Mode=TwoWay}">
+                            <Border Background="{DynamicResource SurfaceRaisedBackground}"
+                                    BorderBrush="{DynamicResource ControlAccent}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="1"
+                                    MinWidth="200"
+                                    MaxHeight="200"
+                                    BoxShadow="0 4 10 0 #30000000">
+                                <ListBox Name="SuggestionsListBox"
+                                         ItemsSource="{Binding AutoCompleteSuggestions}"
+                                         SelectedIndex="{Binding SelectedSuggestionIndex, Mode=TwoWay}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Tapped="SuggestionsListBox_Tapped">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}"
+                                                       Padding="8,4"
+                                                       FontSize="13"
+                                                       FontFamily="Courier Prime, Inter, Segoe UI" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Beat Board" IsSelected="{Binding IsBoardModeActive, Mode=TwoWay}">
+                    <Grid Margin="18,14,18,18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Beat Board Toolbar -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                            <Button Command="{Binding CreateNewCardCommand}"
+                                    Content="New Card"
+                                    Padding="12,6"
+                                    MinWidth="94"
+                                    Margin="0,0,8,0" />
+                            <Button Command="{Binding SyncBoardToScriptCommand}"
+                                    Content="Sync to Script"
+                                    Padding="12,6"
+                                    MinWidth="124"
+                                    Margin="0,0,8,0" />
+                        </StackPanel>
+
+                        <!-- Beat Board Cards -->
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding BeatBoardCards}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:BeatBoardCardViewModel">
+                                        <Border Classes="BeatBoardCard"
+                                                Padding="12"
+                                                Margin="0,0,12,12"
+                                                Width="260"
+                                                MinHeight="160"
+                                                Background="{DynamicResource CardBackground}"
+                                                BorderBrush="{DynamicResource CardBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                DoubleTapped="BeatBoardCard_DoubleTapped"
+                                                DragDrop.AllowDrop="True"
+                                                PointerPressed="BeatBoardCard_PointerPressed"
+                                                DragDrop.DragOver="BeatBoardCard_DragOver"
+                                                DragDrop.Drop="BeatBoardCard_Drop">
+                                            <Grid RowDefinitions="Auto,*">
+                                                <!-- Header: Type badge & edit/save controls -->
+                                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                                                    <!-- Normal Mode Header -->
+                                                    <Border Grid.Column="0" 
+                                                            IsVisible="{Binding !IsEditing}" 
+                                                            Background="{DynamicResource CardAccent}" 
+                                                            HorizontalAlignment="Left" 
+                                                            Padding="6,2" 
+                                                            CornerRadius="4">
+                                                        <TextBlock Text="{Binding Type}" 
+                                                                   FontSize="10" 
+                                                                   FontWeight="Bold" 
+                                                                   Foreground="White" />
+                                                    </Border>
+                                                    
+                                                    <Button Grid.Column="1" 
+                                                            IsVisible="{Binding !IsEditing}" 
+                                                            Content="Edit" 
+                                                            Padding="8,4" 
+                                                            FontSize="11"
+                                                            Command="{Binding $parent[Window].DataContext.StartCardEditCommand}"
+                                                            CommandParameter="{Binding}" />
+
+                                                    <!-- Edit Mode Header -->
+                                                    <ComboBox Grid.Column="0" 
+                                                              IsVisible="{Binding IsEditing}" 
+                                                              SelectedItem="{Binding EditingType, Mode=TwoWay}"
+                                                              HorizontalAlignment="Stretch"
+                                                              Height="28"
+                                                              Padding="6,2"
+                                                              FontSize="11">
+                                                        <ComboBox.Items>
+                                                            <sys:String>Act</sys:String>
+                                                            <sys:String>Sequence</sys:String>
+                                                            <sys:String>Scene</sys:String>
+                                                            <sys:String>Note</sys:String>
+                                                        </ComboBox.Items>
+                                                    </ComboBox>
+                                                    
+                                                    <StackPanel Grid.Column="1" 
+                                                                IsVisible="{Binding IsEditing}" 
+                                                                Orientation="Horizontal" 
+                                                                Spacing="4" 
+                                                                Margin="8,0,0,0">
+                                                        <Button Content="Save" 
+                                                                Padding="8,4" 
+                                                                FontSize="11" 
+                                                                Background="#2E7D32" 
+                                                                Foreground="White"
+                                                                Command="{Binding $parent[Window].DataContext.SaveCardCommand}"
+                                                                CommandParameter="{Binding}" />
+                                                        <Button Content="Cancel" 
+                                                                Padding="8,4" 
+                                                                FontSize="11"
+                                                                Command="{Binding $parent[Window].DataContext.CancelCardEditCommand}"
+                                                                CommandParameter="{Binding}" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <!-- Content: Displays text or edit textboxes -->
+                                                <StackPanel Grid.Row="1">
+                                                    <!-- Normal Mode Content -->
+                                                    <StackPanel IsVisible="{Binding !IsEditing}" Spacing="6">
+                                                        <TextBlock Text="{Binding Heading}"
+                                                                   FontWeight="SemiBold"
+                                                                   FontSize="14"
+                                                                   TextWrapping="Wrap"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxHeight="40" />
+                                                        <TextBlock Text="{Binding Description}"
+                                                                   FontSize="11.5"
+                                                                   TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource SecondaryText}"
+                                                                   MinHeight="60"
+                                                                   MaxHeight="120"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+
+                                                    <!-- Edit Mode Content -->
+                                                    <StackPanel IsVisible="{Binding IsEditing}" Spacing="6">
+                                                        <TextBox Text="{Binding EditingHeading, Mode=TwoWay}"
+                                                                 PlaceholderText="Heading"
+                                                                 FontSize="13"
+                                                                 UseFloatingPlaceholder="False" />
+                                                        <TextBox Text="{Binding EditingDescription, Mode=TwoWay}"
+                                                                 PlaceholderText="Description"
+                                                                 FontSize="11.5"
+                                                                 Height="70"
+                                                                 AcceptsReturn="True"
+                                                                 TextWrapping="Wrap"
+                                                                 UseFloatingPlaceholder="False" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Page Preview">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  Background="{DynamicResource SurfaceBackground}">
+                        <ItemsControl ItemsSource="{Binding PreviewPages}" Margin="0,20">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Vertical" Spacing="25" HorizontalAlignment="Center" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PreviewPageViewModel">
+                                    <Border Width="612"
+                                            Height="792"
+                                            Background="{DynamicResource SurfaceRaisedBackground}"
+                                            BorderBrush="{DynamicResource EditorPageBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="2"
+                                            BoxShadow="0 4 12 0 #20000000"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Top">
+                                        <Canvas Width="612" Height="792">
+                                            <ItemsControl Classes="page-lines" ItemsSource="{Binding Lines}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas Width="612" Height="792" Background="Transparent" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:PreviewLineViewModel">
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   FontFamily="Courier Prime, Courier New, Courier, monospace"
+                                                                   FontSize="12"
+                                                                   FontWeight="{Binding Weight}"
+                                                                   Foreground="{DynamicResource EditorForeground}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                                <ItemsControl.Styles>
+                                                    <Style Selector="ContentPresenter" x:DataType="vm:PreviewLineViewModel">
+                                                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                                    </Style>
+                                                </ItemsControl.Styles>
+                                            </ItemsControl>
+                                        </Canvas>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+
+            <!-- Right GridSplitter (for Syntax Panel) -->
+            <GridSplitter Name="RightSplitter" Grid.Column="3" Width="4" Background="{DynamicResource SurfaceBorder}" IsVisible="False" />
+
+            <!-- Syntax Quick Reference Panel -->
+            <Border Name="RightDockBorder" Grid.Column="4" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource SurfaceBorder}" IsVisible="False">
+                <views:SyntaxQuickReferencePanel />
+            </Border>
+        </Grid>
+    </DockPanel>
+
+</Window>

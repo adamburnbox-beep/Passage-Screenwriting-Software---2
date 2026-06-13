@@ -1,0 +1,310 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Passage.App.Views.SyntaxQuickReferencePanel">
+
+    <UserControl.Styles>
+        <!-- Copy Button Style -->
+        <Style Selector="Button.CopyBtn">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.CopyBtn:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        </Style>
+        <Style Selector="Button.CopyBtn:pressed">
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource SurfaceMutedBackground}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="18,16">
+                <TextBlock Text="Syntax Quick Reference"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource HeaderText}" />
+                <TextBlock Text="Keep Fountain structure markers close while writing."
+                           Margin="0,6,0,16"
+                           FontSize="12"
+                           Foreground="{DynamicResource MutedText}"
+                           TextWrapping="Wrap" />
+
+                <!-- Sections Card -->
+                <Border Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource CardBorder}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Sections"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource HeaderText}" />
+                        <TextBlock Text="Use section markers to organize Acts, Sequences, and Scenes. These markers are for structure only and do not print in the screenplay output."
+                                   Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SecondaryText}"
+                                   TextWrapping="Wrap" />
+
+                        <StackPanel Margin="0,14,0,0">
+                            <!-- # Act -->
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Background="{DynamicResource SurfaceMutedBackground}"
+                                        BorderBrush="{DynamicResource SurfaceBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,5"
+                                        Margin="0,0,12,0"
+                                        MinWidth="84">
+                                    <TextBlock Text="#"
+                                               FontFamily="Consolas, Courier New, monospace"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="#4FC3F7"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="Act heading"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,12,0" />
+
+                                <Button Grid.Column="2"
+                                        Tag="#"
+                                        ToolTip.Tip="Copy #"
+                                        Classes="CopyBtn"
+                                        Click="CopySyntax_Click">
+                                    <TextBlock FontSize="14" Text="📋" />
+                                </Button>
+                            </Grid>
+
+                            <!-- ## Sequence -->
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Background="{DynamicResource SurfaceMutedBackground}"
+                                        BorderBrush="{DynamicResource SurfaceBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,5"
+                                        Margin="0,0,12,0"
+                                        MinWidth="84">
+                                    <TextBlock Text="##"
+                                               FontFamily="Consolas, Courier New, monospace"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="#4FC3F7"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="Sequence heading"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,12,0" />
+
+                                <Button Grid.Column="2"
+                                        Tag="##"
+                                        ToolTip.Tip="Copy ##"
+                                        Classes="CopyBtn"
+                                        Click="CopySyntax_Click">
+                                    <TextBlock FontSize="14" Text="📋" />
+                                </Button>
+                            </Grid>
+
+                            <!-- ### Scene grouping -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Background="{DynamicResource SurfaceMutedBackground}"
+                                        BorderBrush="{DynamicResource SurfaceBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,5"
+                                        Margin="0,0,12,0"
+                                        MinWidth="84">
+                                    <TextBlock Text="###"
+                                               FontFamily="Consolas, Courier New, monospace"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="#4FC3F7"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="Scene grouping marker"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,12,0" />
+
+                                <Button Grid.Column="2"
+                                        Tag="###"
+                                        ToolTip.Tip="Copy ###"
+                                        Classes="CopyBtn"
+                                        Click="CopySyntax_Click">
+                                    <TextBlock FontSize="14" Text="📋" />
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Synopses Card -->
+                <Border Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource CardBorder}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Synopses"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource HeaderText}" />
+                        <TextBlock Text="Use a synopsis line to add a short summary beneath the current section or scene."
+                                   Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SecondaryText}"
+                                   TextWrapping="Wrap" />
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Background="{DynamicResource SurfaceMutedBackground}"
+                                    BorderBrush="{DynamicResource SurfaceBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,5"
+                                    Margin="0,0,12,0"
+                                    MinWidth="84">
+                                <TextBlock Text="="
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FFB74D"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="Summary for the section or scene below it."
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource SecondaryText}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,12,0" />
+
+                            <Button Grid.Column="2"
+                                    Tag="="
+                                    ToolTip.Tip="Copy ="
+                                    Classes="CopyBtn"
+                                    Click="CopySyntax_Click">
+                                <TextBlock FontSize="14" Text="📋" />
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Notes Card -->
+                <Border Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource CardBorder}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0">
+                    <StackPanel>
+                        <TextBlock Text="Notes"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource HeaderText}" />
+                        <TextBlock Text="Use Fountain notes for private comments, reminders, or production details that should stay internal."
+                                   Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SecondaryText}"
+                                   TextWrapping="Wrap" />
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Background="{DynamicResource SurfaceMutedBackground}"
+                                    BorderBrush="{DynamicResource SurfaceBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,5"
+                                    Margin="0,0,12,0"
+                                    MinWidth="120">
+                                <TextBlock Text="[[ Your Note ]]"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="#81C784"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="Internal comment that stays out of the printed script."
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource SecondaryText}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,12,0" />
+
+                            <Button Grid.Column="2"
+                                    Tag="[[ Your Note ]]"
+                                    ToolTip.Tip="Copy [[ Your Note ]]"
+                                    Classes="CopyBtn"
+                                    Click="CopySyntax_Click">
+                                <TextBlock FontSize="14" Text="📋" />
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

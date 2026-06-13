@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="200"
+        x:Class="Passage.App.Views.FindReplaceDialog"
+        Title="Find / Replace"
+        Width="420"
+        Height="240"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource SurfaceBackground}">
+
+    <DockPanel Margin="16">
+        <!-- Find Section -->
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="Find:" Margin="0,0,0,4" Foreground="{DynamicResource ControlForeground}" />
+            <TextBox x:Name="FindTextBox" PlaceholderText="Text to find..." MinWidth="300" />
+        </StackPanel>
+
+        <!-- Replace Section -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,16,0,0">
+            <TextBlock Text="Replace with:" Margin="0,0,0,4" Foreground="{DynamicResource ControlForeground}" />
+            <TextBox x:Name="ReplaceTextBox" PlaceholderText="Replacement text..." MinWidth="300" />
+        </StackPanel>
+
+        <!-- Options -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,16,0,0" Orientation="Horizontal">
+            <CheckBox x:Name="MatchCaseCheckBox" Content="Match case" Margin="0,0,16,0" />
+            <CheckBox x:Name="WholeWordCheckBox" Content="Whole word" />
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="FindNextButton" Content="Find Next" Padding="16,6" Margin="0,0,8,0" Click="FindNextClick" />
+            <Button x:Name="ReplaceButton" Content="Replace" Padding="16,6" Margin="0,0,8,0" Click="ReplaceClick" />
+            <Button x:Name="ReplaceAllButton" Content="Replace All" Padding="16,6" Margin="0,0,8,0" Click="ReplaceAllClick" />
+            <Button x:Name="CloseButton" Content="Close" Padding="16,6" Click="CloseClick" />
+        </StackPanel>
+    </DockPanel>
+</Window>

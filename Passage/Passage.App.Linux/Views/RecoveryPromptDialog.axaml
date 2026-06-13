@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Passage.App.Views.RecoveryPromptDialog"
+        Title="Recover Document"
+        Width="400"
+        Height="180"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource SurfaceBackground}">
+    <Border Padding="24,20" CornerRadius="12" Background="{DynamicResource SurfaceBackground}">
+        <DockPanel LastChildFill="True">
+            <!-- Dialog header -->
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                <TextBlock Text="Recover Document"
+                           FontSize="17"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource HeaderText}"
+                           Margin="0,0,0,8" />
+                <TextBlock Text="A recovered unsaved document was found. Would you like to restore it?"
+                           Foreground="{DynamicResource ControlForeground}"
+                           TextWrapping="Wrap"
+                           FontSize="13" />
+            </StackPanel>
+
+            <!-- Footer buttons -->
+            <StackPanel DockPanel.Dock="Bottom"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,16,0,0">
+                <Button Content="Restore"
+                        Width="100"
+                        Margin="0,0,8,0"
+                        CornerRadius="8"
+                        IsDefault="True"
+                        Click="RestoreClick" />
+                <Button Content="Discard"
+                        Width="100"
+                        CornerRadius="8"
+                        IsCancel="True"
+                        Click="DiscardClick" />
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>
