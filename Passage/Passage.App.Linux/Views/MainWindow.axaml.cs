@@ -318,6 +318,12 @@ public partial class MainWindow : Window
         // and saving all stay in sync with what the user typed.
         vm.EditorContent = textBox.Text ?? string.Empty;
 
+        // A single edit can change how *other* lines are classified (typing a
+        // character cue re-colours the dialogue block beneath it, etc.). AvaloniaEdit
+        // only repaints the edited line by default, so force a full re-colour of the
+        // visible text to match the Windows editor's whole-document reformatting.
+        textBox.TextArea.TextView.Redraw();
+
         if (!vm.IsScreenplayMode)
         {
             vm.IsAutoCompleteOpen = false;
