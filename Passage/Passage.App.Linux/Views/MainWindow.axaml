@@ -3,6 +3,7 @@
         xmlns:vm="using:Passage.App.ViewModels"
         xmlns:views="using:Passage.App.Views"
         xmlns:export="using:Passage.Export"
+        xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -350,12 +351,9 @@
                 <TabItem Header="Script" IsSelected="{Binding !IsBoardModeActive, Mode=TwoWay}">
                     <Grid>
                         <!-- Editor Area -->
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Auto"
-                                      Background="{DynamicResource SurfaceBackground}">
+                        <Grid Background="{DynamicResource SurfaceBackground}">
                             <Border Name="EditorDocumentHost"
                                     Width="816"
-                                    MinHeight="1056"
                                     Margin="0,40"
                                     Background="{DynamicResource SurfaceRaisedBackground}"
                                     BorderBrush="{DynamicResource EditorPageBorder}"
@@ -363,24 +361,23 @@
                                     CornerRadius="2"
                                     BoxShadow="0 4 12 0 #20000000"
                                     HorizontalAlignment="Center"
-                                    VerticalAlignment="Top">
+                                    VerticalAlignment="Stretch">
                                 <Border.RenderTransform>
                                     <ScaleTransform ScaleX="{Binding EditorZoomScale}"
                                                     ScaleY="{Binding EditorZoomScale}" />
                                 </Border.RenderTransform>
-                                <TextBox Name="EditorTextBox"
-                                         Text="{Binding EditorContent, Mode=TwoWay}"
-                                         AcceptsReturn="True"
-                                         AcceptsTab="True"
-                                         TextWrapping="Wrap"
-                                         FontFamily="Courier Prime, Courier New, Courier"
-                                         FontSize="16"
-                                         Padding="72,96,72,96"
-                                         Background="Transparent"
-                                         BorderThickness="0"
-                                         HorizontalAlignment="Stretch"
-                                         TextChanged="EditorBox_TextChanged">
-                                    <TextBox.ContextFlyout>
+                                <ae:TextEditor Name="EditorTextBox"
+                                               WordWrap="True"
+                                               ShowLineNumbers="False"
+                                               FontFamily="Courier Prime, Courier New, Courier"
+                                               FontSize="16"
+                                               Padding="72,96,72,96"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               HorizontalScrollBarVisibility="Disabled"
+                                               VerticalScrollBarVisibility="Auto"
+                                               Foreground="{DynamicResource EditorForeground}">
+                                    <ae:TextEditor.ContextFlyout>
                                         <MenuFlyout>
                                             <MenuItem Header="Cut" Click="OnCutClick" />
                                             <MenuItem Header="Copy" Click="OnCopyClick" />
@@ -396,10 +393,10 @@
                                             <MenuItem Header="Classify As Transition" Command="{Binding ClassifyAsTransitionCommand}" />
                                             <MenuItem Header="Classify As Note" Command="{Binding ClassifyAsNoteCommand}" />
                                         </MenuFlyout>
-                                    </TextBox.ContextFlyout>
-                                </TextBox>
+                                    </ae:TextEditor.ContextFlyout>
+                                </ae:TextEditor>
                             </Border>
-                        </ScrollViewer>
+                        </Grid>
 
                         <!-- Autocomplete Suggestions Popup -->
                         <Popup Name="AutoCompletePopup"

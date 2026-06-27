@@ -11,6 +11,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using AvaloniaEdit;
 using Passage.App.ViewModels;
 using Passage.Parser;
 using Passage.App.Services;
@@ -29,6 +30,10 @@ public partial class MainWindow : Window
     private bool _isLeftDockCollapsed = false;
     private double _leftDockExpandedWidth = 300;
 
+    // Guards against feedback loops while we mirror text between the editor control
+    // and the view model's EditorContent string.
+    private bool _suppressEditorSync;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -37,64 +42,56 @@ public partial class MainWindow : Window
         // Add keyboard shortcuts
         AddKeyboardShortcuts();
 
-        // On Linux we run inside a private rootful Xwayland (see Program.cs) with no
-        // window manager, and COSMIC auto-tiles the Xwayland window — so its X-root
-        // size is dictated by the tile and changes as tiles are rearranged. The normal
-        // "maximize" state is ignored here. To behave like a native tiled window we
-        // make Passage always fill the X-root and follow its size changes (RandR ->
-        // Avalonia Screens.Changed). The fixed XAML size/min-size would fight this.
-        if (OperatingSystem.IsLinux())
-        {
-            MinWidth = 0;
-            MinHeight = 0;
-            Opened += (_, _) => Dispatcher.UIThread.Post(FillHostScreen, DispatcherPriority.Loaded);
-            Screens.Changed += (_, _) => Dispatcher.UIThread.Post(FillHostScreen, DispatcherPriority.Loaded);
-        }
-
-        // Add tunneling KeyDown handler for autocomplete
-        var editorBox = this.FindControl<TextBox>("EditorTextBox");
-        editorBox?.AddHandler(InputElement.KeyDownEvent, EditorBox_KeyDown, RoutingStrategies.Tunnel);
-
-        // Listen to EditorTextBox caret changes
+        var editorBox = this.FindControl<TextEditor>("EditorTextBox");
         if (editorBox != null)
         {
-            editorBox.PropertyChanged += (sender, e) =>
+            // Add tunneling KeyDown handler for autocomplete
+            editorBox.AddHandler(InputElement.KeyDownEvent, EditorBox_KeyDown, RoutingStrategies.Tunnel);
+
+            // Live Fountain syntax highlighting — the editor re-colours each line by
+            // its screenplay element type as the user types.
+            editorBox.TextArea.TextView.LineTransformers.Add(new FountainSyntaxColorizer());
+
+            // Drive the editor content through code-behind (instead of a XAML binding)
+            // so every existing EditorContent code path in the view model keeps working.
+            if (DataContext is MainWindowViewModel vm)
             {
-                if (e.Property == TextBox.CaretIndexProperty)
+                _suppressEditorSync = true;
+                editorBox.Text = vm.EditorContent ?? string.Empty;
+                _suppressEditorSync = false;
+
+                vm.PropertyChanged += (_, e) =>
                 {
-                    if (DataContext is MainWindowViewModel vm)
+                    if (e.PropertyName != nameof(MainWindowViewModel.EditorContent))
                     {
-                        vm.UpdateCaretStatus((int)(e.NewValue ?? 0));
+                        return;
                     }
+
+                    var desired = vm.EditorContent ?? string.Empty;
+                    if (_suppressEditorSync || editorBox.Text == desired)
+                    {
+                        return;
+                    }
+
+                    _suppressEditorSync = true;
+                    var caret = editorBox.CaretOffset;
+                    editorBox.Text = desired;
+                    editorBox.CaretOffset = Math.Min(caret, editorBox.Document.TextLength);
+                    _suppressEditorSync = false;
+                };
+            }
+
+            editorBox.TextChanged += EditorBox_TextChanged;
+
+            // Listen to caret changes for the status bar.
+            editorBox.TextArea.Caret.PositionChanged += (_, _) =>
+            {
+                if (DataContext is MainWindowViewModel vm2)
+                {
+                    vm2.UpdateCaretStatus(editorBox.CaretOffset);
                 }
             };
         }
-    }
-
-    // Fills the host X screen (the Xwayland root) with the window, positioning it
-    // at the top-left. Used on Linux where there is no WM to honour maximization.
-    private void FillHostScreen()
-    {
-        bool diag = Environment.GetCommandLineArgs().Contains("--diag");
-
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        if (screen is null)
-        {
-            if (diag) Console.Error.WriteLine($"[diag] FillHostScreen: no screen found (ScreenCount={Screens.ScreenCount})");
-            return;
-        }
-
-        var area = screen.Bounds;          // full X-root (the tile), physical pixels
-        var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
-        double targetW = area.Width / scale;   // DIPs
-        double targetH = area.Height / scale;
-
-        Position = area.Position;
-        Width = targetW;
-        Height = targetH;
-
-        if (diag)
-            Console.Error.WriteLine($"[diag] FillHostScreen: root={area.Width}x{area.Height}@{area.X},{area.Y} scale={scale} -> set {targetW}x{targetH} DIP; ClientSize now={ClientSize}");
     }
 
     private void AddKeyboardShortcuts()
@@ -262,28 +259,28 @@ public partial class MainWindow : Window
 
     private void OnCutClick(object? sender, RoutedEventArgs e)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
-        textBox?.Cut();
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.Cut();
     }
 
     private void OnCopyClick(object? sender, RoutedEventArgs e)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
-        textBox?.Copy();
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.Copy();
     }
 
     private void OnPasteClick(object? sender, RoutedEventArgs e)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
-        textBox?.Paste();
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.Paste();
     }
 
     public void NavigateToLine(int lineNumber)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
-        if (textBox == null || string.IsNullOrEmpty(textBox.Text)) return;
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        if (editor == null || string.IsNullOrEmpty(editor.Text)) return;
 
-        var text = textBox.Text;
+        var text = editor.Text;
         var lineIndex = Math.Max(0, lineNumber - 1);
 
         var currentIndex = 0;
@@ -297,19 +294,29 @@ public partial class MainWindow : Window
             currentLine++;
         }
 
-        textBox.Focus();
-        textBox.SelectionStart = currentIndex;
-        textBox.SelectionEnd = currentIndex;
-        textBox.CaretIndex = currentIndex;
+        editor.Focus();
+        editor.TextArea.ClearSelection();
+        editor.CaretOffset = currentIndex;
+        editor.ScrollToLine(Math.Max(1, lineNumber));
     }
 
-    private void EditorBox_TextChanged(object? sender, TextChangedEventArgs e)
+    private void EditorBox_TextChanged(object? sender, EventArgs e)
     {
-        var textBox = sender as TextBox;
+        var textBox = sender as TextEditor;
         if (textBox == null || DataContext is not MainWindowViewModel vm)
         {
             return;
         }
+
+        // Programmatic content sync (e.g. opening a file) — don't run live logic.
+        if (_suppressEditorSync)
+        {
+            return;
+        }
+
+        // Mirror the edit back into the view model so parsing, preview, word counts
+        // and saving all stay in sync with what the user typed.
+        vm.EditorContent = textBox.Text ?? string.Empty;
 
         if (!vm.IsScreenplayMode)
         {
@@ -317,7 +324,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var caretIndex = textBox.CaretIndex;
+        var caretIndex = textBox.CaretOffset;
         var text = textBox.Text ?? "";
 
         // Find line start and line text
@@ -360,15 +367,13 @@ public partial class MainWindow : Window
                 if (lineText != lineText.ToUpperInvariant())
                 {
                     var upperLine = lineText.ToUpperInvariant();
-                    var startOffset = lineStart;
 
                     textBox.TextChanged -= EditorBox_TextChanged;
                     try
                     {
-                        var before = text.Substring(0, startOffset);
-                        var after = text.Substring(lineEnd);
-                        textBox.Text = before + upperLine + after;
-                        textBox.CaretIndex = caretIndex;
+                        // Replace just the current line so undo history and caret stay intact.
+                        textBox.Document.Replace(lineStart, lineEnd - lineStart, upperLine);
+                        textBox.CaretOffset = caretIndex;
                     }
                     finally
                     {
@@ -376,6 +381,7 @@ public partial class MainWindow : Window
                     }
                     text = textBox.Text;
                     lineText = upperLine;
+                    vm.EditorContent = text;
                 }
             }
         }
@@ -467,39 +473,38 @@ public partial class MainWindow : Window
 
     private void PositionAutoCompletePopup()
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
         var popup = this.FindControl<Popup>("AutoCompletePopup");
-        if (textBox == null || popup == null) return;
+        if (editor == null || popup == null) return;
 
-        // Find internal TextPresenter
-        var presenter = textBox.GetVisualDescendants().OfType<TextPresenter>().FirstOrDefault();
-        if (presenter == null) return;
-
-        // Use reflection to call GetCursorRectangle on TextPresenter
-        var type = typeof(TextPresenter);
-        var method = type.GetMethod("GetCursorRectangle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (method == null) return;
-
-        var caretRect = (Rect)method.Invoke(presenter, null)!;
-
-        // Translate caret position to EditorTextBox space
-        var point = presenter.TranslatePoint(caretRect.Position, textBox);
-        if (point.HasValue)
+        try
         {
-            popup.Placement = PlacementMode.Top;
-            popup.PlacementTarget = textBox;
-            popup.HorizontalOffset = point.Value.X + 24;
-            popup.VerticalOffset = point.Value.Y - 4;
+            // The caret rectangle is in TextView coordinates; translate it into the
+            // editor's coordinate space for the popup offsets.
+            var textView = editor.TextArea.TextView;
+            var caretRect = editor.TextArea.Caret.CalculateCaretRectangle();
+            var point = textView.TranslatePoint(caretRect.Position, editor);
+            if (point.HasValue)
+            {
+                popup.Placement = PlacementMode.Top;
+                popup.PlacementTarget = editor;
+                popup.HorizontalOffset = point.Value.X + 24;
+                popup.VerticalOffset = point.Value.Y - 4;
+            }
+        }
+        catch
+        {
+            // If caret geometry isn't available yet, fall back to the default placement.
         }
     }
 
     private void ApplyAutoCompleteSuggestion(string suggestion)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
-        if (textBox == null || DataContext is not MainWindowViewModel vm) return;
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        if (editor == null || DataContext is not MainWindowViewModel vm) return;
 
-        var caretIndex = textBox.CaretIndex;
-        var text = textBox.Text ?? "";
+        var caretIndex = editor.CaretOffset;
+        var text = editor.Text ?? "";
 
         // Find line start and line end
         var lineStart = 0;
@@ -519,12 +524,10 @@ public partial class MainWindow : Window
         var nextNewlineAfter = text.IndexOf('\n', lineStart);
         var lineEnd = nextNewlineAfter == -1 ? text.Length : nextNewlineAfter;
 
-        // Replace the line text with the suggestion
-        var prefix = text.Substring(0, lineStart);
-        var suffix = text.Substring(lineEnd);
-
-        textBox.Text = prefix + suggestion + suffix;
-        textBox.CaretIndex = lineStart + suggestion.Length;
+        // Replace the current line with the suggestion.
+        editor.Document.Replace(lineStart, lineEnd - lineStart, suggestion);
+        editor.CaretOffset = lineStart + suggestion.Length;
+        vm.EditorContent = editor.Text ?? string.Empty;
 
         vm.IsAutoCompleteOpen = false;
     }
@@ -558,13 +561,12 @@ public partial class MainWindow : Window
                     RecoveryStorage.ClearRecoveryFile();
                 }
 
-                // Re-focus the editor after the dialog closes. On Wayland the
-                // compositor does not automatically return keyboard focus to the
-                // parent window, so we must request it explicitly here.
+                // Re-focus the editor after the dialog closes so the user can keep
+                // typing immediately.
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    var textBox = this.FindControl<TextBox>("EditorTextBox");
-                    textBox?.Focus();
+                    var editor = this.FindControl<TextEditor>("EditorTextBox");
+                    editor?.Focus();
                 }, Avalonia.Threading.DispatcherPriority.Input);
             }, TaskScheduler.FromCurrentSynchronizationContext());
         }
@@ -598,8 +600,8 @@ public partial class MainWindow : Window
             }
 
             // Focus the EditorTextBox on startup (no dialog case)
-            var textBox = this.FindControl<TextBox>("EditorTextBox");
-            textBox?.Focus();
+            var editor = this.FindControl<TextEditor>("EditorTextBox");
+            editor?.Focus();
         }
     }
 
@@ -679,7 +681,7 @@ public partial class MainWindow : Window
 
     private bool FindText(string searchText, bool forward, bool matchCase, bool wholeWord)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        var textBox = this.FindControl<TextEditor>("EditorTextBox");
         if (textBox == null || string.IsNullOrEmpty(searchText))
         {
             return false;
@@ -689,8 +691,16 @@ public partial class MainWindow : Window
         var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
         int matchIndex = -1;
-        var start = Math.Min(textBox.SelectionStart, textBox.SelectionEnd);
-        var end = Math.Max(textBox.SelectionStart, textBox.SelectionEnd);
+        int start, end;
+        if (textBox.SelectionLength > 0)
+        {
+            start = textBox.SelectionStart;
+            end = textBox.SelectionStart + textBox.SelectionLength;
+        }
+        else
+        {
+            start = end = textBox.CaretOffset;
+        }
 
         if (forward)
         {
@@ -784,45 +794,49 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private void SelectEditorRange(TextBox textBox, int start, int length)
+    private void SelectEditorRange(TextEditor editor, int start, int length)
     {
-        var textLength = (textBox.Text ?? string.Empty).Length;
+        var textLength = (editor.Text ?? string.Empty).Length;
         var safeStart = Math.Max(0, Math.Min(start, textLength));
         var safeLength = Math.Max(0, Math.Min(length, textLength - safeStart));
 
-        textBox.Focus();
-        textBox.SelectionStart = safeStart;
-        textBox.SelectionEnd = safeStart + safeLength;
-        textBox.CaretIndex = safeStart + safeLength;
+        editor.Focus();
+        editor.CaretOffset = safeStart + safeLength;
+        editor.Select(safeStart, safeLength);
+        var line = editor.Document.GetLineByOffset(safeStart).LineNumber;
+        editor.ScrollToLine(line);
     }
 
     public bool ReplaceCurrent(string searchText, string replacementText, bool matchCase, bool wholeWord)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
-        if (textBox == null || string.IsNullOrWhiteSpace(searchText))
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        if (editor == null || string.IsNullOrWhiteSpace(searchText))
         {
             return false;
         }
 
-        if (!SelectionMatchesSearch(textBox, searchText) && !FindNext(searchText, matchCase, wholeWord))
+        if (!SelectionMatchesSearch(editor, searchText) && !FindNext(searchText, matchCase, wholeWord))
         {
             return false;
         }
 
-        var start = Math.Min(textBox.SelectionStart, textBox.SelectionEnd);
+        var start = editor.SelectionStart;
+        var length = editor.SelectionLength;
         var replacement = replacementText ?? string.Empty;
 
-        var text = textBox.Text ?? string.Empty;
-        var end = Math.Max(textBox.SelectionStart, textBox.SelectionEnd);
-        textBox.Text = text.Substring(0, start) + replacement + text.Substring(end);
+        editor.Document.Replace(start, length, replacement);
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.EditorContent = editor.Text ?? string.Empty;
+        }
 
-        SelectEditorRange(textBox, start, replacement.Length);
+        SelectEditorRange(editor, start, replacement.Length);
         return true;
     }
 
     public int ReplaceAll(string searchText, string replacementText, bool matchCase, bool wholeWord)
     {
-        var textBox = this.FindControl<TextBox>("EditorTextBox");
+        var textBox = this.FindControl<TextEditor>("EditorTextBox");
         if (textBox == null || string.IsNullOrWhiteSpace(searchText))
         {
             return 0;
@@ -862,21 +876,21 @@ public partial class MainWindow : Window
             return 0;
         }
 
-        var caretIndex = textBox.CaretIndex;
+        var caretIndex = textBox.CaretOffset;
         var mappedCaret = MapCaretAfterReplaceAll(source, searchText, replacement, caretIndex, matchCase, wholeWord);
 
-        textBox.Text = builder.ToString();
+        textBox.Document.Text = builder.ToString();
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.EditorContent = textBox.Text ?? string.Empty;
+        }
         SelectEditorRange(textBox, mappedCaret, 0);
         return replacements;
     }
 
-    private bool SelectionMatchesSearch(TextBox textBox, string searchText)
+    private bool SelectionMatchesSearch(TextEditor editor, string searchText)
     {
-        var start = Math.Min(textBox.SelectionStart, textBox.SelectionEnd);
-        var end = Math.Max(textBox.SelectionStart, textBox.SelectionEnd);
-        var length = end - start;
-        if (length != searchText.Length) return false;
-        var selectedText = (textBox.Text ?? string.Empty).Substring(start, length);
+        var selectedText = editor.SelectedText ?? string.Empty;
         return string.Equals(selectedText, searchText, StringComparison.OrdinalIgnoreCase);
     }
 
