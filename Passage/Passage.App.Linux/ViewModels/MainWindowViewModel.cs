@@ -847,10 +847,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_window is Views.MainWindow mainWin)
         {
-            var textBox = mainWin.FindControl<TextBox>("EditorTextBox");
+            var textBox = mainWin.FindControl<AvaloniaEdit.TextEditor>("EditorTextBox");
             if (textBox != null)
             {
-                var caretIndex = textBox.CaretIndex;
+                var caretIndex = textBox.CaretOffset;
                 var text = textBox.Text ?? "";
 
                 int lineNumber = GetLineNumberFromCaretIndex(text, caretIndex);

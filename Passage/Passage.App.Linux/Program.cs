@@ -46,9 +46,11 @@ sealed class Program
                     return;
                 }
 
-                // Avalonia 12 only has an X11 backend on Linux. We need a working DISPLAY.
-                // Start our own XWayland instance when there is no usable X11 display:
-                // either DISPLAY is unset, or it is set but nothing is listening on it.
+                // Avalonia 12 only has an X11 backend on Linux, so we run natively on
+                // X11 (e.g. Linux Mint Cinnamon): when DISPLAY points at a live X11
+                // socket we use it directly and let the window manager handle the window.
+                // Only as a fallback — a pure Wayland session with no usable X11 display
+                // (DISPLAY unset, or set but nothing listening) — do we spin up XWayland.
                 if (hasWayland && (!hasX11 || !X11SocketExists(display!)))
                 {
                     if (verbose && hasX11)
