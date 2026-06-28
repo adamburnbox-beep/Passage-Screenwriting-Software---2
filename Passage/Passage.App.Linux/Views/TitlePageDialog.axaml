@@ -112,7 +112,7 @@
 
         <!-- Bottom Row: Buttons -->
         <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,15,0,0">
-            <Button Content="Delete Page" Click="DeleteClick" Background="#4A1D1D" Foreground="White" HorizontalAlignment="Left" Padding="15,6" x:Name="DeleteButton" />
+            <Button Content="Delete Page" Click="DeleteClick" Background="{DynamicResource ControlBackground}" Foreground="{DynamicResource ControlForeground}" HorizontalAlignment="Left" Padding="15,6" x:Name="DeleteButton" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                 <Button Content="Cancel" Click="CancelClick" Padding="15,6" x:Name="CancelButton" />
                 <Button Content="Update Page" Click="OkClick" FontWeight="Bold" Padding="15,6" x:Name="UpdateButton" />

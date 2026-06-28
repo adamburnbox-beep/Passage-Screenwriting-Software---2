@@ -22,14 +22,14 @@ public sealed class FountainSyntaxColorizer : DocumentColorizingTransformer
         _classifier = classifier;
     }
 
-    private static readonly IBrush SceneHeadingBrush = new SolidColorBrush(Color.Parse("#2C5AA0"));
+    private static readonly IBrush SceneHeadingBrush = new SolidColorBrush(Color.Parse("#6797FF"));
     private static readonly IBrush CharacterBrush = new SolidColorBrush(Color.Parse("#A23B72"));
-    private static readonly IBrush DialogueBrush = new SolidColorBrush(Color.Parse("#2F6F6A"));
+    private static readonly IBrush DialogueBrush = new SolidColorBrush(Color.Parse("#CEB2C9"));
     private static readonly IBrush ParentheticalBrush = new SolidColorBrush(Color.Parse("#7A7A7A"));
     private static readonly IBrush TransitionBrush = new SolidColorBrush(Color.Parse("#6B4FA0"));
-    private static readonly IBrush SectionBrush = new SolidColorBrush(Color.Parse("#4A7A3A"));
-    private static readonly IBrush SynopsisBrush = new SolidColorBrush(Color.Parse("#6E8A4A"));
-    private static readonly IBrush NoteBrush = new SolidColorBrush(Color.Parse("#999999"));
+    private static readonly IBrush SectionBrush = new SolidColorBrush(Color.Parse("#4FC3F7"));
+    private static readonly IBrush SynopsisBrush = new SolidColorBrush(Color.Parse("#FFB74D"));
+    private static readonly IBrush NoteBrush = new SolidColorBrush(Color.Parse("#81C784"));
 
     protected override void ColorizeLine(DocumentLine line)
     {

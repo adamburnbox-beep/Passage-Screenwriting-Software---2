@@ -580,53 +580,62 @@ public partial class MainWindowViewModel : ViewModelBase
         if (App.Current?.Resources == null) return;
         var Resources = App.Current.Resources;
 
+        Avalonia.Media.SolidColorBrush Brush(string hex) =>
+            new(Avalonia.Media.Color.Parse(hex));
+
         if (isLight)
         {
-            Resources["ThemeBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F1F1F1"));
-            Resources["WindowBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F6F6F6"));
-            Resources["SurfaceBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F6F6F6"));
-            Resources["SurfaceMutedBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EAEAEA"));
-            Resources["SurfaceRaisedBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
-            Resources["SurfaceBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D3D3D3"));
-            Resources["ControlBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EEEEEE"));
-            Resources["ControlForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E2E2E"));
-            Resources["ControlBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D3D3D3"));
-            Resources["ControlAccent"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3584E4"));
-            Resources["ControlPressedBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#DCDCDB"));
-            Resources["ControlPressedForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E2E2E"));
-            Resources["HeaderText"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1E1E1E"));
-            Resources["SecondaryText"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#5E5E5E"));
-            Resources["MutedText"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#8E8E8E"));
-            Resources["EditorForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E2E2E"));
-            Resources["EditorPageBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D3D3D3"));
-            Resources["WindowForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E2E2E"));
-            Resources["CardBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
-            Resources["CardBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E0E0E0"));
-            Resources["CardAccent"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3584E4"));
+            // Light theme colors (e-reader cream/paper)
+            Resources["ThemeBackground"] = Brush("#EFE7D6");
+            Resources["WindowBackground"] = Brush("#EFE7D6");
+            Resources["SurfaceBackground"] = Brush("#F2ECDD");
+            Resources["SurfaceMutedBackground"] = Brush("#E6DDC8");
+            Resources["SurfaceRaisedBackground"] = Brush("#FBF6EA");
+            Resources["SurfaceBorder"] = Brush("#D8CDB5");
+            Resources["ControlBackground"] = Brush("#ECE3D0");
+            Resources["ControlForeground"] = Brush("#2B2620");
+            Resources["ControlBorder"] = Brush("#CFC1A8");
+            Resources["ControlAccent"] = Brush("#2B2620");
+            Resources["ControlPressedBackground"] = Brush("#2B2620");
+            Resources["ControlPressedForeground"] = Brush("#FBF6EA");
+            Resources["HeaderText"] = Brush("#1E1A14");
+            Resources["SecondaryText"] = Brush("#6B6353");
+            Resources["MutedText"] = Brush("#938A76");
+            Resources["EditorForeground"] = Brush("#2B2620");
+            Resources["EditorPageBorder"] = Brush("#D8CDB5");
+            Resources["WindowForeground"] = Brush("#2B2620");
+            Resources["HierarchyIndicatorBrush"] = Brush("#2B2620");
+            Resources["DragOverBackground"] = Brush("#252B2620");
+            Resources["CardBackground"] = Brush("#FBF6EA");
+            Resources["CardBorder"] = Brush("#D8CDB5");
+            Resources["CardAccent"] = Brush("#2B2620");
         }
         else
         {
-            Resources["ThemeBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1E1E1E"));
-            Resources["WindowBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#242424"));
-            Resources["SurfaceBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#242424"));
-            Resources["SurfaceMutedBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1E1E1E"));
-            Resources["SurfaceRaisedBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2D2D2D"));
-            Resources["SurfaceBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#353535"));
-            Resources["ControlBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#303030"));
-            Resources["ControlForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#DEDEDE"));
-            Resources["ControlBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#353535"));
-            Resources["ControlAccent"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3584E4"));
-            Resources["ControlPressedBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A"));
-            Resources["ControlPressedForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
-            Resources["HeaderText"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
-            Resources["SecondaryText"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B0B0B0"));
-            Resources["MutedText"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#787878"));
-            Resources["EditorForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#DEDEDE"));
-            Resources["EditorPageBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#353535"));
-            Resources["WindowForeground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#DEDEDE"));
-            Resources["CardBackground"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#303030"));
-            Resources["CardBorder"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3D3D3D"));
-            Resources["CardAccent"] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3584E4"));
+            // Dark theme colors (e-reader near-black; inverse of light)
+            Resources["ThemeBackground"] = Brush("#15140F");
+            Resources["WindowBackground"] = Brush("#15140F");
+            Resources["SurfaceBackground"] = Brush("#1B1A15");
+            Resources["SurfaceMutedBackground"] = Brush("#232118");
+            Resources["SurfaceRaisedBackground"] = Brush("#100F0B");
+            Resources["SurfaceBorder"] = Brush("#2E2B22");
+            Resources["ControlBackground"] = Brush("#232118");
+            Resources["ControlForeground"] = Brush("#ECE3D0");
+            Resources["ControlBorder"] = Brush("#3A352A");
+            Resources["ControlAccent"] = Brush("#F2ECDD");
+            Resources["ControlPressedBackground"] = Brush("#F2ECDD");
+            Resources["ControlPressedForeground"] = Brush("#15140F");
+            Resources["HeaderText"] = Brush("#F7F2E6");
+            Resources["SecondaryText"] = Brush("#A89E89");
+            Resources["MutedText"] = Brush("#756C5A");
+            Resources["EditorForeground"] = Brush("#ECE3D0");
+            Resources["EditorPageBorder"] = Brush("#2E2B22");
+            Resources["WindowForeground"] = Brush("#ECE3D0");
+            Resources["HierarchyIndicatorBrush"] = Brush("#F2ECDD");
+            Resources["DragOverBackground"] = Brush("#25F2ECDD");
+            Resources["CardBackground"] = Brush("#100F0B");
+            Resources["CardBorder"] = Brush("#2E2B22");
+            Resources["CardAccent"] = Brush("#F2ECDD");
         }
     }
 

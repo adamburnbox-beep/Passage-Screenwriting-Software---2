@@ -67,6 +67,8 @@ public partial class OutlineNodeViewModel : ViewModelBase
         _ => Kind.ToString()
     };
 
+    public bool IsActLevel => Kind == OutlineNodeKind.Section && SectionLevel == 1;
+
     public string Text { get; }
 
     public string Title => Text;

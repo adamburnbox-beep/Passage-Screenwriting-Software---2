@@ -1,0 +1,126 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================ -->
+    <!-- Chrome buttons (toolbar / workspace)                          -->
+    <!-- ============================================================ -->
+    <Style Selector="Button.chrome">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="MinWidth" Value="86" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.12" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.chrome /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+    </Style>
+    <Style Selector="Button.chrome:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
+    </Style>
+    <Style Selector="Button.chrome:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+
+    <!-- Small inline buttons (card Edit/Save/Cancel, toggles, delete) -->
+    <Style Selector="Button.inline">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.inline:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
+    </Style>
+    <Style Selector="Button.inline:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ControlPressedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+
+    <!-- ============================================================ -->
+    <!-- Top menu (File / Edit / View / Navigate)                      -->
+    <!-- ============================================================ -->
+    <Style Selector="Menu">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Menu > MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="9,5" />
+    </Style>
+    <Style Selector="Menu > MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    </Style>
+    <Style Selector="Menu > MenuItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    </Style>
+    <Style Selector="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
+    </Style>
+
+    <!-- ============================================================ -->
+    <!-- Workspace tabs                                                -->
+    <!-- ============================================================ -->
+    <Style Selector="TabControl#LeftDockTabs">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+    </Style>
+
+    <!-- Remove the Fluent accent pipe (green) from every tab. :is(Control) matches
+         the pipe whatever its concrete type is (plain type selectors are exact-match). -->
+    <Style Selector="TabItem /template/ :is(Control)#PART_SelectedPipe">
+        <Setter Property="IsVisible" Value="False" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Height" Value="0" />
+        <Setter Property="Width" Value="0" />
+    </Style>
+
+    <!-- ============================================================ -->
+    <!-- Workspace trees (Outline / Notes) selection                  -->
+    <!-- ============================================================ -->
+    <!-- Drop the Fluent accent (green) selection fill -->
+    <Style Selector="TreeViewItem:selected /template/ Border#TreeViewItemLayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#TreeViewItemLayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeViewItem:pointerover /template/ Border#TreeViewItemLayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <!-- Selected card: accent border (matches the selected-tab indicator) -->
+    <Style Selector="TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter > Border.outlineCard">
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+
+</Styles>
