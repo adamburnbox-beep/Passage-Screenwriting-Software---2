@@ -28,8 +28,7 @@ public partial class MainWindow : Window
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     private bool _isLeftDockCollapsed = false;
-    private double _leftDockExpandedWidth = 300;
-
+    private double _leftDockExpandedWidth = 360;
     // Guards against feedback loops while we mirror text between the editor control
     // and the view model's EditorContent string.
     private bool _suppressEditorSync;
@@ -38,6 +37,17 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel(this);
+
+        // Apply the configured workspace panel width at startup so that a single
+        // field (_leftDockExpandedWidth) is the source of truth for BOTH the
+        // initial width and the expanded width after a collapse/expand toggle.
+        // Without this, startup uses the XAML ColumnDefinition width instead, and
+        // changing the field alone has no visible effect on launch.
+        var mainGrid = this.FindControl<Grid>("MainLayoutGrid");
+        if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
+        {
+            mainGrid.ColumnDefinitions[0].Width = new GridLength(_leftDockExpandedWidth);
+        }
 
         // Add keyboard shortcuts
         AddKeyboardShortcuts();
@@ -150,12 +160,12 @@ public partial class MainWindow : Window
             var leftSplitterColumn = grid.ColumnDefinitions[1];
 
             // Save current width before collapsing if it is not collapsed
-            if (!collapsed)
+            if (collapsed)
             {
-                _leftDockExpandedWidth = leftDockColumn.Width.Value > 40 ? leftDockColumn.Width.Value : 300;
+                _leftDockExpandedWidth = leftDockColumn.Width.Value > 80 ? leftDockColumn.Width.Value : 350;
             }
 
-            leftDockColumn.Width = collapsed ? new GridLength(40) : new GridLength(_leftDockExpandedWidth);
+            leftDockColumn.Width = collapsed ? new GridLength(65) : new GridLength(_leftDockExpandedWidth);
             leftSplitterColumn.Width = collapsed ? new GridLength(0) : new GridLength(2);
         }
 
