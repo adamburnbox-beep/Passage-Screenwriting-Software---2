@@ -18,7 +18,7 @@ cosmetic**:
 
 **Goal:** Re-skin the Linux port to the e-reader aesthetic with two themes that are direct
 inverses of one another — **cream/paper light**, **near-black dark** — and build the
-missing control-styling layer so the toolbar/chrome, the Workspace panel (tabs + outline
+missing control-styling layer so the toolbar/chrome, the (tabs + outline
 cards), and the status bar match the Windows visual design. The editor surface and Fountain
 syntax colors are already acceptable and stay as-is. Beat Board cards already have decent
 styling and only need to inherit the new palette.

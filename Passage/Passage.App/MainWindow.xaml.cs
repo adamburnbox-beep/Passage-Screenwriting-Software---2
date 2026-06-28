@@ -380,7 +380,7 @@ public partial class MainWindow : Window
                 ViewModel.SelectedDocument?.SetBoardDropIndicator(dropLocation.DisplacementTarget);
                 ViewModel.SelectedDocument?.PerformReorderPreview(draggedElement, dropLocation.TargetElement, dropLocation.InsertAfter);
             }
-            
+
             e.Effects = DragDropEffects.Move;
         }
         else
@@ -1298,7 +1298,7 @@ public partial class MainWindow : Window
 
         var newHeading = headingBox?.Text ?? GetEditableBoardHeading(element);
         var newSceneHeadingPrefix = (sceneHeadingPrefixCombo?.SelectedItem as ComboBoxItem)?.Content?.ToString();
-        var newSceneHeading = element.Type == ScreenplayElementType.SceneHeading 
+        var newSceneHeading = element.Type == ScreenplayElementType.SceneHeading
             ? (sceneHeadingBox?.Text ?? GetEditableBoardSceneHeading(element))
             : string.Empty;
         var newDescription = descriptionBox?.Text ?? GetEditableBoardDescription(element);
@@ -2524,12 +2524,12 @@ public partial class MainWindow : Window
             {
                 var cleanBodyText = Passage.Parser.ScriptSanitizer.ExtractCleanScript(rawText);
                 var fullText = titleText + (string.IsNullOrWhiteSpace(titleText) ? "" : "\n\n") + cleanBodyText;
-                
+
                 var cleanScreenplay = new Passage.Parser.FountainParser().Parse(fullText);
                 var (titlePages, bodyPages) = Passage.Export.ScreenplayLayoutBuilder.BuildPages(cleanScreenplay);
-                
+
                 var pages = new List<PreviewPageViewModel>();
-                
+
                 double ComputeWpfX(string text, Passage.Export.LayoutTextStyle style, double rawX)
                 {
                     var usableWidth = Passage.Export.ScreenplayLayoutBuilder.PageWidth - Passage.Export.ScreenplayLayoutBuilder.MarginLeft - Passage.Export.ScreenplayLayoutBuilder.MarginRight;
@@ -2542,16 +2542,16 @@ public partial class MainWindow : Window
                         _ => rawX
                     };
                 }
-                
+
                 void AddLayoutPage(Passage.Export.LayoutPage lp)
                 {
                     var pageVm = new PreviewPageViewModel();
-                    
+
                     if (!lp.IsTitlePage && lp.PageNumber > 1)
                     {
                         pageVm.PageNumberLabel = $"{lp.PageNumber}.";
                     }
-                    
+
                     var y = Passage.Export.ScreenplayLayoutBuilder.PageHeight - Passage.Export.ScreenplayLayoutBuilder.MarginTop;
 
                     foreach (var line in lp.Lines)
@@ -2574,7 +2574,7 @@ public partial class MainWindow : Window
 
                         y -= Passage.Export.ScreenplayLayoutBuilder.LineHeight;
                     }
-                    
+
                     pages.Add(pageVm);
                 }
 
@@ -3649,12 +3649,12 @@ public partial class MainWindow : Window
                 paragraph.Inlines.Add(new Run(before));
             }
 
-            var idBlock = new TextBlock 
-            { 
-                Text = idTag, 
-                FontSize = 0.1, 
-                Opacity = 0, 
-                Width = 0, 
+            var idBlock = new TextBlock
+            {
+                Text = idTag,
+                FontSize = 0.1,
+                Opacity = 0,
+                Width = 0,
                 Height = 0,
                 IsHitTestVisible = false
             };
@@ -5261,13 +5261,14 @@ public partial class MainWindow : Window
 
         // Use high-priority dispatcher call to ensure we win the focus battle
         // against the TreeView's selection logic and draw the caret immediately.
-        Dispatcher.BeginInvoke(() => {
+        Dispatcher.BeginInvoke(() =>
+        {
             NavigateEditorToLine(node.LineNumber);
             EditorBox?.Focus();
         }, System.Windows.Threading.DispatcherPriority.Input);
 
         // Do not mark handled yet so we can detect MouseMove for drag
-        // e.Handled = true; 
+        // e.Handled = true;
     }
 
     private void WorkspaceNode_MouseMove(object sender, MouseEventArgs e)
@@ -5282,12 +5283,12 @@ public partial class MainWindow : Window
             Math.Abs(currentPoint.Y - _workspaceDragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
         {
             _isWorkspaceDragging = true;
-            
+
             // Show ghost before starting drag loop
             UpdateWorkspaceGhostVisibility(true);
-            
+
             DragDrop.DoDragDrop((DependencyObject)sender, _draggedWorkspaceNode, DragDropEffects.Move);
-            
+
             // Cleanup after drag completes (either dropped or cancelled)
             _isWorkspaceDragging = false;
             _draggedWorkspaceNode = null;
@@ -5321,11 +5322,11 @@ public partial class MainWindow : Window
         if (ghost != null && canvas != null)
         {
             var pos = e.GetPosition(canvas);
-            
+
             // Center the ghost on the cursor using ActualWidth/Height
             double width = ghost.ActualWidth > 0 ? ghost.ActualWidth : 240;
             double height = ghost.ActualHeight > 0 ? ghost.ActualHeight : 60;
-            
+
             Canvas.SetLeft(ghost, pos.X - (width / 2));
             Canvas.SetTop(ghost, pos.Y - (height / 2));
         }
@@ -5389,7 +5390,7 @@ public partial class MainWindow : Window
 
         var position = e.GetPosition(targetItem);
         var height = targetItem.ActualHeight;
-        
+
         // 3-zone hit-testing for reordering vs nesting
         // Top 25%: Above
         // Middle 50%: Onto (Nest)
@@ -5433,8 +5434,8 @@ public partial class MainWindow : Window
 
     private void WorkspaceNode_DragLeave(object sender, DragEventArgs e)
     {
-        // Highlight cleanup is handled by DragOver (on node change) 
-        // and Drop/Cancel (on drag completion). 
+        // Highlight cleanup is handled by DragOver (on node change)
+        // and Drop/Cancel (on drag completion).
         // We leave this empty to prevent flickering when moving over child elements.
     }
 
@@ -6730,7 +6731,7 @@ public partial class MainWindow : Window
 
         if (elementTypeName == "SceneHeading")
         {
-            var isSceneHeadingPrefix = prefix.StartsWith(".") || 
+            var isSceneHeadingPrefix = prefix.StartsWith(".") ||
                                        Passage.Core.TextAnalysis.LooksLikeSceneHeadingStart(prefix.AsSpan(), allowPartialPrefixMatch: true);
             if (!isSceneHeadingPrefix)
             {
@@ -6793,12 +6794,12 @@ public partial class MainWindow : Window
         AutoCompletePopup.PlacementTarget = EditorBox;
 
         var caretRect = EditorBox.CaretPosition.GetCharacterRect(LogicalDirection.Forward);
-        
+
         // PlacementRectangle defines the area relative to which the popup is placed.
         // We define a tiny 0x0 rectangle a bit to the right of the caret.
         // Placement="Top" will then put the bottom of the popup above this rectangle.
         AutoCompletePopup.PlacementRectangle = new Rect(caretRect.Left + 24, caretRect.Top - 4, 0, 0);
-        
+
         // Reset offsets since we are using PlacementRectangle
         AutoCompletePopup.HorizontalOffset = 0;
         AutoCompletePopup.VerticalOffset = 0;
@@ -6833,13 +6834,13 @@ public partial class MainWindow : Window
         try
         {
             _isSynchronizingEditorDocument = true;
-            
+
             var linePointerStart = RichTextBoxTextUtilities.GetTextPointerAtOffset(EditorBox, lineStart);
             var linePointerEnd = RichTextBoxTextUtilities.GetTextPointerAtOffset(EditorBox, lineStart + lineText.Length);
-            
+
             var range = new TextRange(linePointerStart, linePointerEnd);
             range.Text = suggestion;
-            
+
             // Move caret to end of suggestion
             EditorBox.CaretPosition = linePointerStart.GetPositionAtOffset(suggestion.Length) ?? linePointerEnd;
         }
@@ -6848,7 +6849,7 @@ public partial class MainWindow : Window
             _isSynchronizingEditorDocument = false;
             ViewModel.IsAutoCompleteOpen = false;
         }
-        
+
         // Trigger formatting
         QueueEditorFormattingForActiveParagraph(force: true);
         ScheduleEditorViewportRefresh(ensureCaretVisible: true);
@@ -6915,7 +6916,7 @@ public partial class MainWindow : Window
                 // Snap to start of line/paragraph as requested to match cursor position better
                 EditorBox.CaretPosition = pointer.Paragraph?.ContentStart ?? pointer;
             }
-            
+
             InvalidateEditorCueOverlay();
             e.Handled = true;
         }
@@ -6942,7 +6943,7 @@ public partial class MainWindow : Window
             _editorCueAdorner.IsDraggingOver = false;
         }
 
-        var element = e.Data.GetData("ScratchpadElement") as ScreenplayElement ?? 
+        var element = e.Data.GetData("ScratchpadElement") as ScreenplayElement ??
                       e.Data.GetData(typeof(ScreenplayElement)) as ScreenplayElement;
 
         if (element != null)
@@ -6979,7 +6980,7 @@ public partial class MainWindow : Window
                     EditorBox.BeginChange();
                     var range = new TextRange(pointer, pointer);
                     range.Text = textToInsert;
-                    
+
                     // Remove from scratchpad
                     ViewModel.ScratchpadElements.Remove(element);
                 }
@@ -6987,7 +6988,7 @@ public partial class MainWindow : Window
                 {
                     EditorBox.EndChange();
                 }
-                
+
                 // Refresh ViewModel state
                 ViewModel.DocumentText = GetEditorText();
                 ViewModel.RefreshParsedSnapshotNow();

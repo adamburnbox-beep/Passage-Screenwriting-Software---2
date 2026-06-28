@@ -86,6 +86,10 @@
     <Style Selector="TabControl#LeftDockTabs TabItem">
         <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
         <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="FontSize" Value="16" />
+        <Style.Resources>
+            <x:Double x:Key="TabItemHeaderFontSize">16</x:Double>
+        </Style.Resources>
     </Style>
     <Style Selector="TabControl#LeftDockTabs TabItem:selected">
         <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />

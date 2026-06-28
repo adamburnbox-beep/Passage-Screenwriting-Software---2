@@ -2590,7 +2590,7 @@
               <Button x:Name="LeftDockToggleButton"
                       Grid.Column="1"
                       Click="ToggleLeftDock_Click"
-                      Padding="7,2"
+                      Padding="10,2"
                       MinWidth="24"
                       Content="‹"
                       FontSize="14"
