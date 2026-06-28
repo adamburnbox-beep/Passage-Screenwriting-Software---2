@@ -27,7 +27,7 @@
             <StackPanel Spacing="10" Margin="0,0,10,0">
                 <StackPanel>
                     <TextBlock Text="Title" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryText}" Margin="0,0,0,3" />
-                    <TextBox Text="{Binding Title, Mode=TwoWay}" Height="80" TextWrapping="Wrap" AcceptsReturn="True" FontSize="16" FontWeight="Bold" FontFamily="Courier Prime, Courier" />
+                    <TextBox Text="{Binding Title, Mode=TwoWay}" Height="80" TextWrapping="Wrap" AcceptsReturn="True" FontSize="16" FontWeight="Bold" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" />
                 </StackPanel>
 
                 <StackPanel>
@@ -84,25 +84,25 @@
                                        TextAlignment="Center"
                                        FontSize="28" 
                                        FontWeight="Bold" 
-                                       FontFamily="Courier Prime, Courier" />
+                                       FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" />
                             
-                            <TextBlock Text="{Binding Episode}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Episode, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,12,0,0" />
+                            <TextBlock Text="{Binding Episode}" HorizontalAlignment="Center" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Episode, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,12,0,0" />
                             
                             <Border Height="80" /> <!-- Spacer between Title/Episode and Author info -->
                             
-                            <TextBlock Text="{Binding Credit}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Credit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding Author}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Author, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding Credit}" HorizontalAlignment="Center" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Credit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding Author}" HorizontalAlignment="Center" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Author, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,8,0,0"/>
                             
-                            <TextBlock Text="{Binding Source}" HorizontalAlignment="Center" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Source, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,24,0,0" />
+                            <TextBlock Text="{Binding Source}" HorizontalAlignment="Center" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Source, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,24,0,0" />
                         </StackPanel>
                         
                         <!-- Bottom Info -->
                         <Grid VerticalAlignment="Bottom">
                             <StackPanel HorizontalAlignment="Left" MaxWidth="400">
-                                <TextBlock Text="{Binding Revision}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Revision, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                <TextBlock Text="{Binding DraftDate}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding DraftDate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                <TextBlock Text="{Binding Contact}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Contact, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding Notes}" FontFamily="Courier Prime, Courier" FontSize="18" IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Revision}" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Revision, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Text="{Binding DraftDate}" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding DraftDate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Text="{Binding Contact}" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Contact, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Notes}" FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier" FontSize="18" IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
                     </Grid>
