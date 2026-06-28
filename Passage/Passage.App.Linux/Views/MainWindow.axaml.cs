@@ -28,8 +28,7 @@ public partial class MainWindow : Window
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     private bool _isLeftDockCollapsed = false;
-    private double _leftDockExpandedWidth = 310;
-
+    private double _leftDockExpandedWidth = 320;
     // Guards against feedback loops while we mirror text between the editor control
     // and the view model's EditorContent string.
     private bool _suppressEditorSync;
