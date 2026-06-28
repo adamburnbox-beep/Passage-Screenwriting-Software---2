@@ -199,11 +199,29 @@
                             <Button Name="LeftDockToggleButton"
                                     Grid.Column="1"
                                     Click="ToggleLeftDock_Click"
-                                    Content="‹"
+                                    Content="&lt;"
                                     Width="44"
-                                    Height="24"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    FontSize="20"
+                                    Foreground="{DynamicResource HeaderText}"
                                     HorizontalContentAlignment="Center"
-                                    VerticalContentAlignment="Center" />
+                                    VerticalContentAlignment="Center">
+                                <Button.Styles>
+                                    <Style Selector="Button#LeftDockToggleButton /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                    </Style>
+                                    <Style Selector="Button#LeftDockToggleButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="Button#LeftDockToggleButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
                         </Grid>
                     </Border>
 
