@@ -11,32 +11,35 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+        <StyleInclude Source="avares://Passage.App.Linux/Styles/Controls.axaml" />
     </Application.Styles>
 
     <Application.Resources>
-        <!-- Dark Theme Colors -->
-        <SolidColorBrush x:Key="ThemeBackground" Color="#1E1E1E" />
-        <SolidColorBrush x:Key="WindowBackground" Color="#1E1E1E" />
-        <SolidColorBrush x:Key="SurfaceBackground" Color="#252526" />
-        <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#2D2D30" />
-        <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#333333" />
-        <SolidColorBrush x:Key="SurfaceBorder" Color="#3F3F46" />
-        <SolidColorBrush x:Key="ControlBackground" Color="#333337" />
-        <SolidColorBrush x:Key="ControlForeground" Color="#CCCCCC" />
-        <SolidColorBrush x:Key="ControlBorder" Color="#3F3F46" />
-        <SolidColorBrush x:Key="ControlAccent" Color="#007ACC" />
-        <SolidColorBrush x:Key="ControlPressedBackground" Color="#3A3A3D" />
-        <SolidColorBrush x:Key="ControlPressedForeground" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="HeaderText" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="SecondaryText" Color="#9D9D9D" />
-        <SolidColorBrush x:Key="MutedText" Color="#6D6D6D" />
-        <SolidColorBrush x:Key="EditorForeground" Color="#CCCCCC" />
-        <SolidColorBrush x:Key="EditorPageBorder" Color="#3F3F46" />
-        <SolidColorBrush x:Key="WindowForeground" Color="#CCCCCC" />
+        <!-- Dark Theme Colors (e-reader near-black; default before system detection) -->
+        <SolidColorBrush x:Key="ThemeBackground" Color="#15140F" />
+        <SolidColorBrush x:Key="WindowBackground" Color="#15140F" />
+        <SolidColorBrush x:Key="SurfaceBackground" Color="#1B1A15" />
+        <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#232118" />
+        <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#100F0B" />
+        <SolidColorBrush x:Key="SurfaceBorder" Color="#2E2B22" />
+        <SolidColorBrush x:Key="ControlBackground" Color="#232118" />
+        <SolidColorBrush x:Key="ControlForeground" Color="#ECE3D0" />
+        <SolidColorBrush x:Key="ControlBorder" Color="#3A352A" />
+        <SolidColorBrush x:Key="ControlAccent" Color="#F2ECDD" />
+        <SolidColorBrush x:Key="ControlPressedBackground" Color="#F2ECDD" />
+        <SolidColorBrush x:Key="ControlPressedForeground" Color="#15140F" />
+        <SolidColorBrush x:Key="HeaderText" Color="#F7F2E6" />
+        <SolidColorBrush x:Key="SecondaryText" Color="#A89E89" />
+        <SolidColorBrush x:Key="MutedText" Color="#756C5A" />
+        <SolidColorBrush x:Key="EditorForeground" Color="#ECE3D0" />
+        <SolidColorBrush x:Key="EditorPageBorder" Color="#2E2B22" />
+        <SolidColorBrush x:Key="WindowForeground" Color="#ECE3D0" />
+        <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#F2ECDD" />
+        <SolidColorBrush x:Key="DragOverBackground" Color="#25F2ECDD" />
 
         <!-- Card Colors -->
-        <SolidColorBrush x:Key="CardBackground" Color="#2D2D30" />
-        <SolidColorBrush x:Key="CardBorder" Color="#3F3F46" />
-        <SolidColorBrush x:Key="CardAccent" Color="#007ACC" />
+        <SolidColorBrush x:Key="CardBackground" Color="#100F0B" />
+        <SolidColorBrush x:Key="CardBorder" Color="#2E2B22" />
+        <SolidColorBrush x:Key="CardAccent" Color="#F2ECDD" />
     </Application.Resources>
 </Application>
