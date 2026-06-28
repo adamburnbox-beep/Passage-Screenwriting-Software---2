@@ -199,11 +199,29 @@
                             <Button Name="LeftDockToggleButton"
                                     Grid.Column="1"
                                     Click="ToggleLeftDock_Click"
-                                    Content="‹"
+                                    Content="&lt;"
                                     Width="44"
-                                    Height="24"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    FontSize="20"
+                                    Foreground="{DynamicResource HeaderText}"
                                     HorizontalContentAlignment="Center"
-                                    VerticalContentAlignment="Center" />
+                                    VerticalContentAlignment="Center">
+                                <Button.Styles>
+                                    <Style Selector="Button#LeftDockToggleButton /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                    </Style>
+                                    <Style Selector="Button#LeftDockToggleButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="Button#LeftDockToggleButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
                         </Grid>
                     </Border>
 
@@ -211,8 +229,25 @@
                     <TabControl Name="LeftDockTabs" Grid.Row="1" Margin="5">
                         <!-- Outline Tab -->
                         <TabItem Header="Outline">
-                            <Grid>
-                                <TreeView Name="OutlineTree" ItemsSource="{Binding OutlineRoots}" DragDrop.AllowDrop="True">
+                            <Grid RowDefinitions="Auto,*">
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,6">
+                                    <Button Classes="inline"
+                                            Content="Expand All"
+                                            Padding="8,3"
+                                            FontSize="12"
+                                            Command="{Binding ExpandAllOutlineNodesCommand}" />
+                                    <Button Classes="inline"
+                                            Content="Collapse All"
+                                            Padding="8,3"
+                                            FontSize="12"
+                                            Command="{Binding CollapseAllOutlineNodesCommand}" />
+                                </StackPanel>
+                                <TreeView Grid.Row="1" Name="OutlineTree" ItemsSource="{Binding OutlineRoots}" DragDrop.AllowDrop="True">
+                                    <TreeView.Styles>
+                                        <Style Selector="TreeViewItem" x:DataType="vm:OutlineNodeViewModel" x:CompileBindings="False">
+                                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                        </Style>
+                                    </TreeView.Styles>
                                     <TreeView.ItemTemplate>
                                         <TreeDataTemplate DataType="vm:OutlineNodeViewModel" ItemsSource="{Binding Children}">
                                             <Border Background="{DynamicResource CardBackground}"
@@ -255,7 +290,8 @@
                                         </TreeDataTemplate>
                                     </TreeView.ItemTemplate>
                                 </TreeView>
-                                <TextBlock Text="{Binding OutlineEmptyMessage}"
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding OutlineEmptyMessage}"
                                            IsVisible="{Binding !HasOutlineItems}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
@@ -268,8 +304,25 @@
 
                         <!-- Notes Tab -->
                         <TabItem Header="Notes">
-                            <Grid>
-                                <TreeView Name="NotesTree" ItemsSource="{Binding NotesRoots}" DragDrop.AllowDrop="True">
+                            <Grid RowDefinitions="Auto,*">
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,6">
+                                    <Button Classes="inline"
+                                            Content="Expand All"
+                                            Padding="8,3"
+                                            FontSize="12"
+                                            Command="{Binding ExpandAllNotesNodesCommand}" />
+                                    <Button Classes="inline"
+                                            Content="Collapse All"
+                                            Padding="8,3"
+                                            FontSize="12"
+                                            Command="{Binding CollapseAllNotesNodesCommand}" />
+                                </StackPanel>
+                                <TreeView Grid.Row="1" Name="NotesTree" ItemsSource="{Binding NotesRoots}" DragDrop.AllowDrop="True">
+                                    <TreeView.Styles>
+                                        <Style Selector="TreeViewItem" x:DataType="vm:OutlineNodeViewModel" x:CompileBindings="False">
+                                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                        </Style>
+                                    </TreeView.Styles>
                                     <TreeView.ItemTemplate>
                                         <TreeDataTemplate DataType="vm:OutlineNodeViewModel" ItemsSource="{Binding Children}">
                                             <Border Background="{DynamicResource CardBackground}"
@@ -307,7 +360,8 @@
                                         </TreeDataTemplate>
                                     </TreeView.ItemTemplate>
                                 </TreeView>
-                                <TextBlock Text="{Binding NotesEmptyMessage}"
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding NotesEmptyMessage}"
                                            IsVisible="{Binding !HasNoteItems}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
@@ -443,7 +497,7 @@
                                             <TextBlock Text="{Binding}"
                                                        Padding="8,4"
                                                        FontSize="13"
-                                                       FontFamily="Courier Prime, Inter, Segoe UI" />
+                                                       FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Inter, Segoe UI" />
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
@@ -632,7 +686,7 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PreviewLineViewModel">
                                                         <TextBlock Text="{Binding Text}"
-                                                                   FontFamily="Courier Prime, Courier New, Courier, monospace"
+                                                                   FontFamily="avares://Passage.App.Linux/Assets/Fonts/#Courier Prime, Courier New, Courier, monospace"
                                                                    FontSize="12"
                                                                    FontWeight="{Binding Weight}"
                                                                    Foreground="{DynamicResource EditorForeground}" />

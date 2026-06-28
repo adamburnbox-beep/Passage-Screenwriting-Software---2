@@ -1200,6 +1200,31 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshParsedDocument();
     }
 
+    [RelayCommand]
+    private void ExpandAllOutlineNodes() => SetOutlineExpansionState(OutlineRoots, isExpanded: true);
+
+    [RelayCommand]
+    private void CollapseAllOutlineNodes() => SetOutlineExpansionState(OutlineRoots, isExpanded: false);
+
+    [RelayCommand]
+    private void ExpandAllNotesNodes() => SetOutlineExpansionState(NotesRoots, isExpanded: true);
+
+    [RelayCommand]
+    private void CollapseAllNotesNodes() => SetOutlineExpansionState(NotesRoots, isExpanded: false);
+
+    private static void SetOutlineExpansionState(IEnumerable<OutlineNodeViewModel> nodes, bool isExpanded)
+    {
+        foreach (var node in nodes)
+        {
+            node.IsExpanded = isExpanded;
+
+            if (node.Children.Count > 0)
+            {
+                SetOutlineExpansionState(node.Children, isExpanded);
+            }
+        }
+    }
+
     public void UpdateCaretStatus(int caretIndex)
     {
         var text = EditorContent ?? string.Empty;
