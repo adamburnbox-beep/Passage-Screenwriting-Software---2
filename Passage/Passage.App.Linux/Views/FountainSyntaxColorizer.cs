@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
@@ -17,13 +15,12 @@ namespace Passage.App.Views;
 /// </summary>
 public sealed class FountainSyntaxColorizer : DocumentColorizingTransformer
 {
-    // Heuristic limits shared with the Windows editor's live classification.
-    private const int CharacterCueMaxLength = 45;
-    private const int CharacterCueMaxWords = 6;
+    private readonly FountainLineClassifier _classifier;
 
-    private readonly FountainParser _parser = new();
-    private Dictionary<int, ScreenplayElementType> _lineTypes = new();
-    private ITextSourceVersion? _cachedVersion;
+    public FountainSyntaxColorizer(FountainLineClassifier classifier)
+    {
+        _classifier = classifier;
+    }
 
     private static readonly IBrush SceneHeadingBrush = new SolidColorBrush(Color.Parse("#2C5AA0"));
     private static readonly IBrush CharacterBrush = new SolidColorBrush(Color.Parse("#A23B72"));
@@ -41,10 +38,7 @@ public sealed class FountainSyntaxColorizer : DocumentColorizingTransformer
             return;
         }
 
-        var document = CurrentContext.Document;
-        EnsureLineTypes(document);
-
-        var type = ResolveLineType(document, line);
+        var type = _classifier.Classify(CurrentContext.Document, line);
 
         var (brush, style, weight) = ResolveStyle(type);
         if (brush is null && style == FontStyle.Normal && weight == FontWeight.Normal)
@@ -65,96 +59,6 @@ public sealed class FountainSyntaxColorizer : DocumentColorizingTransformer
                 element.TextRunProperties.SetTypeface(new Typeface(typeface.FontFamily, style, weight));
             }
         });
-    }
-
-    /// <summary>
-    /// Resolves the element type for a single line. Lines the full parser was able
-    /// to classify come straight from the cached map; anything it couldn't classify
-    /// yet (for example a character cue that has no dialogue typed beneath it) falls
-    /// back to the same live heuristics the Windows editor uses, so syntax lights up
-    /// as the user types rather than only once a block is complete.
-    /// </summary>
-    private ScreenplayElementType ResolveLineType(TextDocument document, DocumentLine line)
-    {
-        if (_lineTypes.TryGetValue(line.LineNumber, out var mappedType))
-        {
-            return mappedType;
-        }
-
-        var lineText = document.GetText(line.Offset, line.Length);
-        var trimmed = lineText.Trim();
-        if (trimmed.Length == 0)
-        {
-            return ScreenplayElementType.Action;
-        }
-
-        if (TextAnalysis.LooksLikeSceneHeadingStart(trimmed.AsSpan()))
-        {
-            return ScreenplayElementType.SceneHeading;
-        }
-
-        if (trimmed.StartsWith('(') && trimmed.EndsWith(')'))
-        {
-            return ScreenplayElementType.Parenthetical;
-        }
-
-        return TextAnalysis.IsLiveCharacterCueCandidate(lineText.AsSpan(), CharacterCueMaxLength, CharacterCueMaxWords)
-            ? ScreenplayElementType.Character
-            : ScreenplayElementType.Action;
-    }
-
-    private void EnsureLineTypes(TextDocument document)
-    {
-        var version = document.Version;
-        if (version is not null && ReferenceEquals(version, _cachedVersion))
-        {
-            return;
-        }
-
-        _cachedVersion = version;
-
-        var map = new Dictionary<int, ScreenplayElementType>();
-        try
-        {
-            var parsed = _parser.Parse(document.Text, null);
-
-            // Parenthetical lines live inside a dialogue element's line range, and the
-            // dialogue element is emitted after them. Track them so the dialogue span
-            // doesn't overwrite their classification (mirrors the Windows lookup).
-            var parentheticalLines = parsed.Elements
-                .OfType<ParentheticalElement>()
-                .Select(element => element.LineNumber)
-                .ToHashSet();
-
-            foreach (var element in parsed.Elements)
-            {
-                if (element is DialogueElement dialogue)
-                {
-                    for (var lineNumber = dialogue.StartLine; lineNumber <= dialogue.EndLine; lineNumber++)
-                    {
-                        if (parentheticalLines.Contains(lineNumber))
-                        {
-                            continue;
-                        }
-
-                        map[lineNumber] = ScreenplayElementType.Dialogue;
-                    }
-
-                    continue;
-                }
-
-                for (var lineNumber = element.StartLine; lineNumber <= element.EndLine; lineNumber++)
-                {
-                    map[lineNumber] = element.Type;
-                }
-            }
-        }
-        catch
-        {
-            // Parsing is best-effort; on any failure we simply skip highlighting.
-        }
-
-        _lineTypes = map;
     }
 
     private static (IBrush? Brush, FontStyle Style, FontWeight Weight) ResolveStyle(ScreenplayElementType type)

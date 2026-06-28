@@ -48,9 +48,13 @@ public partial class MainWindow : Window
             // Add tunneling KeyDown handler for autocomplete
             editorBox.AddHandler(InputElement.KeyDownEvent, EditorBox_KeyDown, RoutingStrategies.Tunnel);
 
-            // Live Fountain syntax highlighting — the editor re-colours each line by
-            // its screenplay element type as the user types.
-            editorBox.TextArea.TextView.LineTransformers.Add(new FountainSyntaxColorizer());
+            // Live Fountain formatting — the editor re-colours each line by its
+            // screenplay element type (colorizer) and shifts the line's text to its
+            // proper screenplay position (indentation generator) as the user types.
+            // Both share one classifier so the document is only parsed once per edit.
+            var lineClassifier = new FountainLineClassifier();
+            editorBox.TextArea.TextView.LineTransformers.Add(new FountainSyntaxColorizer(lineClassifier));
+            editorBox.TextArea.TextView.ElementGenerators.Add(new FountainIndentationGenerator(lineClassifier));
 
             // Drive the editor content through code-behind (instead of a XAML binding)
             // so every existing EditorContent code path in the view model keeps working.
