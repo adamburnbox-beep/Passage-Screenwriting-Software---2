@@ -261,6 +261,8 @@
                                                     Classes.act="{Binding IsActLevel}"
                                                     DragDrop.AllowDrop="True"
                                                     PointerPressed="OutlineNode_PointerPressed"
+                                                    PointerMoved="OutlineNode_PointerMoved"
+                                                    PointerReleased="OutlineNode_PointerReleased"
                                                     DragDrop.DragOver="OutlineNode_DragOver"
                                                     DragDrop.DragLeave="OutlineNode_DragLeave"
                                                     DragDrop.Drop="OutlineNode_Drop">
@@ -274,18 +276,27 @@
                                                         <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
                                                     </Style>
                                                 </Border.Styles>
-                                                <StackPanel Spacing="3" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
-                                                    <TextBlock Text="{Binding KindLabel}"
-                                                               FontSize="10.5"
-                                                               Foreground="{DynamicResource MutedText}"
-                                                               FontWeight="SemiBold"
-                                                               LetterSpacing="0.8" />
-                                                    <TextBlock Text="{Binding Title}"
-                                                               FontSize="14"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource HeaderText}"
-                                                               TextWrapping="Wrap" />
-                                                </StackPanel>
+                                                <!-- Content on the left; caret-position accent bar on the
+                                                     right (the expand/collapse chevron sits just outside
+                                                     the card, also on the right). -->
+                                                <Grid ColumnDefinitions="*,3" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
+                                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,8,0" Background="Transparent">
+                                                        <TextBlock Text="{Binding KindLabel}"
+                                                                   FontSize="10.5"
+                                                                   Foreground="{DynamicResource MutedText}"
+                                                                   FontWeight="SemiBold"
+                                                                   LetterSpacing="0.8" />
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="14"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource HeaderText}"
+                                                                   TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1"
+                                                            CornerRadius="2"
+                                                            Background="{DynamicResource ControlAccent}"
+                                                            IsVisible="{Binding IsCurrent}" />
+                                                </Grid>
                                             </Border>
                                         </TreeDataTemplate>
                                     </TreeView.ItemTemplate>
@@ -335,6 +346,8 @@
                                                     Classes.dragover="{Binding IsDragOver}"
                                                     DragDrop.AllowDrop="True"
                                                     PointerPressed="OutlineNode_PointerPressed"
+                                                    PointerMoved="OutlineNode_PointerMoved"
+                                                    PointerReleased="OutlineNode_PointerReleased"
                                                     DragDrop.DragOver="OutlineNode_DragOver"
                                                     DragDrop.DragLeave="OutlineNode_DragLeave"
                                                     DragDrop.Drop="OutlineNode_Drop">
@@ -344,18 +357,27 @@
                                                         <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
                                                     </Style>
                                                 </Border.Styles>
-                                                <StackPanel Spacing="3" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
-                                                    <TextBlock Text="{Binding KindLabel}"
-                                                               FontSize="10.5"
-                                                               Foreground="{DynamicResource MutedText}"
-                                                               FontWeight="SemiBold"
-                                                               LetterSpacing="0.8" />
-                                                    <TextBlock Text="{Binding Title}"
-                                                               FontSize="14"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource HeaderText}"
-                                                               TextWrapping="Wrap" />
-                                                </StackPanel>
+                                                <!-- Content on the left; caret-position accent bar on the
+                                                     right (the expand/collapse chevron sits just outside
+                                                     the card, also on the right). -->
+                                                <Grid ColumnDefinitions="*,3" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
+                                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,8,0" Background="Transparent">
+                                                        <TextBlock Text="{Binding KindLabel}"
+                                                                   FontSize="10.5"
+                                                                   Foreground="{DynamicResource MutedText}"
+                                                                   FontWeight="SemiBold"
+                                                                   LetterSpacing="0.8" />
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="14"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource HeaderText}"
+                                                                   TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1"
+                                                            CornerRadius="2"
+                                                            Background="{DynamicResource ControlAccent}"
+                                                            IsVisible="{Binding IsCurrent}" />
+                                                </Grid>
                                             </Border>
                                         </TreeDataTemplate>
                                     </TreeView.ItemTemplate>
