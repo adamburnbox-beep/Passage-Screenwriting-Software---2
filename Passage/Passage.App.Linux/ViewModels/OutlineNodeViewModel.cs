@@ -28,6 +28,11 @@ public partial class OutlineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isDragOver;
 
+    // True when the editor caret currently sits within this element's range.
+    // Drives the workspace "current element" highlight.
+    [ObservableProperty]
+    private bool _isCurrent;
+
     [ObservableProperty]
     private int _level;
 

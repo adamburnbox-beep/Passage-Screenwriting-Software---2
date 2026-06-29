@@ -1101,6 +1101,12 @@ public partial class MainWindowViewModel : ViewModelBase
         OutlineRoots = new ObservableCollection<OutlineNodeViewModel>(outlineRoots);
         NotesRoots = new ObservableCollection<OutlineNodeViewModel>(noteRoots);
 
+        // The tree was rebuilt with fresh node instances; re-apply the
+        // caret-driven highlight so it lands on the new nodes.
+        _currentOutlineNode = null;
+        _currentNotesNode = null;
+        UpdateCurrentOutlineNode(CurrentLineNumber);
+
         // Update flattened list of outline nodes
         var flatNodes = new List<OutlineNodeViewModel>();
         FlattenOutlineNodesRecursive(outlineRoots, flatNodes);
@@ -1236,6 +1242,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (text[i] == '\n') line++;
         }
         CurrentLineNumber = line;
+        UpdateCurrentOutlineNode(line);
 
         if (_lastParsed != null && IsScreenplayMode)
         {
@@ -1256,6 +1263,46 @@ public partial class MainWindowViewModel : ViewModelBase
             CurrentElementType = "Action";
             CurrentElementText = string.Empty;
         }
+    }
+
+    private OutlineNodeViewModel? _currentOutlineNode;
+    private OutlineNodeViewModel? _currentNotesNode;
+
+    // Highlights the deepest outline/notes card whose element contains the
+    // given 1-based caret line, so the workspace indicator tracks the caret.
+    public void UpdateCurrentOutlineNode(int line)
+    {
+        _currentOutlineNode = SetCurrentNode(OutlineRoots, line, _currentOutlineNode);
+        _currentNotesNode = SetCurrentNode(NotesRoots, line, _currentNotesNode);
+    }
+
+    private OutlineNodeViewModel? SetCurrentNode(
+        IEnumerable<OutlineNodeViewModel> roots,
+        int line,
+        OutlineNodeViewModel? previous)
+    {
+        var flat = new List<OutlineNodeViewModel>();
+        FlattenOutlineNodesRecursive(roots, flat);
+
+        // The element the caret is in is the node with the greatest line number
+        // that still starts at or before the caret — i.e. the most specific
+        // (deepest, latest-starting) element containing the caret.
+        OutlineNodeViewModel? match = null;
+        foreach (var node in flat)
+        {
+            if (node.LineNumber <= line && (match == null || node.LineNumber > match.LineNumber))
+            {
+                match = node;
+            }
+        }
+
+        if (!ReferenceEquals(previous, match))
+        {
+            if (previous != null) previous.IsCurrent = false;
+            if (match != null) match.IsCurrent = true;
+        }
+
+        return match;
     }
 
     private static double ComputeWpfX(LayoutLine line)

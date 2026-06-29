@@ -308,10 +308,19 @@ public partial class MainWindow : Window
             currentLine++;
         }
 
-        editor.Focus();
         editor.TextArea.ClearSelection();
         editor.CaretOffset = currentIndex;
         editor.ScrollToLine(Math.Max(1, lineNumber));
+
+        // Move focus to the editor's TextArea so the caret actually shows on the
+        // page and typing continues from here. Deferred to Input priority so it
+        // runs after the originating pointer event finishes — otherwise the
+        // clicked card grabs focus back and the caret never appears.
+        Dispatcher.UIThread.Post(() =>
+        {
+            editor.TextArea.Focus();
+            editor.CaretOffset = currentIndex;
+        }, DispatcherPriority.Input);
     }
 
     private void EditorBox_TextChanged(object? sender, EventArgs e)
@@ -976,18 +985,55 @@ public partial class MainWindow : Window
     }
 
     // Drag and Drop Event Handlers for Outline Nodes
-    private async void OutlineNode_PointerPressed(object? sender, PointerPressedEventArgs e)
+    // Distinguishes a click (navigate to the element) from a drag (reorder).
+    private OutlineNodeViewModel? _pressedOutlineNode;
+    private PointerPressedEventArgs? _outlinePressArgs;
+    private Point _outlinePressPoint;
+    private bool _outlineDragging;
+
+    private void OutlineNode_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var properties = e.GetCurrentPoint(this).Properties;
         if (!properties.IsLeftButtonPressed) return;
 
         if (sender is Visual visual && visual.DataContext is OutlineNodeViewModel node)
         {
-            DraggedOutlineNode = node;
-            var dragData = new DataTransfer();
-            dragData.Add(DataTransferItem.Create(DataFormat.Text, "OutlineNode"));
-            var result = await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
+            _pressedOutlineNode = node;
+            _outlinePressArgs = e;
+            _outlinePressPoint = e.GetPosition(this);
+            _outlineDragging = false;
         }
+    }
+
+    private async void OutlineNode_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_pressedOutlineNode == null || _outlineDragging || _outlinePressArgs == null) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        var delta = e.GetPosition(this) - _outlinePressPoint;
+        // Only begin a drag once the pointer moves past a small threshold,
+        // otherwise a plain click would be swallowed by the drag operation.
+        if (Math.Abs(delta.X) < 4 && Math.Abs(delta.Y) < 4) return;
+
+        _outlineDragging = true;
+        DraggedOutlineNode = _pressedOutlineNode;
+        var dragData = new DataTransfer();
+        dragData.Add(DataTransferItem.Create(DataFormat.Text, "OutlineNode"));
+        await DragDrop.DoDragDropAsync(_outlinePressArgs, dragData, DragDropEffects.Move);
+    }
+
+    private void OutlineNode_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        // A press with no meaningful movement is a click: move the caret to the
+        // start of this element on the page.
+        if (_pressedOutlineNode != null && !_outlineDragging)
+        {
+            NavigateToLine(_pressedOutlineNode.LineNumber);
+        }
+
+        _pressedOutlineNode = null;
+        _outlinePressArgs = null;
+        _outlineDragging = false;
     }
 
     private OutlineNodeViewModel? _lastDragOverNode;

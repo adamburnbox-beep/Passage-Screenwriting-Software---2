@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="using:Avalonia.Controls.Converters">
 
     <!-- ============================================================ -->
     <!-- Chrome buttons (toolbar / workspace)                          -->
@@ -111,20 +112,72 @@
     <!-- ============================================================ -->
     <!-- Workspace trees (Outline / Notes) selection                  -->
     <!-- ============================================================ -->
-    <!-- Drop the Fluent accent (green) selection fill -->
-    <Style Selector="TreeViewItem:selected /template/ Border#TreeViewItemLayoutRoot">
+    <!-- Drop the Fluent accent (green) selection fill. The template part is
+         named PART_LayoutRoot (TreeViewItemLayoutRoot is its class), so the
+         name selector must match PART_LayoutRoot or the fill leaks through. -->
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#TreeViewItemLayoutRoot">
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="TreeViewItem:pointerover /template/ Border#TreeViewItemLayoutRoot">
+    <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="Transparent" />
     </Style>
-    <!-- Selected card: accent border (matches the selected-tab indicator) -->
-    <Style Selector="TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter > Border.outlineCard">
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-        <Setter Property="BorderThickness" Value="1.5" />
+    <!-- Move the built-in expand/collapse chevron from the left of each card to
+         the right. This mirrors the Fluent TreeViewItem template but swaps the
+         header columns: the card (PART_HeaderPresenter) takes the left Star
+         column (flush left, closing the old chevron gap) and the native chevron
+         takes the right Auto column. Part names are preserved so the other
+         TreeViewItem styles (selection, :empty chevron hide, etc.) still apply.
+         Indentation is the PART_Header Margin, unchanged. -->
+    <Style Selector="TreeViewItem">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel>
+                    <Border Name="PART_LayoutRoot"
+                            Classes="TreeViewItemLayoutRoot"
+                            Focusable="True"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            MinHeight="{TemplateBinding MinHeight}"
+                            TemplatedControl.IsTemplateFocusTarget="True">
+                        <Grid Name="PART_Header" ColumnDefinitions="*,Auto">
+                            <Grid.Margin>
+                                <MultiBinding Converter="{x:Static conv:TreeViewItemIndentConverter.Instance}">
+                                    <Binding Path="Level" RelativeSource="{RelativeSource TemplatedParent}" />
+                                    <DynamicResource ResourceKey="TreeViewItemIndent" />
+                                </MultiBinding>
+                            </Grid.Margin>
+                            <ContentPresenter Name="PART_HeaderPresenter"
+                                              Grid.Column="0"
+                                              Focusable="False"
+                                              Background="Transparent"
+                                              Content="{TemplateBinding Header}"
+                                              ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                                              Margin="{TemplateBinding Padding}" />
+                            <Panel Name="PART_ExpandCollapseChevronContainer"
+                                   Grid.Column="1"
+                                   Margin="{DynamicResource TreeViewItemExpandCollapseChevronMargin}">
+                                <ToggleButton Name="PART_ExpandCollapseChevron"
+                                              Theme="{DynamicResource FluentTreeViewExpandCollapseChevron}"
+                                              Focusable="False"
+                                              IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}" />
+                            </Panel>
+                        </Grid>
+                    </Border>
+                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                    IsVisible="{TemplateBinding IsExpanded}"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
     </Style>
+    <!-- The "current element" indicator is driven by the caret (the accent bar
+         in the card templates), not by TreeView selection. -->
 
 </Styles>
