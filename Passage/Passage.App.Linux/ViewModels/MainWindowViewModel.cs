@@ -52,6 +52,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsScreenplayMode))]
     [NotifyPropertyChangedFor(nameof(IsMarkdownMode))]
     [NotifyPropertyChangedFor(nameof(ModeStatusText))]
+    [NotifyPropertyChangedFor(nameof(BeatBoardEmptyMessage))]
+    [NotifyPropertyChangedFor(nameof(OutlineEmptyMessage))]
     private WriteMode _currentMode = WriteMode.Screenplay;
 
     public bool IsScreenplayMode => CurrentMode == WriteMode.Screenplay;
@@ -218,13 +220,35 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<IExporter> AvailableExporters { get; }
 
     public bool HasBeatBoardCards => BeatBoardCards.Count > 0;
-    public string BeatBoardEmptyMessage =>
-        "The board mirrors your script's structure.\nAdd Acts (#), Sequences (##), and Scenes to see nested index cards here,\nor click New Card to start.";
+    public string BeatBoardEmptyMessage => IsMarkdownMode
+        ? "The Beat Board works in Screenplay mode.\nPress Ctrl+M to switch back to Fountain."
+        : "The board mirrors your script's structure.\nAdd Acts (#), Sequences (##), and Scenes to see nested index cards here,\nor click New Card to start.";
+
+    // Most-recently-used files, newest first; persisted with the session.
+    private const int MaxRecentFiles = 8;
+    public ObservableCollection<string> RecentFiles { get; } = new();
+    public bool HasRecentFiles => RecentFiles.Count > 0;
+
+    private void AddRecentFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        RecentFiles.Remove(path);
+        RecentFiles.Insert(0, path);
+        while (RecentFiles.Count > MaxRecentFiles)
+        {
+            RecentFiles.RemoveAt(RecentFiles.Count - 1);
+        }
+        OnPropertyChanged(nameof(HasRecentFiles));
+    }
+
+    [ObservableProperty] private string _pageCountStatusText = "~1 page";
 
     // Sidebar properties
     public bool HasOutlineItems => OutlineRoots.Count > 0;
     public bool HasNoteItems => NotesRoots.Count > 0;
-    public string OutlineEmptyMessage => "Sections, synopses, and scene headings will appear here.";
+    public string OutlineEmptyMessage => IsMarkdownMode
+        ? "Markdown headings (#, ##, ###) will appear here."
+        : "Sections, synopses, and scene headings will appear here.";
     public string NotesEmptyMessage => "Notes will appear here.";
 
     // Scratchpad properties
@@ -369,7 +393,13 @@ public partial class MainWindowViewModel : ViewModelBase
         GoalTimerState is TimerGoalState.Running or TimerGoalState.Paused ? "Stop" : "Reset";
 
     [RelayCommand]
-    private void New()
+    private async Task New()
+    {
+        if (!await ConfirmLoseChangesAsync()) return;
+        ClearDocument();
+    }
+
+    private void ClearDocument()
     {
         _suppressDirtyTracking = true;
         try
@@ -383,12 +413,41 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _suppressDirtyTracking = false;
         }
+
+        UpdateWindowTitle();
+        (_window as Views.MainWindow)?.ResetEditorUndoHistory();
+    }
+
+    /// <summary>
+    /// Gate for any action that discards the current document. Returns true when
+    /// it is safe to proceed: the document is clean, the user saved it, or the
+    /// user explicitly chose to discard. Cancel (or a failed/cancelled save)
+    /// returns false.
+    /// </summary>
+    public async Task<bool> ConfirmLoseChangesAsync()
+    {
+        if (!IsDirty || _window == null) return true;
+
+        var dialog = new Views.UnsavedChangesDialog();
+        var choice = await dialog.ShowDialog<Views.UnsavedChangesChoice>(_window);
+
+        switch (choice)
+        {
+            case Views.UnsavedChangesChoice.Save:
+                await Save();
+                return !IsDirty;
+            case Views.UnsavedChangesChoice.Discard:
+                return true;
+            default:
+                return false;
+        }
     }
 
     [RelayCommand]
     private async Task Open()
     {
         if (_window == null) return;
+        if (!await ConfirmLoseChangesAsync()) return;
 
         var files = await _window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -404,42 +463,67 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (files.Count > 0)
         {
-            var file = files[0];
-            try
-            {
-                using var stream = await file.OpenReadAsync();
-                using var reader = new StreamReader(stream);
-                var text = await reader.ReadToEndAsync();
-
-                _suppressDirtyTracking = true;
-                try
-                {
-                    EditorContent = text;
-                    _currentFilePath = file.Path.LocalPath;
-                    IsDirty = false;
-                    ResetSessionGoal();
-
-                    // Auto-detect mode based on file extension
-                    var ext = Path.GetExtension(_currentFilePath);
-                    if (string.Equals(ext, ".md", StringComparison.OrdinalIgnoreCase))
-                    {
-                        CurrentMode = WriteMode.Markdown;
-                    }
-                    else
-                    {
-                        CurrentMode = WriteMode.Screenplay;
-                    }
-                }
-                finally
-                {
-                    _suppressDirtyTracking = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error opening file: {ex.Message}");
-            }
+            await OpenDocumentFromPathAsync(files[0].Path.LocalPath);
         }
+    }
+
+    // Parameter is object: the style that wires the recent-file submenu also
+    // matches its parent MenuItem (whose DataContext is this VM), and a
+    // strongly-typed RelayCommand throws on that parameter during CanExecute.
+    [RelayCommand]
+    private async Task OpenRecent(object? parameter)
+    {
+        if (parameter is not string path) return;
+        if (!await ConfirmLoseChangesAsync()) return;
+
+        if (!File.Exists(path))
+        {
+            StatusMessage = $"File not found: {path}";
+            RecentFiles.Remove(path);
+            OnPropertyChanged(nameof(HasRecentFiles));
+            return;
+        }
+
+        await OpenDocumentFromPathAsync(path);
+    }
+
+    private async Task OpenDocumentFromPathAsync(string path)
+    {
+        string text;
+        try
+        {
+            text = await File.ReadAllTextAsync(path);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not open {Path.GetFileName(path)}: {ex.Message}";
+            return;
+        }
+
+        _suppressDirtyTracking = true;
+        try
+        {
+            EditorContent = text;
+            _currentFilePath = path;
+            IsDirty = false;
+            ResetSessionGoal();
+
+            // Auto-detect mode based on file extension
+            var ext = Path.GetExtension(path);
+            CurrentMode = string.Equals(ext, ".md", StringComparison.OrdinalIgnoreCase)
+                ? WriteMode.Markdown
+                : WriteMode.Screenplay;
+        }
+        finally
+        {
+            _suppressDirtyTracking = false;
+        }
+
+        UpdateWindowTitle();
+        AddRecentFile(path);
+        (_window as Views.MainWindow)?.ResetEditorUndoHistory();
+        StatusMessage = $"Opened {Path.GetFileName(path)}";
+        RefreshParsedDocument();
     }
 
     [RelayCommand]
@@ -456,9 +540,12 @@ public partial class MainWindowViewModel : ViewModelBase
             await File.WriteAllTextAsync(_currentFilePath, EditorContent);
             IsDirty = false;
             RecoveryStorage.ClearRecoveryFile();
+            AddRecentFile(_currentFilePath);
+            StatusMessage = $"Saved {Path.GetFileName(_currentFilePath)}";
         }
         catch (Exception ex)
         {
+            StatusMessage = $"Save failed: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"Error saving file: {ex.Message}");
         }
     }
@@ -488,29 +575,22 @@ public partial class MainWindowViewModel : ViewModelBase
                 await File.WriteAllTextAsync(_currentFilePath, EditorContent);
                 IsDirty = false;
                 RecoveryStorage.ClearRecoveryFile();
+                AddRecentFile(_currentFilePath);
+                StatusMessage = $"Saved {Path.GetFileName(_currentFilePath)}";
             }
             catch (Exception ex)
             {
+                StatusMessage = $"Save failed: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"Error saving file: {ex.Message}");
             }
         }
     }
 
     [RelayCommand]
-    private void Close()
+    private async Task Close()
     {
-        _suppressDirtyTracking = true;
-        try
-        {
-            EditorContent = string.Empty;
-            _currentFilePath = string.Empty;
-            IsDirty = false;
-            ResetSessionGoal();
-        }
-        finally
-        {
-            _suppressDirtyTracking = false;
-        }
+        if (!await ConfirmLoseChangesAsync()) return;
+        ClearDocument();
     }
 
     [RelayCommand]
@@ -522,11 +602,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Undo()
     {
+        (_window as Views.MainWindow)?.UndoEditor();
     }
 
     [RelayCommand]
     private void Redo()
     {
+        (_window as Views.MainWindow)?.RedoEditor();
     }
 
     [RelayCommand]
@@ -565,84 +647,22 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetDarkTheme()
     {
-        if (App.Current != null)
+        if (App.Current is App app)
         {
-            App.Current.RequestedThemeVariant = ThemeVariant.Dark;
-            UpdateThemeResources(false);
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+            app.LoadThemeResources(isLight: false);
+            (_window as Views.MainWindow)?.RedrawEditor();
         }
     }
 
     [RelayCommand]
     private void SetLightTheme()
     {
-        if (App.Current != null)
+        if (App.Current is App app)
         {
-            App.Current.RequestedThemeVariant = ThemeVariant.Light;
-            UpdateThemeResources(true);
-        }
-    }
-
-    private void UpdateThemeResources(bool isLight)
-    {
-        if (App.Current?.Resources == null) return;
-        var Resources = App.Current.Resources;
-
-        Avalonia.Media.SolidColorBrush Brush(string hex) =>
-            new(Avalonia.Media.Color.Parse(hex));
-
-        if (isLight)
-        {
-            // Light theme colors (e-reader cream/paper)
-            Resources["ThemeBackground"] = Brush("#EFE7D6");
-            Resources["WindowBackground"] = Brush("#EFE7D6");
-            Resources["SurfaceBackground"] = Brush("#F2ECDD");
-            Resources["SurfaceMutedBackground"] = Brush("#E6DDC8");
-            Resources["SurfaceRaisedBackground"] = Brush("#FBF6EA");
-            Resources["SurfaceBorder"] = Brush("#D8CDB5");
-            Resources["ControlBackground"] = Brush("#ECE3D0");
-            Resources["ControlForeground"] = Brush("#2B2620");
-            Resources["ControlBorder"] = Brush("#CFC1A8");
-            Resources["ControlAccent"] = Brush("#2B2620");
-            Resources["ControlPressedBackground"] = Brush("#2B2620");
-            Resources["ControlPressedForeground"] = Brush("#FBF6EA");
-            Resources["HeaderText"] = Brush("#1E1A14");
-            Resources["SecondaryText"] = Brush("#6B6353");
-            Resources["MutedText"] = Brush("#938A76");
-            Resources["EditorForeground"] = Brush("#2B2620");
-            Resources["EditorPageBorder"] = Brush("#D8CDB5");
-            Resources["WindowForeground"] = Brush("#2B2620");
-            Resources["HierarchyIndicatorBrush"] = Brush("#2B2620");
-            Resources["DragOverBackground"] = Brush("#252B2620");
-            Resources["CardBackground"] = Brush("#FBF6EA");
-            Resources["CardBorder"] = Brush("#D8CDB5");
-            Resources["CardAccent"] = Brush("#2B2620");
-        }
-        else
-        {
-            // Dark theme colors (e-reader near-black; inverse of light)
-            Resources["ThemeBackground"] = Brush("#15140F");
-            Resources["WindowBackground"] = Brush("#15140F");
-            Resources["SurfaceBackground"] = Brush("#1B1A15");
-            Resources["SurfaceMutedBackground"] = Brush("#232118");
-            Resources["SurfaceRaisedBackground"] = Brush("#100F0B");
-            Resources["SurfaceBorder"] = Brush("#2E2B22");
-            Resources["ControlBackground"] = Brush("#232118");
-            Resources["ControlForeground"] = Brush("#ECE3D0");
-            Resources["ControlBorder"] = Brush("#3A352A");
-            Resources["ControlAccent"] = Brush("#F2ECDD");
-            Resources["ControlPressedBackground"] = Brush("#F2ECDD");
-            Resources["ControlPressedForeground"] = Brush("#15140F");
-            Resources["HeaderText"] = Brush("#F7F2E6");
-            Resources["SecondaryText"] = Brush("#A89E89");
-            Resources["MutedText"] = Brush("#756C5A");
-            Resources["EditorForeground"] = Brush("#ECE3D0");
-            Resources["EditorPageBorder"] = Brush("#2E2B22");
-            Resources["WindowForeground"] = Brush("#ECE3D0");
-            Resources["HierarchyIndicatorBrush"] = Brush("#F2ECDD");
-            Resources["DragOverBackground"] = Brush("#25F2ECDD");
-            Resources["CardBackground"] = Brush("#100F0B");
-            Resources["CardBorder"] = Brush("#2E2B22");
-            Resources["CardAccent"] = Brush("#F2ECDD");
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            app.LoadThemeResources(isLight: true);
+            (_window as Views.MainWindow)?.RedrawEditor();
         }
     }
 
@@ -743,41 +763,98 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshParsedDocument();
     }
 
-    private void UpdateCardInScript(BeatBoardCardViewModel card)
+    // "+ Scene" on an act lane or sequence group: inserts a new scene at the end
+    // of that container's block. A null container appends to the document.
+    [RelayCommand]
+    private void AddSceneToBlock(BeatBoardCardViewModel? container)
     {
-        if (_lastParsed == null) return;
-        var element = _lastParsed.Elements.FirstOrDefault(e => e.Id == card.Id);
-        if (element == null) return;
+        var lines = (EditorContent ?? string.Empty).Replace("\r\n", "\n").Split('\n').ToList();
+
+        int insertAt = lines.Count;
+        if (container != null)
+        {
+            var (start, end) = GetBeatBoardCardLineRange(container);
+            if (start != -1)
+            {
+                insertAt = Math.Min(end + 1, lines.Count);
+            }
+        }
+
+        var newId = Guid.NewGuid();
+        lines.InsertRange(insertAt, new[]
+        {
+            "",
+            $". NEW SCENE [[id:{newId}]]",
+            "= Click Edit to describe this scene."
+        });
+
+        _suppressDirtyTracking = true;
+        try
+        {
+            EditorContent = string.Join("\n", lines);
+            IsDirty = true;
+        }
+        finally
+        {
+            _suppressDirtyTracking = false;
+        }
+
+        RefreshParsedDocument();
+    }
+
+    // Delete from the card's edit header. Scenes/sections take their whole block
+    // (nested content included), so this always confirms first.
+    [RelayCommand]
+    private async Task DeleteCard(BeatBoardCardViewModel card)
+    {
+        if (card == null) return;
+
+        var (start, end) = card.Type == "Note"
+            ? GetCardOwnLineRange(card)
+            : GetBeatBoardCardLineRange(card);
+        if (start == -1) return;
+
+        if (_window != null)
+        {
+            var scope = card.Type is "Act" or "Sequence"
+                ? $"the {card.Type.ToLowerInvariant()} \"{card.Heading}\" and everything nested inside it"
+                : $"\"{card.Heading}\" and its contents";
+            var dialog = new Views.ConfirmDialog(
+                "Delete Card",
+                $"This removes {scope} from the script ({end - start + 1} line(s)). Continue?",
+                confirmText: "Delete");
+            var confirmed = await dialog.ShowDialog<bool>(_window);
+            if (!confirmed) return;
+        }
 
         var lines = (EditorContent ?? string.Empty).Replace("\r\n", "\n").Split('\n').ToList();
-        int startLineIdx = element.LineIndex;
-        int endLineIdx = element.EndLineIndex;
+        int count = Math.Min(end - start + 1, lines.Count - start);
+        if (start < 0 || start >= lines.Count || count <= 0) return;
 
-        int elementIndex = -1;
-        for (int k = 0; k < _lastParsed.Elements.Count; k++)
+        lines.RemoveRange(start, count);
+
+        _suppressDirtyTracking = true;
+        try
         {
-            if (_lastParsed.Elements[k] == element)
-            {
-                elementIndex = k;
-                break;
-            }
+            EditorContent = string.Join("\n", lines);
+            IsDirty = true;
+        }
+        finally
+        {
+            _suppressDirtyTracking = false;
         }
 
-        if (elementIndex != -1)
-        {
-            for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
-            {
-                var nextEl = _lastParsed.Elements[i];
-                if (nextEl.IsSuppressed && nextEl.Type == ScreenplayElementType.Synopsis)
-                {
-                    endLineIdx = nextEl.EndLineIndex;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
+        card.IsEditing = false;
+        StatusMessage = $"Deleted {card.Type.ToLowerInvariant()} \"{card.Heading}\"";
+        RefreshParsedDocument();
+    }
+
+    private void UpdateCardInScript(BeatBoardCardViewModel card)
+    {
+        var (startLineIdx, endLineIdx) = GetCardOwnLineRange(card);
+        if (startLineIdx == -1) return;
+
+        var lines = (EditorContent ?? string.Empty).Replace("\r\n", "\n").Split('\n').ToList();
 
         var replacementLines = new List<string>();
         string typeStr = card.Type;
@@ -988,10 +1065,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // Parameter is object for the same reason as OpenRecent: the menu style
+    // also matches the parent "Export" MenuItem, whose DataContext is this VM.
     [RelayCommand]
-    private async Task Export(IExporter? exporter)
+    private async Task Export(object? parameter)
     {
-        if (exporter == null || _window == null) return;
+        if (parameter is not IExporter exporter || _window == null) return;
 
         var file = await _window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -1068,13 +1147,25 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            // Parse the Fountain file content
-            var parsed = _parser.Parse(snapshotText, _lineTypeOverrides);
-
-            if (version == _outlineRefreshVersion)
+            if (CurrentMode == WriteMode.Markdown)
             {
-                _lastParseDuration = TimeSpan.FromMilliseconds(Math.Max(0, Environment.TickCount64 - parseStartedAt));
-                ApplyParsedDocument(parsed);
+                // Markdown documents get a heading-based outline instead of a
+                // Fountain parse; the screenplay-only panels show placeholders.
+                if (version == _outlineRefreshVersion)
+                {
+                    ApplyMarkdownDocument(snapshotText);
+                }
+            }
+            else
+            {
+                // Parse the Fountain file content
+                var parsed = _parser.Parse(snapshotText, _lineTypeOverrides);
+
+                if (version == _outlineRefreshVersion)
+                {
+                    _lastParseDuration = TimeSpan.FromMilliseconds(Math.Max(0, Environment.TickCount64 - parseStartedAt));
+                    ApplyParsedDocument(parsed);
+                }
             }
         }
         catch (Exception ex)
@@ -1124,6 +1215,87 @@ public partial class MainWindowViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(HasOutlineItems));
         OnPropertyChanged(nameof(HasNoteItems));
+
+        RefreshGoalState();
+    }
+
+    // Markdown mode: the Outline mirrors the document's #-heading structure and
+    // the Fountain-only panels (Notes, Beat Board, Page Preview) are emptied so
+    // their placeholders show.
+    private void ApplyMarkdownDocument(string text)
+    {
+        var expandedOutline = CaptureExpandedIdentifiers(OutlineRoots);
+
+        var roots = new List<OutlineNodeViewModel>();
+        var stack = new Stack<OutlineNodeViewModel>();
+        var lines = (text ?? string.Empty).Replace("\r\n", "\n").Split('\n');
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            int hashCount = 0;
+            int j = 0;
+            while (j < line.Length && line[j] == ' ' && j < 3) j++;
+            while (j < line.Length && line[j] == '#') { hashCount++; j++; }
+            if (hashCount is < 1 or > 6 || j >= line.Length || line[j] != ' ')
+            {
+                continue;
+            }
+
+            var title = line[(j + 1)..].Trim();
+            if (title.Length == 0) continue;
+
+            while (stack.Count > 0 && (stack.Peek().SectionLevel ?? 0) >= hashCount)
+            {
+                stack.Pop();
+            }
+
+            var node = new OutlineNodeViewModel(
+                OutlineNodeKind.Section,
+                title,
+                lineNumber: i + 1,
+                sectionLevel: hashCount,
+                bodyText: null,
+                navigateAction: line2 => SelectedOutlineLineNumber = line2,
+                level: hashCount - 1,
+                kindLabelOverride: $"H{hashCount}");
+
+            if (HasExpandedOutlineKey(expandedOutline, OutlineNodeKind.Section, i + 1, hashCount, title))
+            {
+                node.IsExpanded = true;
+            }
+
+            if (stack.Count == 0)
+            {
+                roots.Add(node);
+            }
+            else
+            {
+                stack.Peek().Children.Add(node);
+            }
+
+            stack.Push(node);
+        }
+
+        OutlineRoots = new ObservableCollection<OutlineNodeViewModel>(roots);
+        NotesRoots = new ObservableCollection<OutlineNodeViewModel>();
+
+        _currentOutlineNode = null;
+        _currentNotesNode = null;
+        UpdateCurrentOutlineNode(CurrentLineNumber);
+
+        var flatNodes = new List<OutlineNodeViewModel>();
+        FlattenOutlineNodesRecursive(roots, flatNodes);
+        OutlineNodes = new ObservableCollection<OutlineNodeViewModel>(flatNodes.OrderBy(n => n.LineNumber));
+
+        BeatBoardCards.Clear();
+        BeatBoardLanes.Clear();
+        PreviewPages = new ObservableCollection<PreviewPageViewModel>();
+        _lastParsed = new ParsedScreenplay(string.Empty, Array.Empty<ScreenplayElement>());
+
+        OnPropertyChanged(nameof(HasOutlineItems));
+        OnPropertyChanged(nameof(HasNoteItems));
+        OnPropertyChanged(nameof(HasBeatBoardCards));
 
         RefreshGoalState();
     }
@@ -1396,6 +1568,13 @@ public partial class MainWindowViewModel : ViewModelBase
     // implicit (header-less) lanes/groups so nothing is hidden from the board.
     private void RebuildBeatBoardLanes(IReadOnlyList<BeatBoardCardViewModel> cards)
     {
+        // Lanes are rebuilt from scratch on every parse; carry the user's
+        // collapsed acts across the rebuild by act-card id.
+        var collapsedActIds = BeatBoardLanes
+            .Where(lane => lane.ActCard != null && !lane.IsExpanded)
+            .Select(lane => lane.ActCard!.Id)
+            .ToHashSet();
+
         BeatBoardLanes.Clear();
 
         BeatBoardLaneViewModel? currentLane = null;
@@ -1405,7 +1584,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (card.Type == "Act")
             {
-                currentLane = new BeatBoardLaneViewModel { ActCard = card };
+                currentLane = new BeatBoardLaneViewModel
+                {
+                    ActCard = card,
+                    IsExpanded = !collapsedActIds.Contains(card.Id)
+                };
                 currentGroup = null;
                 BeatBoardLanes.Add(currentLane);
             }
@@ -1449,6 +1632,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         RefreshOverallGoal(currentWordCount, currentPageCount);
         RefreshSessionGoal(currentWordCount, currentPageCount);
+
+        var pageCount = Math.Max(1, currentPageCount);
+        PageCountStatusText = $"~{pageCount:n0} {FormatCountLabel(pageCount, "page", "pages")}";
 
         GoalProgressSummaryText = BuildGoalProgressSummaryText(currentWordCount, currentPageCount);
 
@@ -2168,6 +2354,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void LoadSessionState(SessionState state)
     {
+        if (state.RecentFiles != null)
+        {
+            RecentFiles.Clear();
+            foreach (var path in state.RecentFiles.Take(MaxRecentFiles))
+            {
+                RecentFiles.Add(path);
+            }
+            OnPropertyChanged(nameof(HasRecentFiles));
+        }
+
         if (state.Documents == null || state.Documents.Count == 0) return;
         var doc = state.Documents[0];
 
@@ -2183,6 +2379,14 @@ public partial class MainWindowViewModel : ViewModelBase
             else
             {
                 EditorContent = doc.Text;
+            }
+
+            // Restore the write mode from the file extension, matching Open().
+            if (!string.IsNullOrEmpty(_currentFilePath))
+            {
+                CurrentMode = string.Equals(Path.GetExtension(_currentFilePath), ".md", StringComparison.OrdinalIgnoreCase)
+                    ? WriteMode.Markdown
+                    : WriteMode.Screenplay;
             }
 
             EditorZoomScale = doc.EditorZoomPercent / 100.0;
@@ -2231,7 +2435,7 @@ public partial class MainWindowViewModel : ViewModelBase
             windowState = _window.WindowState.ToString();
         }
 
-        var state = new SessionState(new[] { docState }, 0, width, height, x, y, windowState);
+        var state = new SessionState(new[] { docState }, 0, width, height, x, y, windowState, RecentFiles.ToList());
         SessionStorage.SaveSession(state);
     }
 
@@ -2337,6 +2541,14 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     public (int startIdx, int endIdx) GetBeatBoardCardLineRange(BeatBoardCardViewModel card)
+        => GetCardLineRange(card, includeNestedBlock: true);
+
+    // The card's own lines only: the heading/note element plus its trailing
+    // synopsis lines — never the content nested beneath a section.
+    private (int startIdx, int endIdx) GetCardOwnLineRange(BeatBoardCardViewModel card)
+        => GetCardLineRange(card, includeNestedBlock: false);
+
+    private (int startIdx, int endIdx) GetCardLineRange(BeatBoardCardViewModel card, bool includeNestedBlock)
     {
         if (_lastParsed == null) return (-1, -1);
         var element = _lastParsed.Elements.FirstOrDefault(e => e.Id == card.Id);
@@ -2374,7 +2586,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // An Act/Sequence card represents its whole block on the board, so dragging
         // it moves everything nested beneath it: extend the range to just before the
         // next section of the same or higher level (or the end of the document).
-        if (element is SectionElement section && elementIndex != -1)
+        if (includeNestedBlock && element is SectionElement section && elementIndex != -1)
         {
             var blockEndLineIdx = CountEditorLines() - 1;
             for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
@@ -2382,6 +2594,23 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (_lastParsed.Elements[i] is SectionElement nextSection && nextSection.SectionDepth <= section.SectionDepth)
                 {
                     blockEndLineIdx = nextSection.LineIndex - 1;
+                    break;
+                }
+            }
+
+            endLineIdx = Math.Max(endLineIdx, blockEndLineIdx);
+        }
+
+        // A Scene's block runs until the next scene heading or section starts.
+        if (includeNestedBlock && element is SceneHeadingElement && elementIndex != -1)
+        {
+            var blockEndLineIdx = CountEditorLines() - 1;
+            for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
+            {
+                var nextEl = _lastParsed.Elements[i];
+                if (nextEl.Type is ScreenplayElementType.SceneHeading or ScreenplayElementType.Section)
+                {
+                    blockEndLineIdx = nextEl.LineIndex - 1;
                     break;
                 }
             }
@@ -2460,8 +2689,11 @@ public partial class MainWindowViewModel : ViewModelBase
 /// One horizontal band of the Beat Board: an Act and everything nested under it.
 /// A lane without an <see cref="ActCard"/> holds cards that appear before any Act.
 /// </summary>
-public class BeatBoardLaneViewModel
+public partial class BeatBoardLaneViewModel : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isExpanded = true;
+
     public BeatBoardCardViewModel? ActCard { get; init; }
     public bool HasActCard => ActCard != null;
     public ObservableCollection<BeatBoardGroupViewModel> Groups { get; } = new();

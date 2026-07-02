@@ -22,14 +22,17 @@ public sealed class FountainSyntaxColorizer : DocumentColorizingTransformer
         _classifier = classifier;
     }
 
-    private static readonly IBrush SceneHeadingBrush = new SolidColorBrush(Color.Parse("#6797FF"));
-    private static readonly IBrush CharacterBrush = new SolidColorBrush(Color.Parse("#A23B72"));
-    private static readonly IBrush DialogueBrush = new SolidColorBrush(Color.Parse("#CEB2C9"));
-    private static readonly IBrush ParentheticalBrush = new SolidColorBrush(Color.Parse("#7A7A7A"));
-    private static readonly IBrush TransitionBrush = new SolidColorBrush(Color.Parse("#6B4FA0"));
-    private static readonly IBrush SectionBrush = new SolidColorBrush(Color.Parse("#4FC3F7"));
-    private static readonly IBrush SynopsisBrush = new SolidColorBrush(Color.Parse("#FFB74D"));
-    private static readonly IBrush NoteBrush = new SolidColorBrush(Color.Parse("#81C784"));
+    // Brushes come from the theme resources (Syntax* keys in App.axaml.cs) so the
+    // editor colours stay legible on both the paper-white and ink-black pages;
+    // the constants are dark-theme fallbacks if a key is missing.
+    private static IBrush SceneHeadingBrush => SyntaxTheme.Brush("SyntaxSceneHeading", "#6797FF");
+    private static IBrush CharacterBrush => SyntaxTheme.Brush("SyntaxCharacter", "#A23B72");
+    private static IBrush DialogueBrush => SyntaxTheme.Brush("SyntaxDialogue", "#CEB2C9");
+    private static IBrush ParentheticalBrush => SyntaxTheme.Brush("SyntaxParenthetical", "#7A7A7A");
+    private static IBrush TransitionBrush => SyntaxTheme.Brush("SyntaxTransition", "#6B4FA0");
+    private static IBrush SectionBrush => SyntaxTheme.Brush("SyntaxSection", "#4FC3F7");
+    private static IBrush SynopsisBrush => SyntaxTheme.Brush("SyntaxSynopsis", "#FFB74D");
+    private static IBrush NoteBrush => SyntaxTheme.Brush("SyntaxNote", "#81C784");
 
     protected override void ColorizeLine(DocumentLine line)
     {

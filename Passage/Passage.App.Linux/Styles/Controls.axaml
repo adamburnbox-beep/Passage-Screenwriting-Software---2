@@ -3,19 +3,21 @@
         xmlns:conv="using:Avalonia.Controls.Converters">
 
     <!-- ============================================================ -->
-    <!-- Chrome buttons (toolbar / workspace)                          -->
+    <!-- Chrome buttons (toolbar / workspace) — full pills, e-ink      -->
+    <!-- style: white pill at rest, inverts to solid ink on press.     -->
     <!-- ============================================================ -->
     <Style Selector="Button.chrome">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="18,7" />
         <Setter Property="MinWidth" Value="86" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.12" />
@@ -28,7 +30,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
     </Style>
     <Style Selector="Button.chrome:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
     </Style>
@@ -38,16 +40,17 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
     </Style>
 
-    <!-- Small inline buttons (card Edit/Save/Cancel, toggles, delete) -->
+    <!-- Small inline pill buttons (card Edit/Save/Cancel, toggles, delete) -->
     <Style Selector="Button.inline">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Button.inline:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
     </Style>
@@ -55,6 +58,35 @@
         <Setter Property="Background" Value="{DynamicResource ControlPressedBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+
+    <!-- Quiet chevron toggle for Beat Board act lanes: points down when the
+         lane is expanded (checked), rotates to point right when collapsed. -->
+    <Style Selector="ToggleButton.laneChevron">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="9,3" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.laneChevron:not(:checked)">
+        <Setter Property="RenderTransform" Value="rotate(-90deg)" />
+    </Style>
+    <Style Selector="ToggleButton.laneChevron /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ToggleButton.laneChevron:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource SecondaryText}" />
+    </Style>
+    <Style Selector="ToggleButton.laneChevron:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
     </Style>
 
     <!-- ============================================================ -->
@@ -79,25 +111,53 @@
     </Style>
 
     <!-- ============================================================ -->
-    <!-- Workspace tabs                                                -->
+    <!-- Tabs — segmented pill control: the active tab is a solid ink  -->
+    <!-- pill with inverted text, inactive tabs are quiet labels.      -->
     <!-- ============================================================ -->
-    <Style Selector="TabControl#LeftDockTabs">
+    <Style Selector="TabControl">
         <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="TabControl#LeftDockTabs TabItem">
+    <Style Selector="TabItem">
         <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
-        <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Padding" Value="16,7" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Margin" Value="0,0,6,0" />
         <Style.Resources>
-            <x:Double x:Key="TabItemHeaderFontSize">16</x:Double>
+            <x:Double x:Key="TabItemHeaderFontSize">14</x:Double>
         </Style.Resources>
     </Style>
-    <Style Selector="TabControl#LeftDockTabs TabItem:selected">
-        <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+    <Style Selector="TabItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="999" />
     </Style>
-    <Style Selector="TabControl#LeftDockTabs TabItem:pointerover">
+    <Style Selector="TabItem:pointerover">
         <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+    </Style>
+    <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+    <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+    </Style>
+    <Style Selector="TabItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+
+    <!-- The workspace sidebar hosts four tabs in ~350px — tighten its pills so
+         they fit on one row. -->
+    <Style Selector="TabControl#LeftDockTabs TabItem">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Style.Resources>
+            <x:Double x:Key="TabItemHeaderFontSize">13</x:Double>
+        </Style.Resources>
     </Style>
 
     <!-- Remove the Fluent accent pipe (green) from every tab. :is(Control) matches

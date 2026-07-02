@@ -173,63 +173,87 @@ public partial class App : Application
     private static Avalonia.Media.SolidColorBrush Brush(string hex) =>
         new(Avalonia.Media.Color.Parse(hex));
 
-    private void LoadThemeResources(bool isLight)
+    // The single runtime source of truth for both palettes — a modern e-ink
+    // monochrome scheme: paper-white surfaces with true-ink black in light, and
+    // its direct inverse in dark. Called at startup (system detection above)
+    // and by the View > Theme commands. Keep App.axaml's startup defaults in sync.
+    public void LoadThemeResources(bool isLight)
     {
         if (Resources is null) return;
 
         if (isLight)
         {
-            // Light theme colors (e-reader cream/paper)
-            Resources["ThemeBackground"] = Brush("#EFE7D6");
-            Resources["WindowBackground"] = Brush("#EFE7D6");
-            Resources["SurfaceBackground"] = Brush("#F2ECDD");
-            Resources["SurfaceMutedBackground"] = Brush("#E6DDC8");
-            Resources["SurfaceRaisedBackground"] = Brush("#FBF6EA");
-            Resources["SurfaceBorder"] = Brush("#D8CDB5");
-            Resources["ControlBackground"] = Brush("#ECE3D0");
-            Resources["ControlForeground"] = Brush("#2B2620");
-            Resources["ControlBorder"] = Brush("#CFC1A8");
-            Resources["ControlAccent"] = Brush("#2B2620");
-            Resources["ControlPressedBackground"] = Brush("#2B2620");
-            Resources["ControlPressedForeground"] = Brush("#FBF6EA");
-            Resources["HeaderText"] = Brush("#1E1A14");
-            Resources["SecondaryText"] = Brush("#6B6353");
-            Resources["MutedText"] = Brush("#938A76");
-            Resources["EditorForeground"] = Brush("#2B2620");
-            Resources["EditorPageBorder"] = Brush("#D8CDB5");
-            Resources["WindowForeground"] = Brush("#2B2620");
-            Resources["HierarchyIndicatorBrush"] = Brush("#2B2620");
-            Resources["DragOverBackground"] = Brush("#252B2620");
-            Resources["CardBackground"] = Brush("#FBF6EA");
-            Resources["CardBorder"] = Brush("#D8CDB5");
-            Resources["CardAccent"] = Brush("#2B2620");
+            // Light theme (paper white / ink black)
+            Resources["ThemeBackground"] = Brush("#EDEDEB");
+            Resources["WindowBackground"] = Brush("#EDEDEB");
+            Resources["SurfaceBackground"] = Brush("#F4F4F2");
+            Resources["SurfaceMutedBackground"] = Brush("#E7E7E4");
+            Resources["SurfaceRaisedBackground"] = Brush("#FFFFFF");
+            Resources["SurfaceBorder"] = Brush("#DEDEDA");
+            Resources["ControlBackground"] = Brush("#FFFFFF");
+            Resources["ControlForeground"] = Brush("#111111");
+            Resources["ControlBorder"] = Brush("#D6D6D2");
+            Resources["ControlAccent"] = Brush("#111111");
+            Resources["ControlPressedBackground"] = Brush("#111111");
+            Resources["ControlPressedForeground"] = Brush("#FFFFFF");
+            Resources["HeaderText"] = Brush("#0A0A0A");
+            Resources["SecondaryText"] = Brush("#4A4A47");
+            Resources["MutedText"] = Brush("#8E8E8A");
+            Resources["EditorForeground"] = Brush("#161616");
+            Resources["EditorPageBorder"] = Brush("#E3E3DF");
+            Resources["WindowForeground"] = Brush("#161616");
+            Resources["HierarchyIndicatorBrush"] = Brush("#111111");
+            Resources["DragOverBackground"] = Brush("#22111111");
+            Resources["CardBackground"] = Brush("#FFFFFF");
+            Resources["CardBorder"] = Brush("#E3E3DF");
+            Resources["CardAccent"] = Brush("#111111");
+
+            // Editor syntax colours, darkened for the paper-white page
+            Resources["SyntaxSceneHeading"] = Brush("#2F55B8");
+            Resources["SyntaxCharacter"] = Brush("#94306A");
+            Resources["SyntaxDialogue"] = Brush("#3C3C39");
+            Resources["SyntaxParenthetical"] = Brush("#757570");
+            Resources["SyntaxTransition"] = Brush("#5B4392");
+            Resources["SyntaxSection"] = Brush("#1D6FA5");
+            Resources["SyntaxSynopsis"] = Brush("#9A6A1C");
+            Resources["SyntaxNote"] = Brush("#3E7D44");
         }
         else
         {
-            // Dark theme colors (e-reader near-black; inverse of light)
-            Resources["ThemeBackground"] = Brush("#15140F");
-            Resources["WindowBackground"] = Brush("#15140F");
-            Resources["SurfaceBackground"] = Brush("#1B1A15");
-            Resources["SurfaceMutedBackground"] = Brush("#232118");
-            Resources["SurfaceRaisedBackground"] = Brush("#100F0B");
-            Resources["SurfaceBorder"] = Brush("#2E2B22");
-            Resources["ControlBackground"] = Brush("#232118");
-            Resources["ControlForeground"] = Brush("#ECE3D0");
-            Resources["ControlBorder"] = Brush("#3A352A");
-            Resources["ControlAccent"] = Brush("#F2ECDD");
-            Resources["ControlPressedBackground"] = Brush("#F2ECDD");
-            Resources["ControlPressedForeground"] = Brush("#15140F");
-            Resources["HeaderText"] = Brush("#F7F2E6");
-            Resources["SecondaryText"] = Brush("#A89E89");
-            Resources["MutedText"] = Brush("#756C5A");
-            Resources["EditorForeground"] = Brush("#ECE3D0");
-            Resources["EditorPageBorder"] = Brush("#2E2B22");
-            Resources["WindowForeground"] = Brush("#ECE3D0");
-            Resources["HierarchyIndicatorBrush"] = Brush("#F2ECDD");
-            Resources["DragOverBackground"] = Brush("#25F2ECDD");
-            Resources["CardBackground"] = Brush("#100F0B");
-            Resources["CardBorder"] = Brush("#2E2B22");
-            Resources["CardAccent"] = Brush("#F2ECDD");
+            // Dark theme (ink black / paper white; inverse of light)
+            Resources["ThemeBackground"] = Brush("#0B0B0B");
+            Resources["WindowBackground"] = Brush("#0B0B0B");
+            Resources["SurfaceBackground"] = Brush("#111111");
+            Resources["SurfaceMutedBackground"] = Brush("#1E1E1E");
+            Resources["SurfaceRaisedBackground"] = Brush("#161616");
+            Resources["SurfaceBorder"] = Brush("#242424");
+            Resources["ControlBackground"] = Brush("#161616");
+            Resources["ControlForeground"] = Brush("#F2F2F0");
+            Resources["ControlBorder"] = Brush("#2E2E2E");
+            Resources["ControlAccent"] = Brush("#F5F5F3");
+            Resources["ControlPressedBackground"] = Brush("#F5F5F3");
+            Resources["ControlPressedForeground"] = Brush("#0B0B0B");
+            Resources["HeaderText"] = Brush("#FAFAF8");
+            Resources["SecondaryText"] = Brush("#B4B4B0");
+            Resources["MutedText"] = Brush("#70706C");
+            Resources["EditorForeground"] = Brush("#EDEDEB");
+            Resources["EditorPageBorder"] = Brush("#242424");
+            Resources["WindowForeground"] = Brush("#EDEDEB");
+            Resources["HierarchyIndicatorBrush"] = Brush("#F5F5F3");
+            Resources["DragOverBackground"] = Brush("#25F5F5F3");
+            Resources["CardBackground"] = Brush("#161616");
+            Resources["CardBorder"] = Brush("#262626");
+            Resources["CardAccent"] = Brush("#F5F5F3");
+
+            // Editor syntax colours for the ink-black page
+            Resources["SyntaxSceneHeading"] = Brush("#6797FF");
+            Resources["SyntaxCharacter"] = Brush("#C05587");
+            Resources["SyntaxDialogue"] = Brush("#CEB2C9");
+            Resources["SyntaxParenthetical"] = Brush("#8A8A85");
+            Resources["SyntaxTransition"] = Brush("#8A6FC9");
+            Resources["SyntaxSection"] = Brush("#4FC3F7");
+            Resources["SyntaxSynopsis"] = Brush("#FFB74D");
+            Resources["SyntaxNote"] = Brush("#81C784");
         }
     }
 }
