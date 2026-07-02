@@ -97,7 +97,19 @@ suggested approach. Items are ordered roughly by user impact.
 - Dual dialogue, page-count in status bar (estimator already exists:
   `ScreenplayPageEstimator`).
 
-## 13. Windows/Linux feature parity audit
+## 13. True discrete pages in the script editor (requested)
+- The editor currently paints dashed page-break rules + PAGE pills every 55
+  lines (`Views/ScreenplayPageRuler.cs`) over one continuous text surface. The
+  user wants real, physically separate editable pages like Final Draft.
+- **Approach sketch:** AvaloniaEdit cannot split one document across page
+  frames. Options: (a) inject real vertical gaps by giving boundary lines an
+  oversized line-height via a custom `VisualLine` margin (AvaloniaEdit fork or
+  `IVisualLineTransformer` hack) and paint the gap to look like page edges;
+  (b) replace AvaloniaEdit with a custom paginated editor (large); (c) mirror
+  the WPF app's FlowDocument-style pagination approach. Estimate before
+  starting; this is the largest remaining item.
+
+## 14. Windows/Linux feature parity audit
 - The WPF app (`Passage/Passage.App`) has visuals/utilities not yet ported
   (`Visuals/`, `Utilities/` folders). Diff the two `MainWindowViewModel`s and
   list gaps — e.g. any print support, statistics, or reports present there.
