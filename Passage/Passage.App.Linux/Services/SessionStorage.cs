@@ -29,7 +29,8 @@ public sealed record SessionState(
     double? WindowHeight = null,
     int? WindowX = null,
     int? WindowY = null,
-    string? WindowState = null);
+    string? WindowState = null,
+    IReadOnlyList<string>? RecentFiles = null);
 
 public static class SessionStorage
 {

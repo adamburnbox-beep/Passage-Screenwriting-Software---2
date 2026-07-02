@@ -104,7 +104,10 @@ public partial class MainWindow : Window
 
                     _suppressEditorSync = true;
                     var caret = editorBox.CaretOffset;
-                    editorBox.Text = desired;
+                    // Replace through the document (not the Text property, which
+                    // resets the undo stack) so VM-driven edits — card saves,
+                    // drag-drop moves, title-page changes — stay undoable.
+                    editorBox.Document.Replace(0, editorBox.Document.TextLength, desired);
                     editorBox.CaretOffset = Math.Min(caret, editorBox.Document.TextLength);
                     _suppressEditorSync = false;
                 };
@@ -182,6 +185,26 @@ public partial class MainWindow : Window
         }
 
         textView.Redraw();
+    }
+
+    public void UndoEditor()
+    {
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.Undo();
+    }
+
+    public void RedoEditor()
+    {
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.Redo();
+    }
+
+    // Clears the editor's undo history. Called when a different document is
+    // loaded so undo can't walk back into the previous document's text.
+    public void ResetEditorUndoHistory()
+    {
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.Document.UndoStack.ClearAll();
     }
 
     // Repaints the editor so theme-resolved syntax brushes (SyntaxTheme) pick up
@@ -687,14 +710,36 @@ public partial class MainWindow : Window
         }
     }
 
+    private bool _forceClose;
+
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
 
-        if (DataContext is MainWindowViewModel vm)
+        if (DataContext is not MainWindowViewModel vm)
         {
-            vm.SaveSessionNow();
-            vm.StopRecoveryAutosave();
+            return;
+        }
+
+        // Unsaved changes: hold the close, ask Save / Discard / Cancel, then
+        // re-close with the prompt bypassed if the user didn't cancel.
+        if (!_forceClose && vm.IsDirty)
+        {
+            e.Cancel = true;
+            _ = PromptThenCloseAsync(vm);
+            return;
+        }
+
+        vm.SaveSessionNow();
+        vm.StopRecoveryAutosave();
+    }
+
+    private async Task PromptThenCloseAsync(MainWindowViewModel vm)
+    {
+        if (await vm.ConfirmLoseChangesAsync())
+        {
+            _forceClose = true;
+            Close();
         }
     }
 

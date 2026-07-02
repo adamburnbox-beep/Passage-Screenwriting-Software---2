@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Passage.App.Views.UnsavedChangesDialog"
+        Title="Unsaved Changes"
+        Width="440"
+        Height="190"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource SurfaceBackground}">
+    <Border Padding="24,20" CornerRadius="12" Background="{DynamicResource SurfaceBackground}">
+        <DockPanel LastChildFill="True">
+            <!-- Dialog header -->
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                <TextBlock Text="Unsaved Changes"
+                           FontSize="17"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource HeaderText}"
+                           Margin="0,0,0,8" />
+                <TextBlock Text="This document has unsaved changes. Save them before continuing?"
+                           Foreground="{DynamicResource ControlForeground}"
+                           TextWrapping="Wrap"
+                           FontSize="13" />
+            </StackPanel>
+
+            <!-- Footer buttons -->
+            <StackPanel DockPanel.Dock="Bottom"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,16,0,0">
+                <Button Content="Save"
+                        Classes="chrome"
+                        IsDefault="True"
+                        Click="SaveClick" />
+                <Button Content="Discard"
+                        Classes="chrome"
+                        Click="DiscardClick" />
+                <Button Content="Cancel"
+                        Classes="chrome"
+                        IsCancel="True"
+                        Click="CancelClick" />
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>

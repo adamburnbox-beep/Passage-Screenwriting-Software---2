@@ -60,6 +60,35 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
     </Style>
 
+    <!-- Quiet chevron toggle for Beat Board act lanes: points down when the
+         lane is expanded (checked), rotates to point right when collapsed. -->
+    <Style Selector="ToggleButton.laneChevron">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="9,3" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.laneChevron:not(:checked)">
+        <Setter Property="RenderTransform" Value="rotate(-90deg)" />
+    </Style>
+    <Style Selector="ToggleButton.laneChevron /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ToggleButton.laneChevron:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource SecondaryText}" />
+    </Style>
+    <Style Selector="ToggleButton.laneChevron:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    </Style>
+
     <!-- ============================================================ -->
     <!-- Top menu (File / Edit / View / Navigate)                      -->
     <!-- ============================================================ -->

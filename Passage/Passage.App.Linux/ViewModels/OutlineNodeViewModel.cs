@@ -36,6 +36,8 @@ public partial class OutlineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private int _level;
 
+    private readonly string? _kindLabelOverride;
+
     public OutlineNodeViewModel(
         OutlineNodeKind kind,
         string text,
@@ -44,7 +46,8 @@ public partial class OutlineNodeViewModel : ViewModelBase
         string? bodyText = null,
         Action<int>? navigateAction = null,
         string? sceneNumber = null,
-        int level = 0)
+        int level = 0,
+        string? kindLabelOverride = null)
     {
         Kind = kind;
         Text = kind == OutlineNodeKind.SceneHeading ? (text ?? string.Empty).ToUpperInvariant() : text;
@@ -53,13 +56,14 @@ public partial class OutlineNodeViewModel : ViewModelBase
         BodyText = (bodyText ?? string.Empty).ReplaceLineEndings("\n").Trim();
         SceneNumber = sceneNumber;
         Level = level;
+        _kindLabelOverride = kindLabelOverride;
         Children = new ObservableCollection<OutlineNodeViewModel>();
         NavigateCommand = new RelayCommand(() => navigateAction?.Invoke(LineNumber));
     }
 
     public OutlineNodeKind Kind { get; }
 
-    public string KindLabel => Kind switch
+    public string KindLabel => _kindLabelOverride ?? Kind switch
     {
         OutlineNodeKind.Section => SectionLevel switch
         {
