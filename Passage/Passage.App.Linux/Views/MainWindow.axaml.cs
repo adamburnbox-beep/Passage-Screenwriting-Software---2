@@ -59,6 +59,20 @@ public partial class MainWindow : Window
         // Add keyboard shortcuts
         AddKeyboardShortcuts();
 
+        // Zoom gestures. Ctrl+scroll is the standard Linux zoom gesture (it is
+        // also what two-finger trackpad scrolling with Ctrl held produces), and
+        // the pinch recognizer covers touchscreens/Wayland where real pinch
+        // events are delivered. Tunneling so the editor's own scroll handling
+        // can't swallow the Ctrl+wheel first.
+        AddHandler(PointerWheelChangedEvent, OnGlobalPointerWheelChanged, RoutingStrategies.Tunnel);
+        var mainGrid2 = this.FindControl<Grid>("MainLayoutGrid");
+        if (mainGrid2 != null)
+        {
+            mainGrid2.GestureRecognizers.Add(new PinchGestureRecognizer());
+            mainGrid2.AddHandler(InputElement.PinchEvent, OnPinch);
+            mainGrid2.AddHandler(InputElement.PinchEndedEvent, OnPinchEnded);
+        }
+
         var editorBox = this.FindControl<TextEditor>("EditorTextBox");
         if (editorBox != null)
         {
@@ -189,6 +203,46 @@ public partial class MainWindow : Window
         }
 
         textView.Redraw();
+    }
+
+    private const double MinZoom = 0.5;
+    private const double MaxZoom = 2.0;
+    private double? _pinchStartZoom;
+
+    private void OnGlobalPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            return;
+        }
+
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        // Delta is ±1 per notch for wheels and fractional for trackpad smooth
+        // scrolling, so scaling by the delta keeps both feeling proportional.
+        var newZoom = vm.EditorZoomScale + e.Delta.Y * 0.1;
+        vm.EditorZoomScale = Math.Clamp(newZoom, MinZoom, MaxZoom);
+        e.Handled = true;
+    }
+
+    private void OnPinch(object? sender, PinchEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        _pinchStartZoom ??= vm.EditorZoomScale;
+        vm.EditorZoomScale = Math.Clamp(_pinchStartZoom.Value * e.Scale, MinZoom, MaxZoom);
+        e.Handled = true;
+    }
+
+    private void OnPinchEnded(object? sender, PinchEndedEventArgs e)
+    {
+        _pinchStartZoom = null;
     }
 
     public void UndoEditor()
