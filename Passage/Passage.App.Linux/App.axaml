@@ -15,31 +15,42 @@
     </Application.Styles>
 
     <Application.Resources>
-        <!-- Dark Theme Colors (e-reader near-black; default before system detection) -->
-        <SolidColorBrush x:Key="ThemeBackground" Color="#15140F" />
-        <SolidColorBrush x:Key="WindowBackground" Color="#15140F" />
-        <SolidColorBrush x:Key="SurfaceBackground" Color="#1B1A15" />
-        <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#232118" />
-        <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#100F0B" />
-        <SolidColorBrush x:Key="SurfaceBorder" Color="#2E2B22" />
-        <SolidColorBrush x:Key="ControlBackground" Color="#232118" />
-        <SolidColorBrush x:Key="ControlForeground" Color="#ECE3D0" />
-        <SolidColorBrush x:Key="ControlBorder" Color="#3A352A" />
-        <SolidColorBrush x:Key="ControlAccent" Color="#F2ECDD" />
-        <SolidColorBrush x:Key="ControlPressedBackground" Color="#F2ECDD" />
-        <SolidColorBrush x:Key="ControlPressedForeground" Color="#15140F" />
-        <SolidColorBrush x:Key="HeaderText" Color="#F7F2E6" />
-        <SolidColorBrush x:Key="SecondaryText" Color="#A89E89" />
-        <SolidColorBrush x:Key="MutedText" Color="#756C5A" />
-        <SolidColorBrush x:Key="EditorForeground" Color="#ECE3D0" />
-        <SolidColorBrush x:Key="EditorPageBorder" Color="#2E2B22" />
-        <SolidColorBrush x:Key="WindowForeground" Color="#ECE3D0" />
-        <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#F2ECDD" />
-        <SolidColorBrush x:Key="DragOverBackground" Color="#25F2ECDD" />
+        <!-- Dark Theme Colors (modern e-ink monochrome; default before system detection).
+             Mirrors App.axaml.cs LoadThemeResources — keep both in sync. -->
+        <SolidColorBrush x:Key="ThemeBackground" Color="#0B0B0B" />
+        <SolidColorBrush x:Key="WindowBackground" Color="#0B0B0B" />
+        <SolidColorBrush x:Key="SurfaceBackground" Color="#111111" />
+        <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#1E1E1E" />
+        <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#161616" />
+        <SolidColorBrush x:Key="SurfaceBorder" Color="#242424" />
+        <SolidColorBrush x:Key="ControlBackground" Color="#161616" />
+        <SolidColorBrush x:Key="ControlForeground" Color="#F2F2F0" />
+        <SolidColorBrush x:Key="ControlBorder" Color="#2E2E2E" />
+        <SolidColorBrush x:Key="ControlAccent" Color="#F5F5F3" />
+        <SolidColorBrush x:Key="ControlPressedBackground" Color="#F5F5F3" />
+        <SolidColorBrush x:Key="ControlPressedForeground" Color="#0B0B0B" />
+        <SolidColorBrush x:Key="HeaderText" Color="#FAFAF8" />
+        <SolidColorBrush x:Key="SecondaryText" Color="#B4B4B0" />
+        <SolidColorBrush x:Key="MutedText" Color="#70706C" />
+        <SolidColorBrush x:Key="EditorForeground" Color="#EDEDEB" />
+        <SolidColorBrush x:Key="EditorPageBorder" Color="#242424" />
+        <SolidColorBrush x:Key="WindowForeground" Color="#EDEDEB" />
+        <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#F5F5F3" />
+        <SolidColorBrush x:Key="DragOverBackground" Color="#25F5F5F3" />
 
         <!-- Card Colors -->
-        <SolidColorBrush x:Key="CardBackground" Color="#100F0B" />
-        <SolidColorBrush x:Key="CardBorder" Color="#2E2B22" />
-        <SolidColorBrush x:Key="CardAccent" Color="#F2ECDD" />
+        <SolidColorBrush x:Key="CardBackground" Color="#161616" />
+        <SolidColorBrush x:Key="CardBorder" Color="#262626" />
+        <SolidColorBrush x:Key="CardAccent" Color="#F5F5F3" />
+
+        <!-- Editor syntax colours (dark defaults) -->
+        <SolidColorBrush x:Key="SyntaxSceneHeading" Color="#6797FF" />
+        <SolidColorBrush x:Key="SyntaxCharacter" Color="#C05587" />
+        <SolidColorBrush x:Key="SyntaxDialogue" Color="#CEB2C9" />
+        <SolidColorBrush x:Key="SyntaxParenthetical" Color="#8A8A85" />
+        <SolidColorBrush x:Key="SyntaxTransition" Color="#8A6FC9" />
+        <SolidColorBrush x:Key="SyntaxSection" Color="#4FC3F7" />
+        <SolidColorBrush x:Key="SyntaxSynopsis" Color="#FFB74D" />
+        <SolidColorBrush x:Key="SyntaxNote" Color="#81C784" />
     </Application.Resources>
 </Application>

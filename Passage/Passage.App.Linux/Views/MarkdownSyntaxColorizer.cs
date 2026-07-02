@@ -14,11 +14,12 @@ namespace Passage.App.Views;
 /// </summary>
 public sealed class MarkdownSyntaxColorizer : DocumentColorizingTransformer
 {
-    private static readonly IBrush HeadingBrush = new SolidColorBrush(Color.Parse("#6797FF"));
-    private static readonly IBrush QuoteBrush = new SolidColorBrush(Color.Parse("#7A7A7A"));
-    private static readonly IBrush CodeBrush = new SolidColorBrush(Color.Parse("#FFB74D"));
-    private static readonly IBrush ListMarkerBrush = new SolidColorBrush(Color.Parse("#4FC3F7"));
-    private static readonly IBrush LinkBrush = new SolidColorBrush(Color.Parse("#81C784"));
+    // Theme-aware brushes (see SyntaxTheme); constants are dark-theme fallbacks.
+    private static IBrush HeadingBrush => SyntaxTheme.Brush("SyntaxSceneHeading", "#6797FF");
+    private static IBrush QuoteBrush => SyntaxTheme.Brush("SyntaxParenthetical", "#7A7A7A");
+    private static IBrush CodeBrush => SyntaxTheme.Brush("SyntaxSynopsis", "#FFB74D");
+    private static IBrush ListMarkerBrush => SyntaxTheme.Brush("SyntaxSection", "#4FC3F7");
+    private static IBrush LinkBrush => SyntaxTheme.Brush("SyntaxNote", "#81C784");
 
     private static readonly Regex HeadingRegex = new(@"^\s{0,3}#{1,6}\s", RegexOptions.Compiled);
     private static readonly Regex QuoteRegex = new(@"^\s{0,3}>", RegexOptions.Compiled);

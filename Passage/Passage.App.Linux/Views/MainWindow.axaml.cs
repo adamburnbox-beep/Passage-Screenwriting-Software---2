@@ -184,6 +184,14 @@ public partial class MainWindow : Window
         textView.Redraw();
     }
 
+    // Repaints the editor so theme-resolved syntax brushes (SyntaxTheme) pick up
+    // a light/dark switch immediately.
+    public void RedrawEditor()
+    {
+        var editor = this.FindControl<TextEditor>("EditorTextBox");
+        editor?.TextArea.TextView.Redraw();
+    }
+
     private void ToggleLeftDock_Click(object? sender, RoutedEventArgs e)
     {
         SetLeftDockCollapsed(!_isLeftDockCollapsed);

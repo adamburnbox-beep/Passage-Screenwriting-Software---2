@@ -30,11 +30,12 @@
         <Style Selector="Border.BeatBoardCard:pointerover">
             <Setter Property="BorderBrush" Value="{DynamicResource CardAccent}" />
         </Style>
-        <!-- Scene / Note index cards: fixed card size, subtle lift on hover. -->
+        <!-- Scene / Note index cards: fixed card size, soft shadow, subtle lift on hover. -->
         <Style Selector="Border.BeatBoardCard.leaf">
             <Setter Property="Width" Value="250" />
             <Setter Property="MinHeight" Value="150" />
-            <Setter Property="Margin" Value="0,0,10,10" />
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="BoxShadow" Value="0 1 4 0 #14000000" />
         </Style>
         <Style Selector="Border.BeatBoardCard.leaf:pointerover">
             <Setter Property="RenderTransform" Value="scale(1.02)" />
@@ -55,9 +56,10 @@
             <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="12" />
-            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="BoxShadow" Value="0 2 8 0 #0F000000" />
         </Style>
         <Style Selector="Border.BeatBoardLane.hasAct">
             <Setter Property="BorderThickness" Value="6,1,1,1" />
@@ -68,9 +70,9 @@
         <Style Selector="Border.BeatBoardGroup.hasSequence">
             <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorder}" />
             <Setter Property="BorderThickness" Value="3,1,1,1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="10,10,10,2" />
-            <Setter Property="Margin" Value="14,0,0,10" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,12,12,2" />
+            <Setter Property="Margin" Value="16,0,0,12" />
         </Style>
     </Window.Styles>
 
@@ -83,11 +85,11 @@
                     Classes.leaf="{Binding IsLeaf}"
                     Classes.actHeader="{Binding IsActHeader}"
                     Classes.seqHeader="{Binding IsSequenceHeader}"
-                    Padding="12"
+                    Padding="14,12"
                     Background="{DynamicResource CardBackground}"
                     BorderBrush="{DynamicResource CardBorder}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="14"
                     DoubleTapped="BeatBoardCard_DoubleTapped"
                     DragDrop.AllowDrop="True"
                     PointerPressed="BeatBoardCard_PointerPressed"
@@ -101,8 +103,8 @@
                                 IsVisible="{Binding !IsEditing}"
                                 Background="{DynamicResource CardAccent}"
                                 HorizontalAlignment="Left"
-                                Padding="6,2"
-                                CornerRadius="4">
+                                Padding="9,3"
+                                CornerRadius="999">
                             <TextBlock Text="{Binding Type}"
                                        FontSize="10"
                                        FontWeight="Bold"
@@ -421,8 +423,8 @@
                                             <Border Background="{DynamicResource CardBackground}"
                                                     BorderThickness="1"
                                                     BorderBrush="{DynamicResource SurfaceBorder}"
-                                                    CornerRadius="8"
-                                                    Padding="8,10"
+                                                    CornerRadius="12"
+                                                    Padding="10,10"
                                                     Margin="0,0,0,8"
                                                     Classes="outlineCard"
                                                     Classes.dragover="{Binding IsDragOver}"
@@ -507,8 +509,8 @@
                                             <Border Background="{DynamicResource CardBackground}"
                                                     BorderThickness="1"
                                                     BorderBrush="{DynamicResource SurfaceBorder}"
-                                                    CornerRadius="8"
-                                                    Padding="8,10"
+                                                    CornerRadius="12"
+                                                    Padding="10,10"
                                                     Margin="0,0,0,8"
                                                     Classes="outlineCard"
                                                     Classes.dragover="{Binding IsDragOver}"
@@ -622,8 +624,8 @@
                                     Background="{DynamicResource SurfaceRaisedBackground}"
                                     BorderBrush="{DynamicResource EditorPageBorder}"
                                     BorderThickness="1"
-                                    CornerRadius="2"
-                                    BoxShadow="0 4 12 0 #20000000"
+                                    CornerRadius="6"
+                                    BoxShadow="0 8 28 0 #1F000000"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Stretch">
                                 <Border.RenderTransform>
@@ -670,8 +672,8 @@
                             <Border Background="{DynamicResource SurfaceRaisedBackground}"
                                     BorderBrush="{DynamicResource ControlAccent}"
                                     BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="1"
+                                    CornerRadius="10"
+                                    Padding="3"
                                     MinWidth="200"
                                     MaxHeight="200"
                                     BoxShadow="0 4 10 0 #30000000">

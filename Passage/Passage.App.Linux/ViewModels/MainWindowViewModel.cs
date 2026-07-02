@@ -565,84 +565,22 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetDarkTheme()
     {
-        if (App.Current != null)
+        if (App.Current is App app)
         {
-            App.Current.RequestedThemeVariant = ThemeVariant.Dark;
-            UpdateThemeResources(false);
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+            app.LoadThemeResources(isLight: false);
+            (_window as Views.MainWindow)?.RedrawEditor();
         }
     }
 
     [RelayCommand]
     private void SetLightTheme()
     {
-        if (App.Current != null)
+        if (App.Current is App app)
         {
-            App.Current.RequestedThemeVariant = ThemeVariant.Light;
-            UpdateThemeResources(true);
-        }
-    }
-
-    private void UpdateThemeResources(bool isLight)
-    {
-        if (App.Current?.Resources == null) return;
-        var Resources = App.Current.Resources;
-
-        Avalonia.Media.SolidColorBrush Brush(string hex) =>
-            new(Avalonia.Media.Color.Parse(hex));
-
-        if (isLight)
-        {
-            // Light theme colors (e-reader cream/paper)
-            Resources["ThemeBackground"] = Brush("#EFE7D6");
-            Resources["WindowBackground"] = Brush("#EFE7D6");
-            Resources["SurfaceBackground"] = Brush("#F2ECDD");
-            Resources["SurfaceMutedBackground"] = Brush("#E6DDC8");
-            Resources["SurfaceRaisedBackground"] = Brush("#FBF6EA");
-            Resources["SurfaceBorder"] = Brush("#D8CDB5");
-            Resources["ControlBackground"] = Brush("#ECE3D0");
-            Resources["ControlForeground"] = Brush("#2B2620");
-            Resources["ControlBorder"] = Brush("#CFC1A8");
-            Resources["ControlAccent"] = Brush("#2B2620");
-            Resources["ControlPressedBackground"] = Brush("#2B2620");
-            Resources["ControlPressedForeground"] = Brush("#FBF6EA");
-            Resources["HeaderText"] = Brush("#1E1A14");
-            Resources["SecondaryText"] = Brush("#6B6353");
-            Resources["MutedText"] = Brush("#938A76");
-            Resources["EditorForeground"] = Brush("#2B2620");
-            Resources["EditorPageBorder"] = Brush("#D8CDB5");
-            Resources["WindowForeground"] = Brush("#2B2620");
-            Resources["HierarchyIndicatorBrush"] = Brush("#2B2620");
-            Resources["DragOverBackground"] = Brush("#252B2620");
-            Resources["CardBackground"] = Brush("#FBF6EA");
-            Resources["CardBorder"] = Brush("#D8CDB5");
-            Resources["CardAccent"] = Brush("#2B2620");
-        }
-        else
-        {
-            // Dark theme colors (e-reader near-black; inverse of light)
-            Resources["ThemeBackground"] = Brush("#15140F");
-            Resources["WindowBackground"] = Brush("#15140F");
-            Resources["SurfaceBackground"] = Brush("#1B1A15");
-            Resources["SurfaceMutedBackground"] = Brush("#232118");
-            Resources["SurfaceRaisedBackground"] = Brush("#100F0B");
-            Resources["SurfaceBorder"] = Brush("#2E2B22");
-            Resources["ControlBackground"] = Brush("#232118");
-            Resources["ControlForeground"] = Brush("#ECE3D0");
-            Resources["ControlBorder"] = Brush("#3A352A");
-            Resources["ControlAccent"] = Brush("#F2ECDD");
-            Resources["ControlPressedBackground"] = Brush("#F2ECDD");
-            Resources["ControlPressedForeground"] = Brush("#15140F");
-            Resources["HeaderText"] = Brush("#F7F2E6");
-            Resources["SecondaryText"] = Brush("#A89E89");
-            Resources["MutedText"] = Brush("#756C5A");
-            Resources["EditorForeground"] = Brush("#ECE3D0");
-            Resources["EditorPageBorder"] = Brush("#2E2B22");
-            Resources["WindowForeground"] = Brush("#ECE3D0");
-            Resources["HierarchyIndicatorBrush"] = Brush("#F2ECDD");
-            Resources["DragOverBackground"] = Brush("#25F2ECDD");
-            Resources["CardBackground"] = Brush("#100F0B");
-            Resources["CardBorder"] = Brush("#2E2B22");
-            Resources["CardAccent"] = Brush("#F2ECDD");
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            app.LoadThemeResources(isLight: true);
+            (_window as Views.MainWindow)?.RedrawEditor();
         }
     }
 
