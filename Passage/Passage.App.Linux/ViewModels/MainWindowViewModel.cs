@@ -50,10 +50,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsScreenplayMode))]
+    [NotifyPropertyChangedFor(nameof(IsMarkdownMode))]
     [NotifyPropertyChangedFor(nameof(ModeStatusText))]
     private WriteMode _currentMode = WriteMode.Screenplay;
 
     public bool IsScreenplayMode => CurrentMode == WriteMode.Screenplay;
+    public bool IsMarkdownMode => CurrentMode == WriteMode.Markdown;
     public string ModeStatusText => CurrentMode == WriteMode.Screenplay ? "MODE: SCREENPLAY" : "MODE: MARKDOWN";
 
     [ObservableProperty] private int _currentLineNumber = 1;
@@ -212,7 +214,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     public ObservableCollection<BeatBoardCardViewModel> BeatBoardCards { get; }
+    public ObservableCollection<BeatBoardLaneViewModel> BeatBoardLanes { get; } = new();
     public ObservableCollection<IExporter> AvailableExporters { get; }
+
+    public bool HasBeatBoardCards => BeatBoardCards.Count > 0;
+    public string BeatBoardEmptyMessage =>
+        "The board mirrors your script's structure.\nAdd Acts (#), Sequences (##), and Scenes to see nested index cards here,\nor click New Card to start.";
 
     // Sidebar properties
     public bool HasOutlineItems => OutlineRoots.Count > 0;
@@ -1203,6 +1210,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void ToggleWriteMode()
     {
         CurrentMode = CurrentMode == WriteMode.Screenplay ? WriteMode.Markdown : WriteMode.Screenplay;
+        StatusMessage = CurrentMode == WriteMode.Screenplay
+            ? "Switched to Screenplay mode (Fountain)"
+            : "Switched to Markdown mode";
         RefreshParsedDocument();
     }
 
@@ -1373,6 +1383,59 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var card in newCards)
         {
             BeatBoardCards.Add(card);
+        }
+
+        RebuildBeatBoardLanes(newCards);
+        OnPropertyChanged(nameof(HasBeatBoardCards));
+    }
+
+    // Groups the flat, document-ordered card list into the story hierarchy the
+    // board renders: an Act opens a new lane, a Sequence opens a new group inside
+    // the current lane, and every other card (Scene / Note / deep Section) lands in
+    // the current group. Cards that appear before any Act or Sequence fall into
+    // implicit (header-less) lanes/groups so nothing is hidden from the board.
+    private void RebuildBeatBoardLanes(IReadOnlyList<BeatBoardCardViewModel> cards)
+    {
+        BeatBoardLanes.Clear();
+
+        BeatBoardLaneViewModel? currentLane = null;
+        BeatBoardGroupViewModel? currentGroup = null;
+
+        foreach (var card in cards)
+        {
+            if (card.Type == "Act")
+            {
+                currentLane = new BeatBoardLaneViewModel { ActCard = card };
+                currentGroup = null;
+                BeatBoardLanes.Add(currentLane);
+            }
+            else if (card.Type == "Sequence")
+            {
+                if (currentLane == null)
+                {
+                    currentLane = new BeatBoardLaneViewModel();
+                    BeatBoardLanes.Add(currentLane);
+                }
+
+                currentGroup = new BeatBoardGroupViewModel { SequenceCard = card };
+                currentLane.Groups.Add(currentGroup);
+            }
+            else
+            {
+                if (currentLane == null)
+                {
+                    currentLane = new BeatBoardLaneViewModel();
+                    BeatBoardLanes.Add(currentLane);
+                }
+
+                if (currentGroup == null)
+                {
+                    currentGroup = new BeatBoardGroupViewModel();
+                    currentLane.Groups.Add(currentGroup);
+                }
+
+                currentGroup.Cards.Add(card);
+            }
         }
     }
 
@@ -2307,7 +2370,37 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }
         }
+
+        // An Act/Sequence card represents its whole block on the board, so dragging
+        // it moves everything nested beneath it: extend the range to just before the
+        // next section of the same or higher level (or the end of the document).
+        if (element is SectionElement section && elementIndex != -1)
+        {
+            var blockEndLineIdx = CountEditorLines() - 1;
+            for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
+            {
+                if (_lastParsed.Elements[i] is SectionElement nextSection && nextSection.SectionDepth <= section.SectionDepth)
+                {
+                    blockEndLineIdx = nextSection.LineIndex - 1;
+                    break;
+                }
+            }
+
+            endLineIdx = Math.Max(endLineIdx, blockEndLineIdx);
+        }
+
         return (startLineIdx, endLineIdx);
+    }
+
+    private int CountEditorLines()
+    {
+        var text = (EditorContent ?? string.Empty).Replace("\r\n", "\n");
+        var count = 1;
+        foreach (var ch in text)
+        {
+            if (ch == '\n') count++;
+        }
+        return count;
     }
 
     public void MoveBeatBoardCardText(BeatBoardCardViewModel sourceCard, BeatBoardCardViewModel targetCard, bool insertAfter)
@@ -2317,6 +2410,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (sourceStart == -1 || targetStart == -1) return;
         if (sourceStart == targetStart) return;
+        if (targetStart >= sourceStart && targetEnd <= sourceEnd)
+        {
+            // Cannot drop an Act/Sequence onto a card nested inside its own block.
+            return;
+        }
 
         int targetInsert = insertAfter ? (targetEnd + 1) : targetStart;
 
@@ -2358,6 +2456,28 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 }
 
+/// <summary>
+/// One horizontal band of the Beat Board: an Act and everything nested under it.
+/// A lane without an <see cref="ActCard"/> holds cards that appear before any Act.
+/// </summary>
+public class BeatBoardLaneViewModel
+{
+    public BeatBoardCardViewModel? ActCard { get; init; }
+    public bool HasActCard => ActCard != null;
+    public ObservableCollection<BeatBoardGroupViewModel> Groups { get; } = new();
+}
+
+/// <summary>
+/// A Sequence cluster inside an act lane. A group without a
+/// <see cref="SequenceCard"/> holds scenes sitting directly under the act.
+/// </summary>
+public class BeatBoardGroupViewModel
+{
+    public BeatBoardCardViewModel? SequenceCard { get; init; }
+    public bool HasSequenceCard => SequenceCard != null;
+    public ObservableCollection<BeatBoardCardViewModel> Cards { get; } = new();
+}
+
 public partial class BeatBoardCardViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -2373,7 +2493,14 @@ public partial class BeatBoardCardViewModel : ObservableObject
     private int _lineNumber;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsActHeader))]
+    [NotifyPropertyChangedFor(nameof(IsSequenceHeader))]
+    [NotifyPropertyChangedFor(nameof(IsLeaf))]
     private string _type = "Scene";
+
+    public bool IsActHeader => Type == "Act";
+    public bool IsSequenceHeader => Type == "Sequence";
+    public bool IsLeaf => !IsActHeader && !IsSequenceHeader;
 
     [ObservableProperty]
     private int _level = 2;

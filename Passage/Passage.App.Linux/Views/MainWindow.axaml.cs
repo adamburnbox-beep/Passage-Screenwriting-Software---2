@@ -33,6 +33,12 @@ public partial class MainWindow : Window
     // and the view model's EditorContent string.
     private bool _suppressEditorSync;
 
+    // Editor transformers swapped by write mode: Fountain colouring + screenplay
+    // indentation in Screenplay mode, Markdown colouring in Markdown mode.
+    private FountainSyntaxColorizer? _fountainColorizer;
+    private FountainIndentationGenerator? _fountainIndentation;
+    private MarkdownSyntaxColorizer? _markdownColorizer;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -63,8 +69,9 @@ public partial class MainWindow : Window
             // proper screenplay position (indentation generator) as the user types.
             // Both share one classifier so the document is only parsed once per edit.
             var lineClassifier = new FountainLineClassifier();
-            editorBox.TextArea.TextView.LineTransformers.Add(new FountainSyntaxColorizer(lineClassifier));
-            editorBox.TextArea.TextView.ElementGenerators.Add(new FountainIndentationGenerator(lineClassifier));
+            _fountainColorizer = new FountainSyntaxColorizer(lineClassifier);
+            _fountainIndentation = new FountainIndentationGenerator(lineClassifier);
+            _markdownColorizer = new MarkdownSyntaxColorizer();
 
             // Drive the editor content through code-behind (instead of a XAML binding)
             // so every existing EditorContent code path in the view model keeps working.
@@ -74,8 +81,16 @@ public partial class MainWindow : Window
                 editorBox.Text = vm.EditorContent ?? string.Empty;
                 _suppressEditorSync = false;
 
+                ApplyEditorWriteMode(editorBox, vm.CurrentMode);
+
                 vm.PropertyChanged += (_, e) =>
                 {
+                    if (e.PropertyName == nameof(MainWindowViewModel.CurrentMode))
+                    {
+                        ApplyEditorWriteMode(editorBox, vm.CurrentMode);
+                        return;
+                    }
+
                     if (e.PropertyName != nameof(MainWindowViewModel.EditorContent))
                     {
                         return;
@@ -137,6 +152,36 @@ public partial class MainWindow : Window
 
         // Mode toggle shortcut
         KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.M, KeyModifiers.Control), Command = vm.ToggleWriteModeCommand });
+    }
+
+    // Swaps the editor's live-formatting layer to match the write mode: Fountain
+    // colouring + screenplay indentation for screenplays, Markdown colouring (and a
+    // symmetric page margin, since there is no 1.5" screenplay gutter) for Markdown.
+    private void ApplyEditorWriteMode(TextEditor editorBox, WriteMode mode)
+    {
+        if (_fountainColorizer == null || _fountainIndentation == null || _markdownColorizer == null)
+        {
+            return;
+        }
+
+        var textView = editorBox.TextArea.TextView;
+        textView.LineTransformers.Remove(_fountainColorizer);
+        textView.LineTransformers.Remove(_markdownColorizer);
+        textView.ElementGenerators.Remove(_fountainIndentation);
+
+        if (mode == WriteMode.Screenplay)
+        {
+            textView.LineTransformers.Add(_fountainColorizer);
+            textView.ElementGenerators.Add(_fountainIndentation);
+            editorBox.Padding = new Thickness(144, 96, 96, 96);
+        }
+        else
+        {
+            textView.LineTransformers.Add(_markdownColorizer);
+            editorBox.Padding = new Thickness(96);
+        }
+
+        textView.Redraw();
     }
 
     private void ToggleLeftDock_Click(object? sender, RoutedEventArgs e)
