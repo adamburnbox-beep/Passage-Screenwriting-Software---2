@@ -4,6 +4,13 @@ Findings from a review of the Linux (Avalonia) port on 2026-07-02. Written for a
 future agent/contributor: each item states the gap, where the code lives, and a
 suggested approach. Items are ordered roughly by user impact.
 
+> **Status update (2026-07-02, later the same day):** items 1–6 and 8 are DONE
+> (see commit "Work through FUTURE_IMPROVEMENTS"), along with the page-count
+> status-bar readout from item 12. Still open: item 7 (tests), item 9 (outline
+> filter), item 10 (informational), item 11 (theme-dictionary refactor; the
+> VM-side duplication was already removed), the rest of item 12, and item 13.
+> The per-item notes below are kept for context on what was built and why.
+
 ## 1. Undo / Redo are empty stubs
 - **Where:** `Passage/Passage.App.Linux/ViewModels/MainWindowViewModel.cs` —
   `Undo()` / `Redo()` command bodies are empty; Ctrl+Z / Ctrl+Y do nothing.
