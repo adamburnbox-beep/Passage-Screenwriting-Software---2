@@ -149,6 +149,14 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
     </Style>
 
+    <!-- Main view tabs (Script / Beat Board / Page Preview): right-aligned in
+         the empty space at the top of the editor area, clear of the toolbar
+         above and the workspace splitter on the left. -->
+    <Style Selector="TabControl#MainViewTabs /template/ ItemsPresenter#PART_ItemsPresenter">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Margin" Value="0,10,20,10" />
+    </Style>
+
     <!-- The workspace sidebar hosts four tabs in ~350px — tighten its pills so
          they fit on one row. -->
     <Style Selector="TabControl#LeftDockTabs TabItem">

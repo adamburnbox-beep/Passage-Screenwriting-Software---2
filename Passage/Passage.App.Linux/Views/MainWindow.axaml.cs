@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private FountainSyntaxColorizer? _fountainColorizer;
     private FountainIndentationGenerator? _fountainIndentation;
     private MarkdownSyntaxColorizer? _markdownColorizer;
+    private ScreenplayPageRuler? _pageRuler;
 
     public MainWindow()
     {
@@ -72,6 +73,7 @@ public partial class MainWindow : Window
             _fountainColorizer = new FountainSyntaxColorizer(lineClassifier);
             _fountainIndentation = new FountainIndentationGenerator(lineClassifier);
             _markdownColorizer = new MarkdownSyntaxColorizer();
+            _pageRuler = new ScreenplayPageRuler();
 
             // Drive the editor content through code-behind (instead of a XAML binding)
             // so every existing EditorContent code path in the view model keeps working.
@@ -162,7 +164,7 @@ public partial class MainWindow : Window
     // symmetric page margin, since there is no 1.5" screenplay gutter) for Markdown.
     private void ApplyEditorWriteMode(TextEditor editorBox, WriteMode mode)
     {
-        if (_fountainColorizer == null || _fountainIndentation == null || _markdownColorizer == null)
+        if (_fountainColorizer == null || _fountainIndentation == null || _markdownColorizer == null || _pageRuler == null)
         {
             return;
         }
@@ -171,11 +173,13 @@ public partial class MainWindow : Window
         textView.LineTransformers.Remove(_fountainColorizer);
         textView.LineTransformers.Remove(_markdownColorizer);
         textView.ElementGenerators.Remove(_fountainIndentation);
+        textView.BackgroundRenderers.Remove(_pageRuler);
 
         if (mode == WriteMode.Screenplay)
         {
             textView.LineTransformers.Add(_fountainColorizer);
             textView.ElementGenerators.Add(_fountainIndentation);
+            textView.BackgroundRenderers.Add(_pageRuler);
             editorBox.Padding = new Thickness(144, 96, 96, 96);
         }
         else

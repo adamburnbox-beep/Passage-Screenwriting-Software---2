@@ -44,9 +44,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _currentFilePath = string.Empty;
     private string _editorContent = string.Empty;
     private double _editorZoomScale = 1.0;
-    private bool _isBoardModeActive;
     private bool _suppressDirtyTracking;
     private bool _isDirty;
+
+    // Which main view is showing: 0 = Script, 1 = Beat Board, 2 = Page Preview.
+    // A single index (rather than per-tab IsSelected bindings) so selecting one
+    // tab can never re-select another.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBoardModeActive))]
+    private int _mainViewIndex;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsScreenplayMode))]
@@ -211,8 +217,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool IsBoardModeActive
     {
-        get => _isBoardModeActive;
-        set => SetProperty(ref _isBoardModeActive, value);
+        get => MainViewIndex == 1;
+        set => MainViewIndex = value ? 1 : 0;
     }
 
     public ObservableCollection<BeatBoardCardViewModel> BeatBoardCards { get; }
@@ -761,6 +767,33 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SyncBoardToScript()
     {
         RefreshParsedDocument();
+    }
+
+    [RelayCommand]
+    private void ExpandAllBeatBoard() => SetBeatBoardExpansion(true);
+
+    [RelayCommand]
+    private void CollapseAllBeatBoard() => SetBeatBoardExpansion(false);
+
+    private void SetBeatBoardExpansion(bool isExpanded)
+    {
+        foreach (var lane in BeatBoardLanes)
+        {
+            // Header-less (implicit) lanes/groups have no chevron to reopen
+            // them, so collapse-all leaves them visible.
+            if (lane.HasActCard)
+            {
+                lane.IsExpanded = isExpanded;
+            }
+
+            foreach (var group in lane.Groups)
+            {
+                if (group.HasSequenceCard)
+                {
+                    group.IsExpanded = isExpanded;
+                }
+            }
+        }
     }
 
     // "+ Scene" on an act lane or sequence group: inserts a new scene at the end
@@ -1568,11 +1601,16 @@ public partial class MainWindowViewModel : ViewModelBase
     // implicit (header-less) lanes/groups so nothing is hidden from the board.
     private void RebuildBeatBoardLanes(IReadOnlyList<BeatBoardCardViewModel> cards)
     {
-        // Lanes are rebuilt from scratch on every parse; carry the user's
-        // collapsed acts across the rebuild by act-card id.
+        // Lanes/groups are rebuilt from scratch on every parse; carry the user's
+        // collapsed acts and sequences across the rebuild by header-card id.
         var collapsedActIds = BeatBoardLanes
             .Where(lane => lane.ActCard != null && !lane.IsExpanded)
             .Select(lane => lane.ActCard!.Id)
+            .ToHashSet();
+        var collapsedSequenceIds = BeatBoardLanes
+            .SelectMany(lane => lane.Groups)
+            .Where(group => group.SequenceCard != null && !group.IsExpanded)
+            .Select(group => group.SequenceCard!.Id)
             .ToHashSet();
 
         BeatBoardLanes.Clear();
@@ -1600,7 +1638,11 @@ public partial class MainWindowViewModel : ViewModelBase
                     BeatBoardLanes.Add(currentLane);
                 }
 
-                currentGroup = new BeatBoardGroupViewModel { SequenceCard = card };
+                currentGroup = new BeatBoardGroupViewModel
+                {
+                    SequenceCard = card,
+                    IsExpanded = !collapsedSequenceIds.Contains(card.Id)
+                };
                 currentLane.Groups.Add(currentGroup);
             }
             else
@@ -2703,8 +2745,11 @@ public partial class BeatBoardLaneViewModel : ObservableObject
 /// A Sequence cluster inside an act lane. A group without a
 /// <see cref="SequenceCard"/> holds scenes sitting directly under the act.
 /// </summary>
-public class BeatBoardGroupViewModel
+public partial class BeatBoardGroupViewModel : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isExpanded = true;
+
     public BeatBoardCardViewModel? SequenceCard { get; init; }
     public bool HasSequenceCard => SequenceCard != null;
     public ObservableCollection<BeatBoardCardViewModel> Cards { get; } = new();
