@@ -3,16 +3,15 @@
         xmlns:conv="using:Avalonia.Controls.Converters">
 
     <!-- ============================================================ -->
-    <!-- Chrome buttons (toolbar / workspace) — full pills, e-ink      -->
-    <!-- style: white pill at rest, inverts to solid ink on press.     -->
+    <!-- Chrome buttons (toolbar / workspace) — borderless white pills -->
+    <!-- floating on the gray canvas; invert to solid ink on press.    -->
     <!-- ============================================================ -->
     <Style Selector="Button.chrome">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="999" />
-        <Setter Property="Padding" Value="18,7" />
+        <Setter Property="Padding" Value="18,8" />
         <Setter Property="MinWidth" Value="86" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -21,43 +20,65 @@
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.12" />
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
             </Transitions>
         </Setter>
     </Style>
     <Style Selector="Button.chrome /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
     </Style>
     <Style Selector="Button.chrome:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
     </Style>
     <Style Selector="Button.chrome:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource ControlPressedBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
     </Style>
 
-    <!-- Small inline pill buttons (card Edit/Save/Cancel, toggles, delete) -->
-    <Style Selector="Button.inline">
+    <!-- Primary action: the one solid-ink pill in a group (Save, New Card…) -->
+    <Style Selector="Button.primary /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+    <Style Selector="Button.primary:pointerover">
+        <Setter Property="Opacity" Value="0.85" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlForeground}" />
+    </Style>
+
+    <!-- Small inline pill buttons (card Edit/Save/Cancel, toggles, delete):
+         quiet light-gray pills that sit on white cards. -->
+    <Style Selector="Button.inline">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForeground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="999" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <Style Selector="Button.inline /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    </Style>
     <Style Selector="Button.inline:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBorder}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
     </Style>
     <Style Selector="Button.inline:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource ControlPressedBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlPressedBackground}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+
+    <!-- Rounded inputs to match the pill/card language -->
+    <Style Selector="TextBox">
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="CornerRadius" Value="10" />
     </Style>
 
     <!-- Quiet chevron toggle for Beat Board act lanes: points down when the

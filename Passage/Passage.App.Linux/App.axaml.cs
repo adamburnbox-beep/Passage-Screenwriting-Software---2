@@ -183,30 +183,33 @@ public partial class App : Application
 
         if (isLight)
         {
-            // Light theme (paper white / ink black)
-            Resources["ThemeBackground"] = Brush("#EDEDEB");
-            Resources["WindowBackground"] = Brush("#EDEDEB");
-            Resources["SurfaceBackground"] = Brush("#F4F4F2");
-            Resources["SurfaceMutedBackground"] = Brush("#E7E7E4");
+            // Light theme: light-gray canvas, borderless pure-white cards that
+            // float on soft shadows, solid ink black as the accent. Cards have
+            // no visible stroke (CardBorder/EditorPageBorder are transparent) —
+            // elevation comes from BoxShadow in the styles.
+            Resources["ThemeBackground"] = Brush("#F1F1EF");
+            Resources["WindowBackground"] = Brush("#F1F1EF");
+            Resources["SurfaceBackground"] = Brush("#F7F7F5");
+            Resources["SurfaceMutedBackground"] = Brush("#E9E9E6");
             Resources["SurfaceRaisedBackground"] = Brush("#FFFFFF");
-            Resources["SurfaceBorder"] = Brush("#DEDEDA");
+            Resources["SurfaceBorder"] = Brush("#E4E4E0");
             Resources["ControlBackground"] = Brush("#FFFFFF");
-            Resources["ControlForeground"] = Brush("#111111");
-            Resources["ControlBorder"] = Brush("#D6D6D2");
-            Resources["ControlAccent"] = Brush("#111111");
-            Resources["ControlPressedBackground"] = Brush("#111111");
+            Resources["ControlForeground"] = Brush("#111110");
+            Resources["ControlBorder"] = Brush("#E4E4E0");
+            Resources["ControlAccent"] = Brush("#111110");
+            Resources["ControlPressedBackground"] = Brush("#111110");
             Resources["ControlPressedForeground"] = Brush("#FFFFFF");
-            Resources["HeaderText"] = Brush("#0A0A0A");
-            Resources["SecondaryText"] = Brush("#4A4A47");
-            Resources["MutedText"] = Brush("#8E8E8A");
-            Resources["EditorForeground"] = Brush("#161616");
-            Resources["EditorPageBorder"] = Brush("#E3E3DF");
-            Resources["WindowForeground"] = Brush("#161616");
-            Resources["HierarchyIndicatorBrush"] = Brush("#111111");
+            Resources["HeaderText"] = Brush("#0B0B0A");
+            Resources["SecondaryText"] = Brush("#5A5A55");
+            Resources["MutedText"] = Brush("#98988F");
+            Resources["EditorForeground"] = Brush("#171716");
+            Resources["EditorPageBorder"] = Brush("#00000000");
+            Resources["WindowForeground"] = Brush("#171716");
+            Resources["HierarchyIndicatorBrush"] = Brush("#111110");
             Resources["DragOverBackground"] = Brush("#22111111");
             Resources["CardBackground"] = Brush("#FFFFFF");
-            Resources["CardBorder"] = Brush("#E3E3DF");
-            Resources["CardAccent"] = Brush("#111111");
+            Resources["CardBorder"] = Brush("#00000000");
+            Resources["CardAccent"] = Brush("#111110");
 
             // Editor syntax colours, darkened for the paper-white page
             Resources["SyntaxSceneHeading"] = Brush("#2F55B8");
@@ -220,30 +223,32 @@ public partial class App : Application
         }
         else
         {
-            // Dark theme (ink black / paper white; inverse of light)
-            Resources["ThemeBackground"] = Brush("#0B0B0B");
-            Resources["WindowBackground"] = Brush("#0B0B0B");
-            Resources["SurfaceBackground"] = Brush("#111111");
-            Resources["SurfaceMutedBackground"] = Brush("#1E1E1E");
-            Resources["SurfaceRaisedBackground"] = Brush("#161616");
-            Resources["SurfaceBorder"] = Brush("#242424");
-            Resources["ControlBackground"] = Brush("#161616");
+            // Dark theme (inverse: near-black canvas, slightly raised cards
+            // with a hairline stroke since shadows carry nothing on black,
+            // paper white as the accent)
+            Resources["ThemeBackground"] = Brush("#0D0D0C");
+            Resources["WindowBackground"] = Brush("#0D0D0C");
+            Resources["SurfaceBackground"] = Brush("#141413");
+            Resources["SurfaceMutedBackground"] = Brush("#232321");
+            Resources["SurfaceRaisedBackground"] = Brush("#1B1B1A");
+            Resources["SurfaceBorder"] = Brush("#262624");
+            Resources["ControlBackground"] = Brush("#1B1B1A");
             Resources["ControlForeground"] = Brush("#F2F2F0");
-            Resources["ControlBorder"] = Brush("#2E2E2E");
-            Resources["ControlAccent"] = Brush("#F5F5F3");
-            Resources["ControlPressedBackground"] = Brush("#F5F5F3");
-            Resources["ControlPressedForeground"] = Brush("#0B0B0B");
+            Resources["ControlBorder"] = Brush("#2E2E2C");
+            Resources["ControlAccent"] = Brush("#F4F4F2");
+            Resources["ControlPressedBackground"] = Brush("#F4F4F2");
+            Resources["ControlPressedForeground"] = Brush("#0D0D0C");
             Resources["HeaderText"] = Brush("#FAFAF8");
-            Resources["SecondaryText"] = Brush("#B4B4B0");
-            Resources["MutedText"] = Brush("#70706C");
+            Resources["SecondaryText"] = Brush("#B2B2AD");
+            Resources["MutedText"] = Brush("#6E6E69");
             Resources["EditorForeground"] = Brush("#EDEDEB");
-            Resources["EditorPageBorder"] = Brush("#242424");
+            Resources["EditorPageBorder"] = Brush("#262624");
             Resources["WindowForeground"] = Brush("#EDEDEB");
-            Resources["HierarchyIndicatorBrush"] = Brush("#F5F5F3");
-            Resources["DragOverBackground"] = Brush("#25F5F5F3");
-            Resources["CardBackground"] = Brush("#161616");
-            Resources["CardBorder"] = Brush("#262626");
-            Resources["CardAccent"] = Brush("#F5F5F3");
+            Resources["HierarchyIndicatorBrush"] = Brush("#F4F4F2");
+            Resources["DragOverBackground"] = Brush("#25F4F4F2");
+            Resources["CardBackground"] = Brush("#1B1B1A");
+            Resources["CardBorder"] = Brush("#2A2A28");
+            Resources["CardAccent"] = Brush("#F4F4F2");
 
             // Editor syntax colours for the ink-black page
             Resources["SyntaxSceneHeading"] = Brush("#6797FF");

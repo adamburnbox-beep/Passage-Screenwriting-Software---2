@@ -17,31 +17,31 @@
     <Application.Resources>
         <!-- Dark Theme Colors (modern e-ink monochrome; default before system detection).
              Mirrors App.axaml.cs LoadThemeResources — keep both in sync. -->
-        <SolidColorBrush x:Key="ThemeBackground" Color="#0B0B0B" />
-        <SolidColorBrush x:Key="WindowBackground" Color="#0B0B0B" />
-        <SolidColorBrush x:Key="SurfaceBackground" Color="#111111" />
-        <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#1E1E1E" />
-        <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#161616" />
-        <SolidColorBrush x:Key="SurfaceBorder" Color="#242424" />
-        <SolidColorBrush x:Key="ControlBackground" Color="#161616" />
+        <SolidColorBrush x:Key="ThemeBackground" Color="#0D0D0C" />
+        <SolidColorBrush x:Key="WindowBackground" Color="#0D0D0C" />
+        <SolidColorBrush x:Key="SurfaceBackground" Color="#141413" />
+        <SolidColorBrush x:Key="SurfaceMutedBackground" Color="#232321" />
+        <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="#1B1B1A" />
+        <SolidColorBrush x:Key="SurfaceBorder" Color="#262624" />
+        <SolidColorBrush x:Key="ControlBackground" Color="#1B1B1A" />
         <SolidColorBrush x:Key="ControlForeground" Color="#F2F2F0" />
-        <SolidColorBrush x:Key="ControlBorder" Color="#2E2E2E" />
-        <SolidColorBrush x:Key="ControlAccent" Color="#F5F5F3" />
-        <SolidColorBrush x:Key="ControlPressedBackground" Color="#F5F5F3" />
-        <SolidColorBrush x:Key="ControlPressedForeground" Color="#0B0B0B" />
+        <SolidColorBrush x:Key="ControlBorder" Color="#2E2E2C" />
+        <SolidColorBrush x:Key="ControlAccent" Color="#F4F4F2" />
+        <SolidColorBrush x:Key="ControlPressedBackground" Color="#F4F4F2" />
+        <SolidColorBrush x:Key="ControlPressedForeground" Color="#0D0D0C" />
         <SolidColorBrush x:Key="HeaderText" Color="#FAFAF8" />
-        <SolidColorBrush x:Key="SecondaryText" Color="#B4B4B0" />
-        <SolidColorBrush x:Key="MutedText" Color="#70706C" />
+        <SolidColorBrush x:Key="SecondaryText" Color="#B2B2AD" />
+        <SolidColorBrush x:Key="MutedText" Color="#6E6E69" />
         <SolidColorBrush x:Key="EditorForeground" Color="#EDEDEB" />
-        <SolidColorBrush x:Key="EditorPageBorder" Color="#242424" />
+        <SolidColorBrush x:Key="EditorPageBorder" Color="#262624" />
         <SolidColorBrush x:Key="WindowForeground" Color="#EDEDEB" />
-        <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#F5F5F3" />
-        <SolidColorBrush x:Key="DragOverBackground" Color="#25F5F5F3" />
+        <SolidColorBrush x:Key="HierarchyIndicatorBrush" Color="#F4F4F2" />
+        <SolidColorBrush x:Key="DragOverBackground" Color="#25F4F4F2" />
 
         <!-- Card Colors -->
-        <SolidColorBrush x:Key="CardBackground" Color="#161616" />
-        <SolidColorBrush x:Key="CardBorder" Color="#262626" />
-        <SolidColorBrush x:Key="CardAccent" Color="#F5F5F3" />
+        <SolidColorBrush x:Key="CardBackground" Color="#1B1B1A" />
+        <SolidColorBrush x:Key="CardBorder" Color="#2A2A28" />
+        <SolidColorBrush x:Key="CardAccent" Color="#F4F4F2" />
 
         <!-- Editor syntax colours (dark defaults) -->
         <SolidColorBrush x:Key="SyntaxSceneHeading" Color="#6797FF" />

@@ -285,7 +285,7 @@ public partial class MainWindow : Window
         var grid = this.FindControl<Grid>("MainLayoutGrid");
         var leftSplitter = this.FindControl<GridSplitter>("LeftSplitter");
         var leftDockTabs = this.FindControl<TabControl>("LeftDockTabs");
-        var leftDockTitleText = this.FindControl<TextBlock>("LeftDockTitleText");
+        var leftDockTitleText = this.FindControl<Border>("LeftDockTitleText");
         var leftDockToggleButton = this.FindControl<Button>("LeftDockToggleButton");
 
         if (grid != null && grid.ColumnDefinitions.Count >= 3)

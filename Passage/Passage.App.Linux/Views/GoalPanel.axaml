@@ -116,17 +116,17 @@
           <!-- Actions & States -->
           <StackPanel Grid.Row="2" Margin="0,8,0,0">
             <WrapPanel HorizontalAlignment="Center" Margin="0,0,0,8">
-              <Button Content="Reset Goal"
+              <Button Classes="inline" Content="Reset Goal"
                       Click="GoalResetSession_Click"
                       Padding="12,5"
                       Margin="0,0,8,0" />
               
               <StackPanel Orientation="Horizontal" IsVisible="{Binding IsTimerGoal}">
-                <Button Content="{Binding GoalTimerPrimaryButtonText}"
+                <Button Classes="inline" Content="{Binding GoalTimerPrimaryButtonText}"
                         Click="GoalPrimaryTimerButton_Click"
                         Padding="12,5"
                         Margin="0,0,8,0" />
-                <Button Content="{Binding GoalTimerSecondaryButtonText}"
+                <Button Classes="inline" Content="{Binding GoalTimerSecondaryButtonText}"
                         Click="GoalSecondaryTimerButton_Click"
                         Padding="12,5" />
               </StackPanel>
