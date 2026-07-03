@@ -173,9 +173,15 @@
     <!-- Main view tabs (Script / Beat Board / Page Preview): centered over the
          editor area, with clear air above the content below. Title Page /
          Syntax buttons overlay the same band on the right (MainWindow.axaml). -->
+    <!-- The presenter's Margin is template-bound, so vertical placement is set
+         via the control's own Margin (pushes the pills down to the WORKSPACE
+         line) and Padding (opens the gap before the content band begins). -->
+    <Style Selector="TabControl#MainViewTabs">
+        <Setter Property="Margin" Value="0,13,0,0" />
+        <Setter Property="Padding" Value="0,8,0,0" />
+    </Style>
     <Style Selector="TabControl#MainViewTabs /template/ ItemsPresenter#PART_ItemsPresenter">
         <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="0,12,0,22" />
     </Style>
 
     <!-- Workspace sidebar tabs: icon-over-label navigation (like the reference
