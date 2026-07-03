@@ -75,6 +75,14 @@
             <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
             <Setter Property="Opacity" Value="0.72" />
         </Style>
+        <!-- Display-scale headings on the hero cards, reference-style. -->
+        <Style Selector="Border.BeatBoardCard.actHeader TextBlock.cardHeading">
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Border.BeatBoardCard.seqHeader TextBlock.cardHeading">
+            <Setter Property="FontSize" Value="16" />
+        </Style>
         <!-- Sequence header: quiet full-width strip. -->
         <Style Selector="Border.BeatBoardCard.seqHeader">
             <Setter Property="Background" Value="{DynamicResource CardBackground}" />
@@ -200,12 +208,13 @@
                     <StackPanel Grid.Row="1">
                         <!-- Normal Mode Content -->
                         <StackPanel IsVisible="{Binding !IsEditing}" Spacing="6">
-                            <TextBlock Text="{Binding Heading}"
+                            <TextBlock Classes="cardHeading"
+                                       Text="{Binding Heading}"
                                        FontWeight="SemiBold"
-                                       FontSize="14"
+                                       FontSize="15"
                                        TextWrapping="Wrap"
                                        TextTrimming="CharacterEllipsis"
-                                       MaxHeight="40" />
+                                       MaxHeight="46" />
                             <TextBlock Classes="desc"
                                        Text="{Binding Description}"
                                        IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -237,7 +246,7 @@
 
     <DockPanel>
         <!-- Menu Bar -->
-        <Menu DockPanel.Dock="Top" Background="Transparent" Margin="2,0,2,6">
+        <Menu DockPanel.Dock="Top" Background="Transparent" Margin="10,6,10,4">
             <MenuItem Header="_File">
                 <MenuItem Header="_New" Command="{Binding NewCommand}" InputGesture="Ctrl+N" />
                 <MenuItem Header="_Open..." Command="{Binding OpenCommand}" InputGesture="Ctrl+O" />
@@ -256,6 +265,7 @@
                 <MenuItem Header="Save _As..." Command="{Binding SaveAsCommand}" InputGesture="Ctrl+Shift+S" />
                 <MenuItem Header="_Close" Command="{Binding CloseCommand}" InputGesture="Ctrl+W" />
                 <Separator />
+                <MenuItem Header="_Title Page..." Command="{Binding EditTitlePageCommand}" />
                 <MenuItem Header="_Export" ItemsSource="{Binding AvailableExporters}">
                     <MenuItem.Styles>
                         <Style Selector="MenuItem" x:DataType="export:IExporter" x:CompileBindings="False">
@@ -301,47 +311,9 @@
             </MenuItem>
         </Menu>
 
-        <!-- Toolbar -->
-        <StackPanel DockPanel.Dock="Top"
-                    Background="Transparent"
-                    Margin="2,0,2,0"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Center">
-            <Button Classes="chrome"
-                    Command="{Binding NewCommand}"
-                    Content="New"
-                    Margin="0,0,6,0" />
-            <Button Classes="chrome"
-                    Command="{Binding OpenCommand}"
-                    Content="Open"
-                    Margin="0,0,6,0" />
-            <Button Classes="chrome primary"
-                    Command="{Binding SaveCommand}"
-                    Content="Save"
-                    Margin="0,0,6,0" />
-            <Button Classes="chrome"
-                    Content="Export"
-                    Margin="0,0,6,0">
-                <Button.Styles>
-                    <Style Selector="MenuItem" x:DataType="export:IExporter" x:CompileBindings="False">
-                        <Setter Property="Header" Value="{Binding DisplayName}" />
-                        <Setter Property="Command" Value="{Binding $parent[Window].DataContext.ExportCommand}" />
-                        <Setter Property="CommandParameter" Value="{Binding}" />
-                    </Style>
-                </Button.Styles>
-                <Button.Flyout>
-                    <MenuFlyout ItemsSource="{Binding AvailableExporters}" />
-                </Button.Flyout>
-            </Button>
-            <Button Classes="chrome"
-                    Command="{Binding EditTitlePageCommand}"
-                    Content="Title Page"
-                    Margin="0,0,6,0" />
-            <Button Classes="chrome"
-                    Command="{Binding ToggleSyntaxPanelCommand}"
-                    Content="Syntax"
-                    Margin="0,0,6,0" />
-        </StackPanel>
+        <!-- The old duplicate-button toolbar is gone: everything lives in the
+             menus and shortcuts, leaving one slim header band like the
+             reference designs. -->
 
         <!-- Status Bar -->
         <Border DockPanel.Dock="Bottom"
@@ -397,8 +369,10 @@
                 <ColumnDefinition Width="0" />
             </Grid.ColumnDefinitions>
 
-            <!-- Collapsible Sidebar Dock -->
-            <Border Name="LeftDockBorder" Grid.Column="0" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource SurfaceBorder}">
+            <!-- Collapsible Sidebar Dock: a raised white panel on the gray canvas -->
+            <Border Name="LeftDockBorder" Grid.Column="0"
+                    Background="{DynamicResource SurfaceRaisedBackground}"
+                    BoxShadow="2 0 12 0 #10000000">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -406,7 +380,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Sidebar Header (Collapsible Panel Header) -->
-                    <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SurfaceBorder}" Padding="10">
+                    <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SurfaceBorder}" Padding="14,14,10,12">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -457,10 +431,16 @@
                         </Grid>
                     </Border>
 
-                    <!-- Sidebar TabControl -->
-                    <TabControl Name="LeftDockTabs" Grid.Row="1" Margin="5">
+                    <!-- Sidebar TabControl: icon-over-label navigation -->
+                    <TabControl Name="LeftDockTabs" Grid.Row="1" Margin="10,8,10,8">
                         <!-- Outline Tab -->
-                        <TabItem Header="Outline">
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconOutline}" Width="16" Height="16" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Outline" FontSize="9.5" FontWeight="SemiBold" LetterSpacing="0.5" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid RowDefinitions="Auto,*">
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,6">
                                     <Button Classes="inline"
@@ -482,16 +462,18 @@
                                     </TreeView.Styles>
                                     <TreeView.ItemTemplate>
                                         <TreeDataTemplate DataType="vm:OutlineNodeViewModel" ItemsSource="{Binding Children}">
-                                            <Border Background="{DynamicResource CardBackground}"
-                                                    BorderThickness="1"
-                                                    BorderBrush="{DynamicResource CardBorder}"
-                                                    CornerRadius="14"
-                                                    Padding="12,10"
-                                                    Margin="0,0,0,10"
-                                                    BoxShadow="0 1 5 0 #12000000"
-                                                    Classes="outlineCard"
+                                            <!-- Quiet, unboxed row: hierarchy comes from indentation and
+                                                 type weight; the single ink-filled row marks where the
+                                                 caret is (like the selected day in the reference
+                                                 calendar), so nothing else competes for attention. -->
+                                            <Border CornerRadius="10"
+                                                    Padding="10,7"
+                                                    Margin="0,0,0,2"
+                                                    ToolTip.Tip="{Binding ToolTipText}"
+                                                    Classes="outlineRow"
                                                     Classes.dragover="{Binding IsDragOver}"
                                                     Classes.act="{Binding IsActLevel}"
+                                                    Classes.current="{Binding IsCurrent}"
                                                     DragDrop.AllowDrop="True"
                                                     PointerPressed="OutlineNode_PointerPressed"
                                                     PointerMoved="OutlineNode_PointerMoved"
@@ -499,52 +481,19 @@
                                                     DragDrop.DragOver="OutlineNode_DragOver"
                                                     DragDrop.DragLeave="OutlineNode_DragLeave"
                                                     DragDrop.Drop="OutlineNode_Drop">
-                                                <Border.Styles>
-                                                    <!-- Acts are solid-ink cards, like the reference boards'
-                                                         black tiles; their text inverts. -->
-                                                    <Style Selector="Border.act">
-                                                        <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-                                                    </Style>
-                                                    <Style Selector="Border.act TextBlock.title">
-                                                        <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
-                                                    </Style>
-                                                    <Style Selector="Border.act TextBlock.kind">
-                                                        <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
-                                                        <Setter Property="Opacity" Value="0.55" />
-                                                    </Style>
-                                                    <Style Selector="Border.act Border.caret">
-                                                        <Setter Property="Background" Value="{DynamicResource ControlPressedForeground}" />
-                                                    </Style>
-                                                    <Style Selector="Border.dragover">
-                                                        <Setter Property="Background" Value="{DynamicResource DragOverBackground}" />
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-                                                    </Style>
-                                                </Border.Styles>
-                                                <!-- Content on the left; caret-position accent bar on the
-                                                     right (the expand/collapse chevron sits just outside
-                                                     the card, also on the right). -->
-                                                <Grid ColumnDefinitions="*,3" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
-                                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,8,0" Background="Transparent">
-                                                        <TextBlock Classes="kind"
-                                                                   Text="{Binding KindLabel}"
-                                                                   FontSize="10"
-                                                                   Foreground="{DynamicResource MutedText}"
-                                                                   FontWeight="Bold"
-                                                                   LetterSpacing="1.4" />
-                                                        <TextBlock Classes="title"
-                                                                   Text="{Binding Title}"
-                                                                   FontSize="14"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource HeaderText}"
-                                                                   TextWrapping="Wrap" />
-                                                    </StackPanel>
-                                                    <Border Grid.Column="1"
-                                                            Classes="caret"
-                                                            CornerRadius="2"
-                                                            Background="{DynamicResource ControlAccent}"
-                                                            IsVisible="{Binding IsCurrent}" />
-                                                </Grid>
+                                                <StackPanel Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
+                                                    <TextBlock Classes="rowKind"
+                                                               Text="{Binding KindLabel}"
+                                                               IsVisible="{Binding IsActLevel}"
+                                                               FontSize="9"
+                                                               FontWeight="Bold"
+                                                               LetterSpacing="1.6"
+                                                               Margin="0,0,0,1" />
+                                                    <TextBlock Classes="rowTitle"
+                                                               Text="{Binding Title}"
+                                                               FontSize="13"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
                                             </Border>
                                         </TreeDataTemplate>
                                     </TreeView.ItemTemplate>
@@ -562,7 +511,13 @@
                         </TabItem>
 
                         <!-- Notes Tab -->
-                        <TabItem Header="Notes">
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconNotes}" Width="16" Height="16" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Notes" FontSize="9.5" FontWeight="SemiBold" LetterSpacing="0.5" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid RowDefinitions="Auto,*">
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,6">
                                     <Button Classes="inline"
@@ -584,15 +539,13 @@
                                     </TreeView.Styles>
                                     <TreeView.ItemTemplate>
                                         <TreeDataTemplate DataType="vm:OutlineNodeViewModel" ItemsSource="{Binding Children}">
-                                            <Border Background="{DynamicResource CardBackground}"
-                                                    BorderThickness="1"
-                                                    BorderBrush="{DynamicResource CardBorder}"
-                                                    CornerRadius="14"
-                                                    Padding="12,10"
-                                                    Margin="0,0,0,10"
-                                                    BoxShadow="0 1 5 0 #12000000"
-                                                    Classes="outlineCard"
+                                            <Border CornerRadius="10"
+                                                    Padding="10,7"
+                                                    Margin="0,0,0,2"
+                                                    ToolTip.Tip="{Binding ToolTipText}"
+                                                    Classes="outlineRow"
                                                     Classes.dragover="{Binding IsDragOver}"
+                                                    Classes.current="{Binding IsCurrent}"
                                                     DragDrop.AllowDrop="True"
                                                     PointerPressed="OutlineNode_PointerPressed"
                                                     PointerMoved="OutlineNode_PointerMoved"
@@ -600,33 +553,12 @@
                                                     DragDrop.DragOver="OutlineNode_DragOver"
                                                     DragDrop.DragLeave="OutlineNode_DragLeave"
                                                     DragDrop.Drop="OutlineNode_Drop">
-                                                <Border.Styles>
-                                                    <Style Selector="Border.dragover">
-                                                        <Setter Property="Background" Value="{DynamicResource DragOverBackground}" />
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlAccent}" />
-                                                    </Style>
-                                                </Border.Styles>
-                                                <!-- Content on the left; caret-position accent bar on the
-                                                     right (the expand/collapse chevron sits just outside
-                                                     the card, also on the right). -->
-                                                <Grid ColumnDefinitions="*,3" Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
-                                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,8,0" Background="Transparent">
-                                                        <TextBlock Text="{Binding KindLabel}"
-                                                                   FontSize="10"
-                                                                   Foreground="{DynamicResource MutedText}"
-                                                                   FontWeight="Bold"
-                                                                   LetterSpacing="1.4" />
-                                                        <TextBlock Text="{Binding Title}"
-                                                                   FontSize="14"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource HeaderText}"
-                                                                   TextWrapping="Wrap" />
-                                                    </StackPanel>
-                                                    <Border Grid.Column="1"
-                                                            CornerRadius="2"
-                                                            Background="{DynamicResource ControlAccent}"
-                                                            IsVisible="{Binding IsCurrent}" />
-                                                </Grid>
+                                                <StackPanel Background="Transparent" DoubleTapped="OutlineNode_DoubleTapped">
+                                                    <TextBlock Classes="rowTitle"
+                                                               Text="{Binding Title}"
+                                                               FontSize="13"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
                                             </Border>
                                         </TreeDataTemplate>
                                     </TreeView.ItemTemplate>
@@ -644,7 +576,13 @@
                         </TabItem>
 
                         <!-- Scratchpad Tab -->
-                        <TabItem Header="Scratchpad">
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconScratchpad}" Width="16" Height="16" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Scratch" FontSize="9.5" FontWeight="SemiBold" LetterSpacing="0.5" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -681,7 +619,13 @@
                         </TabItem>
 
                         <!-- Goal Tab -->
-                        <TabItem Header="Goal">
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconGoal}" Width="16" Height="16" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Goal" FontSize="9.5" FontWeight="SemiBold" LetterSpacing="0.5" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <views:GoalPanel />
                         </TabItem>
                     </TabControl>
@@ -778,7 +722,7 @@
                 </TabItem>
 
                 <TabItem Header="Beat Board">
-                    <Grid Margin="18,14,18,18">
+                    <Grid Margin="28,10,28,20">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />

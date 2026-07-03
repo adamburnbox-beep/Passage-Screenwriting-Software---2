@@ -178,15 +178,63 @@
         <Setter Property="Margin" Value="0,10,20,10" />
     </Style>
 
-    <!-- The workspace sidebar hosts four tabs in ~350px — tighten its pills so
-         they fit on one row. -->
+    <!-- Workspace sidebar tabs: icon-over-label navigation (like the reference
+         apps' bottom navs) — no pill fill; the active item is simply ink. -->
+    <Style Selector="TabControl#LeftDockTabs /template/ ItemsPresenter#PART_ItemsPresenter">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
     <Style Selector="TabControl#LeftDockTabs TabItem">
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="Padding" Value="12,6" />
-        <Setter Property="Margin" Value="0,0,4,0" />
-        <Style.Resources>
-            <x:Double x:Key="TabItemHeaderFontSize">13</x:Double>
-        </Style.Resources>
+        <Setter Property="Padding" Value="13,5" />
+        <Setter Property="Margin" Value="2,0" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource HeaderText}" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource HeaderText}" />
+    </Style>
+    <Style Selector="TabControl#LeftDockTabs TabItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- Workspace outline/notes rows: quiet and unboxed. Hierarchy comes from
+         indentation and weight; the only ink-filled row is the current one. -->
+    <Style Selector="Border.outlineRow">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.outlineRow:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBackground}" />
+    </Style>
+    <Style Selector="Border.outlineRow TextBlock.rowTitle">
+        <Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+    </Style>
+    <Style Selector="Border.outlineRow TextBlock.rowKind">
+        <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+    </Style>
+    <Style Selector="Border.outlineRow.act TextBlock.rowTitle">
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="13.5" />
+    </Style>
+    <Style Selector="Border.outlineRow.current">
+        <Setter Property="Background" Value="{DynamicResource ControlAccent}" />
+    </Style>
+    <Style Selector="Border.outlineRow.current TextBlock.rowTitle">
+        <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
+    </Style>
+    <Style Selector="Border.outlineRow.current TextBlock.rowKind">
+        <Setter Property="Foreground" Value="{DynamicResource ControlPressedForeground}" />
+        <Setter Property="Opacity" Value="0.6" />
+    </Style>
+    <Style Selector="Border.outlineRow.dragover">
+        <Setter Property="Background" Value="{DynamicResource DragOverBackground}" />
     </Style>
 
     <!-- Remove the Fluent accent pipe (green) from every tab. :is(Control) matches
