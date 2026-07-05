@@ -35,6 +35,7 @@ Passage/*_errors.txt
 Passage/final_errors.txt
 Passage/last_build_errors.txt
 Passage/Passage.App/build_output.txt
+Passage/Passage.App/output.txt
 app-*-diag.log
 build.full.log
 build.noworkload.log

@@ -17,6 +17,7 @@ using Passage.Parser.Goals;
 using Passage.Export;
 using Passage.Core.Goals;
 using Passage.App.Services;
+using Passage.Core.Services;
 
 namespace Passage.App.ViewModels;
 

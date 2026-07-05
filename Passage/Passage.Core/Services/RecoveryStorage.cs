@@ -1,9 +1,7 @@
-using System.IO;
-using System.Security;
 using System.Text.Json;
 using Passage.Core.Goals;
 
-namespace Passage.App.Services;
+namespace Passage.Core.Services;
 
 public sealed record RecoveryDocument
 {
@@ -54,17 +52,7 @@ public static class RecoveryStorage
             document = JsonSerializer.Deserialize<RecoveryDocument>(json, SerializerOptions);
             return document is not null;
         }
-        catch (IOException)
-        {
-            ClearRecoveryFile();
-            return false;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            ClearRecoveryFile();
-            return false;
-        }
-        catch (SecurityException)
+        catch (Exception)
         {
             ClearRecoveryFile();
             return false;
@@ -84,13 +72,7 @@ public static class RecoveryStorage
             var json = JsonSerializer.Serialize(document, SerializerOptions);
             File.WriteAllText(RecoveryFilePath, json);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-        catch (SecurityException)
+        catch (Exception)
         {
         }
     }
@@ -106,13 +88,7 @@ public static class RecoveryStorage
 
             File.Delete(RecoveryFilePath);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-        catch (SecurityException)
+        catch (Exception)
         {
         }
     }

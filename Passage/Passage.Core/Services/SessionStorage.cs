@@ -1,9 +1,7 @@
-using System.IO;
-using System.Security;
 using System.Text.Json;
 using Passage.Core.Goals;
 
-namespace Passage.App.Services;
+namespace Passage.Core.Services;
 
 public sealed record SessionDocumentState
 {
@@ -20,7 +18,15 @@ public sealed record SessionDocumentState
     public double EditorZoomPercent { get; init; } = 100.0;
 }
 
-public sealed record SessionState(IReadOnlyList<SessionDocumentState> Documents, int SelectedIndex);
+public sealed record SessionState(
+    IReadOnlyList<SessionDocumentState> Documents,
+    int SelectedIndex,
+    double? WindowWidth = null,
+    double? WindowHeight = null,
+    int? WindowX = null,
+    int? WindowY = null,
+    string? WindowState = null,
+    IReadOnlyList<string>? RecentFiles = null);
 
 public static class SessionStorage
 {
@@ -56,15 +62,7 @@ public static class SessionStorage
             state = JsonSerializer.Deserialize<SessionState>(json, SerializerOptions);
             return state is not null;
         }
-        catch (IOException)
-        {
-            return false;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
-        catch (SecurityException)
+        catch (Exception)
         {
             return false;
         }
@@ -85,13 +83,7 @@ public static class SessionStorage
             var json = JsonSerializer.Serialize(state, SerializerOptions);
             File.WriteAllText(SessionFilePath, json);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-        catch (SecurityException)
+        catch (Exception)
         {
         }
     }

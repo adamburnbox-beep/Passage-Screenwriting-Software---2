@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Passage.App.Services;
+using Passage.Core.Services;
 using Passage.Core.Goals;
 using Passage.Export;
 using Passage.Parser;

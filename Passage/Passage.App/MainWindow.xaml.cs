@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Passage.App.Services;
+using Passage.Core.Services;
 using Passage.App.Utilities;
 using Passage.App.ViewModels;
 using Passage.App.Visuals;

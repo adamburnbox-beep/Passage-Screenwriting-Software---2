@@ -1,6 +1,6 @@
 using Passage.Core.Goals;
 
-namespace Passage.App.Services;
+namespace Passage.Core.Services;
 
 public sealed record SessionGoalConfiguration
 {
