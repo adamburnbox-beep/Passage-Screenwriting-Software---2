@@ -37,6 +37,20 @@ dotnet build Passage.Linux.slnf
 dotnet run --project Passage/Passage.App.Linux/Passage.App.Linux.csproj
 ```
 
+### Installing as a desktop app (Linux)
+
+To get Passage in your app launcher (with icon) and a `passage` terminal
+command:
+
+```bash
+scripts/install-linux.sh
+```
+
+This publishes a Release build to `~/.local/share/passage` and creates a
+launcher entry. The installed copy is a snapshot — after changing code,
+re-run the script to update it. `scripts/install-linux.sh --uninstall`
+removes everything it installed.
+
 ### Windows
 
 ```powershell
