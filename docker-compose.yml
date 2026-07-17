@@ -1,0 +1,13 @@
+services:
+  passage:
+    build: .
+    image: passage-web:latest
+    container_name: passage
+    ports:
+      - "8080:8080"
+    volumes:
+      - passage-data:/data
+    restart: unless-stopped
+
+volumes:
+  passage-data:
