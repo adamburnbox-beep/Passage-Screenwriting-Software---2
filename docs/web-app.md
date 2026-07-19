@@ -37,13 +37,41 @@ easy to back up and remain fully compatible with the desktop apps.
 git clone <this repo> && cd <repo>
 docker build -t passage-web .
 docker run -d --name passage \
-  -p 8080:8080 \
+  -p 8095:8080 \
   -v passage-data:/data \
   --restart unless-stopped \
   passage-web
 ```
 
-Then open `http://<nas-ip>:8080`.
+Then open `http://<nas-ip>:8095`.
+
+The container listens on 8080 internally; the compose file publishes it on
+host port **8095** because 8080 is commonly taken on a NAS (Nginx Proxy
+Manager's default HTTP port, for one). Change the left-hand side of the
+`ports:` mapping if 8095 clashes with something on your host.
+
+### Option C — Behind Nginx Proxy Manager (no published port)
+
+If you run NPM, skip the host port entirely and let NPM reach the container
+over a shared Docker network:
+
+1. Remove the `ports:` section from `docker-compose.yml` and attach the
+   service to the network NPM uses, e.g.:
+
+   ```yaml
+   services:
+     passage:
+       # ...
+       networks: [proxy]
+   networks:
+     proxy:
+       external: true   # the network your NPM container is on
+   ```
+
+2. In NPM, add a Proxy Host: domain of your choice → forward to
+   `passage` : `8080` (scheme `http`).
+3. Enable **WebSockets Support** on that proxy host — Blazor Server requires
+   it. Add NPM's access list or SSL as desired.
 
 ## Configuration
 
