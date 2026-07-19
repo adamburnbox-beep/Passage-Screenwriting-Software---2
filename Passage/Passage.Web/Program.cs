@@ -8,6 +8,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<ScriptLibrary>();
 builder.Services.AddSingleton<ExportService>();
+builder.Services.AddSingleton<GoalSettingsStore>();
 
 var app = builder.Build();
 

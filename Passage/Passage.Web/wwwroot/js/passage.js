@@ -1,41 +1,35 @@
 // Client-side half of the Passage web editor.
 //
-// The <textarea> is owned by this script (not data-bound) so typing stays
-// native and instant. Content changes are debounced and pushed to the Blazor
-// circuit, which re-parses with the shared Fountain pipeline and pushes back
-// per-line syntax classes for the highlight overlay. A version counter guards
-// against stale highlight batches arriving after further edits.
+// The editor is CodeMirror 5 (vendored in lib/codemirror), so typed text
+// renders instantly in the browser. Content changes are debounced and pushed
+// to the Blazor circuit, which re-parses with the shared Fountain pipeline and
+// pushes back per-line element classes. Those classes drive both syntax
+// colour and screenplay indentation (character/dialogue/parenthetical
+// margins, right-aligned transitions, centred text) via CSS on the line —
+// the same "style the line, leave the text alone" approach the desktop
+// editor's FountainIndentationGenerator takes. A version counter guards
+// against stale class batches arriving after further edits.
 window.passage = (function () {
     let dotnetRef = null;
-    let textarea = null;
-    let overlay = null;
+    let cm = null;
     let version = 0;
     let inputTimer = null;
     let caretTimer = null;
     let lastCaretLine = -1;
     let dirty = false;
+    let appliedClasses = [];
 
     const INPUT_DEBOUNCE_MS = 200;
-
-    function lineAtOffset(text, offset) {
-        let line = 1;
-        for (let i = 0; i < offset && i < text.length; i++) {
-            if (text.charCodeAt(i) === 10) line++;
-        }
-        return line;
-    }
-
-    function escapeHtml(value) {
-        return value
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
+    const LINE_CLASSES = [
+        "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
+        "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
+        "sx-lyrics", "sx-titlepage", "md-heading"
+    ];
 
     function pushContent() {
-        if (!dotnetRef || !textarea) return;
-        const caretLine = lineAtOffset(textarea.value, textarea.selectionStart);
-        dotnetRef.invokeMethodAsync("OnEditorChanged", textarea.value, version, caretLine);
+        if (!dotnetRef || !cm) return;
+        const caretLine = cm.getCursor().line + 1;
+        dotnetRef.invokeMethodAsync("OnEditorChanged", cm.getValue("\n"), version, caretLine);
     }
 
     function scheduleInput() {
@@ -46,10 +40,10 @@ window.passage = (function () {
     }
 
     function reportCaret() {
-        if (!dotnetRef || !textarea) return;
+        if (!dotnetRef || !cm) return;
         clearTimeout(caretTimer);
         caretTimer = setTimeout(() => {
-            const line = lineAtOffset(textarea.value, textarea.selectionStart);
+            const line = cm.getCursor().line + 1;
             if (line !== lastCaretLine) {
                 lastCaretLine = line;
                 dotnetRef.invokeMethodAsync("OnCaretMoved", line);
@@ -57,29 +51,30 @@ window.passage = (function () {
         }, 120);
     }
 
-    function syncScroll() {
-        if (!textarea || !overlay) return;
-        overlay.scrollTop = textarea.scrollTop;
-        overlay.scrollLeft = textarea.scrollLeft;
-    }
-
     function init(reference) {
         dotnetRef = reference;
-        textarea = document.getElementById("editor-input");
-        overlay = document.getElementById("editor-overlay");
-        if (!textarea || !overlay) return;
+        const host = document.getElementById("editor-host");
+        if (!host || typeof CodeMirror === "undefined") return;
 
-        textarea.addEventListener("input", () => { scheduleInput(); reportCaret(); });
-        textarea.addEventListener("scroll", syncScroll);
-        textarea.addEventListener("keyup", reportCaret);
-        textarea.addEventListener("click", reportCaret);
-
-        textarea.addEventListener("keydown", (event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-                event.preventDefault();
-                dotnetRef.invokeMethodAsync("OnSaveShortcut");
+        cm = CodeMirror(host, {
+            value: "",
+            mode: null,
+            lineWrapping: true,
+            placeholder: "INT. OPENING SCENE - DAY",
+            viewportMargin: 50,
+            extraKeys: {
+                "Ctrl-S": () => { dotnetRef.invokeMethodAsync("OnSaveShortcut"); },
+                "Cmd-S": () => { dotnetRef.invokeMethodAsync("OnSaveShortcut"); }
             }
         });
+
+        cm.on("change", (_, changeObj) => {
+            if (changeObj.origin !== "setValue") {
+                scheduleInput();
+            }
+            reportCaret();
+        });
+        cm.on("cursorActivity", reportCaret);
 
         // Close any open dropdown menu after a choice or an outside click.
         document.addEventListener("click", (event) => {
@@ -98,25 +93,37 @@ window.passage = (function () {
         });
     }
 
-    function applyHighlights(forVersion, classes) {
-        if (!textarea || !overlay || forVersion !== version) return;
-        const lines = textarea.value.replace(/\r\n?/g, "\n").split("\n");
-        const parts = [];
-        for (let i = 0; i < lines.length; i++) {
-            const cls = (classes && classes[i]) ? " " + classes[i] : "";
-            parts.push('<span class="ln' + cls + '" data-line="' + (i + 1) + '">'
-                + escapeHtml(lines[i]) + "\n</span>");
+    function setLineClass(lineIndex, cssClass) {
+        const previous = appliedClasses[lineIndex];
+        if (previous === cssClass) return;
+        if (previous) {
+            cm.removeLineClass(lineIndex, "text", previous);
         }
-        overlay.innerHTML = parts.join("");
-        syncScroll();
+        if (cssClass) {
+            cm.addLineClass(lineIndex, "text", cssClass);
+        }
+        appliedClasses[lineIndex] = cssClass;
+    }
+
+    function applyHighlights(forVersion, classes) {
+        if (!cm || forVersion !== version) return;
+        const lineCount = cm.lineCount();
+        cm.operation(() => {
+            for (let i = 0; i < lineCount; i++) {
+                setLineClass(i, (classes && classes[i]) || "");
+            }
+            appliedClasses.length = lineCount;
+        });
     }
 
     function setContent(text) {
-        if (!textarea) return version;
+        if (!cm) return version;
         version++;
-        textarea.value = text;
-        textarea.scrollTop = 0;
-        textarea.setSelectionRange(0, 0);
+        appliedClasses = [];
+        cm.setValue(text);
+        cm.clearHistory();
+        cm.setCursor({ line: 0, ch: 0 });
+        cm.scrollTo(0, 0);
         lastCaretLine = -1;
         dirty = false;
         return version;
@@ -127,41 +134,29 @@ window.passage = (function () {
     }
 
     function scrollToLine(line) {
-        if (!textarea || !overlay) return;
-        const span = overlay.querySelector('.ln[data-line="' + line + '"]');
-        if (span) {
-            const target = span.offsetTop - textarea.clientHeight / 3;
-            textarea.scrollTop = Math.max(0, target);
-            syncScroll();
-        }
-
-        const text = textarea.value;
-        let offset = 0;
-        let current = 1;
-        while (current < line && offset < text.length) {
-            const next = text.indexOf("\n", offset);
-            if (next < 0) break;
-            offset = next + 1;
-            current++;
-        }
-        textarea.focus();
-        textarea.setSelectionRange(offset, offset);
+        if (!cm) return;
+        const target = Math.max(0, Math.min(line - 1, cm.lineCount() - 1));
+        cm.setCursor({ line: target, ch: 0 });
+        const coords = cm.charCoords({ line: target, ch: 0 }, "local");
+        const scroller = cm.getScrollInfo();
+        cm.scrollTo(null, Math.max(0, coords.top - scroller.clientHeight / 3));
+        cm.focus();
         reportCaret();
     }
 
     async function exportDocument(format, name) {
-        if (!textarea) return;
+        if (!cm) return;
         const baseName = (name && name.trim().length > 0 ? name : "Untitled")
             .replace(/\.(fountain|md|txt)$/i, "");
 
         if (format === "fountain") {
-            const blob = new Blob([textarea.value], { type: "text/plain" });
+            const blob = new Blob([cm.getValue("\n")], { type: "text/plain" });
             triggerDownload(blob, baseName + ".fountain");
             return;
         }
 
         const form = new FormData();
-        form.append("content", textarea.value);
+        form.append("content", cm.getValue("\n"));
         form.append("format", format);
         form.append("name", baseName);
         const response = await fetch("api/export", { method: "POST", body: form });
@@ -184,8 +179,13 @@ window.passage = (function () {
     }
 
     function focusEditor() {
-        if (textarea) textarea.focus();
+        if (cm) cm.focus();
     }
 
-    return { init, applyHighlights, setContent, setDirty, scrollToLine, exportDocument, focusEditor };
+    // The CodeMirror instance is exposed for end-to-end tests.
+    return {
+        init, applyHighlights, setContent, setDirty, scrollToLine,
+        exportDocument, focusEditor,
+        get editor() { return cm; }
+    };
 })();

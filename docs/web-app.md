@@ -7,9 +7,16 @@ PDF/text export behave identically.
 
 ## What it does
 
-- **Script editor** with live Fountain syntax highlighting (scene headings,
-  characters, dialogue, transitions, sections, synopses, notes, boneyard,
-  lyrics, title page), powered by the real `FountainParser` on the server.
+- **Script editor** (CodeMirror-based) with live Fountain syntax highlighting
+  (scene headings, characters, dialogue, transitions, sections, synopses,
+  notes, boneyard, lyrics, title page) powered by the real `FountainParser`
+  on the server, plus live screenplay formatting: character, dialogue, and
+  parenthetical lines sit at industry-standard indents, transitions are
+  right-aligned, and centred text is centred — while the underlying Fountain
+  stays plain text.
+- **Goals** — document goal (word or page count) and session goal (words,
+  pages, or a timer) with progress ring, start/pause/reset, and session
+  baseline reset. Targets persist on the data volume.
 - **Outline sidebar** — Acts / Sequences / Scenes / Synopses, click to jump.
 - **Notes sidebar** — every `[[note]]` with jump-to-line.
 - **Beat Board** — read-only index cards mirroring the script structure.
@@ -94,5 +101,4 @@ the volume line in `docker-compose.yml` with a bind mount, e.g.
 - Saving is last-write-wins; two browsers editing the same file will overwrite
   each other.
 - The Beat Board is a read-only mirror of the script structure in this first
-  version (the desktop apps remain the place for card editing), and writing
-  goals/timers haven't been ported yet.
+  version (the desktop apps remain the place for card editing).
