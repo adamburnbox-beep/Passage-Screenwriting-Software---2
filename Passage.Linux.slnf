@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "Passage Screenwriting Software.sln",
+    "projects": [
+      "Passage\\Passage.App.Linux\\Passage.App.Linux.csproj",
+      "Passage\\Passage.Core\\Passage.Core.csproj",
+      "Passage\\Passage.Export\\Passage.Export.csproj",
+      "Passage\\Passage.Parser\\Passage.Parser.csproj",
+      "Passage\\Passage.Tests\\Passage.Tests.csproj"
+    ]
+  }
+}

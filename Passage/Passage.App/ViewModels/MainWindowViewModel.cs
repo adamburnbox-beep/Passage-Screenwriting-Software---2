@@ -13,6 +13,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Passage.App.Services;
+using Passage.Core.Services;
 using Passage.App.Utilities;
 using Passage.Core;
 using Passage.Core.Goals;

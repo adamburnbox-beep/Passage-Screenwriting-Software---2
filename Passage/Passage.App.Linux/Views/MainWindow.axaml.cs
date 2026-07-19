@@ -15,6 +15,7 @@ using AvaloniaEdit;
 using Passage.App.ViewModels;
 using Passage.Parser;
 using Passage.App.Services;
+using Passage.Core.Services;
 
 namespace Passage.App.Views;
 

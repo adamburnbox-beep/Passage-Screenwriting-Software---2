@@ -2,10 +2,18 @@
   "commands": [
     {
       "id": "16b3532f-2fd4-4936-8b7b-904ff6fa45ef",
-      "label": "Run Passage",
+      "label": "Run Passage (Linux)",
+      "customCommand": "dotnet run --project \"Passage/Passage.App.Linux/Passage.App.Linux.csproj\"",
+      "icon": "play",
+      "notes": "Runs the Avalonia (Linux) app",
+      "terminalMode": "reuse"
+    },
+    {
+      "id": "5f0a7c1e-93d2-4b8a-a1c4-2e6f0d9b3a71",
+      "label": "Run Passage (Windows)",
       "customCommand": "dotnet run --project \"Passage/Passage.App/Passage.App.csproj\"",
       "icon": "play",
-      "notes": "Opens the Passage proj file",
+      "notes": "Runs the WPF app (Windows only)",
       "terminalMode": "reuse"
     }
   ],
