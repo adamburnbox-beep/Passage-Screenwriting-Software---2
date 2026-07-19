@@ -1,8 +1,10 @@
 @page "/"
+@using Passage.Core.Goals
 @using Passage.Export
 @using Passage.Parser
 @inject ScriptLibrary Library
 @inject ExportService Exports
+@inject GoalSettingsStore GoalStore
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -46,6 +48,7 @@
                 <button class="@(_sidebarTab == 0 ? "active" : null)" @onclick="() => _sidebarTab = 0">FILES</button>
                 <button class="@(_sidebarTab == 1 ? "active" : null)" @onclick="() => _sidebarTab = 1">OUTLINE</button>
                 <button class="@(_sidebarTab == 2 ? "active" : null)" @onclick="() => _sidebarTab = 2">NOTES</button>
+                <button class="@(_sidebarTab == 3 ? "active" : null)" @onclick="() => _sidebarTab = 3">GOALS</button>
             </div>
             <div class="sidebar-body">
                 @if (_sidebarTab == 0)
@@ -76,7 +79,7 @@ Click New to start one — files are stored on the server volume.</div>
                         @RenderOutlineNode(node)
                     }
                 }
-                else
+                else if (_sidebarTab == 2)
                 {
                     @if (_analysis.Notes.Count == 0)
                     {
@@ -90,15 +93,107 @@ Click New to start one — files are stored on the server volume.</div>
                         </div>
                     }
                 }
+                else
+                {
+                    <div class="goal-panel">
+                        <div class="goal-card">
+                            <div class="goal-card-title">SESSION</div>
+                            <label class="goal-field">
+                                <span>GOAL TYPE</span>
+                                <select @bind="SessionGoalTypeString">
+                                    <option value="WordCount">Word count</option>
+                                    <option value="PageCount">Page count</option>
+                                    <option value="Timer">Timer</option>
+                                </select>
+                            </label>
+                            <label class="goal-field">
+                                <span>@(IsTimerSession ? "TARGET (MINUTES)" : "TARGET")</span>
+                                <input type="number" min="1" max="100000" @bind="SessionTargetValue" />
+                            </label>
+
+                            <div class="goal-dash">
+                                <div class="goal-ring-wrap">
+                                    <svg class="goal-ring" viewBox="0 0 110 110">
+                                        <circle class="ring-track" cx="55" cy="55" r="48" />
+                                        <circle class="ring-progress @(SessionComplete ? "done" : null)" cx="55" cy="55" r="48"
+                                                style="stroke-dasharray:@RingDash(SessionPercent)" />
+                                    </svg>
+                                    <div class="goal-ring-center">
+                                        @if (IsTimerSession)
+                                        {
+                                            <span class="ring-big">@FormatClock(TimerRemaining)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="ring-big">@((int)Math.Round(SessionPercent))%</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="goal-stats">
+                                    <div class="goal-stat-big">@SessionCurrentDisplay</div>
+                                    <div class="goal-stat-label">CURRENT</div>
+                                    <div class="goal-stat-mid">@SessionTargetDisplay</div>
+                                    <div class="goal-stat-label">TARGET</div>
+                                </div>
+                            </div>
+
+                            @if (IsTimerSession)
+                            {
+                                <div class="goal-actions">
+                                    @if (_timerState is TimerGoalState.Idle)
+                                    {
+                                        <button class="btn primary" @onclick="StartTimer">Start</button>
+                                    }
+                                    else if (_timerState is TimerGoalState.Running)
+                                    {
+                                        <button class="btn" @onclick="PauseTimer">Pause</button>
+                                    }
+                                    else if (_timerState is TimerGoalState.Paused)
+                                    {
+                                        <button class="btn primary" @onclick="StartTimer">Resume</button>
+                                    }
+                                    <button class="btn" @onclick="ResetTimer">Reset</button>
+                                </div>
+                                <div class="goal-timer-row">
+                                    <span>Elapsed @FormatClock(TimerElapsed)</span>
+                                    <span>Remaining @FormatClock(TimerRemaining)</span>
+                                </div>
+                            }
+                            <div class="goal-state @(SessionComplete ? "done" : null)">@(SessionComplete ? "Complete" : "In progress")</div>
+                            <button class="btn goal-reset" @onclick="ResetSession">Reset session</button>
+                        </div>
+
+                        <div class="goal-card">
+                            <div class="goal-card-title">DOCUMENT</div>
+                            <label class="goal-field">
+                                <span>GOAL TYPE</span>
+                                <select @bind="DocumentGoalTypeString">
+                                    <option value="WordCount">Word count</option>
+                                    <option value="PageCount">Page count</option>
+                                </select>
+                            </label>
+                            <label class="goal-field">
+                                <span>TARGET</span>
+                                <input type="number" min="1" max="1000000" @bind="DocumentTargetValue" />
+                            </label>
+                            <div class="goal-bar-track">
+                                <div class="goal-bar-fill @(DocumentComplete ? "done" : null)" style="width:@(Math.Min(100, DocumentPercent).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                            </div>
+                            <div class="goal-timer-row">
+                                <span>@DocumentCurrentDisplay</span>
+                                <span>of @DocumentTargetDisplay</span>
+                            </div>
+                            <div class="goal-state @(DocumentComplete ? "done" : null)">@(DocumentComplete ? "Complete" : "In progress")</div>
+                        </div>
+                    </div>
+                }
             </div>
         </aside>
 
         <main class="center-pane">
             <div class="editor-surface" hidden="@(_mainViewIndex != 0)">
                 <div class="editor-stack" style="--editor-font-size:@(_editorFontPx)px">
-                    <pre id="editor-overlay" class="editor-overlay" aria-hidden="true"></pre>
-                    <textarea id="editor-input" class="editor-input" spellcheck="false"
-                              placeholder="INT. OPENING SCENE - DAY"></textarea>
+                    <div id="editor-host"></div>
                 </div>
             </div>
 
@@ -276,7 +371,9 @@ Open a .fountain file to see formatted pages.</div>
     protected override void OnInitialized()
     {
         _files = Library.List();
+        _goals = GoalStore.Load();
         RunAnalysis();
+        CaptureSessionBaseline();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -437,6 +534,7 @@ Open a .fountain file to see formatted pages.</div>
         _isDirty = false;
         _statusMessage = "New script";
         await ResetEditorAsync();
+        CaptureSessionBaseline();
     }
 
     private async Task OpenFileAsync(string name)
@@ -455,6 +553,7 @@ Open a .fountain file to see formatted pages.</div>
         _isDirty = false;
         _statusMessage = $"Opened {name}";
         await ResetEditorAsync();
+        CaptureSessionBaseline();
     }
 
     private async Task ResetEditorAsync()
@@ -673,9 +772,242 @@ Open a .fountain file to see formatted pages.</div>
         </div>
     };
 
+    // ---- Goals ----
+
+    private GoalSettings _goals = new();
+    private int _sessionWordBaseline;
+    private int _sessionPageBaseline;
+    private TimerGoalState _timerState = TimerGoalState.Idle;
+    private TimeSpan _timerAccumulated = TimeSpan.Zero;
+    private DateTime? _timerRunningSince;
+    private System.Timers.Timer? _timerTick;
+
+    private bool IsTimerSession => _goals.SessionType == GoalType.Timer;
+    private TimeSpan TimerTarget => TimeSpan.FromMinutes(Math.Max(1, _goals.SessionTimerMinutes));
+
+    private TimeSpan TimerElapsed
+    {
+        get
+        {
+            var elapsed = _timerAccumulated;
+            if (_timerRunningSince is { } since)
+            {
+                elapsed += DateTime.UtcNow - since;
+            }
+
+            return elapsed > TimerTarget ? TimerTarget : elapsed;
+        }
+    }
+
+    private TimeSpan TimerRemaining => TimerTarget - TimerElapsed;
+
+    private string SessionGoalTypeString
+    {
+        get => _goals.SessionType.ToString();
+        set
+        {
+            if (Enum.TryParse<GoalType>(value, out var parsed) && parsed != _goals.SessionType)
+            {
+                _goals.SessionType = parsed;
+                GoalStore.Save(_goals);
+            }
+        }
+    }
+
+    private string DocumentGoalTypeString
+    {
+        get => _goals.DocumentType.ToString();
+        set
+        {
+            if (Enum.TryParse<GoalType>(value, out var parsed) && parsed != _goals.DocumentType
+                && parsed != GoalType.Timer)
+            {
+                _goals.DocumentType = parsed;
+                GoalStore.Save(_goals);
+            }
+        }
+    }
+
+    private int SessionTargetValue
+    {
+        get => _goals.SessionType switch
+        {
+            GoalType.PageCount => _goals.SessionPageTarget,
+            GoalType.Timer => _goals.SessionTimerMinutes,
+            _ => _goals.SessionWordTarget
+        };
+        set
+        {
+            var clamped = Math.Clamp(value, 1, 1_000_000);
+            switch (_goals.SessionType)
+            {
+                case GoalType.PageCount:
+                    _goals.SessionPageTarget = clamped;
+                    break;
+                case GoalType.Timer:
+                    if (_goals.SessionTimerMinutes != clamped)
+                    {
+                        _goals.SessionTimerMinutes = clamped;
+                        ResetTimer();
+                    }
+                    break;
+                default:
+                    _goals.SessionWordTarget = clamped;
+                    break;
+            }
+
+            GoalStore.Save(_goals);
+        }
+    }
+
+    private int DocumentTargetValue
+    {
+        get => _goals.DocumentType == GoalType.PageCount ? _goals.DocumentPageTarget : _goals.DocumentWordTarget;
+        set
+        {
+            var clamped = Math.Clamp(value, 1, 1_000_000);
+            if (_goals.DocumentType == GoalType.PageCount)
+            {
+                _goals.DocumentPageTarget = clamped;
+            }
+            else
+            {
+                _goals.DocumentWordTarget = clamped;
+            }
+
+            GoalStore.Save(_goals);
+        }
+    }
+
+    private int SessionCurrent => _goals.SessionType switch
+    {
+        GoalType.PageCount => Math.Max(0, _analysis.PageCount - _sessionPageBaseline),
+        GoalType.Timer => (int)TimerElapsed.TotalSeconds,
+        _ => Math.Max(0, _analysis.WordCount - _sessionWordBaseline)
+    };
+
+    private int SessionTarget => _goals.SessionType == GoalType.Timer
+        ? (int)TimerTarget.TotalSeconds
+        : SessionTargetValue;
+
+    private double SessionPercent => SessionTarget <= 0 ? 0 : Math.Min(100.0, SessionCurrent * 100.0 / SessionTarget);
+    private bool SessionComplete => IsTimerSession ? _timerState == TimerGoalState.Completed : SessionCurrent >= SessionTarget;
+
+    private int DocumentCurrent => _goals.DocumentType == GoalType.PageCount ? _analysis.PageCount : _analysis.WordCount;
+    private double DocumentPercent => DocumentTargetValue <= 0 ? 0 : Math.Min(100.0, DocumentCurrent * 100.0 / DocumentTargetValue);
+    private bool DocumentComplete => DocumentCurrent >= DocumentTargetValue;
+
+    private string SessionCurrentDisplay => _goals.SessionType switch
+    {
+        GoalType.PageCount => FormatUnit(SessionCurrent, "page"),
+        GoalType.Timer => FormatClock(TimerElapsed),
+        _ => FormatUnit(SessionCurrent, "word")
+    };
+
+    private string SessionTargetDisplay => _goals.SessionType switch
+    {
+        GoalType.PageCount => FormatUnit(SessionTargetValue, "page"),
+        GoalType.Timer => FormatClock(TimerTarget),
+        _ => FormatUnit(SessionTargetValue, "word")
+    };
+
+    private string DocumentCurrentDisplay => FormatUnit(DocumentCurrent, _goals.DocumentType == GoalType.PageCount ? "page" : "word");
+    private string DocumentTargetDisplay => FormatUnit(DocumentTargetValue, _goals.DocumentType == GoalType.PageCount ? "page" : "word");
+
+    private static string FormatUnit(int value, string unit) => $"{value:N0} {unit}{(value == 1 ? "" : "s")}";
+
+    private static string FormatClock(TimeSpan span)
+    {
+        if (span < TimeSpan.Zero) span = TimeSpan.Zero;
+        return span.TotalHours >= 1
+            ? $"{(int)span.TotalHours}:{span.Minutes:00}:{span.Seconds:00}"
+            : $"{span.Minutes:00}:{span.Seconds:00}";
+    }
+
+    // Circumference of the r=48 progress ring; the dash pair draws pct of it.
+    private static string RingDash(double percent)
+    {
+        const double circumference = 2 * Math.PI * 48;
+        var filled = Math.Clamp(percent, 0, 100) / 100.0 * circumference;
+        return $"{filled.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {circumference.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}";
+    }
+
+    private void CaptureSessionBaseline()
+    {
+        _sessionWordBaseline = _analysis.WordCount;
+        _sessionPageBaseline = _analysis.PageCount;
+    }
+
+    private void ResetSession()
+    {
+        CaptureSessionBaseline();
+        ResetTimer();
+        _statusMessage = "Session goal reset";
+    }
+
+    private void StartTimer()
+    {
+        if (_timerState is TimerGoalState.Completed or TimerGoalState.Running)
+        {
+            return;
+        }
+
+        _timerRunningSince = DateTime.UtcNow;
+        _timerState = TimerGoalState.Running;
+        EnsureTimerTick();
+    }
+
+    private void PauseTimer()
+    {
+        if (_timerState != TimerGoalState.Running)
+        {
+            return;
+        }
+
+        _timerAccumulated = TimerElapsed;
+        _timerRunningSince = null;
+        _timerState = _timerAccumulated >= TimerTarget ? TimerGoalState.Completed : TimerGoalState.Paused;
+        _timerTick?.Stop();
+    }
+
+    private void ResetTimer()
+    {
+        _timerAccumulated = TimeSpan.Zero;
+        _timerRunningSince = null;
+        _timerState = TimerGoalState.Idle;
+        _timerTick?.Stop();
+    }
+
+    private void EnsureTimerTick()
+    {
+        if (_timerTick is null)
+        {
+            _timerTick = new System.Timers.Timer(500);
+            _timerTick.Elapsed += (_, _) => _ = InvokeAsync(OnTimerTick);
+        }
+
+        _timerTick.Start();
+    }
+
+    private void OnTimerTick()
+    {
+        if (_timerState == TimerGoalState.Running && TimerElapsed >= TimerTarget)
+        {
+            _timerAccumulated = TimerTarget;
+            _timerRunningSince = null;
+            _timerState = TimerGoalState.Completed;
+            _timerTick?.Stop();
+            _statusMessage = "Session timer complete";
+        }
+
+        StateHasChanged();
+    }
+
     public void Dispose()
     {
         _autosaveCts?.Cancel();
+        _timerTick?.Stop();
+        _timerTick?.Dispose();
         _selfRef?.Dispose();
     }
 }

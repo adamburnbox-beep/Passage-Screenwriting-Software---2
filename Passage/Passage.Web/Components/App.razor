@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="preload" href="fonts/CourierPrime-Regular.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="fonts/CourierPrime-Bold.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="stylesheet" href="lib/codemirror/codemirror.css" />
     <link rel="stylesheet" href="css/app.css" />
     <HeadOutlet @rendermode="InteractiveServer" />
     <title>Passage</title>
@@ -14,6 +17,8 @@
 <body>
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
+    <script src="lib/codemirror/codemirror.js"></script>
+    <script src="lib/codemirror/placeholder.js"></script>
     <script src="js/passage.js"></script>
 </body>
 

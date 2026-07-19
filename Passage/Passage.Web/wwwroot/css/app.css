@@ -357,56 +357,54 @@ html, body {
     overflow: hidden;
 }
 
-.editor-overlay,
-.editor-input {
-    position: absolute;
-    inset: 0;
-    margin: 0;
-    border: none;
-    padding: 40px 56px;
+/* CodeMirror host fills the page card; the editor column is capped near the
+   print wrap width (~61ch of Courier) so on-screen line breaks approximate
+   the paginated output. */
+#editor-host { position: absolute; inset: 0; }
+
+.CodeMirror {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    color: var(--editor-foreground);
     font-family: var(--mono);
     font-size: var(--editor-font-size, 15px);
     line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    background: transparent;
 }
 
-.editor-overlay {
-    color: var(--editor-foreground);
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 1;
+.CodeMirror-lines { padding: 40px 0; }
+
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+    max-width: calc(63ch + 112px);
+    margin: 0 auto;
+    padding: 0 56px;
 }
 
-.editor-input {
-    color: transparent;
-    caret-color: var(--control-accent);
-    resize: none;
-    outline: none;
-    overflow-y: auto;
-    z-index: 2;
-    width: 100%;
-    height: 100%;
-}
+.CodeMirror-cursor { border-left: 2px solid var(--control-accent); }
+.CodeMirror-selected { background: rgba(103, 151, 255, 0.30); }
+.CodeMirror-focused .CodeMirror-selected { background: rgba(103, 151, 255, 0.30); }
+pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
-.editor-input::selection { background: rgba(103, 151, 255, 0.30); color: transparent; }
-.editor-input::placeholder { color: var(--muted-text); opacity: 1; }
-
-.editor-overlay .sx-scene { color: var(--syntax-scene); font-weight: 700; }
-.editor-overlay .sx-character { color: var(--syntax-character); }
-.editor-overlay .sx-dialogue { color: var(--syntax-dialogue); }
-.editor-overlay .sx-paren { color: var(--syntax-paren); font-style: italic; }
-.editor-overlay .sx-transition { color: var(--syntax-transition); }
-.editor-overlay .sx-section { color: var(--syntax-section); font-weight: 700; }
-.editor-overlay .sx-synopsis { color: var(--syntax-synopsis); font-style: italic; }
-.editor-overlay .sx-note { color: var(--syntax-note); font-style: italic; }
-.editor-overlay .sx-boneyard { color: var(--muted-text); }
-.editor-overlay .sx-centered { color: var(--editor-foreground); }
-.editor-overlay .sx-lyrics { color: var(--syntax-dialogue); font-style: italic; }
-.editor-overlay .sx-titlepage { color: var(--secondary-text); }
-.editor-overlay .md-heading { color: var(--syntax-section); font-weight: 700; }
+/* Per-line element styling: colour + industry-standard screenplay indents
+   (measured from the left text margin, in Courier characters — 10 per inch:
+   dialogue 1.0", parenthetical 1.5", character 2.2", mirroring the desktop
+   editor's FountainIndentationGenerator). Indents are padding on the line,
+   so wrapped continuations hang at the same margin and the underlying
+   Fountain text is untouched. */
+.CodeMirror pre.sx-scene { color: var(--syntax-scene); font-weight: 700; }
+.CodeMirror pre.sx-character { color: var(--syntax-character); padding-left: calc(56px + 22ch); }
+.CodeMirror pre.sx-dialogue { color: var(--syntax-dialogue); padding-left: calc(56px + 10ch); }
+.CodeMirror pre.sx-paren { color: var(--syntax-paren); font-style: italic; padding-left: calc(56px + 15ch); }
+.CodeMirror pre.sx-transition { color: var(--syntax-transition); text-align: right; }
+.CodeMirror pre.sx-section { color: var(--syntax-section); font-weight: 700; }
+.CodeMirror pre.sx-synopsis { color: var(--syntax-synopsis); font-style: italic; }
+.CodeMirror pre.sx-note { color: var(--syntax-note); font-style: italic; }
+.CodeMirror pre.sx-boneyard { color: var(--muted-text); }
+.CodeMirror pre.sx-centered { color: var(--editor-foreground); text-align: center; }
+.CodeMirror pre.sx-lyrics { color: var(--syntax-dialogue); font-style: italic; }
+.CodeMirror pre.sx-titlepage { color: var(--secondary-text); }
+.CodeMirror pre.md-heading { color: var(--syntax-section); font-weight: 700; }
 
 /* ---- Preview ---- */
 
@@ -544,6 +542,124 @@ html, body {
 }
 
 .board-card .board-card { margin-left: 10px; }
+
+/* ---- Goals ---- */
+
+.goal-panel { display: flex; flex-direction: column; gap: 14px; }
+
+.goal-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.goal-card-title {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--header-text);
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.goal-field { display: block; margin-bottom: 10px; }
+
+.goal-field span {
+    display: block;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    color: var(--muted-text);
+    margin-bottom: 5px;
+}
+
+.goal-field select,
+.goal-field input {
+    width: 100%;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: 8px;
+    color: var(--control-foreground);
+    padding: 8px 10px;
+    font-size: 12.5px;
+    outline: none;
+}
+
+.goal-field select:focus,
+.goal-field input:focus { border-color: var(--control-accent); }
+
+.goal-dash {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 14px 0 8px;
+}
+
+.goal-ring-wrap { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+.goal-ring { width: 96px; height: 96px; transform: rotate(-90deg); }
+.goal-ring circle { fill: none; }
+.goal-ring .ring-track { stroke: var(--surface-border); stroke-width: 5; }
+.goal-ring .ring-progress {
+    stroke: var(--control-accent);
+    stroke-width: 7;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.4s ease;
+}
+.goal-ring .ring-progress.done { stroke: var(--syntax-note); }
+
+.goal-ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ring-big { font-size: 17px; font-weight: 600; color: var(--header-text); }
+
+.goal-stats { text-align: center; flex: 1; min-width: 0; }
+.goal-stat-big { font-size: 17px; font-weight: 600; color: var(--header-text); }
+.goal-stat-mid { font-size: 12.5px; font-weight: 600; color: var(--secondary-text); margin-top: 8px; }
+.goal-stat-label { font-size: 8.5px; letter-spacing: 0.16em; font-weight: 700; color: var(--muted-text); margin-top: 2px; }
+
+.goal-actions { display: flex; justify-content: center; gap: 8px; margin: 10px 0 6px; }
+
+.goal-timer-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--secondary-text);
+    margin: 8px 2px 0;
+}
+
+.goal-state {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--muted-text);
+    text-transform: uppercase;
+    margin-top: 10px;
+}
+
+.goal-state.done { color: var(--syntax-note); }
+
+.goal-reset { width: 100%; margin-top: 10px; }
+
+.goal-bar-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--surface-border);
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.goal-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--control-accent);
+    transition: width 0.4s ease;
+}
+
+.goal-bar-fill.done { background: var(--syntax-note); }
 
 /* ---- Status bar ---- */
 
