@@ -362,9 +362,18 @@ html, body {
    the paginated output. */
 #editor-host { position: absolute; inset: 0; }
 
+/* Cap and centre the whole editor (not each line): CodeMirror positions the
+   caret in a separate cursor layer whose origin is the sizer's left edge, and
+   character x-coordinates are measured relative to each line's own box. Those
+   only agree when every line box starts at x=0, so a per-line `margin: 0 auto`
+   offsets the text from the caret's origin and the caret lands far to the left
+   (and clicks map past the text, snapping edits to end-of-line). Centring the
+   editor block keeps the cursor layer and the lines on one shared origin. */
 .CodeMirror {
     width: 100%;
+    max-width: calc(63ch + 112px);
     height: 100%;
+    margin: 0 auto;
     background: transparent;
     color: var(--editor-foreground);
     font-family: var(--mono);
@@ -376,8 +385,6 @@ html, body {
 
 .CodeMirror pre.CodeMirror-line,
 .CodeMirror pre.CodeMirror-line-like {
-    max-width: calc(63ch + 112px);
-    margin: 0 auto;
     padding: 0 56px;
 }
 
