@@ -1,0 +1,681 @@
+@page "/"
+@using Passage.Export
+@using Passage.Parser
+@inject ScriptLibrary Library
+@inject ExportService Exports
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="app-shell">
+    <header class="topbar">
+        <span class="brand">PASSAGE</span>
+        <span class="file-pill" title="@DisplayName">
+            @DisplayName
+            @if (_isDirty)
+            {
+                <span class="dirty-dot">*</span>
+            }
+        </span>
+
+        <nav class="view-tabs">
+            <button class="@(_mainViewIndex == 0 ? "active" : null)" @onclick="() => SetMainView(0)">SCRIPT</button>
+            <button class="@(_mainViewIndex == 1 ? "active" : null)" @onclick="() => SetMainView(1)">BOARD</button>
+            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">PREVIEW</button>
+        </nav>
+
+        <div class="topbar-actions">
+            <label class="toggle" title="Save automatically shortly after you stop typing">
+                <input type="checkbox" @bind="_autosaveEnabled" /> AUTOSAVE
+            </label>
+            <button class="btn" @onclick="RequestNewFile">New</button>
+            <button class="btn primary" @onclick="SaveAsync">Save</button>
+            <details class="menu">
+                <summary class="btn">Export ▾</summary>
+                <div class="menu-items">
+                    <button @onclick='() => ExportAsync("pdf")'>PDF (.pdf)</button>
+                    <button @onclick='() => ExportAsync("txt")'>Plain text (.txt)</button>
+                    <button @onclick='() => ExportAsync("fountain")'>Fountain source (.fountain)</button>
+                </div>
+            </details>
+        </div>
+    </header>
+
+    <div class="main-area">
+        <aside class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="@(_sidebarTab == 0 ? "active" : null)" @onclick="() => _sidebarTab = 0">FILES</button>
+                <button class="@(_sidebarTab == 1 ? "active" : null)" @onclick="() => _sidebarTab = 1">OUTLINE</button>
+                <button class="@(_sidebarTab == 2 ? "active" : null)" @onclick="() => _sidebarTab = 2">NOTES</button>
+            </div>
+            <div class="sidebar-body">
+                @if (_sidebarTab == 0)
+                {
+                    @if (_files.Count == 0)
+                    {
+                        <div class="sidebar-empty">No scripts yet.
+Click New to start one — files are stored on the server volume.</div>
+                    }
+                    @foreach (var file in _files)
+                    {
+                        <div class="file-row @(file.Name == _fileName ? "active" : null)" @onclick="() => RequestOpenFile(file.Name)">
+                            <span class="file-name">@file.Name</span>
+                            <span class="file-meta">@FormatTimestamp(file.LastModifiedUtc)</span>
+                            <button class="icon-btn" title="Delete @file.Name"
+                                    @onclick="() => RequestDeleteFile(file.Name)" @onclick:stopPropagation="true">✕</button>
+                        </div>
+                    }
+                }
+                else if (_sidebarTab == 1)
+                {
+                    @if (_analysis.Outline.Count == 0)
+                    {
+                        <div class="sidebar-empty">@OutlineEmptyMessage</div>
+                    }
+                    @foreach (var node in _analysis.Outline)
+                    {
+                        @RenderOutlineNode(node)
+                    }
+                }
+                else
+                {
+                    @if (_analysis.Notes.Count == 0)
+                    {
+                        <div class="sidebar-empty">No [[notes]] in this script yet.</div>
+                    }
+                    @foreach (var note in _analysis.Notes)
+                    {
+                        <div class="outline-label" @onclick="() => JumpToLineAsync(note.LineNumber)">
+                            <span class="outline-kind k-note">Note</span>
+                            <span>@note.Text</span>
+                        </div>
+                    }
+                }
+            </div>
+        </aside>
+
+        <main class="center-pane">
+            <div class="editor-surface" hidden="@(_mainViewIndex != 0)">
+                <div class="editor-stack" style="--editor-font-size:@(_editorFontPx)px">
+                    <pre id="editor-overlay" class="editor-overlay" aria-hidden="true"></pre>
+                    <textarea id="editor-input" class="editor-input" spellcheck="false"
+                              placeholder="INT. OPENING SCENE - DAY"></textarea>
+                </div>
+            </div>
+
+            @if (_mainViewIndex == 1)
+            {
+                @if (!IsScreenplayMode)
+                {
+                    <div class="board-empty">The Beat Board works in Screenplay mode.
+Open a .fountain file to see nested index cards here.</div>
+                }
+                else if (_analysis.BoardLanes.Count == 0)
+                {
+                    <div class="board-empty">The board mirrors your script's structure.
+Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
+                }
+                else
+                {
+                    <div class="board-surface">
+                        @foreach (var lane in _analysis.BoardLanes)
+                        {
+                            <div class="board-lane">
+                                <div class="board-lane-title">@lane.Heading</div>
+                                @if (lane.Description.Length > 0)
+                                {
+                                    <div class="board-lane-synopsis">@lane.Description</div>
+                                }
+                                @foreach (var card in lane.Children)
+                                {
+                                    @RenderBoardCard(card)
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else if (_mainViewIndex == 2)
+            {
+                @if (!IsScreenplayMode)
+                {
+                    <div class="preview-empty">Page preview works in Screenplay mode.
+Open a .fountain file to see formatted pages.</div>
+                }
+                else
+                {
+                    <div class="preview-toolbar">
+                        <span>@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s")</span>
+                        <button class="btn" @onclick="() => AdjustPreviewZoom(-0.15)">−</button>
+                        <span>@((int)Math.Round(_previewZoom * 100))%</span>
+                        <button class="btn" @onclick="() => AdjustPreviewZoom(+0.15)">+</button>
+                    </div>
+                    <div class="preview-surface">
+                        @foreach (var page in _analysis.PreviewPages)
+                        {
+                            <div class="preview-page" style="font-size:@(PreviewFontPx)px">
+                                <div class="preview-page-number">
+                                    @if (!page.IsTitlePage && page.PageNumber > 1)
+                                    {
+                                        <span>@(page.PageNumber).</span>
+                                    }
+                                </div>
+                                <div class="preview-body">
+                                    @foreach (var line in page.Lines)
+                                    {
+                                        <div class="pl @StyleClass(line.Style)" style="@IndentStyle(line)">@(line.Text.Length == 0 ? " " : line.Text)</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </main>
+    </div>
+
+    <footer class="statusbar">
+        <span>@ModeStatusText</span>
+        <span>Ln @_caretLine</span>
+        <span>@_caretElementLabel</span>
+        <span>~@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s")</span>
+        <span>@_analysis.WordCount.ToString("N0") words</span>
+        <span class="spacer"></span>
+        <button class="icon-btn" title="Smaller editor text" @onclick="() => AdjustEditorFont(-1)">A−</button>
+        <button class="icon-btn" title="Larger editor text" @onclick="() => AdjustEditorFont(+1)">A+</button>
+        <span class="status-message">@_statusMessage</span>
+    </footer>
+</div>
+
+@if (_saveAsOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Save script</h3>
+            <p>Name this script. It is stored on the server's data volume. “.fountain” is added when no extension is given.</p>
+            <input type="text" @bind="_saveAsName" @bind:event="oninput" placeholder="my-screenplay.fountain"
+                   @onkeydown="OnSaveAsKeyDown" />
+            @if (_saveAsError.Length > 0)
+            {
+                <div class="modal-error">@_saveAsError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn" @onclick="CloseSaveAs">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmSaveAsAsync">Save</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_pendingAction != PendingAction.None)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Unsaved changes</h3>
+            <p>“@DisplayName” has unsaved changes. Discard them and continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="CancelPendingAction">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmPendingActionAsync">Discard changes</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteTarget is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Delete script</h3>
+            <p>Delete “@_deleteTarget” from the server? This cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _deleteTarget = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmDeleteAsync">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum PendingAction { None, NewFile, OpenFile }
+
+    private readonly DocumentAnalyzer _analyzer = new();
+    private DotNetObjectReference<Editor>? _selfRef;
+    private CancellationTokenSource? _autosaveCts;
+
+    private DocumentAnalysis _analysis = new(
+        Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
+        Array.Empty<PreviewPage>(), Array.Empty<BoardCard>(), 0, 0, Array.Empty<TitlePageEntry>());
+
+    private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
+    private string _fileName = string.Empty;
+    private string _content = string.Empty;
+    private bool _isDirty;
+    private bool _autosaveEnabled;
+    private int _mainViewIndex;
+    private int _sidebarTab;
+    private int _caretLine = 1;
+    private string _caretElementLabel = "Action";
+    private string _statusMessage = "Ready";
+    private int _editorFontPx = 15;
+    private double _previewZoom = 1.25;
+
+    private string _saveAsName = string.Empty;
+    private string _saveAsError = string.Empty;
+    private bool _saveAsOpen;
+    private PendingAction _pendingAction = PendingAction.None;
+    private string _pendingOpenName = string.Empty;
+    private string? _deleteTarget;
+
+    private string DisplayName => _fileName.Length == 0 ? "Untitled" : _fileName;
+    private bool IsScreenplayMode => !_fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+    private string ModeStatusText => IsScreenplayMode ? "MODE: SCREENPLAY" : "MODE: MARKDOWN";
+    private int PreviewFontPx => (int)Math.Round(12 * _previewZoom);
+    private string OutlineEmptyMessage => IsScreenplayMode
+        ? "Structure appears as you write.\nUse # Act, ## Sequence, and INT./EXT. scene headings."
+        : "Markdown headings (#, ##, …) appear here.";
+
+    protected override void OnInitialized()
+    {
+        _files = Library.List();
+        RunAnalysis();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("passage.init", _selfRef);
+        }
+    }
+
+    // ---- JS callbacks ----
+
+    [JSInvokable]
+    public async Task OnEditorChanged(string text, int version, int caretLine)
+    {
+        _content = text;
+        _isDirty = true;
+        _caretLine = caretLine;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        ScheduleAutosave();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnCaretMoved(int line)
+    {
+        _caretLine = line;
+        UpdateCaretElementLabel();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnSaveShortcut()
+    {
+        await SaveAsync();
+        StateHasChanged();
+    }
+
+    // ---- File actions ----
+
+    private async Task SaveAsync()
+    {
+        if (_fileName.Length == 0)
+        {
+            _saveAsName = string.Empty;
+            _saveAsError = string.Empty;
+            _saveAsOpen = true;
+            return;
+        }
+
+        Library.Save(_fileName, _content);
+        _isDirty = false;
+        _files = Library.List();
+        _statusMessage = $"Saved {DateTime.Now:HH:mm:ss}";
+        await JS.InvokeVoidAsync("passage.setDirty", false);
+    }
+
+    private async Task ConfirmSaveAsAsync()
+    {
+        if (!ScriptLibrary.TryValidateName(_saveAsName, out var validated))
+        {
+            _saveAsError = "Enter a valid file name (no path separators).";
+            return;
+        }
+
+        if (Library.Exists(validated) && _saveAsError != OverwriteWarning(validated))
+        {
+            _saveAsError = OverwriteWarning(validated);
+            return;
+        }
+
+        _fileName = validated;
+        _saveAsOpen = false;
+        _saveAsError = string.Empty;
+        await SaveAsync();
+        RunAnalysis();
+        await PushHighlightsForCurrentVersionAsync();
+    }
+
+    private static string OverwriteWarning(string name) =>
+        $"“{name}” already exists — click Save again to overwrite it.";
+
+    private void OnSaveAsKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            _ = ConfirmSaveAsAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CloseSaveAs();
+        }
+    }
+
+    private void CloseSaveAs()
+    {
+        _saveAsOpen = false;
+        _saveAsError = string.Empty;
+    }
+
+    private void RequestNewFile()
+    {
+        if (_isDirty)
+        {
+            _pendingAction = PendingAction.NewFile;
+            return;
+        }
+
+        _ = StartNewFileAsync();
+    }
+
+    private void RequestOpenFile(string name)
+    {
+        if (name == _fileName)
+        {
+            return;
+        }
+
+        if (_isDirty)
+        {
+            _pendingAction = PendingAction.OpenFile;
+            _pendingOpenName = name;
+            return;
+        }
+
+        _ = OpenFileAsync(name);
+    }
+
+    private void CancelPendingAction()
+    {
+        _pendingAction = PendingAction.None;
+        _pendingOpenName = string.Empty;
+    }
+
+    private async Task ConfirmPendingActionAsync()
+    {
+        var action = _pendingAction;
+        var openName = _pendingOpenName;
+        CancelPendingAction();
+
+        if (action == PendingAction.NewFile)
+        {
+            await StartNewFileAsync();
+        }
+        else if (action == PendingAction.OpenFile)
+        {
+            await OpenFileAsync(openName);
+        }
+    }
+
+    private async Task StartNewFileAsync()
+    {
+        _fileName = string.Empty;
+        _content = string.Empty;
+        _isDirty = false;
+        _statusMessage = "New script";
+        await ResetEditorAsync();
+    }
+
+    private async Task OpenFileAsync(string name)
+    {
+        try
+        {
+            _content = Library.Load(name);
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            _statusMessage = $"Could not open {name}: {exception.Message}";
+            return;
+        }
+
+        _fileName = name;
+        _isDirty = false;
+        _statusMessage = $"Opened {name}";
+        await ResetEditorAsync();
+    }
+
+    private async Task ResetEditorAsync()
+    {
+        _mainViewIndex = 0;
+        _caretLine = 1;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        var version = await JS.InvokeAsync<int>("passage.setContent", _content);
+        await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        StateHasChanged();
+    }
+
+    private void RequestDeleteFile(string name)
+    {
+        _deleteTarget = name;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        var target = _deleteTarget;
+        _deleteTarget = null;
+        if (target is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Library.Delete(target);
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            _statusMessage = $"Could not delete {target}: {exception.Message}";
+            return;
+        }
+
+        _files = Library.List();
+        if (target == _fileName)
+        {
+            // The open buffer survives as an unsaved Untitled document.
+            _fileName = string.Empty;
+            _isDirty = true;
+            await JS.InvokeVoidAsync("passage.setDirty", true);
+        }
+
+        _statusMessage = $"Deleted {target}";
+    }
+
+    private async Task ExportAsync(string format)
+    {
+        await JS.InvokeVoidAsync("passage.exportDocument", format, DisplayName);
+        _statusMessage = $"Exported {format.ToUpperInvariant()}";
+    }
+
+    // ---- Autosave ----
+
+    private void ScheduleAutosave()
+    {
+        if (!_autosaveEnabled || _fileName.Length == 0)
+        {
+            return;
+        }
+
+        _autosaveCts?.Cancel();
+        _autosaveCts = new CancellationTokenSource();
+        var token = _autosaveCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(1500, token);
+                await InvokeAsync(async () =>
+                {
+                    if (_isDirty && _fileName.Length > 0)
+                    {
+                        await SaveAsync();
+                        StateHasChanged();
+                    }
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                // Superseded by a newer edit.
+            }
+        }, CancellationToken.None);
+    }
+
+    // ---- Analysis / rendering helpers ----
+
+    private void RunAnalysis()
+    {
+        _analysis = IsScreenplayMode ? _analyzer.Analyze(_content) : DocumentAnalyzer.AnalyzeMarkdown(_content);
+    }
+
+    private async Task PushHighlightsForCurrentVersionAsync()
+    {
+        var version = await JS.InvokeAsync<int>("passage.setContent", _content);
+        await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+    }
+
+    private void UpdateCaretElementLabel()
+    {
+        var index = _caretLine - 1;
+        var cssClass = index >= 0 && index < _analysis.LineClasses.Length ? _analysis.LineClasses[index] : string.Empty;
+        _caretElementLabel = cssClass switch
+        {
+            "sx-scene" => "Scene Heading",
+            "sx-character" => "Character",
+            "sx-dialogue" => "Dialogue",
+            "sx-paren" => "Parenthetical",
+            "sx-transition" => "Transition",
+            "sx-section" => "Section",
+            "sx-synopsis" => "Synopsis",
+            "sx-note" => "Note",
+            "sx-boneyard" => "Boneyard",
+            "sx-centered" => "Centered",
+            "sx-lyrics" => "Lyrics",
+            "sx-titlepage" => "Title Page",
+            "md-heading" => "Heading",
+            _ => IsScreenplayMode ? "Action" : "Text"
+        };
+    }
+
+    private void SetMainView(int index)
+    {
+        _mainViewIndex = index;
+        if (index == 0)
+        {
+            _ = JS.InvokeVoidAsync("passage.focusEditor");
+        }
+    }
+
+    private async Task JumpToLineAsync(int lineNumber)
+    {
+        _mainViewIndex = 0;
+        await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    private void AdjustPreviewZoom(double delta)
+    {
+        _previewZoom = Math.Clamp(_previewZoom + delta, 0.55, 2.5);
+    }
+
+    private void AdjustEditorFont(int delta)
+    {
+        _editorFontPx = Math.Clamp(_editorFontPx + delta, 11, 28);
+    }
+
+    private static string StyleClass(LayoutTextStyle style) => style switch
+    {
+        LayoutTextStyle.LeftBold => "st-bold",
+        LayoutTextStyle.CenterWithinBody => "st-center",
+        LayoutTextStyle.CenterWithinBodyBold => "st-center st-bold",
+        LayoutTextStyle.RightWithinBody => "st-right",
+        _ => string.Empty
+    };
+
+    private static string IndentStyle(PreviewLine line)
+    {
+        if (line.Style is LayoutTextStyle.Left or LayoutTextStyle.LeftBold && line.IndentChars > 0)
+        {
+            return $"padding-left:{line.IndentChars:0.##}ch";
+        }
+
+        return string.Empty;
+    }
+
+    private static string KindClass(string kind) => kind switch
+    {
+        "Act" or "Sequence" or "Beat" => "k-act",
+        "Scene" => "k-scene",
+        "Synopsis" => "k-synopsis",
+        "Note" => "k-note",
+        _ => "k-act"
+    };
+
+    private static string FormatTimestamp(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        return local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("d MMM");
+    }
+
+    private RenderFragment<OutlineNode> RenderOutlineNode => node => __builder =>
+    {
+        <div class="outline-node">
+            <div class="outline-label" @onclick="() => JumpToLineAsync(node.LineNumber)">
+                <span class="outline-kind @KindClass(node.Kind)">@node.Kind</span>
+                <span>@node.Label</span>
+            </div>
+            @if (node.Children.Count > 0)
+            {
+                <div class="outline-children">
+                    @foreach (var child in node.Children)
+                    {
+                        @RenderOutlineNode(child)
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    private RenderFragment<BoardCard> RenderBoardCard => card => __builder =>
+    {
+        <div class="board-card" @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
+            <span class="card-kind">@card.Kind</span>
+            <div class="card-heading">@card.Heading</div>
+            @if (card.Description.Length > 0)
+            {
+                <div class="card-body">@card.Description</div>
+            }
+            @foreach (var child in card.Children)
+            {
+                @RenderBoardCard(child)
+            }
+        </div>
+    };
+
+    public void Dispose()
+    {
+        _autosaveCts?.Cancel();
+        _selfRef?.Dispose();
+    }
+}

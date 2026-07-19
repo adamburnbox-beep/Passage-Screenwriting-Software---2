@@ -1,0 +1,15 @@
+services:
+  passage:
+    build: .
+    image: passage-web:latest
+    container_name: passage
+    ports:
+      # Host port 8095 to stay clear of common NAS services (e.g. Nginx Proxy
+      # Manager claims 8080). Change the left side if 8095 is taken too.
+      - "8095:8080"
+    volumes:
+      - passage-data:/data
+    restart: unless-stopped
+
+volumes:
+  passage-data:

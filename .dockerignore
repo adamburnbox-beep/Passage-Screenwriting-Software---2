@@ -1,0 +1,11 @@
+**/bin
+**/obj
+**/artifacts
+.git
+.agent
+.agents
+.vscode
+docs
+scripts
+adapters
+*.md
