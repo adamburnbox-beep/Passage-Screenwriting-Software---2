@@ -2582,43 +2582,28 @@ public partial class MainWindowViewModel : ViewModelBase
         var (sourceStart, sourceEnd) = GetBeatBoardCardLineRange(sourceCard);
         var (targetStart, targetEnd) = GetBeatBoardCardLineRange(targetCard);
 
-        if (sourceStart == -1 || targetStart == -1) return;
-        if (sourceStart == targetStart) return;
-        if (targetStart >= sourceStart && targetEnd <= sourceEnd)
-        {
-            // Cannot drop an Act/Sequence onto a card nested inside its own block.
-            return;
-        }
-
-        int targetInsert = insertAfter ? (targetEnd + 1) : targetStart;
-
         var lines = (EditorContent ?? string.Empty).Replace("\r\n", "\n").Split('\n').ToList();
-        int sourceCount = sourceEnd - sourceStart + 1;
-        if (sourceStart < 0 || sourceStart >= lines.Count || sourceCount <= 0 || sourceStart + sourceCount > lines.Count)
+
+        // The planning lives in Passage.Parser.BeatBoardText so the web app
+        // shares it; it also refuses the same moves this used to refuse inline.
+        if (!BeatBoardText.TryPlanMove(
+                lines,
+                new BeatBoardText.LineRange(sourceStart, sourceEnd),
+                new BeatBoardText.LineRange(targetStart, targetEnd),
+                insertAfter,
+                out var splice,
+                out var replacement))
         {
             return;
         }
 
-        var movedLines = lines.GetRange(sourceStart, sourceCount);
-        lines.RemoveRange(sourceStart, sourceCount);
-
-        int adjustedTarget = targetInsert;
-        if (adjustedTarget > sourceStart)
-        {
-            adjustedTarget = Math.Max(0, adjustedTarget - sourceCount);
-        }
-
-        if (adjustedTarget > lines.Count)
-        {
-            adjustedTarget = lines.Count;
-        }
-
-        lines.InsertRange(adjustedTarget, movedLines);
+        var updated = BeatBoardText.ReplaceLines(
+            EditorContent ?? string.Empty, splice.StartLineIndex, splice.EndLineIndex, replacement);
 
         _suppressDirtyTracking = true;
         try
         {
-            EditorContent = string.Join("\n", lines);
+            EditorContent = updated;
             IsDirty = true;
         }
         finally

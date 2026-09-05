@@ -392,7 +392,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
 Do not attempt any of these in one session. Each bullet under "split into" is
 a session.
 
-### 3.1 Beat Board editing — `partial` (3.1a–3.1d done; 3.1e outstanding)
+### 3.1 Beat Board editing — `done` (3.1a–3.1e; see the lane-drag limit below)
 
 - **Linux — board build:** VM 1537–1602 (`UpdateBeatBoardCards`), 1603–1668
   (`RebuildBeatBoardLanes`), 2738–2799 (lane / group / card view models)
@@ -411,7 +411,27 @@ a session.
   - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666 — **done**
   - 3.1c Add scene to block — port VM 803–841 — **done**
   - 3.1d Delete card with confirmation — port VM 842–885 — **done**
-  - 3.1e Drag-and-drop reorder — port VM 2678–2737 + MW.cs 1282–1348
+  - 3.1e Drag-and-drop reorder — port VM 2678–2737 + MW.cs 1282–1348 — **done (cards only)**
+- **3.1e done for cards.** `MoveBeatBoardCardText` is now
+  `BeatBoardText.TryPlanMove`, which **returns the edit instead of applying it**:
+  a move never changes the line count, so the affected span maps one-to-one onto
+  its replacement and the whole reorder becomes a single contiguous splice. That
+  keeps a drag to one undo step — verified, undo went 0 → 1 across a move and one
+  undo restored the original order. `MainWindowViewModel` was repointed at it, so
+  the refusals (onto itself, or a block onto a card nested inside it) are shared
+  rather than duplicated. Seven tests now cover it.
+  **Platform difference:** the desktop takes before/after from the target's
+  *horizontal* midpoint; the web board stacks cards in a column, so this uses the
+  *vertical* midpoint. It is measured in the browser, since only there is the
+  card's real height known, and Blazor asks once on drop rather than per
+  dragover.
+- **Limit — lanes and groups are not draggable.** Acts and Sequences render as
+  lane and group headers, not as cards in the flow, so they can be edited,
+  added to and deleted, but not dragged. Reordering acts means reordering
+  columns, which is a layout question this row did not cover. `TryPlanMove`
+  already handles block moves and is unit-tested for them, so the logic is
+  ready whenever the UI is.
+
 - **3.1c/3.1d done.** Both go through `BeatBoardText.GetCardLineRange` and new
   ranged JS primitives — `insertLinesAt` and `deleteLineRange` — so neither
   clears the undo stack. Verified: undo depth rose across an add and a delete,

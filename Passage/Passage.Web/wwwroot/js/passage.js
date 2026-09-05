@@ -291,6 +291,8 @@ window.passage = (function () {
             });
         });
 
+        document.addEventListener("dragover", trackDropSide, true);
+
         setInterval(saveRecoverySnapshot, RECOVERY_INTERVAL_MS);
 
         window.addEventListener("beforeunload", (event) => {
@@ -510,6 +512,27 @@ window.passage = (function () {
         return true;
     }
 
+    // The desktop decides drop-before/drop-after from the target's horizontal
+    // midpoint. The web board stacks cards in a column, so the vertical midpoint
+    // is the meaningful equivalent. Tracked here because only the browser knows
+    // the card's real geometry; Blazor asks once, on drop.
+    let dropAfter = false;
+
+    function trackDropSide(event) {
+        const card = event.target && event.target.closest
+            ? event.target.closest(".board-card")
+            : null;
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        if (rect.height > 0) {
+            dropAfter = (event.clientY - rect.top) > rect.height / 2;
+        }
+    }
+
+    function dropIsAfter() {
+        return dropAfter;
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
@@ -586,7 +609,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

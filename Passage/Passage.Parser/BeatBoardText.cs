@@ -201,4 +201,79 @@ public static class BeatBoardText
 
         return string.Join("\n", lines);
     }
+
+    /// <summary>
+    /// Works out the single contiguous splice that moves <paramref name="source"/>
+    /// to sit before or after <paramref name="target"/>. Ports
+    /// MoveBeatBoardCardText, but returns the edit rather than applying it, so a
+    /// caller can splice one range and keep the undo history — a move never
+    /// changes the line count, so the affected region maps one-to-one onto its
+    /// replacement.
+    ///
+    /// Returns false for the moves the desktop refuses: onto itself, or an
+    /// Act/Sequence dropped onto a card nested inside its own block.
+    /// </summary>
+    public static bool TryPlanMove(
+        IReadOnlyList<string> lines,
+        LineRange source,
+        LineRange target,
+        bool insertAfter,
+        out LineRange splice,
+        out List<string> replacement)
+    {
+        splice = LineRange.NotFound;
+        replacement = new List<string>();
+
+        if (lines is null || !source.IsFound || !target.IsFound)
+        {
+            return false;
+        }
+
+        if (source.StartLineIndex == target.StartLineIndex)
+        {
+            return false;
+        }
+
+        if (target.StartLineIndex >= source.StartLineIndex && target.EndLineIndex <= source.EndLineIndex)
+        {
+            return false;
+        }
+
+        var sourceCount = source.EndLineIndex - source.StartLineIndex + 1;
+        if (source.StartLineIndex < 0 || sourceCount <= 0 ||
+            source.StartLineIndex + sourceCount > lines.Count)
+        {
+            return false;
+        }
+
+        var targetInsert = insertAfter ? target.EndLineIndex + 1 : target.StartLineIndex;
+
+        var working = new List<string>(lines);
+        var moved = working.GetRange(source.StartLineIndex, sourceCount);
+        working.RemoveRange(source.StartLineIndex, sourceCount);
+
+        var adjustedTarget = targetInsert;
+        if (adjustedTarget > source.StartLineIndex)
+        {
+            adjustedTarget = Math.Max(0, adjustedTarget - sourceCount);
+        }
+
+        adjustedTarget = Math.Min(adjustedTarget, working.Count);
+        working.InsertRange(adjustedTarget, moved);
+
+        // Only the span between the old and new homes actually changed.
+        var lo = Math.Min(source.StartLineIndex, targetInsert);
+        var hi = Math.Max(source.EndLineIndex, targetInsert - 1);
+        lo = Math.Max(0, lo);
+        hi = Math.Min(hi, working.Count - 1);
+
+        if (hi < lo)
+        {
+            return false;
+        }
+
+        splice = new LineRange(lo, hi);
+        replacement = working.GetRange(lo, hi - lo + 1);
+        return true;
+    }
 }

@@ -23,6 +23,8 @@ class Program
         failures += RunTest("Test BeatBoard Scene Block Extent", TestBeatBoardSceneBlockExtent);
         failures += RunTest("Test BeatBoard Range Out Of Range Input", TestBeatBoardRangeOutOfRangeInput);
         failures += RunTest("Test BeatBoard Build And Splice Card Lines", TestBeatBoardBuildAndSpliceCardLines);
+        failures += RunTest("Test BeatBoard Plan Move", TestBeatBoardPlanMove);
+        failures += RunTest("Test BeatBoard Plan Move Rejections", TestBeatBoardPlanMoveRejections);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -210,6 +212,75 @@ class Program
         // And the splice puts them back in place of the old range.
         var spliced = BeatBoardText.ReplaceLines("a\nb\nc\nd", 1, 2, new[] { "B" });
         Assert(spliced == "a\nB\nd", $"Unexpected splice result: '{spliced}'");
+    }
+
+
+    static void TestBeatBoardPlanMove()
+    {
+        var lines = new List<string> { "A", "B", "C", "D", "E" };
+
+        // Move A (0) to after C (2): expect B, C, A in the affected span.
+        Assert(BeatBoardText.TryPlanMove(lines,
+            new BeatBoardText.LineRange(0, 0), new BeatBoardText.LineRange(2, 2),
+            insertAfter: true, out var splice, out var replacement),
+            "Moving forwards should be planned");
+        Assert(splice.StartLineIndex == 0 && splice.EndLineIndex == 2,
+            $"Expected splice 0..2, got {splice.StartLineIndex}..{splice.EndLineIndex}");
+        Assert(string.Join(",", replacement) == "B,C,A", $"Unexpected replacement: {string.Join(",", replacement)}");
+
+        // Move E (4) to before B (1).
+        Assert(BeatBoardText.TryPlanMove(lines,
+            new BeatBoardText.LineRange(4, 4), new BeatBoardText.LineRange(1, 1),
+            insertAfter: false, out splice, out replacement),
+            "Moving backwards should be planned");
+        Assert(splice.StartLineIndex == 1 && splice.EndLineIndex == 4,
+            $"Expected splice 1..4, got {splice.StartLineIndex}..{splice.EndLineIndex}");
+        Assert(string.Join(",", replacement) == "E,B,C,D", $"Unexpected replacement: {string.Join(",", replacement)}");
+
+        // A multi-line block moves as a unit.
+        var block = new List<string> { "h1", "b1", "b2", "X", "Y" };
+        Assert(BeatBoardText.TryPlanMove(block,
+            new BeatBoardText.LineRange(0, 2), new BeatBoardText.LineRange(4, 4),
+            insertAfter: true, out splice, out replacement),
+            "A block move should be planned");
+        Assert(string.Join(",", replacement) == "X,Y,h1,b1,b2",
+            $"Unexpected block move: {string.Join(",", replacement)}");
+
+        // Applying the splice reproduces the whole document.
+        var applied = BeatBoardText.ReplaceLines(string.Join("\n", block),
+            splice.StartLineIndex, splice.EndLineIndex, replacement);
+        Assert(applied == "X,Y,h1,b1,b2".Replace(",", "\n"), $"Unexpected applied text: '{applied}'");
+    }
+
+    static void TestBeatBoardPlanMoveRejections()
+    {
+        var lines = new List<string> { "A", "B", "C", "D" };
+
+        Assert(!BeatBoardText.TryPlanMove(lines,
+            new BeatBoardText.LineRange(1, 1), new BeatBoardText.LineRange(1, 1),
+            insertAfter: true, out _, out _),
+            "Dropping a card on itself should be refused");
+
+        // An act (0..2) dropped onto a card nested inside it (1..1).
+        Assert(!BeatBoardText.TryPlanMove(lines,
+            new BeatBoardText.LineRange(0, 2), new BeatBoardText.LineRange(1, 1),
+            insertAfter: true, out _, out _),
+            "Dropping a block onto its own nested card should be refused");
+
+        Assert(!BeatBoardText.TryPlanMove(lines,
+            BeatBoardText.LineRange.NotFound, new BeatBoardText.LineRange(1, 1),
+            insertAfter: true, out _, out _),
+            "A missing source range should be refused");
+
+        Assert(!BeatBoardText.TryPlanMove(lines,
+            new BeatBoardText.LineRange(0, 0), BeatBoardText.LineRange.NotFound,
+            insertAfter: true, out _, out _),
+            "A missing target range should be refused");
+
+        Assert(!BeatBoardText.TryPlanMove(lines,
+            new BeatBoardText.LineRange(2, 99), new BeatBoardText.LineRange(0, 0),
+            insertAfter: false, out _, out _),
+            "A source range running past the document should be refused");
     }
 
     static void Assert(bool condition, string message)

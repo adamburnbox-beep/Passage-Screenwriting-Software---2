@@ -1253,6 +1253,99 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
     }
 
+    // ---- Beat Board: drag to reorder ----
+    //
+    // Ports the pointer handlers plus MoveBeatBoardCardText. The desktop decides
+    // before/after from the horizontal midpoint of the target; the web board
+    // stacks cards vertically, so this uses the vertical midpoint instead —
+    // a horizontal split would be meaningless in a column.
+    //
+    // The move is applied as one contiguous splice (see TryPlanMove), so a drag
+    // is a single undo step and does not disturb the rest of the document.
+
+    private Guid _dragCardId = Guid.Empty;
+    private Guid _dragOverCardId = Guid.Empty;
+
+    private void OnCardDragStart(BoardCard card)
+    {
+        // Never start a drag from a card that is open for editing.
+        if (_editingCardId == card.Id)
+        {
+            return;
+        }
+
+        _dragCardId = card.Id;
+    }
+
+    private void OnCardDragEnd()
+    {
+        _dragCardId = Guid.Empty;
+        _dragOverCardId = Guid.Empty;
+    }
+
+    private void OnCardDragOver(BoardCard card)
+    {
+        if (_dragCardId == Guid.Empty || _dragCardId == card.Id)
+        {
+            _dragOverCardId = Guid.Empty;
+            return;
+        }
+
+        // Which side the drop lands on is decided in the browser, which is the
+        // only place the card's real height is known; this just marks the target.
+        _dragOverCardId = card.Id;
+    }
+
+    private async Task OnCardDropAsync(BoardCard target)
+    {
+        var sourceId = _dragCardId;
+        var insertAfter = false;
+        try
+        {
+            insertAfter = await JS.InvokeAsync<bool>("passage.dropIsAfter");
+        }
+        catch (JSException)
+        {
+        }
+
+        _dragCardId = Guid.Empty;
+        _dragOverCardId = Guid.Empty;
+
+        if (sourceId == Guid.Empty || sourceId == target.Id || target.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        var source = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, sourceId, _analysis.LineCount, includeNestedBlock: true);
+        var destination = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, target.Id, _analysis.LineCount, includeNestedBlock: true);
+
+        var lines = _content.Replace("\r\n", "\n").Split('\n');
+
+        if (!BeatBoardText.TryPlanMove(lines, source, destination, insertAfter,
+                out var splice, out var replacement))
+        {
+            _statusMessage = "That card cannot be moved there";
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeAsync<bool>(
+                "passage.replaceLineRange",
+                splice.StartLineIndex,
+                splice.EndLineIndex,
+                string.Join("\n", replacement));
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _statusMessage = "Moved card";
+    }
+
     // ---- Beat Board: delete a card ----
     //
     // Ports DeleteCard. A Note takes only its own lines; anything else takes its
@@ -2032,7 +2125,15 @@ Open a .fountain file to see formatted pages.</div>
         }
         else
         {
-            <div class="board-card" @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
+            <div class="board-card @(_dragOverCardId == card.Id ? "drop-target" : null)"
+                 draggable="@((card.Id != Guid.Empty).ToString().ToLowerInvariant())"
+                 @ondragstart="() => OnCardDragStart(card)"
+                 @ondragend="OnCardDragEnd"
+                 @ondragover="() => OnCardDragOver(card)"
+                 @ondragover:preventDefault="true"
+                 @ondrop="() => OnCardDropAsync(card)"
+                 @ondrop:preventDefault="true"
+                 @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
                 <div class="card-top">
                     <span class="card-kind">@card.Kind</span>
                     @if (card.Id != Guid.Empty)

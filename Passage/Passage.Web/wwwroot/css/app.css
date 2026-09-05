@@ -1117,3 +1117,9 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .board-lane-head:hover .board-add,
 .board-group-head:hover .board-add { opacity: 1; }
+
+/* ---- Beat Board drag ---- */
+
+.board-card[draggable="true"] { cursor: grab; }
+
+.board-card.drop-target { outline: 2px solid var(--control-accent); outline-offset: 1px; }
