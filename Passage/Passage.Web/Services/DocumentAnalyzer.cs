@@ -22,7 +22,10 @@ public sealed record DocumentAnalysis(
     IReadOnlyList<BoardCard> BoardLanes,
     int WordCount,
     int PageCount,
-    IReadOnlyList<TitlePageEntry> TitlePage);
+    IReadOnlyList<TitlePageEntry> TitlePage,
+    // First line of the script proper. The title-page editor splices lines
+    // 0..BodyStart, so it needs the boundary the parser already worked out.
+    int TitlePageBodyStart);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -58,7 +61,8 @@ public sealed class DocumentAnalyzer
             boardLanes,
             wordCount,
             pageCount,
-            parsed.TitlePage.Entries);
+            parsed.TitlePage.Entries,
+            parsed.TitlePage.BodyStartLineIndex);
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
@@ -116,7 +120,8 @@ public sealed class DocumentAnalyzer
             Array.Empty<BoardCard>(),
             TextAnalysis.CountWords(text),
             0,
-            Array.Empty<TitlePageEntry>());
+            Array.Empty<TitlePageEntry>(),
+            0);
     }
 
     private static string[] BuildLineClasses(ParsedScreenplay parsed, int lineCount)

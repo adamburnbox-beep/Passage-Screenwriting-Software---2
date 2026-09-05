@@ -1024,3 +1024,30 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--muted-text);
     min-width: 78px;
 }
+
+/* ---- Title page editor ---- */
+
+.title-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    margin-top: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.title-field { display: flex; flex-direction: column; gap: 4px; }
+
+.title-field.wide { grid-column: 1 / -1; }
+
+.title-field span {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+}
+
+.title-field textarea {
+    font-family: inherit;
+    resize: vertical;
+}

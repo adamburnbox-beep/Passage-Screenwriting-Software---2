@@ -38,8 +38,9 @@
             <button class="btn" @onclick="RequestNewFile">New</button>
             <button class="btn primary" @onclick="SaveAsync">Save</button>
             <details class="menu">
-                <summary class="btn">Export ▾</summary>
+                <summary class="btn">Document ▾</summary>
                 <div class="menu-items">
+                    <button @onclick="OpenTitlePage">Title Page…</button>
                     <button @onclick='() => ExportAsync("pdf")'>PDF (.pdf)</button>
                     <button @onclick='() => ExportAsync("txt")'>Plain text (.txt)</button>
                     <button @onclick='() => ExportAsync("fountain")'>Fountain source (.fountain)</button>
@@ -379,6 +380,44 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_titlePageOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal modal-tall">
+            <h3>Title Page</h3>
+            <p>Fountain writes these as key/value lines at the head of the script.</p>
+            <div class="title-fields">
+                <label class="title-field"><span>Title</span>
+                    <input type="text" @ref="_titlePageInput" @bind="_tpTitle" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Episode</span>
+                    <input type="text" @bind="_tpEpisode" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Author</span>
+                    <input type="text" @bind="_tpAuthor" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Credit</span>
+                    <input type="text" @bind="_tpCredit" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Source</span>
+                    <input type="text" @bind="_tpSource" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Draft date</span>
+                    <input type="text" @bind="_tpDraftDate" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Revision</span>
+                    <input type="text" @bind="_tpRevision" @bind:event="oninput" /></label>
+                <label class="title-field wide"><span>Contact</span>
+                    <textarea rows="3" @bind="_tpContact" @bind:event="oninput"></textarea></label>
+                <label class="title-field wide"><span>Notes</span>
+                    <textarea rows="3" @bind="_tpNotes" @bind:event="oninput"></textarea></label>
+            </div>
+            <div class="modal-actions">
+                @if (_hasTitlePage)
+                {
+                    <button class="btn" @onclick="DeleteTitlePageAsync">Delete</button>
+                }
+                <button class="btn" @onclick="() => _titlePageOpen = false">Cancel</button>
+                <button class="btn primary" @onclick="ApplyTitlePageAsync">OK</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_goToSceneOpen)
 {
     <div class="modal-backdrop">
@@ -468,7 +507,7 @@ Open a .fountain file to see formatted pages.</div>
 
     private DocumentAnalysis _analysis = new(
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
-        Array.Empty<PreviewPage>(), Array.Empty<BoardCard>(), 0, 0, Array.Empty<TitlePageEntry>());
+        Array.Empty<PreviewPage>(), Array.Empty<BoardCard>(), 0, 0, Array.Empty<TitlePageEntry>(), 0);
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -513,6 +552,18 @@ Open a .fountain file to see formatted pages.</div>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusTitlePage)
+        {
+            _focusTitlePage = false;
+            try
+            {
+                await _titlePageInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
         if (_focusFind)
         {
             _focusFind = false;
@@ -1131,6 +1182,127 @@ Open a .fountain file to see formatted pages.</div>
     {
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    // ---- Title page ----
+    //
+    // The Fountain title page is key/value lines at the head of the document,
+    // so editing it means splicing lines 0..BodyStart. Field order below is the
+    // order EditTitlePage writes them in — Author before Credit, Contact and
+    // Notes last — so a document round-trips identically between the two apps
+    // and exports match.
+
+    private bool _titlePageOpen;
+    private bool _hasTitlePage;
+    private ElementReference _titlePageInput;
+    private bool _focusTitlePage;
+
+    private string _tpTitle = string.Empty;
+    private string _tpEpisode = string.Empty;
+    private string _tpCredit = "written by";
+    private string _tpAuthor = string.Empty;
+    private string _tpSource = string.Empty;
+    private string _tpContact = string.Empty;
+    private string _tpDraftDate = string.Empty;
+    private string _tpRevision = string.Empty;
+    private string _tpNotes = string.Empty;
+
+    private void OpenTitlePage()
+    {
+        _tpTitle = _tpEpisode = _tpAuthor = _tpSource = string.Empty;
+        _tpContact = _tpDraftDate = _tpRevision = _tpNotes = string.Empty;
+        _tpCredit = "written by";
+
+        foreach (var entry in _analysis.TitlePage)
+        {
+            switch (entry.FieldType)
+            {
+                case TitlePageFieldType.Title: _tpTitle = entry.Value; break;
+                case TitlePageFieldType.Episode: _tpEpisode = entry.Value; break;
+                case TitlePageFieldType.Credit: _tpCredit = entry.Value; break;
+                case TitlePageFieldType.Author: _tpAuthor = entry.Value; break;
+                case TitlePageFieldType.Source: _tpSource = entry.Value; break;
+                case TitlePageFieldType.Contact: _tpContact = entry.Value; break;
+                case TitlePageFieldType.DraftDate: _tpDraftDate = entry.Value; break;
+                case TitlePageFieldType.Revision: _tpRevision = entry.Value; break;
+                case TitlePageFieldType.Notes: _tpNotes = entry.Value; break;
+            }
+        }
+
+        _hasTitlePage = _analysis.TitlePage.Count > 0;
+        _titlePageOpen = true;
+        _focusTitlePage = true;
+    }
+
+    private static void AppendBlock(System.Text.StringBuilder builder, string label, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        builder.Append(label).Append(':').Append('\n');
+        foreach (var line in value.Replace("\r\n", "\n").Split('\n'))
+        {
+            builder.Append("    ").Append(line.Trim()).Append('\n');
+        }
+    }
+
+    private string BuildTitlePageHeader()
+    {
+        var builder = new System.Text.StringBuilder();
+        void Field(string label, string value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                builder.Append(label).Append(": ").Append(value).Append('\n');
+            }
+        }
+
+        Field("Title", _tpTitle);
+        Field("Episode", _tpEpisode);
+        Field("Author", _tpAuthor);
+        Field("Credit", _tpCredit);
+        Field("Source", _tpSource);
+        Field("Draft date", _tpDraftDate);
+        Field("Revision", _tpRevision);
+        AppendBlock(builder, "Contact", _tpContact);
+        AppendBlock(builder, "Notes", _tpNotes);
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private async Task ApplyTitlePageAsync() => await ReplaceTitlePageAsync(BuildTitlePageHeader());
+
+    private async Task DeleteTitlePageAsync() => await ReplaceTitlePageAsync(string.Empty);
+
+    private async Task ReplaceTitlePageAsync(string header)
+    {
+        var lines = _content.Replace("\r\n", "\n").Split('\n').ToList();
+        var bodyStart = _analysis.TitlePageBodyStart;
+        if (bodyStart > 0 && bodyStart <= lines.Count)
+        {
+            lines.RemoveRange(0, bodyStart);
+        }
+
+        if (header.Length > 0)
+        {
+            lines.Insert(0, string.Empty);
+            lines.Insert(0, header);
+        }
+
+        _titlePageOpen = false;
+        _content = string.Join("\n", lines);
+        _isDirty = true;
+        _statusMessage = header.Length > 0 ? "Title page updated" : "Title page removed";
+
+        // Whole-document rewrite, so the undo stack goes with it — the same
+        // trade-off EditTitlePage makes by assigning EditorContent outright.
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        await ReplaceEditorContentAsync();
+        await JS.InvokeVoidAsync("passage.setDirty", true);
+        StateHasChanged();
     }
 
     // ---- Find / Replace ----
