@@ -253,7 +253,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   filter FUTURE_IMPROVEMENTS 9 wants for the outline too — reuse it in 2.4.
   Bound to `Ctrl-Shift-G`, browser default suppressed.
 
-### 2.4 Scratchpad panel — `missing`
+### 2.4 Scratchpad panel — `blocked` — the Linux source is dead UI
 
 - **Linux:** MW.axaml 579–621 ("Scratch" tab); VM 262–267
   (`HasScratchpadItems`, `ScratchpadEmptyMessage`, `ScratchpadSearchText`),
@@ -266,6 +266,31 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   five tabs — check the tab strip still fits at the sidebar width before
   committing. The Scratchpad has its own search box, which
   FUTURE_IMPROVEMENTS 9 suggests copying for outline filtering later.
+- **Audit (do not port as specified):** The Linux Scratchpad does not work.
+  `ScratchpadElements` is declared at VM 129 and **never populated** — there is
+  no `.Add`, `.Insert` or assignment anywhere in `Passage.App.Linux`.
+  `ScratchpadSearchText` is bound to the search box but **nothing filters by
+  it**; typing only flips `ScratchpadEmptyMessage` between two strings, which
+  makes it claim "No scratchpad cards match the current search" when nothing
+  was ever searched. `DeleteScratchpadCard` has nothing to select and
+  `ScratchpadItem_DoubleTapped` can never fire. Porting this row as written
+  would add a fifth sidebar tab that is permanently empty, a search box that
+  filters nothing, and a delete button that does nothing — speculative UI, and
+  against rule 2.
+- **Where the real feature lives:** `Passage.App` (WPF) has a working
+  implementation — `MoveToScratchpadCommand` moves the current selection into
+  the pad — and the shared model already exists as
+  `Passage.Parser/ScreenplayModel.cs` 488 (`ScratchpadCardElement`, carrying a
+  heading, description and a source line range). So the infrastructure is
+  there; only the Linux port's populate path is missing.
+- **Decision needed.** Options:
+  1. **Defer until after 3.1** (recommended). "Moved scenes, notes, and loose
+     ideas will appear here" describes cards moved off the Beat Board, so the
+     populate path is 3.1d/3.1e. Build it once there is something to move.
+  2. **Port from WPF instead.** Doable — the model is shared — but it needs a
+     task that explicitly names `Passage.App`, which CLAUDE.md otherwise gates,
+     and it is feature work, not the self-contained UI port this tier assumes.
+  3. Port the empty shell for visual parity. Not recommended.
 
 ### 2.5 Syntax Quick Reference panel — `done`
 
