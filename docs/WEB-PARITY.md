@@ -25,7 +25,7 @@ checked against the Linux build).
 The shared services already exist in `Passage.Core` and the web app simply
 never calls them. Highest value per token in the project. Do these first.
 
-### 1.1 Session state restore — `missing`
+### 1.1 Session state restore — `done`
 
 - **Linux:** VM 2398–2483 (`LoadSessionState`, `SaveSessionNow`);
   MW.cs 699–773 (`OnOpened`), 774–795 (`OnClosing`)
@@ -36,6 +36,16 @@ never calls them. Highest value per token in the project. Do these first.
   per-browser in `localStorage` via `passage.js`, **not** globally on the data
   volume, or two browsers will fight over it. Caret restore is a free addition
   here since `OnCaretMoved` already exists (`Editor.razor` 403–410).
+- **Done:** Restores last document, caret line, editor font size and preview
+  zoom. State lives under the `passage.session.v1` localStorage key, written by
+  `scheduleSessionSave` / `loadSession` / `setSessionDocument` in `passage.js`.
+  `SessionStorage.cs` is deliberately **not** used — it writes one file under
+  the server's `LocalApplicationData`, shared by every client. The caret is
+  tracked in JS, not pushed from Blazor, so a moving cursor costs no
+  round-trips (CLAUDE.md trap 4). Razor pushes only document/font/zoom, via
+  `PersistSessionAsync`. A stored document that no longer exists is pruned on
+  load with a status message rather than an error. Rows 1.5 (Open Recent) and
+  3.2 (line-type overrides) should extend the same key.
 
 ### 1.2 Crash recovery — `missing`
 

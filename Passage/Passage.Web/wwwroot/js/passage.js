@@ -18,8 +18,13 @@ window.passage = (function () {
     let lastCaretLine = -1;
     let dirty = false;
     let appliedClasses = [];
+    let sessionReady = false;
+    let sessionTimer = null;
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25 };
 
     const INPUT_DEBOUNCE_MS = 200;
+    const SESSION_KEY = "passage.session.v1";
+    const SESSION_DEBOUNCE_MS = 400;
     const LINE_CLASSES = [
         "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
         "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
@@ -46,9 +51,52 @@ window.passage = (function () {
             const line = cm.getCursor().line + 1;
             if (line !== lastCaretLine) {
                 lastCaretLine = line;
+                session.caretLine = line;
+                scheduleSessionSave();
                 dotnetRef.invokeMethodAsync("OnCaretMoved", line);
             }
         }, 120);
+    }
+
+    // Session restore lives in localStorage, not on the server: the data volume
+    // is shared by every browser that opens the app, so a server-side "last
+    // document" would leave two clients fighting over one value. The caret is
+    // tracked here rather than pushed from Blazor so a moving cursor costs no
+    // round-trips.
+    function scheduleSessionSave() {
+        if (!sessionReady) return;
+        clearTimeout(sessionTimer);
+        sessionTimer = setTimeout(() => {
+            try {
+                window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            } catch (e) {
+                // Private browsing, or the quota is full. Restore is a
+                // convenience; losing it must not break the editor.
+            }
+        }, SESSION_DEBOUNCE_MS);
+    }
+
+    // Called once at startup. Saving stays disabled until this has run, so an
+    // early cursor event cannot overwrite the stored state before it is read.
+    function loadSession() {
+        sessionReady = true;
+        try {
+            const raw = window.localStorage.getItem(SESSION_KEY);
+            if (!raw) return null;
+            const stored = JSON.parse(raw);
+            if (!stored || typeof stored !== "object") return null;
+            session = Object.assign(session, stored);
+            return session;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setSessionDocument(fileName, editorFontPx, previewZoom) {
+        session.fileName = fileName || "";
+        session.editorFontPx = editorFontPx;
+        session.previewZoom = previewZoom;
+        scheduleSessionSave();
     }
 
     function init(reference) {
@@ -186,6 +234,7 @@ window.passage = (function () {
     return {
         init, applyHighlights, setContent, setDirty, scrollToLine,
         exportDocument, focusEditor,
+        loadSession, setSessionDocument,
         get editor() { return cm; }
     };
 })();

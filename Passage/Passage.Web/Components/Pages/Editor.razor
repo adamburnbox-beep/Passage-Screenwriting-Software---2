@@ -350,6 +350,11 @@ Open a .fountain file to see formatted pages.</div>
     private int _caretLine = 1;
     private string _caretElementLabel = "Action";
     private string _statusMessage = "Ready";
+    private const int MinEditorFontPx = 11;
+    private const int MaxEditorFontPx = 28;
+    private const double MinPreviewZoom = 0.55;
+    private const double MaxPreviewZoom = 2.5;
+
     private int _editorFontPx = 15;
     private double _previewZoom = 1.25;
 
@@ -382,6 +387,75 @@ Open a .fountain file to see formatted pages.</div>
         {
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("passage.init", _selfRef);
+            await RestoreSessionAsync();
+        }
+    }
+
+    // Per-browser session state. Held in localStorage by passage.js rather than
+    // in Passage.Core's SessionStorage, which writes one file under the server's
+    // LocalApplicationData — shared by every client, so two browsers would
+    // overwrite each other's "last document".
+    private sealed record SessionSnapshot
+    {
+        public string? FileName { get; init; }
+
+        public int CaretLine { get; init; } = 1;
+
+        public int EditorFontPx { get; init; } = 15;
+
+        public double PreviewZoom { get; init; } = 1.25;
+    }
+
+    private async Task RestoreSessionAsync()
+    {
+        SessionSnapshot? snapshot;
+        try
+        {
+            snapshot = await JS.InvokeAsync<SessionSnapshot?>("passage.loadSession");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        _editorFontPx = Math.Clamp(snapshot.EditorFontPx, MinEditorFontPx, MaxEditorFontPx);
+        _previewZoom = Math.Clamp(snapshot.PreviewZoom, MinPreviewZoom, MaxPreviewZoom);
+
+        var name = snapshot.FileName;
+        if (!string.IsNullOrEmpty(name))
+        {
+            if (_files.Any(file => file.Name == name))
+            {
+                await OpenFileAsync(name);
+                await JS.InvokeVoidAsync("passage.scrollToLine", Math.Max(1, snapshot.CaretLine));
+            }
+            else
+            {
+                // The file was deleted from the library by another client, or
+                // by this one in an earlier session. Start blank rather than
+                // erroring, and let the next save drop the stale name.
+                _statusMessage = $"{name} is no longer in the library";
+            }
+        }
+
+        await PersistSessionAsync();
+        StateHasChanged();
+    }
+
+    private async Task PersistSessionAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "passage.setSessionDocument", _fileName, _editorFontPx, _previewZoom);
+        }
+        catch (JSException)
+        {
         }
     }
 
@@ -451,6 +525,7 @@ Open a .fountain file to see formatted pages.</div>
         _fileName = validated;
         _saveAsOpen = false;
         _saveAsError = string.Empty;
+        await PersistSessionAsync();
         await SaveAsync();
         RunAnalysis();
         await PushHighlightsForCurrentVersionAsync();
@@ -535,6 +610,7 @@ Open a .fountain file to see formatted pages.</div>
         _statusMessage = "New script";
         await ResetEditorAsync();
         CaptureSessionBaseline();
+        await PersistSessionAsync();
     }
 
     private async Task OpenFileAsync(string name)
@@ -554,6 +630,7 @@ Open a .fountain file to see formatted pages.</div>
         _statusMessage = $"Opened {name}";
         await ResetEditorAsync();
         CaptureSessionBaseline();
+        await PersistSessionAsync();
     }
 
     private async Task ResetEditorAsync()
@@ -598,6 +675,7 @@ Open a .fountain file to see formatted pages.</div>
             _fileName = string.Empty;
             _isDirty = true;
             await JS.InvokeVoidAsync("passage.setDirty", true);
+            await PersistSessionAsync();
         }
 
         _statusMessage = $"Deleted {target}";
@@ -693,14 +771,16 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
     }
 
-    private void AdjustPreviewZoom(double delta)
+    private async Task AdjustPreviewZoom(double delta)
     {
-        _previewZoom = Math.Clamp(_previewZoom + delta, 0.55, 2.5);
+        _previewZoom = Math.Clamp(_previewZoom + delta, MinPreviewZoom, MaxPreviewZoom);
+        await PersistSessionAsync();
     }
 
-    private void AdjustEditorFont(int delta)
+    private async Task AdjustEditorFont(int delta)
     {
-        _editorFontPx = Math.Clamp(_editorFontPx + delta, 11, 28);
+        _editorFontPx = Math.Clamp(_editorFontPx + delta, MinEditorFontPx, MaxEditorFontPx);
+        await PersistSessionAsync();
     }
 
     private static string StyleClass(LayoutTextStyle style) => style switch
