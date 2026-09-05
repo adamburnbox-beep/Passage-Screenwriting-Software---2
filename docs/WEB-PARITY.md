@@ -149,7 +149,7 @@ never calls them. Highest value per token in the project. Do these first.
   another client may have deleted the file since the list was written. The
   app's own delete also drops the name.
 
-### 1.6 Undo / Redo — `partial`, verify before implementing
+### 1.6 Undo / Redo — `done`
 
 - **Linux:** MW.cs 249–276 (`UndoEditor`, `RedoEditor`,
   `ResetEditorUndoHistory`, `RedrawEditor`)
@@ -160,6 +160,30 @@ never calls them. Highest value per token in the project. Do these first.
   stack. Web code paths that rewrite `_content` wholesale (`ResetEditorAsync`,
   `Editor.razor` 559–569, and any Beat Board write-back from Tier 3) must use
   ranged replacements, or undo history dies on every card edit.
+- **Audit result:** Undo/redo already worked — `Ctrl-Z` / `Ctrl-Y` /
+  `Ctrl-Shift-Z` come free from CodeMirror's default PC keymap; verified, not
+  assumed. Nothing needed binding.
+  `passage.setContent` is the wholesale-replacement path: `setValue` +
+  `clearHistory` + caret to 1,1 + scroll to top. Three callers were audited.
+  `OpenFileAsync` and `StartNewFileAsync` are **correct** — a different
+  document should not inherit undo history. `RestoreRecoveryAsync` is
+  **acceptable** — the text genuinely differs.
+- **Bug found and fixed:** `ConfirmSaveAsAsync` also went through it, so
+  **Save As destroyed the entire undo stack and threw the caret back to line 1**
+  — for an operation that only renames the file. This is FUTURE_IMPROVEMENTS 1's
+  desktop trap reproduced on the web. Fixed with `passage.refreshHighlights`,
+  which re-applies line classes against the document already in the editor
+  (Save As can still flip screenplay/markdown mode via the extension, so the
+  classification does need refreshing — the text does not). Verified: history
+  and caret both survive a Save As.
+  The old helper was renamed `PushHighlightsForCurrentVersionAsync` →
+  `ReplaceEditorContentAsync`, because the old name hid the fact that it wiped
+  the document — the next caller would have walked into the same trap.
+- **Affordances:** ↶/↷ buttons added to the status bar beside A−/A+, since the
+  keyboard path was confirmed working first. They drive `cm.undo()`/`cm.redo()`
+  and hand focus back to the editor.
+- **For Tier 3:** the Beat Board write-back in 3.1b must use ranged replacements
+  and must not call `ReplaceEditorContentAsync`, or undo dies on every card edit.
 
 ---
 

@@ -257,6 +257,28 @@ window.passage = (function () {
         });
     }
 
+    // Re-apply line classes against the document already in the editor. Use this
+    // wherever only the classification changed — Save As can flip screenplay and
+    // markdown mode via the file extension without touching a character of text.
+    // Routing that through setContent would clear the undo stack and throw the
+    // caret back to line 1 for what is only a rename.
+    function refreshHighlights(classes) {
+        if (!cm) return;
+        applyHighlights(version, classes);
+    }
+
+    function undo() {
+        if (!cm) return;
+        cm.undo();
+        cm.focus();
+    }
+
+    function redo() {
+        if (!cm) return;
+        cm.redo();
+        cm.focus();
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
@@ -333,6 +355,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
+        refreshHighlights, undo, redo,
         getTheme, setTheme,
         get editor() { return cm; }
     };
