@@ -232,13 +232,26 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   and the status bar's "Ln N", which is now a button — the web app has no
   Navigate menu to hang it off.
 
-### 2.3 Go to Scene — `missing`
+### 2.3 Go to Scene — `done`
 
 - **Linux:** MW.cs 815–828 (`ShowGoToSceneDialog`); VM 686–694;
   `Views/GoToSceneDialog.axaml` + `.axaml.cs` (74 + 98 lines)
 - **Web:** `Editor.razor` 690–695 (`JumpToLineAsync`); scene list is already
   computed for the OUTLINE panel
 - **Notes:** Filterable scene picker over data the analysis already produces.
+- **Done:** Modal matching `GoToSceneDialog.axaml` — title "Go To Scene",
+  subtitle "Select a scene heading to jump to.", `line: heading` rows (the
+  Avalonia `SceneJumpItem.DisplayText` format), Jump and Close, double-click
+  and Enter to jump, first row selected on open.
+  Scenes come from flattening `_analysis.Outline` on `Kind == "Scene"` — the
+  same data the OUTLINE panel already renders, mirroring the Linux
+  `FlattenScenes` over `OutlineRoots`. Nothing is reparsed.
+  **Added beyond Avalonia**, per this row's own note: a filter box, focused on
+  open, with ArrowUp/ArrowDown moving the selection and `scrollIntoView`
+  keeping it visible. The selection is clamped when the filter narrows the
+  list, or Jump would fire on an index that no longer exists. This is the
+  filter FUTURE_IMPROVEMENTS 9 wants for the outline too — reuse it in 2.4.
+  Bound to `Ctrl-Shift-G`, browser default suppressed.
 
 ### 2.4 Scratchpad panel — `missing`
 

@@ -184,6 +184,15 @@ window.passage = (function () {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnGoToLineShortcut");
     }
 
+    function goToScene() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnGoToSceneShortcut");
+    }
+
+    function scrollIntoView(selector) {
+        const el = document.querySelector(selector);
+        if (el) el.scrollIntoView({ block: "nearest" });
+    }
+
     function toggleSyntaxPanel() {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnSyntaxPanelShortcut");
     }
@@ -243,6 +252,8 @@ window.passage = (function () {
                 "Cmd--": zoomOut,
                 "Ctrl-G": goToLine,
                 "Cmd-G": goToLine,
+                "Shift-Ctrl-G": goToScene,
+                "Shift-Cmd-G": goToScene,
                 "F1": toggleSyntaxPanel
             }
         });
@@ -395,7 +406,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText,
+        refreshHighlights, undo, redo, copyText, scrollIntoView,
         getTheme, setTheme,
         get editor() { return cm; }
     };

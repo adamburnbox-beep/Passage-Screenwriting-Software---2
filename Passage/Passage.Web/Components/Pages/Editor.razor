@@ -339,6 +339,38 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_goToSceneOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal modal-tall">
+            <h3>Go To Scene</h3>
+            <p>Select a scene heading to jump to.</p>
+            <input type="text" @ref="_sceneFilterInput" @bind="SceneFilter" @bind:event="oninput"
+                   placeholder="Filter scenes..." @onkeydown="OnGoToSceneKeyDown" />
+            <div class="scene-list">
+                @if (FilteredScenes.Count == 0)
+                {
+                    <div class="sidebar-empty">@(_scenes.Count == 0
+                        ? "No scene headings in this script."
+                        : "No scenes match that filter.")</div>
+                }
+                @for (var i = 0; i < FilteredScenes.Count; i++)
+                {
+                    var index = i;
+                    var scene = FilteredScenes[index];
+                    <div class="scene-row @(index == _sceneSelectedIndex ? "active" : null)"
+                         @onclick="() => _sceneSelectedIndex = index"
+                         @ondblclick="JumpToSelectedSceneAsync">@scene.LineNumber: @scene.Text</div>
+                }
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="CloseGoToScene">Close</button>
+                <button class="btn primary" @onclick="JumpToSelectedSceneAsync">Jump</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_goToLineOpen)
 {
     <div class="modal-backdrop">
@@ -441,6 +473,18 @@ Open a .fountain file to see formatted pages.</div>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusSceneFilter)
+        {
+            _focusSceneFilter = false;
+            try
+            {
+                await _sceneFilterInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
         if (_focusGoToLine)
         {
             _focusGoToLine = false;
@@ -1035,6 +1079,119 @@ Open a .fountain file to see formatted pages.</div>
     {
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    // ---- Go to Scene ----
+
+    private sealed record SceneJump(int LineNumber, string Text);
+
+    private bool _goToSceneOpen;
+    private string _sceneFilter = string.Empty;
+    private int _sceneSelectedIndex;
+    private ElementReference _sceneFilterInput;
+    private bool _focusSceneFilter;
+    private List<SceneJump> _scenes = new();
+
+    // Typing narrows the list, so the selection has to be pulled back inside it
+    // or Jump would fire on an index that no longer exists.
+    private string SceneFilter
+    {
+        get => _sceneFilter;
+        set
+        {
+            _sceneFilter = value;
+            var count = FilteredScenes.Count;
+            _sceneSelectedIndex = count == 0 ? 0 : Math.Clamp(_sceneSelectedIndex, 0, count - 1);
+        }
+    }
+
+    private List<SceneJump> FilteredScenes => _sceneFilter.Trim().Length == 0
+        ? _scenes
+        : _scenes
+            .Where(scene => scene.Text.Contains(_sceneFilter.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    [JSInvokable]
+    public void OnGoToSceneShortcut()
+    {
+        OpenGoToScene();
+        StateHasChanged();
+    }
+
+    private void OpenGoToScene()
+    {
+        // The OUTLINE panel already has this data; flatten it rather than
+        // reparsing, matching the Linux FlattenScenes over OutlineRoots.
+        _scenes = new List<SceneJump>();
+        CollectScenes(_analysis.Outline, _scenes);
+        _sceneFilter = string.Empty;
+        _sceneSelectedIndex = 0;
+        _goToSceneOpen = true;
+        _focusSceneFilter = true;
+    }
+
+    private static void CollectScenes(IEnumerable<OutlineNode> nodes, List<SceneJump> into)
+    {
+        foreach (var node in nodes)
+        {
+            if (string.Equals(node.Kind, "Scene", StringComparison.Ordinal))
+            {
+                into.Add(new SceneJump(node.LineNumber, node.Label));
+            }
+
+            CollectScenes(node.Children, into);
+        }
+    }
+
+    private void CloseGoToScene() => _goToSceneOpen = false;
+
+    private async Task JumpToSelectedSceneAsync()
+    {
+        var scenes = FilteredScenes;
+        if (_sceneSelectedIndex < 0 || _sceneSelectedIndex >= scenes.Count)
+        {
+            return;
+        }
+
+        var target = scenes[_sceneSelectedIndex];
+        _goToSceneOpen = false;
+        await JumpToLineAsync(target.LineNumber);
+    }
+
+    private async Task OnGoToSceneKeyDown(KeyboardEventArgs args)
+    {
+        var count = FilteredScenes.Count;
+        switch (args.Key)
+        {
+            case "Enter":
+                await JumpToSelectedSceneAsync();
+                break;
+            case "Escape":
+                CloseGoToScene();
+                break;
+            case "ArrowDown" when count > 0:
+                _sceneSelectedIndex = Math.Min(_sceneSelectedIndex + 1, count - 1);
+                await ScrollSelectedSceneIntoViewAsync();
+                break;
+            case "ArrowUp" when count > 0:
+                _sceneSelectedIndex = Math.Max(_sceneSelectedIndex - 1, 0);
+                await ScrollSelectedSceneIntoViewAsync();
+                break;
+        }
+    }
+
+    private async Task ScrollSelectedSceneIntoViewAsync()
+    {
+        // Blazor has to render the moved selection before the browser can
+        // scroll to it.
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await JS.InvokeVoidAsync("passage.scrollIntoView", ".scene-row.active");
+        }
+        catch (JSException)
+        {
+        }
     }
 
     // ---- Syntax quick reference ----
