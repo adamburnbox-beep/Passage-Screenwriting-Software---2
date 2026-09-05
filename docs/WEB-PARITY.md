@@ -408,7 +408,7 @@ a session.
 - **Web:** `Editor.razor` 759–776 (`RenderBoardCard`), 193–285 (centre pane)
 - **Split into:**
   - 3.1a Act lanes and Sequence groups (render only) — port VM 1603–1668 — **done**
-  - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666
+  - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666 — **extraction done; web edit still to do**
   - 3.1c Add scene to block — port VM 803–841
   - 3.1d Delete card with confirmation — port VM 842–885
   - 3.1e Drag-and-drop reorder — port VM 2678–2737 + MW.cs 1282–1348
@@ -425,6 +425,31 @@ a session.
   identity, and line numbers move constantly. Verified that collapsing a lane
   and a group survives a re-parse.
   Still read-only — no card editing, adding, deleting or dragging yet.
+
+- **3.1b extraction done (web card editing still outstanding):** The helpers now
+  live in **`Passage/Passage.Parser/BeatBoardText.cs`** — `GetCardLineRange`,
+  `BuildCardLines`, `ReplaceLines` — as pure static methods with no UI type in
+  any signature.
+  **Deviation:** the session prompt said `Passage.Core`. That is not possible:
+  these operate on `ScreenplayElement`/`SectionElement`/`SceneHeadingElement`,
+  and **`Passage.Parser` already depends on `Passage.Core`**, so putting them in
+  Core would make the reference circular. `Passage.Parser` is referenced by
+  Web, Linux and WPF alike, so the goal — one implementation, testable, shared —
+  is met either way. No new `ProjectReference` was needed, so the Dockerfile
+  copy list (trap 2) is untouched.
+  `MainWindowViewModel` now delegates to it from `GetCardLineRange` and
+  `UpdateCardInScript`; both keep their old signatures, so behaviour is
+  unchanged. Verified `dotnet build Passage.Linux.slnf` still passes
+  (0 warnings, 0 errors — the one pre-existing CS8601 in `MainWindow.axaml.cs`
+  is untouched and unrelated).
+  Five tests added to `Passage.Tests`, up from 5 to 10 total: card own range,
+  nested section blocks, scene block extent, out-of-range input, and
+  build/splice round-trip.
+  **Behaviour worth knowing:** trailing synopsis lines are absorbed into a card's
+  range *only once they are marked `IsSuppressed`*, which is what the board
+  build does when it folds a synopsis into a card's description. On a raw parse
+  nothing is suppressed, so a synopsis is a card in its own right. The tests
+  cover both sides; this was found by probing the parser rather than assumed.
 
 - **Notes:** The splicing helpers (VM 2586–2737) are pure string/list logic
   with no Avalonia dependency. **Extract them to `Passage.Core` rather than
