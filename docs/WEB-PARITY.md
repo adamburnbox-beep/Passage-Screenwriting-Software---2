@@ -352,7 +352,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   (`SetSyntaxPanelVisible`, MW.cs 337–380). The panel is a fixed 320px. Raise
   it if resizing turns out to matter.
 
-### 2.6 Title Page editor — `missing`
+### 2.6 Title Page editor — `done`
 
 - **Linux:** VM 1005–1104 (`EditTitlePage`);
   `Views/TitlePageDialog.axaml` + `.axaml.cs` (122 + 30 lines);
@@ -363,6 +363,26 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   Fountain title-page block is key/value pairs at the head of the document, so
   the dialog is a form that splices lines 1..n. Reuse the same field order as
   the Avalonia dialog so exports match.
+- **Done:** Form modal with the nine `TitlePageViewModel` fields, Credit
+  defaulting to "written by" as it does there. Written in `EditTitlePage`'s
+  **output** order — Title, Episode, Author, Credit, Source, Draft date,
+  Revision, then Contact and Notes as `Label:` plus 4-space indented lines.
+  That is not the order the view model declares them in (it has Credit before
+  Author); the write order is what exports depend on, so that is the one
+  copied. Empty fields are omitted, as there.
+  `DocumentAnalysis` gained `TitlePageBodyStart` — the splice needs the
+  boundary `TitlePageData.BodyStartLineIndex` already computes, and the web
+  analysis was only projecting `Entries`. Delete drops lines `0..BodyStart`,
+  matching the Avalonia Delete button.
+  **Verified** by writing a block and reopening it: every field round-tripped
+  through the parser, multi-line Contact included, and Delete left the body
+  untouched.
+- **Entry point:** the Export dropdown became **Document ▾** and now leads with
+  "Title Page…". The web app has no File menu, and this is the closest thing.
+- **Known cost:** a whole-document rewrite, so it clears the undo stack — the
+  same trade-off `EditTitlePage` makes by assigning `EditorContent` outright.
+  Splicing only the header range would preserve it; worth doing if 3.1b's
+  ranged-replacement helpers get extracted to `Passage.Core`.
 
 ---
 
