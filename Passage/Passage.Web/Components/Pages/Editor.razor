@@ -62,6 +62,18 @@
                         <div class="sidebar-empty">No scripts yet.
 Click New to start one — files are stored on the server volume.</div>
                     }
+                    @if (_recentFiles.Count > 0)
+                    {
+                        <div class="sidebar-heading">RECENT</div>
+                        @foreach (var name in _recentFiles)
+                        {
+                            <div class="file-row @(name == _fileName ? "active" : null)"
+                                 @onclick="() => RequestOpenRecentAsync(name)">
+                                <span class="file-name">@name</span>
+                            </div>
+                        }
+                        <div class="sidebar-heading">ALL SCRIPTS</div>
+                    }
                     @foreach (var file in _files)
                     {
                         <div class="file-row @(file.Name == _fileName ? "active" : null)" @onclick="() => RequestOpenFile(file.Name)">
@@ -546,6 +558,49 @@ Open a .fountain file to see formatted pages.</div>
         public int EditorFontPx { get; init; } = 15;
 
         public double PreviewZoom { get; init; } = 1.25;
+
+        public IReadOnlyList<string>? RecentFiles { get; init; }
+    }
+
+    // Matches the Linux MaxRecentFiles.
+    private const int MaxRecentFiles = 8;
+
+    private readonly List<string> _recentFiles = new();
+
+    private void AddRecentFile(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        _recentFiles.Remove(name);
+        _recentFiles.Insert(0, name);
+        while (_recentFiles.Count > MaxRecentFiles)
+        {
+            _recentFiles.RemoveAt(_recentFiles.Count - 1);
+        }
+    }
+
+    private async Task RequestOpenRecentAsync(string name)
+    {
+        if (name == _fileName)
+        {
+            return;
+        }
+
+        // Another client may have deleted it since this list was written.
+        // Mirrors the Linux OpenRecent: drop the entry, say so, do not throw.
+        if (!Library.Exists(name))
+        {
+            _recentFiles.Remove(name);
+            _files = Library.List();
+            _statusMessage = $"File not found: {name}";
+            await PersistSessionAsync();
+            return;
+        }
+
+        RequestOpenFile(name);
     }
 
     private async Task RestoreSessionAsync()
@@ -567,6 +622,17 @@ Open a .fountain file to see formatted pages.</div>
 
         _editorFontPx = Math.Clamp(snapshot.EditorFontPx, MinEditorFontPx, MaxEditorFontPx);
         _previewZoom = Math.Clamp(snapshot.PreviewZoom, MinPreviewZoom, MaxPreviewZoom);
+
+        // Prune entries the server no longer has rather than erroring on click.
+        _recentFiles.Clear();
+        if (snapshot.RecentFiles is not null)
+        {
+            var present = _files.Select(file => file.Name).ToHashSet(StringComparer.Ordinal);
+            _recentFiles.AddRange(snapshot.RecentFiles
+                .Where(name => !string.IsNullOrWhiteSpace(name) && present.Contains(name))
+                .Distinct(StringComparer.Ordinal)
+                .Take(MaxRecentFiles));
+        }
 
         var name = snapshot.FileName;
         if (!string.IsNullOrEmpty(name))
@@ -594,7 +660,7 @@ Open a .fountain file to see formatted pages.</div>
         try
         {
             await JS.InvokeVoidAsync(
-                "passage.setSessionDocument", _fileName, _editorFontPx, _previewZoom);
+                "passage.setSessionDocument", _fileName, _editorFontPx, _previewZoom, _recentFiles);
         }
         catch (JSException)
         {
@@ -674,6 +740,7 @@ Open a .fountain file to see formatted pages.</div>
         _fileName = validated;
         _saveAsOpen = false;
         _saveAsError = string.Empty;
+        AddRecentFile(validated);
         await PersistSessionAsync();
         await SaveAsync();
         RunAnalysis();
@@ -777,6 +844,7 @@ Open a .fountain file to see formatted pages.</div>
         _fileName = name;
         _isDirty = false;
         _statusMessage = $"Opened {name}";
+        AddRecentFile(name);
         await ResetEditorAsync();
         CaptureSessionBaseline();
         await PersistSessionAsync();
@@ -818,6 +886,8 @@ Open a .fountain file to see formatted pages.</div>
         }
 
         _files = Library.List();
+        _recentFiles.Remove(target);
+        await PersistSessionAsync();
         if (target == _fileName)
         {
             // The open buffer survives as an unsaved Untitled document.

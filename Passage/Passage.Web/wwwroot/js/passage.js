@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25 };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [] };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -95,10 +95,11 @@ window.passage = (function () {
         }
     }
 
-    function setSessionDocument(fileName, editorFontPx, previewZoom) {
+    function setSessionDocument(fileName, editorFontPx, previewZoom, recentFiles) {
         session.fileName = fileName || "";
         session.editorFontPx = editorFontPx;
         session.previewZoom = previewZoom;
+        session.recentFiles = Array.isArray(recentFiles) ? recentFiles : [];
         scheduleSessionSave();
     }
 

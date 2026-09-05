@@ -826,3 +826,13 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     font-size: 13px;
     line-height: 1;
 }
+
+.sidebar-heading {
+    color: var(--muted-text);
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+    margin: 12px 0 4px;
+}
+
+.sidebar-heading:first-child { margin-top: 0; }

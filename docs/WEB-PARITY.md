@@ -133,12 +133,21 @@ never calls them. Highest value per token in the project. Do these first.
   document), `Ctrl-M` (write mode is derived from the file extension, there is
   no toggle to bind), and `Ctrl-0` (no reset-zoom command exists).
 
-### 1.5 Open Recent / MRU — `missing`
+### 1.5 Open Recent / MRU — `done`
 
 - **Linux:** VM 235–253 (`MaxRecentFiles`, `RecentFiles`, `AddRecentFile`),
   481–496 (`OpenRecent`); MW.axaml 253–263 (menu)
 - **Web:** `Editor.razor` 53–74 (FILES panel), 491–507 (`RequestOpenFile`)
 - **Notes:** Per-browser, alongside 1.1. Small.
+- **Done:** A RECENT section at the top of the FILES panel, above ALL SCRIPTS.
+  Stored as `recentFiles` inside the existing `passage.session.v1` key, as row
+  1.1 anticipated — not a second key. `AddRecentFile` mirrors the Linux
+  remove/insert-at-0/trim, capped at `MaxRecentFiles = 8`.
+  Entries are pruned in two places: on load, against `Library.List()`, so a
+  stale list never renders; and on click, via `Library.Exists`, which mirrors
+  the Linux `OpenRecent` — status message, drop the entry, no throw — since
+  another client may have deleted the file since the list was written. The
+  app's own delete also drops the name.
 
 ### 1.6 Undo / Redo — `partial`, verify before implementing
 
