@@ -631,6 +631,13 @@ Open a .fountain file to see formatted pages.</div>
         StateHasChanged();
     }
 
+    [JSInvokable]
+    public async Task OnZoomShortcut(int delta)
+    {
+        await AdjustEditorFont(delta);
+        StateHasChanged();
+    }
+
     // ---- File actions ----
 
     private async Task SaveAsync()

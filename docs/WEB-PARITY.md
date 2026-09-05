@@ -106,7 +106,7 @@ never calls them. Highest value per token in the project. Do these first.
   on every load. Toggle lives in the topbar. Not done: Avalonia's startup system
   detection (`prefers-color-scheme`) — the web app defaults to dark as before.
 
-### 1.4 Keyboard shortcuts — `partial`
+### 1.4 Keyboard shortcuts — `partial` (blocked on Tier 2 features)
 
 - **Linux:** MW.cs 146–179 (`AddKeyboardShortcuts`); MW.axaml 250–320
   (`InputGesture` on every menu item)
@@ -115,6 +115,23 @@ never calls them. Highest value per token in the project. Do these first.
   Ctrl+Z/Y, Ctrl+F, Ctrl+G, Ctrl+M, zoom. Some rows below depend on this one;
   do it before them. Avalonia rejects `Ctrl+Plus` (FUTURE_IMPROVEMENTS 10) —
   the browser has no such limitation, so web zoom gestures can be complete.
+- **Done:** Bound in CodeMirror's `extraKeys` (`passage.js`), client-side.
+  Added `Ctrl-=` / `Ctrl-+` / `Ctrl--` for editor zoom, calling
+  `OnZoomShortcut`. Verified the browser's own page zoom is suppressed
+  (`defaultPrevented === true`), so the doc's note holds — web zoom gestures
+  work where Avalonia's `Ctrl+Plus` does not. Already working and left alone:
+  `Ctrl-S` (bound previously) and `Ctrl-Z` / `Ctrl-Y` / `Ctrl-Shift-Z`, which
+  come free from CodeMirror's default PC keymap — all four verified.
+- **Skipped, browser-reserved** — a page cannot intercept these, so they can
+  never be bound on the web at all. This is a permanent gap, not a to-do:
+  `Ctrl-N` (New), `Ctrl-O` (Open), `Ctrl-W` (Close), `Ctrl-Q` (Exit, also
+  out of scope). The New button remains the only route.
+- **Skipped, feature does not exist yet** — bind these when the row lands:
+  `Ctrl-F` (2.1 Find), `Ctrl-G` (2.2 Go to Line), `Ctrl-Shift-G` (2.3 Go to
+  Scene), `F1` (2.5 Syntax panel). Also `Ctrl-Shift-S` (Save As — the web app
+  has no Save As command; the dialog only appears when saving an untitled
+  document), `Ctrl-M` (write mode is derived from the file extension, there is
+  no toggle to bind), and `Ctrl-0` (no reset-zoom command exists).
 
 ### 1.5 Open Recent / MRU — `missing`
 

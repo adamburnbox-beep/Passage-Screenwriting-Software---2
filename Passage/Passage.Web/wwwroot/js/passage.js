@@ -164,6 +164,21 @@ window.passage = (function () {
         }
     }
 
+    // Editor keymap handlers. Zoom is server state (_editorFontPx drives a CSS
+    // variable on the editor stack), so it round-trips — that is fine at one
+    // call per keypress, unlike anything per-keystroke.
+    function onSave() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnSaveShortcut");
+    }
+
+    function zoomIn() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnZoomShortcut", 1);
+    }
+
+    function zoomOut() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnZoomShortcut", -1);
+    }
+
     function init(reference) {
         dotnetRef = reference;
         const host = document.getElementById("editor-host");
@@ -175,9 +190,19 @@ window.passage = (function () {
             lineWrapping: true,
             placeholder: "INT. OPENING SCENE - DAY",
             viewportMargin: 50,
+            // Ctrl-Z / Ctrl-Y / Ctrl-Shift-Z already come from CodeMirror's
+            // default PC keymap, so they are not repeated here. Ctrl-N/O/W/Q
+            // from the Linux set are reserved by the browser and cannot be
+            // intercepted by a page — see docs/WEB-PARITY.md row 1.4.
             extraKeys: {
-                "Ctrl-S": () => { dotnetRef.invokeMethodAsync("OnSaveShortcut"); },
-                "Cmd-S": () => { dotnetRef.invokeMethodAsync("OnSaveShortcut"); }
+                "Ctrl-S": onSave,
+                "Cmd-S": onSave,
+                "Ctrl-=": zoomIn,
+                "Cmd-=": zoomIn,
+                "Shift-Ctrl-=": zoomIn,
+                "Shift-Cmd-=": zoomIn,
+                "Ctrl--": zoomOut,
+                "Cmd--": zoomOut
             }
         });
 
