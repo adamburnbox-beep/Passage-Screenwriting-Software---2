@@ -51,6 +51,19 @@ launcher entry. The installed copy is a snapshot — after changing code,
 re-run the script to update it. `scripts/install-linux.sh --uninstall`
 removes everything it installed.
 
+### Web
+
+The full solution includes the WPF project, which cannot build on Linux, and
+the Avalonia project, which targets a different runtime. Use the web solution
+filter:
+
+```bash
+dotnet build Passage.Web.slnf
+dotnet run --project Passage/Passage.Web/Passage.Web.csproj
+```
+
+See `docs/web-app.md` for self-hosted deployment.
+
 ### Windows
 
 ```powershell
@@ -69,6 +82,9 @@ dotnet run --project Passage/Passage.Tests/Passage.Tests.csproj
 
 ## Documentation
 
+- `CLAUDE.md` — scope and mechanics for agent sessions (web-focused work)
+- `docs/WEB-PARITY.md` — web-vs-Linux feature gap; the work queue
+- `docs/WEB-SESSIONS.md` — one copy-paste session prompt per parity item
 - `docs/Design Principles.md` — visual and interaction design rules
 - `docs/linux-port-handover.md` — state of play for the Linux port
 - `docs/FUTURE_IMPROVEMENTS.md` — known gaps and suggested approaches

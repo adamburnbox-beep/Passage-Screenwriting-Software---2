@@ -26,14 +26,21 @@
         </nav>
 
         <div class="topbar-actions">
+            <button class="btn theme-toggle" @onclick="ToggleThemeAsync"
+                    title="@(_theme == "light" ? "Switch to dark theme" : "Switch to light theme")">
+                @(_theme == "light" ? "☾" : "☀")
+            </button>
+            <button class="btn theme-toggle @(_syntaxPanelOpen ? "on" : null)"
+                    title="Syntax reference (F1)" @onclick="ToggleSyntaxPanel">?</button>
             <label class="toggle" title="Save automatically shortly after you stop typing">
                 <input type="checkbox" @bind="_autosaveEnabled" /> AUTOSAVE
             </label>
             <button class="btn" @onclick="RequestNewFile">New</button>
             <button class="btn primary" @onclick="SaveAsync">Save</button>
             <details class="menu">
-                <summary class="btn">Export ▾</summary>
+                <summary class="btn">Document ▾</summary>
                 <div class="menu-items">
+                    <button @onclick="OpenTitlePage">Title Page…</button>
                     <button @onclick='() => ExportAsync("pdf")'>PDF (.pdf)</button>
                     <button @onclick='() => ExportAsync("txt")'>Plain text (.txt)</button>
                     <button @onclick='() => ExportAsync("fountain")'>Fountain source (.fountain)</button>
@@ -41,6 +48,46 @@
             </details>
         </div>
     </header>
+
+    @if (_findOpen)
+    {
+        <div class="find-bar">
+            <div class="find-fields">
+                <label class="find-field">
+                    <span>Find:</span>
+                    <input type="text" @ref="_findInput" @bind="_findTerm" @bind:event="oninput"
+                           placeholder="Text to find..." @onkeydown="OnFindKeyDown" />
+                </label>
+                @if (_replaceShown)
+                {
+                    <label class="find-field">
+                        <span>Replace with:</span>
+                        <input type="text" @bind="_replaceTerm" @bind:event="oninput"
+                               placeholder="Replacement text..." @onkeydown="OnFindKeyDown" />
+                    </label>
+                }
+            </div>
+            <div class="find-options">
+                <label class="toggle"><input type="checkbox" @bind="_matchCase" /> Match case</label>
+                <label class="toggle"><input type="checkbox" @bind="_wholeWord" /> Whole word</label>
+            </div>
+            <div class="find-actions">
+                <button class="btn" @onclick="() => FindAsync(false)">Previous</button>
+                <button class="btn primary" @onclick="() => FindAsync(true)">Find Next</button>
+                @if (_replaceShown)
+                {
+                    <button class="btn" @onclick="ReplaceCurrentAsync">Replace</button>
+                    <button class="btn" @onclick="ReplaceAllAsync">Replace All</button>
+                }
+                else
+                {
+                    <button class="btn" @onclick="() => { _replaceShown = true; }">Replace…</button>
+                }
+                <span class="find-status">@_findStatus</span>
+                <button class="icon-btn" title="Close (Esc)" @onclick="CloseFind">✕</button>
+            </div>
+        </div>
+    }
 
     <div class="main-area">
         <aside class="sidebar">
@@ -57,6 +104,18 @@
                     {
                         <div class="sidebar-empty">No scripts yet.
 Click New to start one — files are stored on the server volume.</div>
+                    }
+                    @if (_recentFiles.Count > 0)
+                    {
+                        <div class="sidebar-heading">RECENT</div>
+                        @foreach (var name in _recentFiles)
+                        {
+                            <div class="file-row @(name == _fileName ? "active" : null)"
+                                 @onclick="() => RequestOpenRecentAsync(name)">
+                                <span class="file-name">@name</span>
+                            </div>
+                        }
+                        <div class="sidebar-heading">ALL SCRIPTS</div>
                     }
                     @foreach (var file in _files)
                     {
@@ -214,15 +273,69 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                     <div class="board-surface">
                         @foreach (var lane in _analysis.BoardLanes)
                         {
+                            var laneKey = LaneKey(lane);
+                            var laneOpen = !_collapsedLanes.Contains(laneKey);
                             <div class="board-lane">
-                                <div class="board-lane-title">@lane.Heading</div>
-                                @if (lane.Description.Length > 0)
+                                @if (lane.ActCard is not null && _editingCardId == lane.ActCard.Id && lane.ActCard.Id != Guid.Empty)
                                 {
-                                    <div class="board-lane-synopsis">@lane.Description</div>
+                                    @RenderCardEditor(lane.ActCard)
                                 }
-                                @foreach (var card in lane.Children)
+                                else
                                 {
-                                    @RenderBoardCard(card)
+                                    <div class="board-lane-head">
+                                        <span class="board-twisty" @onclick="() => ToggleLane(laneKey)">@(laneOpen ? "▾" : "▸")</span>
+                                        <span class="board-lane-title" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
+                                        @if (lane.ActCard is not null && lane.ActCard.Id != Guid.Empty)
+                                        {
+                                            <button class="icon-btn board-add" title="Edit act"
+                                                    @onclick="() => StartCardEdit(lane.ActCard)">✎</button>
+                                        }
+                                        <button class="icon-btn board-add" title="Add a scene to this act"
+                                                @onclick="() => AddSceneToBlockAsync(lane.ActCard)">+</button>
+                                    </div>
+                                }
+                                @if (lane.ActCard is { Description.Length: > 0 })
+                                {
+                                    <div class="board-lane-synopsis">@lane.ActCard.Description</div>
+                                }
+                                @if (laneOpen)
+                                {
+                                    @foreach (var group in lane.Groups)
+                                    {
+                                        var groupKey = laneKey + "/" + GroupKey(group);
+                                        var groupOpen = !_collapsedGroups.Contains(groupKey);
+                                        <div class="board-group">
+                                            @if (group.SequenceCard is not null)
+                                            {
+                                                @if (_editingCardId == group.SequenceCard.Id && group.SequenceCard.Id != Guid.Empty)
+                                                {
+                                                    @RenderCardEditor(group.SequenceCard)
+                                                }
+                                                else
+                                                {
+                                                    <div class="board-group-head">
+                                                        <span class="board-twisty" @onclick="() => ToggleGroup(groupKey)">@(groupOpen ? "▾" : "▸")</span>
+                                                        <span class="board-group-title" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
+                                                        <button class="icon-btn board-add" title="Edit sequence"
+                                                                @onclick="() => StartCardEdit(group.SequenceCard)">✎</button>
+                                                        <button class="icon-btn board-add" title="Add a scene to this sequence"
+                                                                @onclick="() => AddSceneToBlockAsync(group.SequenceCard)">+</button>
+                                                    </div>
+                                                }
+                                                @if (group.SequenceCard.Description.Length > 0)
+                                                {
+                                                    <div class="board-group-synopsis">@group.SequenceCard.Description</div>
+                                                }
+                                            }
+                                            @if (groupOpen)
+                                            {
+                                                @foreach (var card in group.Cards)
+                                                {
+                                                    @RenderBoardCard(card)
+                                                }
+                                            }
+                                        </div>
+                                    }
                                 }
                             </div>
                         }
@@ -266,15 +379,21 @@ Open a .fountain file to see formatted pages.</div>
                 }
             }
         </main>
+        @if (_syntaxPanelOpen)
+        {
+            <SyntaxReferencePanel OnClose="CloseSyntaxPanel" />
+        }
     </div>
 
     <footer class="statusbar">
         <span>@ModeStatusText</span>
-        <span>Ln @_caretLine</span>
+        <button class="status-link" title="Go to line (Ctrl+G)" @onclick="OpenGoToLine">Ln @_caretLine</button>
         <span>@_caretElementLabel</span>
         <span>~@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s")</span>
         <span>@_analysis.WordCount.ToString("N0") words</span>
         <span class="spacer"></span>
+        <button class="icon-btn" title="Undo (Ctrl+Z)" @onclick="UndoAsync">↶</button>
+        <button class="icon-btn" title="Redo (Ctrl+Y)" @onclick="RedoAsync">↷</button>
         <button class="icon-btn" title="Smaller editor text" @onclick="() => AdjustEditorFont(-1)">A−</button>
         <button class="icon-btn" title="Larger editor text" @onclick="() => AdjustEditorFont(+1)">A+</button>
         <span class="status-message">@_statusMessage</span>
@@ -315,6 +434,124 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_deleteCard is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Delete Card</h3>
+            <p>This removes @_deleteCardScope from the script (@_deleteCardLines line@(_deleteCardLines == 1 ? "" : "s")). Continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _deleteCard = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmDeleteCardAsync">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_titlePageOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal modal-tall">
+            <h3>Title Page</h3>
+            <p>Fountain writes these as key/value lines at the head of the script.</p>
+            <div class="title-fields">
+                <label class="title-field"><span>Title</span>
+                    <input type="text" @ref="_titlePageInput" @bind="_tpTitle" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Episode</span>
+                    <input type="text" @bind="_tpEpisode" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Author</span>
+                    <input type="text" @bind="_tpAuthor" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Credit</span>
+                    <input type="text" @bind="_tpCredit" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Source</span>
+                    <input type="text" @bind="_tpSource" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Draft date</span>
+                    <input type="text" @bind="_tpDraftDate" @bind:event="oninput" /></label>
+                <label class="title-field"><span>Revision</span>
+                    <input type="text" @bind="_tpRevision" @bind:event="oninput" /></label>
+                <label class="title-field wide"><span>Contact</span>
+                    <textarea rows="3" @bind="_tpContact" @bind:event="oninput"></textarea></label>
+                <label class="title-field wide"><span>Notes</span>
+                    <textarea rows="3" @bind="_tpNotes" @bind:event="oninput"></textarea></label>
+            </div>
+            <div class="modal-actions">
+                @if (_hasTitlePage)
+                {
+                    <button class="btn" @onclick="DeleteTitlePageAsync">Delete</button>
+                }
+                <button class="btn" @onclick="() => _titlePageOpen = false">Cancel</button>
+                <button class="btn primary" @onclick="ApplyTitlePageAsync">OK</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_goToSceneOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal modal-tall">
+            <h3>Go To Scene</h3>
+            <p>Select a scene heading to jump to.</p>
+            <input type="text" @ref="_sceneFilterInput" @bind="SceneFilter" @bind:event="oninput"
+                   placeholder="Filter scenes..." @onkeydown="OnGoToSceneKeyDown" />
+            <div class="scene-list">
+                @if (FilteredScenes.Count == 0)
+                {
+                    <div class="sidebar-empty">@(_scenes.Count == 0
+                        ? "No scene headings in this script."
+                        : "No scenes match that filter.")</div>
+                }
+                @for (var i = 0; i < FilteredScenes.Count; i++)
+                {
+                    var index = i;
+                    var scene = FilteredScenes[index];
+                    <div class="scene-row @(index == _sceneSelectedIndex ? "active" : null)"
+                         @onclick="() => _sceneSelectedIndex = index"
+                         @ondblclick="JumpToSelectedSceneAsync">@scene.LineNumber: @scene.Text</div>
+                }
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="CloseGoToScene">Close</button>
+                <button class="btn primary" @onclick="JumpToSelectedSceneAsync">Jump</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_goToLineOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Go to Line</h3>
+            <p>Line number:</p>
+            <input type="text" @ref="_goToLineInput" @bind="_goToLineValue" @bind:event="oninput"
+                   placeholder="Enter line number..." @onkeydown="OnGoToLineKeyDown" />
+            @if (_goToLineError.Length > 0)
+            {
+                <div class="modal-error">@_goToLineError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn" @onclick="CloseGoToLine">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmGoToLineAsync">Go</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_recoveryPrompt is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Recover Document</h3>
+            <p>A recovered unsaved document was found. Would you like to restore it?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="DiscardRecoveryAsync">Discard</button>
+                <button class="btn primary" @onclick="RestoreRecoveryAsync">Restore</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_deleteTarget is not null)
 {
     <div class="modal-backdrop">
@@ -338,7 +575,8 @@ Open a .fountain file to see formatted pages.</div>
 
     private DocumentAnalysis _analysis = new(
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
-        Array.Empty<PreviewPage>(), Array.Empty<BoardCard>(), 0, 0, Array.Empty<TitlePageEntry>());
+        Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0,
+        Array.Empty<ScreenplayElement>(), 0, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -350,6 +588,11 @@ Open a .fountain file to see formatted pages.</div>
     private int _caretLine = 1;
     private string _caretElementLabel = "Action";
     private string _statusMessage = "Ready";
+    private const int MinEditorFontPx = 11;
+    private const int MaxEditorFontPx = 28;
+    private const double MinPreviewZoom = 0.55;
+    private const double MaxPreviewZoom = 2.5;
+
     private int _editorFontPx = 15;
     private double _previewZoom = 1.25;
 
@@ -378,24 +621,332 @@ Open a .fountain file to see formatted pages.</div>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusTitlePage)
+        {
+            _focusTitlePage = false;
+            try
+            {
+                await _titlePageInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        if (_focusFind)
+        {
+            _focusFind = false;
+            try
+            {
+                await _findInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        if (_focusSceneFilter)
+        {
+            _focusSceneFilter = false;
+            try
+            {
+                await _sceneFilterInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        if (_focusGoToLine)
+        {
+            _focusGoToLine = false;
+            try
+            {
+                await _goToLineInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
         if (firstRender)
         {
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("passage.init", _selfRef);
+            await SyncThemeAsync();
+            await SyncPageRulesAsync();
+            await RestoreSessionAsync();
+            await CheckForRecoveryAsync();
+        }
+    }
+
+    // The theme is applied by an inline script in App.razor before first paint,
+    // so the server only needs to read back which one is showing to label the
+    // toggle. Persisting is passage.js's job.
+    private string _theme = "dark";
+
+    private async Task SyncThemeAsync()
+    {
+        try
+        {
+            _theme = await JS.InvokeAsync<string>("passage.getTheme");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        var next = _theme == "light" ? "dark" : "light";
+        try
+        {
+            _theme = await JS.InvokeAsync<string>("passage.setTheme", next);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    // Crash recovery. Separate from the file autosave below, which writes the
+    // real file: this offers back unsaved work after the server or the browser
+    // died. Snapshots are written client-side by passage.js — see the comment
+    // there for why they are not kept on the server.
+    private sealed record RecoverySnapshot
+    {
+        public string Text { get; init; } = string.Empty;
+
+        public string? FileName { get; init; }
+
+        public DateTimeOffset SavedAtUtc { get; init; }
+    }
+
+    private RecoverySnapshot? _recoveryPrompt;
+
+    private async Task CheckForRecoveryAsync()
+    {
+        RecoverySnapshot? snapshot;
+        try
+        {
+            snapshot = await JS.InvokeAsync<RecoverySnapshot?>("passage.readRecoverySnapshot");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (snapshot is null || snapshot.Text.Length == 0)
+        {
+            return;
+        }
+
+        // Only offer work the saved file does not already contain. An untitled
+        // snapshot has no file to compare against, so it always counts as newer.
+        var name = snapshot.FileName;
+        if (!string.IsNullOrEmpty(name))
+        {
+            var entry = _files.FirstOrDefault(file => file.Name == name);
+            if (entry is not null && snapshot.SavedAtUtc.UtcDateTime <= entry.LastModifiedUtc)
+            {
+                await JS.InvokeVoidAsync("passage.clearRecoverySnapshot");
+                return;
+            }
+        }
+
+        _recoveryPrompt = snapshot;
+        StateHasChanged();
+    }
+
+    private async Task RestoreRecoveryAsync()
+    {
+        var snapshot = _recoveryPrompt;
+        _recoveryPrompt = null;
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        _content = snapshot.Text;
+        _fileName = snapshot.FileName ?? string.Empty;
+        _mainViewIndex = 0;
+        _caretLine = 1;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        await ReplaceEditorContentAsync();
+
+        // The recovered text is by definition not what is on disk, so the
+        // buffer stays dirty and keeps snapshotting until it is saved.
+        _isDirty = true;
+        await JS.InvokeVoidAsync("passage.setDirty", true);
+        CaptureSessionBaseline();
+        await PersistSessionAsync();
+        _statusMessage = "Recovered unsaved work";
+        StateHasChanged();
+    }
+
+    private async Task DiscardRecoveryAsync()
+    {
+        _recoveryPrompt = null;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.clearRecoverySnapshot");
+        }
+        catch (JSException)
+        {
+        }
+
+        _statusMessage = "Discarded recovered document";
+        StateHasChanged();
+    }
+
+    // Per-browser session state. Held in localStorage by passage.js rather than
+    // in Passage.Core's SessionStorage, which writes one file under the server's
+    // LocalApplicationData — shared by every client, so two browsers would
+    // overwrite each other's "last document".
+    private sealed record SessionSnapshot
+    {
+        public string? FileName { get; init; }
+
+        public int CaretLine { get; init; } = 1;
+
+        public int EditorFontPx { get; init; } = 15;
+
+        public double PreviewZoom { get; init; } = 1.25;
+
+        public IReadOnlyList<string>? RecentFiles { get; init; }
+
+        // "Classify As" overrides ride in the session key, per row 3.2's note
+        // that they are session state rather than file content.
+        public Dictionary<string, string>? LineOverrides { get; init; }
+    }
+
+    // Matches the Linux MaxRecentFiles.
+    private const int MaxRecentFiles = 8;
+
+    private readonly List<string> _recentFiles = new();
+
+    private void AddRecentFile(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        _recentFiles.Remove(name);
+        _recentFiles.Insert(0, name);
+        while (_recentFiles.Count > MaxRecentFiles)
+        {
+            _recentFiles.RemoveAt(_recentFiles.Count - 1);
+        }
+    }
+
+    private async Task RequestOpenRecentAsync(string name)
+    {
+        if (name == _fileName)
+        {
+            return;
+        }
+
+        // Another client may have deleted it since this list was written.
+        // Mirrors the Linux OpenRecent: drop the entry, say so, do not throw.
+        if (!Library.Exists(name))
+        {
+            _recentFiles.Remove(name);
+            _files = Library.List();
+            _statusMessage = $"File not found: {name}";
+            await PersistSessionAsync();
+            return;
+        }
+
+        RequestOpenFile(name);
+    }
+
+    private async Task RestoreSessionAsync()
+    {
+        SessionSnapshot? snapshot;
+        try
+        {
+            snapshot = await JS.InvokeAsync<SessionSnapshot?>("passage.loadSession");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        _editorFontPx = Math.Clamp(snapshot.EditorFontPx, MinEditorFontPx, MaxEditorFontPx);
+        _previewZoom = Math.Clamp(snapshot.PreviewZoom, MinPreviewZoom, MaxPreviewZoom);
+
+        // Prune entries the server no longer has rather than erroring on click.
+        _recentFiles.Clear();
+        if (snapshot.RecentFiles is not null)
+        {
+            var present = _files.Select(file => file.Name).ToHashSet(StringComparer.Ordinal);
+            _recentFiles.AddRange(snapshot.RecentFiles
+                .Where(name => !string.IsNullOrWhiteSpace(name) && present.Contains(name))
+                .Distinct(StringComparer.Ordinal)
+                .Take(MaxRecentFiles));
+        }
+
+        var name = snapshot.FileName;
+        if (!string.IsNullOrEmpty(name))
+        {
+            if (_files.Any(file => file.Name == name))
+            {
+                await OpenFileAsync(name);
+                await JS.InvokeVoidAsync("passage.scrollToLine", Math.Max(1, snapshot.CaretLine));
+
+                if (snapshot.LineOverrides is { Count: > 0 })
+                {
+                    await JS.InvokeVoidAsync("passage.restoreLineOverrides", snapshot.LineOverrides);
+                }
+            }
+            else
+            {
+                // The file was deleted from the library by another client, or
+                // by this one in an earlier session. Start blank rather than
+                // erroring, and let the next save drop the stale name.
+                _statusMessage = $"{name} is no longer in the library";
+            }
+        }
+
+        await PersistSessionAsync();
+        StateHasChanged();
+    }
+
+    private async Task PersistSessionAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "passage.setSessionDocument", _fileName, _editorFontPx, _previewZoom, _recentFiles);
+        }
+        catch (JSException)
+        {
         }
     }
 
     // ---- JS callbacks ----
 
     [JSInvokable]
-    public async Task OnEditorChanged(string text, int version, int caretLine)
+    public async Task OnEditorChanged(
+        string text, int version, int caretLine, Dictionary<string, string>? overrides)
     {
+        SetLineTypeOverrides(overrides);
         _content = text;
         _isDirty = true;
         _caretLine = caretLine;
         RunAnalysis();
         UpdateCaretElementLabel();
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        await PushSuggestionsAsync();
         ScheduleAutosave();
         StateHasChanged();
     }
@@ -412,6 +963,13 @@ Open a .fountain file to see formatted pages.</div>
     public async Task OnSaveShortcut()
     {
         await SaveAsync();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnZoomShortcut(int delta)
+    {
+        await AdjustEditorFont(delta);
         StateHasChanged();
     }
 
@@ -451,9 +1009,16 @@ Open a .fountain file to see formatted pages.</div>
         _fileName = validated;
         _saveAsOpen = false;
         _saveAsError = string.Empty;
+        AddRecentFile(validated);
+        await PersistSessionAsync();
         await SaveAsync();
+
+        // Only the name changed. The extension can flip screenplay/markdown
+        // mode, so the classification is refreshed — but the document is left
+        // alone, or a rename would cost the user their undo stack and caret.
         RunAnalysis();
-        await PushHighlightsForCurrentVersionAsync();
+        UpdateCaretElementLabel();
+        await JS.InvokeVoidAsync("passage.refreshHighlights", _analysis.LineClasses);
     }
 
     private static string OverwriteWarning(string name) =>
@@ -535,6 +1100,7 @@ Open a .fountain file to see formatted pages.</div>
         _statusMessage = "New script";
         await ResetEditorAsync();
         CaptureSessionBaseline();
+        await PersistSessionAsync();
     }
 
     private async Task OpenFileAsync(string name)
@@ -552,8 +1118,10 @@ Open a .fountain file to see formatted pages.</div>
         _fileName = name;
         _isDirty = false;
         _statusMessage = $"Opened {name}";
+        AddRecentFile(name);
         await ResetEditorAsync();
         CaptureSessionBaseline();
+        await PersistSessionAsync();
     }
 
     private async Task ResetEditorAsync()
@@ -564,7 +1132,38 @@ Open a .fountain file to see formatted pages.</div>
         UpdateCaretElementLabel();
         var version = await JS.InvokeAsync<int>("passage.setContent", _content);
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        await SyncPageRulesAsync();
+        await PushSuggestionsAsync();
         StateHasChanged();
+    }
+
+    // Page rules are for screenplays only, matching ApplyEditorWriteMode. The
+    // web derives its mode from the file extension, so this follows the name.
+    // Pushed once per parse, not per keystroke — the client does the matching.
+    private async Task PushSuggestionsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "passage.setSuggestions",
+                _analysis.SceneHeadingSuggestions,
+                _analysis.CharacterSuggestions,
+                _analysis.SuggestionKinds);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task SyncPageRulesAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setPageRules", IsScreenplayMode);
+        }
+        catch (JSException)
+        {
+        }
     }
 
     private void RequestDeleteFile(string name)
@@ -592,12 +1191,15 @@ Open a .fountain file to see formatted pages.</div>
         }
 
         _files = Library.List();
+        _recentFiles.Remove(target);
+        await PersistSessionAsync();
         if (target == _fileName)
         {
             // The open buffer survives as an unsaved Untitled document.
             _fileName = string.Empty;
             _isDirty = true;
             await JS.InvokeVoidAsync("passage.setDirty", true);
+            await PersistSessionAsync();
         }
 
         _statusMessage = $"Deleted {target}";
@@ -644,12 +1246,44 @@ Open a .fountain file to see formatted pages.</div>
 
     // ---- Analysis / rendering helpers ----
 
-    private void RunAnalysis()
+    // ---- "Classify As" line-type overrides ----
+    //
+    // Keyed by 1-based line number, the shape the parser takes. The client owns
+    // them against CodeMirror line handles, which follow a line as text is
+    // inserted or removed above it, and sends the current numbers with every
+    // content push. The desktop keeps a plain Dictionary<int, …> and never
+    // renumbers it, so an edit above an overridden line silently moves the
+    // override onto the wrong one; handles are how the web avoids that.
+    private Dictionary<int, ScreenplayElementType> _lineTypeOverrides = new();
+
+    private void SetLineTypeOverrides(Dictionary<string, string>? overrides)
     {
-        _analysis = IsScreenplayMode ? _analyzer.Analyze(_content) : DocumentAnalyzer.AnalyzeMarkdown(_content);
+        var map = new Dictionary<int, ScreenplayElementType>();
+        if (overrides is not null)
+        {
+            foreach (var (line, typeName) in overrides)
+            {
+                if (int.TryParse(line, out var lineNumber) &&
+                    Enum.TryParse<ScreenplayElementType>(typeName, out var type))
+                {
+                    map[lineNumber] = type;
+                }
+            }
+        }
+
+        _lineTypeOverrides = map;
     }
 
-    private async Task PushHighlightsForCurrentVersionAsync()
+    private void RunAnalysis()
+    {
+        _analysis = IsScreenplayMode
+            ? _analyzer.Analyze(_content, _lineTypeOverrides.Count > 0 ? _lineTypeOverrides : null)
+            : DocumentAnalyzer.AnalyzeMarkdown(_content);
+    }
+
+    // Replaces the whole document: clears CodeMirror's undo stack and resets
+    // the caret. Only correct when the text really is different.
+    private async Task ReplaceEditorContentAsync()
     {
         var version = await JS.InvokeAsync<int>("passage.setContent", _content);
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
@@ -693,14 +1327,786 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
     }
 
-    private void AdjustPreviewZoom(double delta)
+    // ---- Beat Board: drag to reorder ----
+    //
+    // Ports the pointer handlers plus MoveBeatBoardCardText. The desktop decides
+    // before/after from the horizontal midpoint of the target; the web board
+    // stacks cards vertically, so this uses the vertical midpoint instead —
+    // a horizontal split would be meaningless in a column.
+    //
+    // The move is applied as one contiguous splice (see TryPlanMove), so a drag
+    // is a single undo step and does not disturb the rest of the document.
+
+    private Guid _dragCardId = Guid.Empty;
+    private Guid _dragOverCardId = Guid.Empty;
+
+    private void OnCardDragStart(BoardCard card)
     {
-        _previewZoom = Math.Clamp(_previewZoom + delta, 0.55, 2.5);
+        // Never start a drag from a card that is open for editing.
+        if (_editingCardId == card.Id)
+        {
+            return;
+        }
+
+        _dragCardId = card.Id;
     }
 
-    private void AdjustEditorFont(int delta)
+    private void OnCardDragEnd()
     {
-        _editorFontPx = Math.Clamp(_editorFontPx + delta, 11, 28);
+        _dragCardId = Guid.Empty;
+        _dragOverCardId = Guid.Empty;
+    }
+
+    private void OnCardDragOver(BoardCard card)
+    {
+        if (_dragCardId == Guid.Empty || _dragCardId == card.Id)
+        {
+            _dragOverCardId = Guid.Empty;
+            return;
+        }
+
+        // Which side the drop lands on is decided in the browser, which is the
+        // only place the card's real height is known; this just marks the target.
+        _dragOverCardId = card.Id;
+    }
+
+    private async Task OnCardDropAsync(BoardCard target)
+    {
+        var sourceId = _dragCardId;
+        var insertAfter = false;
+        try
+        {
+            insertAfter = await JS.InvokeAsync<bool>("passage.dropIsAfter");
+        }
+        catch (JSException)
+        {
+        }
+
+        _dragCardId = Guid.Empty;
+        _dragOverCardId = Guid.Empty;
+
+        if (sourceId == Guid.Empty || sourceId == target.Id || target.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        var source = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, sourceId, _analysis.LineCount, includeNestedBlock: true);
+        var destination = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, target.Id, _analysis.LineCount, includeNestedBlock: true);
+
+        var lines = _content.Replace("\r\n", "\n").Split('\n');
+
+        if (!BeatBoardText.TryPlanMove(lines, source, destination, insertAfter,
+                out var splice, out var replacement))
+        {
+            _statusMessage = "That card cannot be moved there";
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeAsync<bool>(
+                "passage.replaceLineRange",
+                splice.StartLineIndex,
+                splice.EndLineIndex,
+                string.Join("\n", replacement));
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _statusMessage = "Moved card";
+    }
+
+    // ---- Beat Board: delete a card ----
+    //
+    // Ports DeleteCard. A Note takes only its own lines; anything else takes its
+    // whole block, nested content included — which is why this always confirms,
+    // and why the prompt states the line count.
+
+    private BoardCard? _deleteCard;
+    private string _deleteCardScope = string.Empty;
+    private int _deleteCardLines;
+    private BeatBoardText.LineRange _deleteCardRange;
+
+    private void RequestDeleteCard(BoardCard card)
+    {
+        if (card.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        var range = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, card.Id, _analysis.LineCount,
+            includeNestedBlock: card.Kind != "Note");
+
+        if (!range.IsFound)
+        {
+            _cardEditError = "That card is no longer in the script.";
+            return;
+        }
+
+        _deleteCard = card;
+        _deleteCardRange = range;
+        _deleteCardLines = range.LineCount;
+        _deleteCardScope = card.Kind is "Act" or "Sequence"
+            ? $"the {card.Kind.ToLowerInvariant()} \"{card.Heading}\" and everything nested inside it"
+            : $"\"{card.Heading}\" and its contents";
+    }
+
+    private async Task ConfirmDeleteCardAsync()
+    {
+        var card = _deleteCard;
+        var range = _deleteCardRange;
+        _deleteCard = null;
+        if (card is null || !range.IsFound)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "passage.deleteLineRange", range.StartLineIndex, range.EndLineIndex);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _editingCardId = Guid.Empty;
+        _cardEditError = string.Empty;
+        _statusMessage = $"Deleted {card.Kind.ToLowerInvariant()} \"{card.Heading}\"";
+    }
+
+    // ---- Beat Board: add a scene ----
+    //
+    // Ports AddSceneToBlock. The new scene goes after the container's *whole*
+    // block — nested content included — so adding to an act lands at the end of
+    // that act, not immediately under its heading.
+
+    private async Task AddSceneToBlockAsync(BoardCard? container)
+    {
+        var insertAt = _analysis.LineCount;
+
+        if (container is not null && container.Id != Guid.Empty)
+        {
+            var range = BeatBoardText.GetCardLineRange(
+                _analysis.Elements, container.Id, _analysis.LineCount, includeNestedBlock: true);
+
+            if (range.IsFound)
+            {
+                insertAt = Math.Min(range.EndLineIndex + 1, _analysis.LineCount);
+            }
+        }
+
+        var newId = Guid.NewGuid();
+        var lines = string.Join("\n", new[]
+        {
+            string.Empty,
+            $". NEW SCENE [[id:{newId}]]",
+            "= Click Edit to describe this scene."
+        });
+
+        try
+        {
+            await JS.InvokeVoidAsync("passage.insertLinesAt", insertAt, lines);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _statusMessage = "Added scene";
+    }
+
+    // ---- Beat Board card editing ----
+    //
+    // Write-back goes through BeatBoardText (shared with the desktop app) to
+    // work out the card's own line range and build its replacement lines, then
+    // splices just that range in CodeMirror. Deliberately not a whole-document
+    // rewrite: that is what clears the undo stack, which is the trap 3.1 and
+    // FUTURE_IMPROVEMENTS 1 both warn about.
+
+    private Guid _editingCardId = Guid.Empty;
+    private string _editHeading = string.Empty;
+    private string _editDescription = string.Empty;
+    private string _editType = "Scene";
+    private string _cardEditError = string.Empty;
+
+    private void StartCardEdit(BoardCard card)
+    {
+        _editingCardId = card.Id;
+        _editHeading = card.Heading;
+        _editDescription = card.Description;
+        _editType = card.Kind;
+        _cardEditError = string.Empty;
+    }
+
+    private void CancelCardEdit()
+    {
+        _editingCardId = Guid.Empty;
+        _cardEditError = string.Empty;
+    }
+
+    private async Task SaveCardAsync()
+    {
+        if (_editingCardId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editHeading))
+        {
+            _cardEditError = "A card needs a heading.";
+            return;
+        }
+
+        var range = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, _editingCardId, _analysis.LineCount, includeNestedBlock: false);
+
+        if (!range.IsFound)
+        {
+            // The document moved on under the card — a reparse will have
+            // rebuilt the board, so ask the user to try again rather than
+            // splicing at a stale offset.
+            _cardEditError = "That card is no longer in the script. Close and reopen the editor.";
+            return;
+        }
+
+        var lines = BeatBoardText.BuildCardLines(
+            _editType, _editHeading, _editDescription, _editingCardId);
+
+        bool replaced;
+        try
+        {
+            replaced = await JS.InvokeAsync<bool>(
+                "passage.replaceLineRange",
+                range.StartLineIndex,
+                range.EndLineIndex,
+                string.Join("\n", lines));
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (!replaced)
+        {
+            _cardEditError = "Could not update the script.";
+            return;
+        }
+
+        _editingCardId = Guid.Empty;
+        _cardEditError = string.Empty;
+        _statusMessage = "Card updated";
+    }
+
+    private async Task OnCardEditKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await SaveCardAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelCardEdit();
+        }
+    }
+
+    // ---- Beat Board ----
+    //
+    // Lanes and groups are rebuilt from scratch on every parse, so collapsed
+    // state has to survive the rebuild — the same thing RebuildBeatBoardLanes
+    // does with its collapsed-id sets. Keyed by heading rather than the Linux
+    // card Id, because line numbers move on every keystroke and the web has no
+    // stable card identity to hang onto.
+    private readonly HashSet<string> _collapsedLanes = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _collapsedGroups = new(StringComparer.Ordinal);
+
+    private static string LaneKey(BoardLane lane) => lane.ActCard?.Heading ?? "\u0000lane";
+
+    private static string GroupKey(BoardGroup group) => group.SequenceCard?.Heading ?? "\u0000group";
+
+    private void ToggleLane(string key)
+    {
+        if (!_collapsedLanes.Remove(key))
+        {
+            _collapsedLanes.Add(key);
+        }
+    }
+
+    private void ToggleGroup(string key)
+    {
+        if (!_collapsedGroups.Remove(key))
+        {
+            _collapsedGroups.Add(key);
+        }
+    }
+
+    // ---- Title page ----
+    //
+    // The Fountain title page is key/value lines at the head of the document,
+    // so editing it means splicing lines 0..BodyStart. Field order below is the
+    // order EditTitlePage writes them in — Author before Credit, Contact and
+    // Notes last — so a document round-trips identically between the two apps
+    // and exports match.
+
+    private bool _titlePageOpen;
+    private bool _hasTitlePage;
+    private ElementReference _titlePageInput;
+    private bool _focusTitlePage;
+
+    private string _tpTitle = string.Empty;
+    private string _tpEpisode = string.Empty;
+    private string _tpCredit = "written by";
+    private string _tpAuthor = string.Empty;
+    private string _tpSource = string.Empty;
+    private string _tpContact = string.Empty;
+    private string _tpDraftDate = string.Empty;
+    private string _tpRevision = string.Empty;
+    private string _tpNotes = string.Empty;
+
+    private void OpenTitlePage()
+    {
+        _tpTitle = _tpEpisode = _tpAuthor = _tpSource = string.Empty;
+        _tpContact = _tpDraftDate = _tpRevision = _tpNotes = string.Empty;
+        _tpCredit = "written by";
+
+        foreach (var entry in _analysis.TitlePage)
+        {
+            switch (entry.FieldType)
+            {
+                case TitlePageFieldType.Title: _tpTitle = entry.Value; break;
+                case TitlePageFieldType.Episode: _tpEpisode = entry.Value; break;
+                case TitlePageFieldType.Credit: _tpCredit = entry.Value; break;
+                case TitlePageFieldType.Author: _tpAuthor = entry.Value; break;
+                case TitlePageFieldType.Source: _tpSource = entry.Value; break;
+                case TitlePageFieldType.Contact: _tpContact = entry.Value; break;
+                case TitlePageFieldType.DraftDate: _tpDraftDate = entry.Value; break;
+                case TitlePageFieldType.Revision: _tpRevision = entry.Value; break;
+                case TitlePageFieldType.Notes: _tpNotes = entry.Value; break;
+            }
+        }
+
+        _hasTitlePage = _analysis.TitlePage.Count > 0;
+        _titlePageOpen = true;
+        _focusTitlePage = true;
+    }
+
+    private static void AppendBlock(System.Text.StringBuilder builder, string label, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        builder.Append(label).Append(':').Append('\n');
+        foreach (var line in value.Replace("\r\n", "\n").Split('\n'))
+        {
+            builder.Append("    ").Append(line.Trim()).Append('\n');
+        }
+    }
+
+    private string BuildTitlePageHeader()
+    {
+        var builder = new System.Text.StringBuilder();
+        void Field(string label, string value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                builder.Append(label).Append(": ").Append(value).Append('\n');
+            }
+        }
+
+        Field("Title", _tpTitle);
+        Field("Episode", _tpEpisode);
+        Field("Author", _tpAuthor);
+        Field("Credit", _tpCredit);
+        Field("Source", _tpSource);
+        Field("Draft date", _tpDraftDate);
+        Field("Revision", _tpRevision);
+        AppendBlock(builder, "Contact", _tpContact);
+        AppendBlock(builder, "Notes", _tpNotes);
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private async Task ApplyTitlePageAsync() => await ReplaceTitlePageAsync(BuildTitlePageHeader());
+
+    private async Task DeleteTitlePageAsync() => await ReplaceTitlePageAsync(string.Empty);
+
+    private async Task ReplaceTitlePageAsync(string header)
+    {
+        var lines = _content.Replace("\r\n", "\n").Split('\n').ToList();
+        var bodyStart = _analysis.TitlePageBodyStart;
+        if (bodyStart > 0 && bodyStart <= lines.Count)
+        {
+            lines.RemoveRange(0, bodyStart);
+        }
+
+        if (header.Length > 0)
+        {
+            lines.Insert(0, string.Empty);
+            lines.Insert(0, header);
+        }
+
+        _titlePageOpen = false;
+        _content = string.Join("\n", lines);
+        _isDirty = true;
+        _statusMessage = header.Length > 0 ? "Title page updated" : "Title page removed";
+
+        // Whole-document rewrite, so the undo stack goes with it — the same
+        // trade-off EditTitlePage makes by assigning EditorContent outright.
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        await ReplaceEditorContentAsync();
+        await JS.InvokeVoidAsync("passage.setDirty", true);
+        StateHasChanged();
+    }
+
+    // ---- Find / Replace ----
+    //
+    // A docked bar rather than Avalonia's floating window: a modal dialog would
+    // take focus away from the editor it is searching, and the web app has no
+    // separate window to put it in. Same option set and same buttons.
+
+    private bool _findOpen;
+    private bool _replaceShown;
+    private string _findTerm = string.Empty;
+    private string _replaceTerm = string.Empty;
+    private bool _matchCase;
+    private bool _wholeWord;
+    private string _findStatus = string.Empty;
+    private ElementReference _findInput;
+    private bool _focusFind;
+
+    [JSInvokable]
+    public async Task OnFindShortcut(bool showReplace)
+    {
+        _findOpen = true;
+        _replaceShown = _replaceShown || showReplace;
+        _findStatus = string.Empty;
+        _focusFind = true;
+
+        // Seed from the selection, the way an editor's find normally behaves.
+        try
+        {
+            var selected = await JS.InvokeAsync<string>("passage.selectedText");
+            if (!string.IsNullOrEmpty(selected) && !selected.Contains('\n'))
+            {
+                _findTerm = selected;
+            }
+        }
+        catch (JSException)
+        {
+        }
+
+        StateHasChanged();
+    }
+
+    private void CloseFind()
+    {
+        _findOpen = false;
+        _findStatus = string.Empty;
+    }
+
+    private async Task FindAsync(bool forward)
+    {
+        if (_findTerm.Length == 0)
+        {
+            _findStatus = string.Empty;
+            return;
+        }
+
+        bool found;
+        try
+        {
+            found = await JS.InvokeAsync<bool>(
+                forward ? "passage.findNext" : "passage.findPrevious",
+                _findTerm, _matchCase, _wholeWord);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _findStatus = found ? string.Empty : "No matches";
+    }
+
+    private sealed record ReplaceOutcome
+    {
+        public int Replaced { get; init; }
+
+        public bool Found { get; init; }
+    }
+
+    private async Task ReplaceCurrentAsync()
+    {
+        if (_findTerm.Length == 0)
+        {
+            return;
+        }
+
+        ReplaceOutcome outcome;
+        try
+        {
+            outcome = await JS.InvokeAsync<ReplaceOutcome>(
+                "passage.replaceCurrent", _findTerm, _replaceTerm, _matchCase, _wholeWord);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _findStatus = outcome.Replaced > 0
+            ? "Replaced 1"
+            : (outcome.Found ? string.Empty : "No matches");
+    }
+
+    private async Task ReplaceAllAsync()
+    {
+        if (_findTerm.Length == 0)
+        {
+            return;
+        }
+
+        ReplaceOutcome outcome;
+        try
+        {
+            outcome = await JS.InvokeAsync<ReplaceOutcome>(
+                "passage.replaceAll", _findTerm, _replaceTerm, _matchCase, _wholeWord);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _findStatus = outcome.Replaced == 0
+            ? "No matches"
+            : $"Replaced {outcome.Replaced}";
+    }
+
+    private async Task OnFindKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await FindAsync(!args.ShiftKey);
+        }
+        else if (args.Key == "Escape")
+        {
+            CloseFind();
+        }
+    }
+
+    // ---- Go to Scene ----
+
+    private sealed record SceneJump(int LineNumber, string Text);
+
+    private bool _goToSceneOpen;
+    private string _sceneFilter = string.Empty;
+    private int _sceneSelectedIndex;
+    private ElementReference _sceneFilterInput;
+    private bool _focusSceneFilter;
+    private List<SceneJump> _scenes = new();
+
+    // Typing narrows the list, so the selection has to be pulled back inside it
+    // or Jump would fire on an index that no longer exists.
+    private string SceneFilter
+    {
+        get => _sceneFilter;
+        set
+        {
+            _sceneFilter = value;
+            var count = FilteredScenes.Count;
+            _sceneSelectedIndex = count == 0 ? 0 : Math.Clamp(_sceneSelectedIndex, 0, count - 1);
+        }
+    }
+
+    private List<SceneJump> FilteredScenes => _sceneFilter.Trim().Length == 0
+        ? _scenes
+        : _scenes
+            .Where(scene => scene.Text.Contains(_sceneFilter.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    [JSInvokable]
+    public void OnGoToSceneShortcut()
+    {
+        OpenGoToScene();
+        StateHasChanged();
+    }
+
+    private void OpenGoToScene()
+    {
+        // The OUTLINE panel already has this data; flatten it rather than
+        // reparsing, matching the Linux FlattenScenes over OutlineRoots.
+        _scenes = new List<SceneJump>();
+        CollectScenes(_analysis.Outline, _scenes);
+        _sceneFilter = string.Empty;
+        _sceneSelectedIndex = 0;
+        _goToSceneOpen = true;
+        _focusSceneFilter = true;
+    }
+
+    private static void CollectScenes(IEnumerable<OutlineNode> nodes, List<SceneJump> into)
+    {
+        foreach (var node in nodes)
+        {
+            if (string.Equals(node.Kind, "Scene", StringComparison.Ordinal))
+            {
+                into.Add(new SceneJump(node.LineNumber, node.Label));
+            }
+
+            CollectScenes(node.Children, into);
+        }
+    }
+
+    private void CloseGoToScene() => _goToSceneOpen = false;
+
+    private async Task JumpToSelectedSceneAsync()
+    {
+        var scenes = FilteredScenes;
+        if (_sceneSelectedIndex < 0 || _sceneSelectedIndex >= scenes.Count)
+        {
+            return;
+        }
+
+        var target = scenes[_sceneSelectedIndex];
+        _goToSceneOpen = false;
+        await JumpToLineAsync(target.LineNumber);
+    }
+
+    private async Task OnGoToSceneKeyDown(KeyboardEventArgs args)
+    {
+        var count = FilteredScenes.Count;
+        switch (args.Key)
+        {
+            case "Enter":
+                await JumpToSelectedSceneAsync();
+                break;
+            case "Escape":
+                CloseGoToScene();
+                break;
+            case "ArrowDown" when count > 0:
+                _sceneSelectedIndex = Math.Min(_sceneSelectedIndex + 1, count - 1);
+                await ScrollSelectedSceneIntoViewAsync();
+                break;
+            case "ArrowUp" when count > 0:
+                _sceneSelectedIndex = Math.Max(_sceneSelectedIndex - 1, 0);
+                await ScrollSelectedSceneIntoViewAsync();
+                break;
+        }
+    }
+
+    private async Task ScrollSelectedSceneIntoViewAsync()
+    {
+        // Blazor has to render the moved selection before the browser can
+        // scroll to it.
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await JS.InvokeVoidAsync("passage.scrollIntoView", ".scene-row.active");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    // ---- Syntax quick reference ----
+
+    private bool _syntaxPanelOpen;
+
+    [JSInvokable]
+    public void OnSyntaxPanelShortcut()
+    {
+        ToggleSyntaxPanel();
+        StateHasChanged();
+    }
+
+    private void ToggleSyntaxPanel() => _syntaxPanelOpen = !_syntaxPanelOpen;
+
+    private void CloseSyntaxPanel() => _syntaxPanelOpen = false;
+
+    // ---- Go to Line ----
+
+    private bool _goToLineOpen;
+    private string _goToLineValue = string.Empty;
+    private string _goToLineError = string.Empty;
+    private ElementReference _goToLineInput;
+    private bool _focusGoToLine;
+
+    [JSInvokable]
+    public void OnGoToLineShortcut()
+    {
+        OpenGoToLine();
+        StateHasChanged();
+    }
+
+    private void OpenGoToLine()
+    {
+        _goToLineValue = string.Empty;
+        _goToLineError = string.Empty;
+        _goToLineOpen = true;
+        // Avalonia focuses the dialog's first control for free; the browser
+        // does not focus a node that was only just inserted, so ask for it.
+        _focusGoToLine = true;
+    }
+
+    private void CloseGoToLine()
+    {
+        _goToLineOpen = false;
+        _goToLineError = string.Empty;
+    }
+
+    private async Task ConfirmGoToLineAsync()
+    {
+        if (!int.TryParse(_goToLineValue.Trim(), out var lineNumber) || lineNumber < 1)
+        {
+            // The Avalonia dialog just refuses to close on bad input, which
+            // leaves the user guessing. Say what is wrong instead (rule 12).
+            _goToLineError = "Enter a line number of 1 or more.";
+            return;
+        }
+
+        _goToLineOpen = false;
+        _goToLineError = string.Empty;
+        // scrollToLine clamps past the end of the document, matching the
+        // Linux NavigateToLine.
+        await JumpToLineAsync(lineNumber);
+    }
+
+    // Awaited, not fire-and-forget: Blazor renders when the handler completes,
+    // so a detached task would set the validation error after the only render
+    // it could have appeared in.
+    private async Task OnGoToLineKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await ConfirmGoToLineAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CloseGoToLine();
+        }
+    }
+
+    // CodeMirror owns the undo stack; these just drive it and hand focus back.
+    private async Task UndoAsync() => await JS.InvokeVoidAsync("passage.undo");
+
+    private async Task RedoAsync() => await JS.InvokeVoidAsync("passage.redo");
+
+    private async Task AdjustPreviewZoom(double delta)
+    {
+        _previewZoom = Math.Clamp(_previewZoom + delta, MinPreviewZoom, MaxPreviewZoom);
+        await PersistSessionAsync();
+    }
+
+    private async Task AdjustEditorFont(int delta)
+    {
+        _editorFontPx = Math.Clamp(_editorFontPx + delta, MinEditorFontPx, MaxEditorFontPx);
+        await PersistSessionAsync();
     }
 
     private static string StyleClass(LayoutTextStyle style) => style switch
@@ -756,20 +2162,71 @@ Open a .fountain file to see formatted pages.</div>
         </div>
     };
 
+    // Shared by scene cards and by the act/sequence headers, so an Act can be
+    // renamed and deleted the same way a card can — it is a card on the desktop
+    // board, just drawn as a lane here.
+    private RenderFragment<BoardCard> RenderCardEditor => card => __builder =>
+    {
+        <div class="board-card editing" @onclick:stopPropagation="true">
+            <select class="card-type" @bind="_editType">
+                <option value="Act">Act</option>
+                <option value="Sequence">Sequence</option>
+                <option value="Section">Section</option>
+                <option value="Scene">Scene</option>
+                <option value="Note">Note</option>
+            </select>
+            <input class="card-heading-input" @bind="_editHeading" @bind:event="oninput"
+                   @onkeydown="OnCardEditKeyDown" placeholder="Heading" />
+            <textarea class="card-body-input" rows="2" @bind="_editDescription" @bind:event="oninput"
+                      placeholder="Synopsis"></textarea>
+            @if (_cardEditError.Length > 0)
+            {
+                <div class="modal-error">@_cardEditError</div>
+            }
+            <div class="card-edit-actions">
+                <button class="btn" @onclick="() => RequestDeleteCard(card)">Delete</button>
+                <button class="btn" @onclick="CancelCardEdit">Cancel</button>
+                <button class="btn primary" @onclick="SaveCardAsync">Save</button>
+            </div>
+        </div>
+    };
+
     private RenderFragment<BoardCard> RenderBoardCard => card => __builder =>
     {
-        <div class="board-card" @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
-            <span class="card-kind">@card.Kind</span>
-            <div class="card-heading">@card.Heading</div>
-            @if (card.Description.Length > 0)
-            {
-                <div class="card-body">@card.Description</div>
-            }
-            @foreach (var child in card.Children)
-            {
-                @RenderBoardCard(child)
-            }
-        </div>
+        @if (_editingCardId == card.Id && card.Id != Guid.Empty)
+        {
+            @RenderCardEditor(card)
+        }
+        else
+        {
+            <div class="board-card @(_dragOverCardId == card.Id ? "drop-target" : null)"
+                 draggable="@((card.Id != Guid.Empty).ToString().ToLowerInvariant())"
+                 @ondragstart="() => OnCardDragStart(card)"
+                 @ondragend="OnCardDragEnd"
+                 @ondragover="() => OnCardDragOver(card)"
+                 @ondragover:preventDefault="true"
+                 @ondrop="() => OnCardDropAsync(card)"
+                 @ondrop:preventDefault="true"
+                 @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
+                <div class="card-top">
+                    <span class="card-kind">@card.Kind</span>
+                    @if (card.Id != Guid.Empty)
+                    {
+                        <button class="icon-btn card-edit-btn" title="Edit card"
+                                @onclick="() => StartCardEdit(card)" @onclick:stopPropagation="true">✎</button>
+                    }
+                </div>
+                <div class="card-heading">@card.Heading</div>
+                @if (card.Description.Length > 0)
+                {
+                    <div class="card-body">@card.Description</div>
+                }
+                @foreach (var child in card.Children)
+                {
+                    @RenderBoardCard(child)
+                }
+            </div>
+        }
     };
 
     // ---- Goals ----

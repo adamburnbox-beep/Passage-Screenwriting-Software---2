@@ -4,7 +4,7 @@ using Passage.Parser;
 
 namespace Passage.Web.Services;
 
-public sealed record OutlineNode(string Label, string Kind, int LineNumber, List<OutlineNode> Children);
+public sealed record OutlineNode(string Label, string Kind, int LineNumber, List<OutlineNode> Children, Guid Id = default);
 
 public sealed record NoteEntry(string Text, int LineNumber);
 
@@ -12,17 +12,40 @@ public sealed record PreviewLine(string Text, LayoutTextStyle Style, double Inde
 
 public sealed record PreviewPage(IReadOnlyList<PreviewLine> Lines, int PageNumber, bool IsTitlePage);
 
-public sealed record BoardCard(string Heading, string Kind, string Description, int LineNumber, List<BoardCard> Children);
+public sealed record BoardCard(string Heading, string Kind, string Description, int LineNumber, List<BoardCard> Children, Guid Id = default);
+
+/// <summary>A Sequence and the cards beneath it. SequenceCard is null for cards
+/// that appear before any Sequence heading.</summary>
+public sealed record BoardGroup(BoardCard? SequenceCard, List<BoardCard> Cards);
+
+/// <summary>An Act and the Sequence groups beneath it. ActCard is null for
+/// groups that appear before any Act heading.</summary>
+public sealed record BoardLane(BoardCard? ActCard, List<BoardGroup> Groups);
 
 public sealed record DocumentAnalysis(
     string[] LineClasses,
     IReadOnlyList<OutlineNode> Outline,
     IReadOnlyList<NoteEntry> Notes,
     IReadOnlyList<PreviewPage> PreviewPages,
-    IReadOnlyList<BoardCard> BoardLanes,
+    IReadOnlyList<BoardLane> BoardLanes,
     int WordCount,
     int PageCount,
-    IReadOnlyList<TitlePageEntry> TitlePage);
+    IReadOnlyList<TitlePageEntry> TitlePage,
+    // First line of the script proper. The title-page editor splices lines
+    // 0..BodyStart, so it needs the boundary the parser already worked out.
+    int TitlePageBodyStart,
+    // The parsed elements and the document's line count, which
+    // BeatBoardText.GetCardLineRange needs to resolve a card to a line range.
+    IReadOnlyList<ScreenplayElement> Elements,
+    int LineCount,
+    // Autocomplete sources, pushed to the client after each parse so typing
+    // never round-trips (trap 4).
+    IReadOnlyList<string> SceneHeadingSuggestions,
+    IReadOnlyList<string> CharacterSuggestions,
+    // Per line: "scene", "character" or "". Which list (if any) autocomplete
+    // should offer there. Decided here so the shared TextAnalysis helpers stay
+    // the single implementation; the client only does the prefix matching.
+    string[] SuggestionKinds);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -34,10 +57,19 @@ public sealed class DocumentAnalyzer
 {
     private readonly FountainParser _parser = new();
 
-    public DocumentAnalysis Analyze(string text)
+    public DocumentAnalysis Analyze(string text) => Analyze(text, null);
+
+    /// <summary>
+    /// <paramref name="lineTypeOverrides"/> is the "Classify As" map, keyed by
+    /// 1-based line number — the same shape the parser takes on the desktop.
+    /// </summary>
+    public DocumentAnalysis Analyze(
+        string text, IReadOnlyDictionary<int, ScreenplayElementType>? lineTypeOverrides)
     {
-        var parsed = _parser.Parse(text);
+        var parsed = _parser.Parse(text, lineTypeOverrides);
         var lineCount = CountLines(text);
+
+        SuppressCardSynopses(parsed.Elements);
 
         var lineClasses = BuildLineClasses(parsed, lineCount);
         var outline = BuildOutline(parsed.Elements);
@@ -47,6 +79,7 @@ public sealed class DocumentAnalyzer
             .ToList();
         var previewPages = BuildPreviewPages(parsed);
         var boardLanes = BuildBoardLanes(outline);
+        CollectSuggestions(parsed.Elements, out var sceneHeadings, out var characters);
         var wordCount = TextAnalysis.CountWords(text);
         var pageCount = previewPages.Count(page => !page.IsTitlePage);
 
@@ -58,7 +91,13 @@ public sealed class DocumentAnalyzer
             boardLanes,
             wordCount,
             pageCount,
-            parsed.TitlePage.Entries);
+            parsed.TitlePage.Entries,
+            parsed.TitlePage.BodyStartLineIndex,
+            parsed.Elements,
+            lineCount,
+            sceneHeadings,
+            characters,
+            BuildSuggestionKinds(parsed, text, lineCount));
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
@@ -113,10 +152,16 @@ public sealed class DocumentAnalyzer
             outline,
             Array.Empty<NoteEntry>(),
             Array.Empty<PreviewPage>(),
-            Array.Empty<BoardCard>(),
+            Array.Empty<BoardLane>(),
             TextAnalysis.CountWords(text),
             0,
-            Array.Empty<TitlePageEntry>());
+            Array.Empty<TitlePageEntry>(),
+            0,
+            Array.Empty<ScreenplayElement>(),
+            CountLines(text),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>());
     }
 
     private static string[] BuildLineClasses(ParsedScreenplay parsed, int lineCount)
@@ -200,7 +245,7 @@ public sealed class DocumentAnalyzer
             {
                 case SectionElement section:
                 {
-                    var node = new OutlineNode(section.Heading, section.KindLabel, section.LineNumber, new List<OutlineNode>());
+                    var node = new OutlineNode(section.Heading, section.KindLabel, section.LineNumber, new List<OutlineNode>(), section.Id);
                     PopTo(section.SectionDepth);
                     Attach(node);
                     stack.Add((section.SectionDepth, node));
@@ -208,7 +253,7 @@ public sealed class DocumentAnalyzer
                 }
                 case SceneHeadingElement scene:
                 {
-                    var node = new OutlineNode(scene.Heading, "Scene", scene.LineNumber, new List<OutlineNode>());
+                    var node = new OutlineNode(scene.Heading, "Scene", scene.LineNumber, new List<OutlineNode>(), scene.Id);
                     PopTo(SceneStackLevel);
                     Attach(node);
                     stack.Add((SceneStackLevel, node));
@@ -244,40 +289,233 @@ public sealed class DocumentAnalyzer
         return pages;
     }
 
-    private static List<BoardCard> BuildBoardLanes(IReadOnlyList<OutlineNode> outline)
+    /// <summary>
+    /// Groups the outline into Act lanes containing Sequence groups containing
+    /// cards, mirroring the Linux RebuildBeatBoardLanes. Cards that appear
+    /// before any Act or Sequence heading get an implicit lane or group, so a
+    /// script with no structure markers still renders.
+    /// </summary>
+    /// <summary>
+    /// Marks the synopsis lines that follow a heading as suppressed, because the
+    /// board shows them as that card's description rather than as cards of their
+    /// own. Mirrors what the Avalonia board build does, and is what lets
+    /// BeatBoardText.GetCardLineRange include them in the card's own range —
+    /// without it, editing a description would leave the old "= " lines behind.
+    /// </summary>
+    /// <summary>
+    /// The unique scene headings and character names in the script, uppercased
+    /// and sorted. Ports UpdateUniqueScreenplayElements, including taking
+    /// character names from Dialogue elements as well as Character ones.
+    /// </summary>
+    /// <summary>
+    /// Which suggestion list belongs on each line. Ports
+    /// GetLatestEffectiveLineType: the parse wins where it has an opinion, and
+    /// otherwise the same live-cue fallback applies, so a half-typed character
+    /// name is offered completions before the parser can commit to it.
+    /// </summary>
+    private static string[] BuildSuggestionKinds(ParsedScreenplay parsed, string text, int lineCount)
     {
-        var lanes = outline
-            .Where(node => node.Kind is "Act" or "Sequence")
-            .Select(ToBoardCard)
-            .ToList();
-
-        if (lanes.Count > 0)
+        var kinds = new string[lineCount];
+        for (var i = 0; i < kinds.Length; i++)
         {
-            return lanes;
+            kinds[i] = string.Empty;
         }
 
-        // No acts/sequences: gather top-level scenes into a single lane.
-        var scenes = outline.Where(node => node.Kind == "Scene").Select(ToBoardCard).ToList();
-        if (scenes.Count == 0)
+        foreach (var element in parsed.Elements)
         {
-            return lanes;
+            var kind = element.Type switch
+            {
+                ScreenplayElementType.SceneHeading => "scene",
+                ScreenplayElementType.Character => "character",
+                _ => string.Empty
+            };
+
+            if (kind.Length == 0)
+            {
+                continue;
+            }
+
+            for (var line = element.LineIndex; line <= element.EndLineIndex && line < kinds.Length; line++)
+            {
+                if (line >= 0)
+                {
+                    kinds[line] = kind;
+                }
+            }
         }
 
-        return [new BoardCard("Script", "Act", string.Empty, scenes[0].LineNumber, scenes)];
+        // The fallback, for lines the parse has no element for — a name being
+        // typed on a fresh line is the case that matters.
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        for (var i = 0; i < kinds.Length && i < lines.Length; i++)
+        {
+            if (kinds[i].Length > 0)
+            {
+                continue;
+            }
+
+            var trimmed = lines[i].Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+
+            if (TextAnalysis.LooksLikeSceneHeadingStart(trimmed.AsSpan()))
+            {
+                kinds[i] = "scene";
+            }
+            else if (TextAnalysis.IsLiveCharacterCueCandidate(lines[i].AsSpan(), 45, 6))
+            {
+                kinds[i] = "character";
+            }
+        }
+
+        return kinds;
     }
 
-    private static BoardCard ToBoardCard(OutlineNode node)
+    private static void CollectSuggestions(
+        IReadOnlyList<ScreenplayElement> elements,
+        out IReadOnlyList<string> sceneHeadings,
+        out IReadOnlyList<string> characters)
     {
-        var synopsis = string.Join("\n", node.Children
-            .Where(child => child.Kind == "Synopsis")
-            .Select(child => child.Label));
-        var children = node.Children
-            .Where(child => child.Kind != "Synopsis")
-            .Select(ToBoardCard)
-            .ToList();
+        var headingSet = new HashSet<string>(StringComparer.Ordinal);
+        var characterSet = new HashSet<string>(StringComparer.Ordinal);
 
-        return new BoardCard(node.Label, node.Kind, synopsis, node.LineNumber, children);
+        foreach (var element in elements)
+        {
+            switch (element)
+            {
+                case SceneHeadingElement:
+                {
+                    var heading = element.Text.Trim();
+                    if (heading.Length > 0)
+                    {
+                        headingSet.Add(heading.ToUpperInvariant());
+                    }
+
+                    break;
+                }
+
+                case CharacterElement character:
+                {
+                    var name = character.CharacterName.Trim();
+                    if (name.Length > 0)
+                    {
+                        characterSet.Add(name.ToUpperInvariant());
+                    }
+
+                    break;
+                }
+
+                case DialogueElement dialogue:
+                {
+                    var name = dialogue.CharacterName.Trim();
+                    if (name.Length > 0)
+                    {
+                        characterSet.Add(name.ToUpperInvariant());
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        sceneHeadings = headingSet.OrderBy(entry => entry, StringComparer.Ordinal).ToList();
+        characters = characterSet.OrderBy(entry => entry, StringComparer.Ordinal).ToList();
     }
+
+    private static void SuppressCardSynopses(IReadOnlyList<ScreenplayElement> elements)
+    {
+        for (var i = 0; i < elements.Count; i++)
+        {
+            if (elements[i].Type is not (ScreenplayElementType.Section
+                or ScreenplayElementType.SceneHeading
+                or ScreenplayElementType.Note))
+            {
+                continue;
+            }
+
+            for (var j = i + 1; j < elements.Count; j++)
+            {
+                if (elements[j].Type != ScreenplayElementType.Synopsis)
+                {
+                    break;
+                }
+
+                elements[j].IsSuppressed = true;
+            }
+        }
+    }
+
+    private static List<BoardLane> BuildBoardLanes(IReadOnlyList<OutlineNode> outline)
+    {
+        var lanes = new List<BoardLane>();
+        BoardLane? currentLane = null;
+        BoardGroup? currentGroup = null;
+
+        foreach (var card in FlattenBoardCards(outline))
+        {
+            if (card.Kind == "Act")
+            {
+                currentLane = new BoardLane(card, new List<BoardGroup>());
+                currentGroup = null;
+                lanes.Add(currentLane);
+                continue;
+            }
+
+            if (currentLane is null)
+            {
+                currentLane = new BoardLane(null, new List<BoardGroup>());
+                lanes.Add(currentLane);
+            }
+
+            if (card.Kind == "Sequence")
+            {
+                currentGroup = new BoardGroup(card, new List<BoardCard>());
+                currentLane.Groups.Add(currentGroup);
+                continue;
+            }
+
+            if (currentGroup is null)
+            {
+                currentGroup = new BoardGroup(null, new List<BoardCard>());
+                currentLane.Groups.Add(currentGroup);
+            }
+
+            currentGroup.Cards.Add(card);
+        }
+
+        return lanes;
+    }
+
+    /// <summary>
+    /// Walks the outline in document order and yields one flat card per node,
+    /// which is the shape RebuildBeatBoardLanes consumes. Synopsis children
+    /// become their parent's description rather than cards of their own.
+    /// </summary>
+    private static IEnumerable<BoardCard> FlattenBoardCards(IEnumerable<OutlineNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Kind == "Synopsis")
+            {
+                continue;
+            }
+
+            var synopsis = string.Join("\n", node.Children
+                .Where(child => child.Kind == "Synopsis")
+                .Select(child => child.Label));
+
+            yield return new BoardCard(
+                node.Label, node.Kind, synopsis, node.LineNumber, new List<BoardCard>(), node.Id);
+
+            foreach (var child in FlattenBoardCards(node.Children))
+            {
+                yield return child;
+            }
+        }
+    }
+
 
     private static int CountLines(string text)
     {

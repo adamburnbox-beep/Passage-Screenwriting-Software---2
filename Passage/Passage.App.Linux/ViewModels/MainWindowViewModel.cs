@@ -888,64 +888,26 @@ public partial class MainWindowViewModel : ViewModelBase
         var (startLineIdx, endLineIdx) = GetCardOwnLineRange(card);
         if (startLineIdx == -1) return;
 
-        var lines = (EditorContent ?? string.Empty).Replace("\r\n", "\n").Split('\n').ToList();
+        var replacementLines = BeatBoardText.BuildCardLines(
+            card.Type, card.Heading, card.Description, card.Id);
 
-        var replacementLines = new List<string>();
-        string typeStr = card.Type;
-        if (typeStr == "Act" || typeStr == "Sequence" || typeStr == "Section")
+        var updated = BeatBoardText.ReplaceLines(
+            EditorContent ?? string.Empty, startLineIdx, endLineIdx, replacementLines);
+
+        if (ReferenceEquals(updated, EditorContent))
         {
-            int depth = typeStr == "Act" ? 1 : typeStr == "Sequence" ? 2 : 3;
-            var prefix = new string('#', depth);
-            replacementLines.Add($"{prefix} {card.Heading.Trim()} [[id:{card.Id}]]");
-        }
-        else if (typeStr == "Scene")
-        {
-            var heading = card.Heading.Trim();
-            if (heading.StartsWith("INT.", StringComparison.OrdinalIgnoreCase) ||
-                heading.StartsWith("EXT.", StringComparison.OrdinalIgnoreCase) ||
-                heading.StartsWith("I/E.", StringComparison.OrdinalIgnoreCase) ||
-                heading.StartsWith("."))
-            {
-                replacementLines.Add($"{heading} [[id:{card.Id}]]");
-            }
-            else
-            {
-                replacementLines.Add($". {heading} [[id:{card.Id}]]");
-            }
-        }
-        else if (typeStr == "Note")
-        {
-            replacementLines.Add($"[[{card.Heading.Trim()} id:{card.Id}]]");
+            return;
         }
 
-        if (!string.IsNullOrWhiteSpace(card.Description))
+        _suppressDirtyTracking = true;
+        try
         {
-            foreach (var descLine in card.Description.Split('\n'))
-            {
-                var trimmed = descLine.Trim();
-                if (trimmed.Length > 0)
-                {
-                    replacementLines.Add($"= {trimmed}");
-                }
-            }
+            EditorContent = updated;
+            IsDirty = true;
         }
-
-        int countToRemove = endLineIdx - startLineIdx + 1;
-        if (startLineIdx >= 0 && startLineIdx < lines.Count)
+        finally
         {
-            lines.RemoveRange(startLineIdx, Math.Min(countToRemove, lines.Count - startLineIdx));
-            lines.InsertRange(startLineIdx, replacementLines);
-
-            _suppressDirtyTracking = true;
-            try
-            {
-                EditorContent = string.Join("\n", lines);
-                IsDirty = true;
-            }
-            finally
-            {
-                _suppressDirtyTracking = false;
-            }
+            _suppressDirtyTracking = false;
         }
     }
 
@@ -2591,77 +2553,17 @@ public partial class MainWindowViewModel : ViewModelBase
     private (int startIdx, int endIdx) GetCardOwnLineRange(BeatBoardCardViewModel card)
         => GetCardLineRange(card, includeNestedBlock: false);
 
+    // The logic now lives in Passage.Parser.BeatBoardText so the web app shares
+    // it and it can be tested; this stays as the adapter from the card view
+    // model to that pure call.
     private (int startIdx, int endIdx) GetCardLineRange(BeatBoardCardViewModel card, bool includeNestedBlock)
     {
         if (_lastParsed == null) return (-1, -1);
-        var element = _lastParsed.Elements.FirstOrDefault(e => e.Id == card.Id);
-        if (element == null) return (-1, -1);
 
-        int startLineIdx = element.LineIndex;
-        int endLineIdx = element.EndLineIndex;
+        var range = BeatBoardText.GetCardLineRange(
+            _lastParsed.Elements, card.Id, CountEditorLines(), includeNestedBlock);
 
-        int elementIndex = -1;
-        for (int k = 0; k < _lastParsed.Elements.Count; k++)
-        {
-            if (_lastParsed.Elements[k] == element)
-            {
-                elementIndex = k;
-                break;
-            }
-        }
-
-        if (elementIndex != -1)
-        {
-            for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
-            {
-                var nextEl = _lastParsed.Elements[i];
-                if (nextEl.IsSuppressed && nextEl.Type == ScreenplayElementType.Synopsis)
-                {
-                    endLineIdx = nextEl.EndLineIndex;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        // An Act/Sequence card represents its whole block on the board, so dragging
-        // it moves everything nested beneath it: extend the range to just before the
-        // next section of the same or higher level (or the end of the document).
-        if (includeNestedBlock && element is SectionElement section && elementIndex != -1)
-        {
-            var blockEndLineIdx = CountEditorLines() - 1;
-            for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
-            {
-                if (_lastParsed.Elements[i] is SectionElement nextSection && nextSection.SectionDepth <= section.SectionDepth)
-                {
-                    blockEndLineIdx = nextSection.LineIndex - 1;
-                    break;
-                }
-            }
-
-            endLineIdx = Math.Max(endLineIdx, blockEndLineIdx);
-        }
-
-        // A Scene's block runs until the next scene heading or section starts.
-        if (includeNestedBlock && element is SceneHeadingElement && elementIndex != -1)
-        {
-            var blockEndLineIdx = CountEditorLines() - 1;
-            for (int i = elementIndex + 1; i < _lastParsed.Elements.Count; i++)
-            {
-                var nextEl = _lastParsed.Elements[i];
-                if (nextEl.Type is ScreenplayElementType.SceneHeading or ScreenplayElementType.Section)
-                {
-                    blockEndLineIdx = nextEl.LineIndex - 1;
-                    break;
-                }
-            }
-
-            endLineIdx = Math.Max(endLineIdx, blockEndLineIdx);
-        }
-
-        return (startLineIdx, endLineIdx);
+        return (range.StartLineIndex, range.EndLineIndex);
     }
 
     private int CountEditorLines()
@@ -2680,43 +2582,28 @@ public partial class MainWindowViewModel : ViewModelBase
         var (sourceStart, sourceEnd) = GetBeatBoardCardLineRange(sourceCard);
         var (targetStart, targetEnd) = GetBeatBoardCardLineRange(targetCard);
 
-        if (sourceStart == -1 || targetStart == -1) return;
-        if (sourceStart == targetStart) return;
-        if (targetStart >= sourceStart && targetEnd <= sourceEnd)
-        {
-            // Cannot drop an Act/Sequence onto a card nested inside its own block.
-            return;
-        }
-
-        int targetInsert = insertAfter ? (targetEnd + 1) : targetStart;
-
         var lines = (EditorContent ?? string.Empty).Replace("\r\n", "\n").Split('\n').ToList();
-        int sourceCount = sourceEnd - sourceStart + 1;
-        if (sourceStart < 0 || sourceStart >= lines.Count || sourceCount <= 0 || sourceStart + sourceCount > lines.Count)
+
+        // The planning lives in Passage.Parser.BeatBoardText so the web app
+        // shares it; it also refuses the same moves this used to refuse inline.
+        if (!BeatBoardText.TryPlanMove(
+                lines,
+                new BeatBoardText.LineRange(sourceStart, sourceEnd),
+                new BeatBoardText.LineRange(targetStart, targetEnd),
+                insertAfter,
+                out var splice,
+                out var replacement))
         {
             return;
         }
 
-        var movedLines = lines.GetRange(sourceStart, sourceCount);
-        lines.RemoveRange(sourceStart, sourceCount);
-
-        int adjustedTarget = targetInsert;
-        if (adjustedTarget > sourceStart)
-        {
-            adjustedTarget = Math.Max(0, adjustedTarget - sourceCount);
-        }
-
-        if (adjustedTarget > lines.Count)
-        {
-            adjustedTarget = lines.Count;
-        }
-
-        lines.InsertRange(adjustedTarget, movedLines);
+        var updated = BeatBoardText.ReplaceLines(
+            EditorContent ?? string.Empty, splice.StartLineIndex, splice.EndLineIndex, replacement);
 
         _suppressDirtyTracking = true;
         try
         {
-            EditorContent = string.Join("\n", lines);
+            EditorContent = updated;
             IsDirty = true;
         }
         finally
