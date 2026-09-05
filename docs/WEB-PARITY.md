@@ -106,7 +106,7 @@ never calls them. Highest value per token in the project. Do these first.
   on every load. Toggle lives in the topbar. Not done: Avalonia's startup system
   detection (`prefers-color-scheme`) — the web app defaults to dark as before.
 
-### 1.4 Keyboard shortcuts — `partial` (blocked on Tier 2 features)
+### 1.4 Keyboard shortcuts — `partial` — everything bindable is bound
 
 - **Linux:** MW.cs 146–179 (`AddKeyboardShortcuts`); MW.axaml 250–320
   (`InputGesture` on every menu item)
@@ -131,7 +131,8 @@ never calls them. Highest value per token in the project. Do these first.
   Scene), `F1` (2.5 Syntax panel). Also `Ctrl-Shift-S` (Save As — the web app
   has no Save As command; the dialog only appears when saving an untitled
   document), `Ctrl-M` (write mode is derived from the file extension, there is
-  no toggle to bind), and `Ctrl-0` (no reset-zoom command exists).
+  no toggle to bind), and `Ctrl-0` (no reset-zoom command exists). The row
+  stays `partial` permanently: the browser-reserved four can never be bound.
 
 ### 1.5 Open Recent / MRU — `done`
 
