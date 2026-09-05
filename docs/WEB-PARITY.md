@@ -522,10 +522,11 @@ a session.
 
 ### 3.2 "Classify As" line-type override — `missing`
 
-- **Linux:** VM 82 (`_lineTypeOverrides`), 953–972 (the seven `ClassifyAs*`
-  commands), 973–990 (`SetLineTypeOverride`), 991–1004
-  (`GetLineNumberFromCaretIndex`), 2211–2250 (`GetLatestEffectiveLineType`);
+- **Linux:** VM 82 (`_lineTypeOverrides`), 915–933 (the seven `ClassifyAs*`
+  commands), 935–951 (`SetLineTypeOverride`), 953–964
+  (`GetLineNumberFromCaretIndex`), 2173–2211 (`GetLatestEffectiveLineType`);
   MW.axaml 640–723 (Script tab context menu)
+  *(ranges re-checked after the 3.1b/3.1e extractions shortened the view model)*
 - **Web:** missing
 - **Notes:** Needs a CodeMirror context menu plus a server-side override map
   keyed by line number, and the overrides must survive edits above the line —
@@ -545,10 +546,11 @@ a session.
 ### 3.4 Autocomplete + Enter-continuation — `missing`
 
 - **Linux:** VM 136–140 (`AutoCompleteSuggestions`, `_uniqueSceneHeadings`,
-  `_uniqueCharacterNames`), 2251–2290 (`UpdateUniqueScreenplayElements`),
-  2291–2332 (`UpdateSuggestions`), 75 (`EnterContinuationText`); MW.cs 594–628
+  `_uniqueCharacterNames`), 2213–2251 (`UpdateUniqueScreenplayElements`),
+  2253–2293 (`UpdateSuggestions`), 75 (`EnterContinuationText`); MW.cs 594–628
   (`EditorBox_KeyDown`), 629–698 (`SuggestionsListBox_Tapped`,
   `PositionAutoCompletePopup`, `ApplyAutoCompleteSuggestion`)
+  *(ranges re-checked after the 3.1b/3.1e extractions shortened the view model)*
 - **Web:** missing
 - **Notes:** Must be client-side (CLAUDE.md trap 4). Push the character-name
   and scene-heading lists to JS after each parse and let CodeMirror's hint
