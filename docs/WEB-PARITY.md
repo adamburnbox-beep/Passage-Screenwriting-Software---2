@@ -254,7 +254,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   committing. The Scratchpad has its own search box, which
   FUTURE_IMPROVEMENTS 9 suggests copying for outline filtering later.
 
-### 2.5 Syntax Quick Reference panel — `missing`
+### 2.5 Syntax Quick Reference panel — `done`
 
 - **Linux:** `Views/SyntaxQuickReferencePanel.axaml` (310 lines, whole file) +
   `.axaml.cs` (38 lines); VM 695–703 (`ToggleSyntaxPanel`); MW.cs 332–380
@@ -263,6 +263,25 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
 - **Notes:** Almost entirely static content. Cheapest high-visibility win in
   Tier 2 — read the `.axaml` once and transcribe the reference table into a
   Razor component with the same headings and order.
+- **Done:** `Components/SyntaxReferencePanel.razor` — a separate component, not
+  more of `Editor.razor`. Same three cards in the same order (Sections,
+  Synopses, Notes), same headings, blurbs and marker descriptions, transcribed
+  verbatim. Right-hand dock like the Avalonia right panel; opened by `F1`
+  (browser default suppressed, verified) or the topbar `?` button, since the
+  web app has no View menu.
+  **Fixed in passing:** the `.axaml` hardcodes each marker's dark-theme hex
+  (`#4FC3F7`, `#FFB74D`, `#81C784`), so the Linux panel does not follow its own
+  light theme. The web version routes them through `--syntax-section` /
+  `--syntax-synopsis` / `--syntax-note` and is correct in both. Worth porting
+  back — it is exactly the sweep the UI-overhaul doc's step 4 asks for.
+  Copy buttons go through `passage.copyText`, which falls back from
+  `navigator.clipboard` to a selection-based copy: the clipboard API needs a
+  secure context and the app is served over plain HTTP on a LAN
+  (`docs/web-app.md`), where it is simply absent. Unlike the Avalonia panel,
+  which swallows clipboard errors, a failure is reported (rule 12).
+- **Not ported:** the draggable splitter and remembered panel width
+  (`SetSyntaxPanelVisible`, MW.cs 337–380). The panel is a fixed 320px. Raise
+  it if resizing turns out to matter.
 
 ### 2.6 Title Page editor — `missing`
 

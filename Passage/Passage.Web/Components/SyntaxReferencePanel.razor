@@ -1,0 +1,93 @@
+@inject IJSRuntime JS
+
+@* Transcribed from Passage.App.Linux/Views/SyntaxQuickReferencePanel.axaml —
+   same headings, same order, same wording. The Avalonia file hardcodes the
+   dark-theme hex for each marker (#4FC3F7, #FFB74D, #81C784); here they go
+   through the syntax tokens so the panel follows the light theme too. *@
+
+<aside class="syntax-panel">
+    <div class="syntax-panel-head">
+        <div>
+            <h2>Syntax Quick Reference</h2>
+            <p class="syntax-panel-sub">Keep Fountain structure markers close while writing.</p>
+        </div>
+        <button class="icon-btn" title="Close (F1)" @onclick="OnClose">✕</button>
+    </div>
+
+    <div class="syntax-panel-body">
+        @foreach (var card in Cards)
+        {
+            <section class="syntax-card">
+                <h3>@card.Title</h3>
+                <p>@card.Blurb</p>
+                @foreach (var entry in card.Entries)
+                {
+                    <div class="syntax-row">
+                        <span class="syntax-token @entry.ColourClass">@entry.Token</span>
+                        <span class="syntax-desc">@entry.Description</span>
+                        <button class="icon-btn" title="Copy @entry.Token"
+                                @onclick="() => CopyAsync(entry.Token)">📋</button>
+                    </div>
+                }
+            </section>
+        }
+    </div>
+
+    @if (_copyStatus.Length > 0)
+    {
+        <div class="syntax-panel-foot">@_copyStatus</div>
+    }
+</aside>
+
+@code {
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private string _copyStatus = string.Empty;
+
+    private sealed record Entry(string Token, string Description, string ColourClass);
+
+    private sealed record Card(string Title, string Blurb, Entry[] Entries);
+
+    private static readonly Card[] Cards =
+    {
+        new("Sections",
+            "Use section markers to organize Acts, Sequences, and Scenes. These markers are for structure only and do not print in the screenplay output.",
+            new[]
+            {
+                new Entry("#", "Act heading", "t-section"),
+                new Entry("##", "Sequence heading", "t-section"),
+                new Entry("###", "Scene grouping marker", "t-section")
+            }),
+        new("Synopses",
+            "Use a synopsis line to add a short summary beneath the current section or scene.",
+            new[]
+            {
+                new Entry("=", "Summary for the section or scene below it.", "t-synopsis")
+            }),
+        new("Notes",
+            "Use Fountain notes for private comments, reminders, or production details that should stay internal.",
+            new[]
+            {
+                new Entry("[[ Your Note ]]", "Internal comment that stays out of the printed script.", "t-note")
+            })
+    };
+
+    private async Task CopyAsync(string token)
+    {
+        bool copied;
+        try
+        {
+            copied = await JS.InvokeAsync<bool>("passage.copyText", token);
+        }
+        catch (JSException)
+        {
+            copied = false;
+        }
+
+        // The Avalonia panel swallows clipboard failures silently. On the web a
+        // failure is likely enough — no secure context, permission denied — that
+        // staying quiet would just look broken (rule 12).
+        _copyStatus = copied ? $"Copied {token}" : "Could not copy — select the marker and copy manually.";
+    }
+}

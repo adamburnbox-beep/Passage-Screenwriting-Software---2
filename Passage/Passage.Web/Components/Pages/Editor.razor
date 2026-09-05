@@ -30,6 +30,8 @@
                     title="@(_theme == "light" ? "Switch to dark theme" : "Switch to light theme")">
                 @(_theme == "light" ? "☾" : "☀")
             </button>
+            <button class="btn theme-toggle @(_syntaxPanelOpen ? "on" : null)"
+                    title="Syntax reference (F1)" @onclick="ToggleSyntaxPanel">?</button>
             <label class="toggle" title="Save automatically shortly after you stop typing">
                 <input type="checkbox" @bind="_autosaveEnabled" /> AUTOSAVE
             </label>
@@ -282,6 +284,10 @@ Open a .fountain file to see formatted pages.</div>
                 }
             }
         </main>
+        @if (_syntaxPanelOpen)
+        {
+            <SyntaxReferencePanel OnClose="CloseSyntaxPanel" />
+        }
     </div>
 
     <footer class="statusbar">
@@ -1030,6 +1036,21 @@ Open a .fountain file to see formatted pages.</div>
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
     }
+
+    // ---- Syntax quick reference ----
+
+    private bool _syntaxPanelOpen;
+
+    [JSInvokable]
+    public void OnSyntaxPanelShortcut()
+    {
+        ToggleSyntaxPanel();
+        StateHasChanged();
+    }
+
+    private void ToggleSyntaxPanel() => _syntaxPanelOpen = !_syntaxPanelOpen;
+
+    private void CloseSyntaxPanel() => _syntaxPanelOpen = false;
 
     // ---- Go to Line ----
 

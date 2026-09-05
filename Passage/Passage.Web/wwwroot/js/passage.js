@@ -184,6 +184,39 @@ window.passage = (function () {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnGoToLineShortcut");
     }
 
+    function toggleSyntaxPanel() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnSyntaxPanelShortcut");
+    }
+
+    // navigator.clipboard needs a secure context. This app is self-hosted on a
+    // LAN over plain HTTP (docs/web-app.md), where that API is simply absent,
+    // so fall back to the old selection-based copy rather than failing.
+    async function copyText(text) {
+        try {
+            if (window.isSecureContext && navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+        } catch (e) {
+            // Denied or unavailable; try the fallback below.
+        }
+
+        try {
+            const field = document.createElement("textarea");
+            field.value = text;
+            field.setAttribute("readonly", "");
+            field.style.position = "fixed";
+            field.style.top = "-1000px";
+            document.body.appendChild(field);
+            field.select();
+            const copied = document.execCommand("copy");
+            field.remove();
+            return copied;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function init(reference) {
         dotnetRef = reference;
         const host = document.getElementById("editor-host");
@@ -209,7 +242,8 @@ window.passage = (function () {
                 "Ctrl--": zoomOut,
                 "Cmd--": zoomOut,
                 "Ctrl-G": goToLine,
-                "Cmd-G": goToLine
+                "Cmd-G": goToLine,
+                "F1": toggleSyntaxPanel
             }
         });
 
@@ -361,7 +395,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo,
+        refreshHighlights, undo, redo, copyText,
         getTheme, setTheme,
         get editor() { return cm; }
     };
