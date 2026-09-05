@@ -14,12 +14,20 @@ public sealed record PreviewPage(IReadOnlyList<PreviewLine> Lines, int PageNumbe
 
 public sealed record BoardCard(string Heading, string Kind, string Description, int LineNumber, List<BoardCard> Children);
 
+/// <summary>A Sequence and the cards beneath it. SequenceCard is null for cards
+/// that appear before any Sequence heading.</summary>
+public sealed record BoardGroup(BoardCard? SequenceCard, List<BoardCard> Cards);
+
+/// <summary>An Act and the Sequence groups beneath it. ActCard is null for
+/// groups that appear before any Act heading.</summary>
+public sealed record BoardLane(BoardCard? ActCard, List<BoardGroup> Groups);
+
 public sealed record DocumentAnalysis(
     string[] LineClasses,
     IReadOnlyList<OutlineNode> Outline,
     IReadOnlyList<NoteEntry> Notes,
     IReadOnlyList<PreviewPage> PreviewPages,
-    IReadOnlyList<BoardCard> BoardLanes,
+    IReadOnlyList<BoardLane> BoardLanes,
     int WordCount,
     int PageCount,
     IReadOnlyList<TitlePageEntry> TitlePage,
@@ -117,7 +125,7 @@ public sealed class DocumentAnalyzer
             outline,
             Array.Empty<NoteEntry>(),
             Array.Empty<PreviewPage>(),
-            Array.Empty<BoardCard>(),
+            Array.Empty<BoardLane>(),
             TextAnalysis.CountWords(text),
             0,
             Array.Empty<TitlePageEntry>(),
@@ -249,40 +257,81 @@ public sealed class DocumentAnalyzer
         return pages;
     }
 
-    private static List<BoardCard> BuildBoardLanes(IReadOnlyList<OutlineNode> outline)
+    /// <summary>
+    /// Groups the outline into Act lanes containing Sequence groups containing
+    /// cards, mirroring the Linux RebuildBeatBoardLanes. Cards that appear
+    /// before any Act or Sequence heading get an implicit lane or group, so a
+    /// script with no structure markers still renders.
+    /// </summary>
+    private static List<BoardLane> BuildBoardLanes(IReadOnlyList<OutlineNode> outline)
     {
-        var lanes = outline
-            .Where(node => node.Kind is "Act" or "Sequence")
-            .Select(ToBoardCard)
-            .ToList();
+        var lanes = new List<BoardLane>();
+        BoardLane? currentLane = null;
+        BoardGroup? currentGroup = null;
 
-        if (lanes.Count > 0)
+        foreach (var card in FlattenBoardCards(outline))
         {
-            return lanes;
+            if (card.Kind == "Act")
+            {
+                currentLane = new BoardLane(card, new List<BoardGroup>());
+                currentGroup = null;
+                lanes.Add(currentLane);
+                continue;
+            }
+
+            if (currentLane is null)
+            {
+                currentLane = new BoardLane(null, new List<BoardGroup>());
+                lanes.Add(currentLane);
+            }
+
+            if (card.Kind == "Sequence")
+            {
+                currentGroup = new BoardGroup(card, new List<BoardCard>());
+                currentLane.Groups.Add(currentGroup);
+                continue;
+            }
+
+            if (currentGroup is null)
+            {
+                currentGroup = new BoardGroup(null, new List<BoardCard>());
+                currentLane.Groups.Add(currentGroup);
+            }
+
+            currentGroup.Cards.Add(card);
         }
 
-        // No acts/sequences: gather top-level scenes into a single lane.
-        var scenes = outline.Where(node => node.Kind == "Scene").Select(ToBoardCard).ToList();
-        if (scenes.Count == 0)
-        {
-            return lanes;
-        }
-
-        return [new BoardCard("Script", "Act", string.Empty, scenes[0].LineNumber, scenes)];
+        return lanes;
     }
 
-    private static BoardCard ToBoardCard(OutlineNode node)
+    /// <summary>
+    /// Walks the outline in document order and yields one flat card per node,
+    /// which is the shape RebuildBeatBoardLanes consumes. Synopsis children
+    /// become their parent's description rather than cards of their own.
+    /// </summary>
+    private static IEnumerable<BoardCard> FlattenBoardCards(IEnumerable<OutlineNode> nodes)
     {
-        var synopsis = string.Join("\n", node.Children
-            .Where(child => child.Kind == "Synopsis")
-            .Select(child => child.Label));
-        var children = node.Children
-            .Where(child => child.Kind != "Synopsis")
-            .Select(ToBoardCard)
-            .ToList();
+        foreach (var node in nodes)
+        {
+            if (node.Kind == "Synopsis")
+            {
+                continue;
+            }
 
-        return new BoardCard(node.Label, node.Kind, synopsis, node.LineNumber, children);
+            var synopsis = string.Join("\n", node.Children
+                .Where(child => child.Kind == "Synopsis")
+                .Select(child => child.Label));
+
+            yield return new BoardCard(
+                node.Label, node.Kind, synopsis, node.LineNumber, new List<BoardCard>());
+
+            foreach (var child in FlattenBoardCards(node.Children))
+            {
+                yield return child;
+            }
+        }
     }
+
 
     private static int CountLines(string text)
     {

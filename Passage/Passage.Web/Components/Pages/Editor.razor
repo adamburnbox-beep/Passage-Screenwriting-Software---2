@@ -273,15 +273,44 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                     <div class="board-surface">
                         @foreach (var lane in _analysis.BoardLanes)
                         {
+                            var laneKey = LaneKey(lane);
+                            var laneOpen = !_collapsedLanes.Contains(laneKey);
                             <div class="board-lane">
-                                <div class="board-lane-title">@lane.Heading</div>
-                                @if (lane.Description.Length > 0)
+                                <div class="board-lane-head" @onclick="() => ToggleLane(laneKey)">
+                                    <span class="board-twisty">@(laneOpen ? "▾" : "▸")</span>
+                                    <span class="board-lane-title">@(lane.ActCard?.Heading ?? "Script")</span>
+                                </div>
+                                @if (lane.ActCard is { Description.Length: > 0 })
                                 {
-                                    <div class="board-lane-synopsis">@lane.Description</div>
+                                    <div class="board-lane-synopsis">@lane.ActCard.Description</div>
                                 }
-                                @foreach (var card in lane.Children)
+                                @if (laneOpen)
                                 {
-                                    @RenderBoardCard(card)
+                                    @foreach (var group in lane.Groups)
+                                    {
+                                        var groupKey = laneKey + "/" + GroupKey(group);
+                                        var groupOpen = !_collapsedGroups.Contains(groupKey);
+                                        <div class="board-group">
+                                            @if (group.SequenceCard is not null)
+                                            {
+                                                <div class="board-group-head" @onclick="() => ToggleGroup(groupKey)">
+                                                    <span class="board-twisty">@(groupOpen ? "▾" : "▸")</span>
+                                                    <span class="board-group-title">@group.SequenceCard.Heading</span>
+                                                </div>
+                                                @if (group.SequenceCard.Description.Length > 0)
+                                                {
+                                                    <div class="board-group-synopsis">@group.SequenceCard.Description</div>
+                                                }
+                                            }
+                                            @if (groupOpen)
+                                            {
+                                                @foreach (var card in group.Cards)
+                                                {
+                                                    @RenderBoardCard(card)
+                                                }
+                                            }
+                                        </div>
+                                    }
                                 }
                             </div>
                         }
@@ -507,7 +536,7 @@ Open a .fountain file to see formatted pages.</div>
 
     private DocumentAnalysis _analysis = new(
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
-        Array.Empty<PreviewPage>(), Array.Empty<BoardCard>(), 0, 0, Array.Empty<TitlePageEntry>(), 0);
+        Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0);
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -1182,6 +1211,36 @@ Open a .fountain file to see formatted pages.</div>
     {
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    // ---- Beat Board ----
+    //
+    // Lanes and groups are rebuilt from scratch on every parse, so collapsed
+    // state has to survive the rebuild — the same thing RebuildBeatBoardLanes
+    // does with its collapsed-id sets. Keyed by heading rather than the Linux
+    // card Id, because line numbers move on every keystroke and the web has no
+    // stable card identity to hang onto.
+    private readonly HashSet<string> _collapsedLanes = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _collapsedGroups = new(StringComparer.Ordinal);
+
+    private static string LaneKey(BoardLane lane) => lane.ActCard?.Heading ?? "\u0000lane";
+
+    private static string GroupKey(BoardGroup group) => group.SequenceCard?.Heading ?? "\u0000group";
+
+    private void ToggleLane(string key)
+    {
+        if (!_collapsedLanes.Remove(key))
+        {
+            _collapsedLanes.Add(key);
+        }
+    }
+
+    private void ToggleGroup(string key)
+    {
+        if (!_collapsedGroups.Remove(key))
+        {
+            _collapsedGroups.Add(key);
+        }
     }
 
     // ---- Title page ----

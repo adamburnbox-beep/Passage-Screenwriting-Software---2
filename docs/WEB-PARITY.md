@@ -392,7 +392,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
 Do not attempt any of these in one session. Each bullet under "split into" is
 a session.
 
-### 3.1 Beat Board editing — `partial` (web board is read-only)
+### 3.1 Beat Board editing — `partial` (3.1a done; web board still read-only)
 
 - **Linux — board build:** VM 1537–1602 (`UpdateBeatBoardCards`), 1603–1668
   (`RebuildBeatBoardLanes`), 2738–2799 (lane / group / card view models)
@@ -407,11 +407,25 @@ a session.
   `_DragOver`, `_Drop`); MW.axaml 724–848 (Beat Board tab)
 - **Web:** `Editor.razor` 759–776 (`RenderBoardCard`), 193–285 (centre pane)
 - **Split into:**
-  - 3.1a Act lanes and Sequence groups (render only) — port VM 1603–1668
+  - 3.1a Act lanes and Sequence groups (render only) — port VM 1603–1668 — **done**
   - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666
   - 3.1c Add scene to block — port VM 803–841
   - 3.1d Delete card with confirmation — port VM 842–885
   - 3.1e Drag-and-drop reorder — port VM 2678–2737 + MW.cs 1282–1348
+- **3.1a done:** `BuildBoardLanes` now mirrors `RebuildBeatBoardLanes`: a flat,
+  document-order card walk grouped into Act lanes containing Sequence groups
+  containing cards, with implicit lanes/groups for cards that appear before any
+  Act or Sequence heading. New `BoardLane` / `BoardGroup` records in
+  `DocumentAnalyzer`; the old flat `BoardLanes` list of top-level Act/Sequence
+  nodes is gone, as is `ToBoardCard`.
+  Collapse/expand is included because the ported function exists to preserve
+  `IsExpanded` across rebuilds — rendering it without a way to set it would
+  leave a dead flag. Collapsed state is keyed by **heading text**, not the Linux
+  card `Id`: the web re-parses on every keystroke and has no stable card
+  identity, and line numbers move constantly. Verified that collapsing a lane
+  and a group survives a re-parse.
+  Still read-only — no card editing, adding, deleting or dragging yet.
+
 - **Notes:** The splicing helpers (VM 2586–2737) are pure string/list logic
   with no Avalonia dependency. **Extract them to `Passage.Core` rather than
   reimplementing them in Razor** — that gives both frontends one implementation
