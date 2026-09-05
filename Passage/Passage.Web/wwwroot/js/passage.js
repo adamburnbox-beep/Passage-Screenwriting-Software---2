@@ -447,6 +447,24 @@ window.passage = (function () {
         return { replaced: replaced, found: false };
     }
 
+    // Replace an inclusive range of lines in place. This is the whole point of
+    // the ranged write-back: cm.replaceRange is a normal edit, so it joins the
+    // undo history and leaves the caret alone, where setContent would clear
+    // both (see WEB-PARITY 1.6).
+    function replaceLineRange(startLine, endLine, text) {
+        if (!cm) return false;
+        const last = cm.lineCount() - 1;
+        if (startLine < 0 || startLine > last) return false;
+
+        const to = Math.min(endLine, last);
+        cm.replaceRange(
+            text,
+            { line: startLine, ch: 0 },
+            { line: to, ch: cm.getLine(to).length });
+        scheduleInput();
+        return true;
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
@@ -523,7 +541,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

@@ -392,7 +392,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
 Do not attempt any of these in one session. Each bullet under "split into" is
 a session.
 
-### 3.1 Beat Board editing — `partial` (3.1a done; web board still read-only)
+### 3.1 Beat Board editing — `partial` (3.1a, 3.1b done; 3.1c–e outstanding)
 
 - **Linux — board build:** VM 1537–1602 (`UpdateBeatBoardCards`), 1603–1668
   (`RebuildBeatBoardLanes`), 2738–2799 (lane / group / card view models)
@@ -408,10 +408,32 @@ a session.
 - **Web:** `Editor.razor` 759–776 (`RenderBoardCard`), 193–285 (centre pane)
 - **Split into:**
   - 3.1a Act lanes and Sequence groups (render only) — port VM 1603–1668 — **done**
-  - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666 — **extraction done; web edit still to do**
+  - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666 — **done**
   - 3.1c Add scene to block — port VM 803–841
   - 3.1d Delete card with confirmation — port VM 842–885
   - 3.1e Drag-and-drop reorder — port VM 2678–2737 + MW.cs 1282–1348
+- **3.1b web half done — ranged write-back.** Cards carry the parser's `Guid`
+  through `OutlineNode` → `BoardCard`, and `DocumentAnalysis` now also exposes
+  `Elements` and `LineCount`, which is what `BeatBoardText.GetCardLineRange`
+  needs. An inline editor on each card (type, heading, synopsis) writes back via
+  `BeatBoardText.BuildCardLines` and a new `passage.replaceLineRange`, which
+  splices **only the card's own line range** with `cm.replaceRange`.
+  That is the point: a `cm.replaceRange` is an ordinary edit, so it **joins the
+  undo history and leaves the caret alone**, where a whole-document rewrite
+  clears both. Verified — undo depth went 1 → 2 across a card edit, the caret
+  stayed at line 3, and a single undo reverted the whole edit.
+  `DocumentAnalyzer` gained `SuppressCardSynopses`, mirroring the desktop board
+  build: synopsis lines shown as a card's description are marked
+  `IsSuppressed`, which is what lets the card's own range swallow them. Without
+  it, editing a description would leave the old `= ` lines behind — see the
+  suppression note under 3.1b's extraction.
+  Cards are written with `[[id:…]]`; the parser's `ExtractId` reads it back and
+  strips it from display, so a card keeps its identity across a reparse and can
+  be edited repeatedly. Verified by editing the same card twice and confirming
+  the result on disk.
+  Editing a card whose id has vanished from the document reports it rather than
+  splicing at a stale offset.
+
 - **3.1a done:** `BuildBoardLanes` now mirrors `RebuildBeatBoardLanes`: a flat,
   document-order card walk grouped into Act lanes containing Sequence groups
   containing cards, with implicit lanes/groups for cards that appear before any

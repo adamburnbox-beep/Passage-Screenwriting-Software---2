@@ -536,7 +536,8 @@ Open a .fountain file to see formatted pages.</div>
 
     private DocumentAnalysis _analysis = new(
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
-        Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0);
+        Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0,
+        Array.Empty<ScreenplayElement>(), 0);
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -1213,6 +1214,100 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
     }
 
+    // ---- Beat Board card editing ----
+    //
+    // Write-back goes through BeatBoardText (shared with the desktop app) to
+    // work out the card's own line range and build its replacement lines, then
+    // splices just that range in CodeMirror. Deliberately not a whole-document
+    // rewrite: that is what clears the undo stack, which is the trap 3.1 and
+    // FUTURE_IMPROVEMENTS 1 both warn about.
+
+    private Guid _editingCardId = Guid.Empty;
+    private string _editHeading = string.Empty;
+    private string _editDescription = string.Empty;
+    private string _editType = "Scene";
+    private string _cardEditError = string.Empty;
+
+    private void StartCardEdit(BoardCard card)
+    {
+        _editingCardId = card.Id;
+        _editHeading = card.Heading;
+        _editDescription = card.Description;
+        _editType = card.Kind;
+        _cardEditError = string.Empty;
+    }
+
+    private void CancelCardEdit()
+    {
+        _editingCardId = Guid.Empty;
+        _cardEditError = string.Empty;
+    }
+
+    private async Task SaveCardAsync()
+    {
+        if (_editingCardId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editHeading))
+        {
+            _cardEditError = "A card needs a heading.";
+            return;
+        }
+
+        var range = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, _editingCardId, _analysis.LineCount, includeNestedBlock: false);
+
+        if (!range.IsFound)
+        {
+            // The document moved on under the card — a reparse will have
+            // rebuilt the board, so ask the user to try again rather than
+            // splicing at a stale offset.
+            _cardEditError = "That card is no longer in the script. Close and reopen the editor.";
+            return;
+        }
+
+        var lines = BeatBoardText.BuildCardLines(
+            _editType, _editHeading, _editDescription, _editingCardId);
+
+        bool replaced;
+        try
+        {
+            replaced = await JS.InvokeAsync<bool>(
+                "passage.replaceLineRange",
+                range.StartLineIndex,
+                range.EndLineIndex,
+                string.Join("\n", lines));
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (!replaced)
+        {
+            _cardEditError = "Could not update the script.";
+            return;
+        }
+
+        _editingCardId = Guid.Empty;
+        _cardEditError = string.Empty;
+        _statusMessage = "Card updated";
+    }
+
+    private async Task OnCardEditKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await SaveCardAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelCardEdit();
+        }
+    }
+
     // ---- Beat Board ----
     //
     // Lanes and groups are rebuilt from scratch on every parse, so collapsed
@@ -1761,18 +1856,52 @@ Open a .fountain file to see formatted pages.</div>
 
     private RenderFragment<BoardCard> RenderBoardCard => card => __builder =>
     {
-        <div class="board-card" @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
-            <span class="card-kind">@card.Kind</span>
-            <div class="card-heading">@card.Heading</div>
-            @if (card.Description.Length > 0)
-            {
-                <div class="card-body">@card.Description</div>
-            }
-            @foreach (var child in card.Children)
-            {
-                @RenderBoardCard(child)
-            }
-        </div>
+        @if (_editingCardId == card.Id && card.Id != Guid.Empty)
+        {
+            <div class="board-card editing" @onclick:stopPropagation="true">
+                <select class="card-type" @bind="_editType">
+                    <option value="Act">Act</option>
+                    <option value="Sequence">Sequence</option>
+                    <option value="Section">Section</option>
+                    <option value="Scene">Scene</option>
+                    <option value="Note">Note</option>
+                </select>
+                <input class="card-heading-input" @bind="_editHeading" @bind:event="oninput"
+                       @onkeydown="OnCardEditKeyDown" placeholder="Heading" />
+                <textarea class="card-body-input" rows="2" @bind="_editDescription" @bind:event="oninput"
+                          placeholder="Synopsis"></textarea>
+                @if (_cardEditError.Length > 0)
+                {
+                    <div class="modal-error">@_cardEditError</div>
+                }
+                <div class="card-edit-actions">
+                    <button class="btn" @onclick="CancelCardEdit">Cancel</button>
+                    <button class="btn primary" @onclick="SaveCardAsync">Save</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="board-card" @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
+                <div class="card-top">
+                    <span class="card-kind">@card.Kind</span>
+                    @if (card.Id != Guid.Empty)
+                    {
+                        <button class="icon-btn card-edit-btn" title="Edit card"
+                                @onclick="() => StartCardEdit(card)" @onclick:stopPropagation="true">✎</button>
+                    }
+                </div>
+                <div class="card-heading">@card.Heading</div>
+                @if (card.Description.Length > 0)
+                {
+                    <div class="card-body">@card.Description</div>
+                }
+                @foreach (var child in card.Children)
+                {
+                    @RenderBoardCard(child)
+                }
+            </div>
+        }
     };
 
     // ---- Goals ----

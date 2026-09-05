@@ -1087,3 +1087,26 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--muted-text);
     margin: 4px 0 0 16px;
 }
+
+/* ---- Beat Board card editing ---- */
+
+.card-top { display: flex; align-items: center; justify-content: space-between; }
+
+.card-edit-btn { opacity: 0; }
+
+.board-card:hover .card-edit-btn { opacity: 1; }
+
+.board-card.editing { cursor: default; }
+
+.board-card.editing .card-type,
+.board-card.editing .card-heading-input,
+.board-card.editing .card-body-input {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.board-card.editing .card-heading-input { font-family: var(--mono); font-weight: 700; }
+
+.board-card.editing .card-body-input { font-family: inherit; resize: vertical; }
+
+.card-edit-actions { display: flex; justify-content: flex-end; gap: 6px; }

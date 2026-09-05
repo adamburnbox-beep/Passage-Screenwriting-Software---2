@@ -4,7 +4,7 @@ using Passage.Parser;
 
 namespace Passage.Web.Services;
 
-public sealed record OutlineNode(string Label, string Kind, int LineNumber, List<OutlineNode> Children);
+public sealed record OutlineNode(string Label, string Kind, int LineNumber, List<OutlineNode> Children, Guid Id = default);
 
 public sealed record NoteEntry(string Text, int LineNumber);
 
@@ -12,7 +12,7 @@ public sealed record PreviewLine(string Text, LayoutTextStyle Style, double Inde
 
 public sealed record PreviewPage(IReadOnlyList<PreviewLine> Lines, int PageNumber, bool IsTitlePage);
 
-public sealed record BoardCard(string Heading, string Kind, string Description, int LineNumber, List<BoardCard> Children);
+public sealed record BoardCard(string Heading, string Kind, string Description, int LineNumber, List<BoardCard> Children, Guid Id = default);
 
 /// <summary>A Sequence and the cards beneath it. SequenceCard is null for cards
 /// that appear before any Sequence heading.</summary>
@@ -33,7 +33,11 @@ public sealed record DocumentAnalysis(
     IReadOnlyList<TitlePageEntry> TitlePage,
     // First line of the script proper. The title-page editor splices lines
     // 0..BodyStart, so it needs the boundary the parser already worked out.
-    int TitlePageBodyStart);
+    int TitlePageBodyStart,
+    // The parsed elements and the document's line count, which
+    // BeatBoardText.GetCardLineRange needs to resolve a card to a line range.
+    IReadOnlyList<ScreenplayElement> Elements,
+    int LineCount);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -49,6 +53,8 @@ public sealed class DocumentAnalyzer
     {
         var parsed = _parser.Parse(text);
         var lineCount = CountLines(text);
+
+        SuppressCardSynopses(parsed.Elements);
 
         var lineClasses = BuildLineClasses(parsed, lineCount);
         var outline = BuildOutline(parsed.Elements);
@@ -70,7 +76,9 @@ public sealed class DocumentAnalyzer
             wordCount,
             pageCount,
             parsed.TitlePage.Entries,
-            parsed.TitlePage.BodyStartLineIndex);
+            parsed.TitlePage.BodyStartLineIndex,
+            parsed.Elements,
+            lineCount);
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
@@ -129,7 +137,9 @@ public sealed class DocumentAnalyzer
             TextAnalysis.CountWords(text),
             0,
             Array.Empty<TitlePageEntry>(),
-            0);
+            0,
+            Array.Empty<ScreenplayElement>(),
+            CountLines(text));
     }
 
     private static string[] BuildLineClasses(ParsedScreenplay parsed, int lineCount)
@@ -213,7 +223,7 @@ public sealed class DocumentAnalyzer
             {
                 case SectionElement section:
                 {
-                    var node = new OutlineNode(section.Heading, section.KindLabel, section.LineNumber, new List<OutlineNode>());
+                    var node = new OutlineNode(section.Heading, section.KindLabel, section.LineNumber, new List<OutlineNode>(), section.Id);
                     PopTo(section.SectionDepth);
                     Attach(node);
                     stack.Add((section.SectionDepth, node));
@@ -221,7 +231,7 @@ public sealed class DocumentAnalyzer
                 }
                 case SceneHeadingElement scene:
                 {
-                    var node = new OutlineNode(scene.Heading, "Scene", scene.LineNumber, new List<OutlineNode>());
+                    var node = new OutlineNode(scene.Heading, "Scene", scene.LineNumber, new List<OutlineNode>(), scene.Id);
                     PopTo(SceneStackLevel);
                     Attach(node);
                     stack.Add((SceneStackLevel, node));
@@ -263,6 +273,36 @@ public sealed class DocumentAnalyzer
     /// before any Act or Sequence heading get an implicit lane or group, so a
     /// script with no structure markers still renders.
     /// </summary>
+    /// <summary>
+    /// Marks the synopsis lines that follow a heading as suppressed, because the
+    /// board shows them as that card's description rather than as cards of their
+    /// own. Mirrors what the Avalonia board build does, and is what lets
+    /// BeatBoardText.GetCardLineRange include them in the card's own range —
+    /// without it, editing a description would leave the old "= " lines behind.
+    /// </summary>
+    private static void SuppressCardSynopses(IReadOnlyList<ScreenplayElement> elements)
+    {
+        for (var i = 0; i < elements.Count; i++)
+        {
+            if (elements[i].Type is not (ScreenplayElementType.Section
+                or ScreenplayElementType.SceneHeading
+                or ScreenplayElementType.Note))
+            {
+                continue;
+            }
+
+            for (var j = i + 1; j < elements.Count; j++)
+            {
+                if (elements[j].Type != ScreenplayElementType.Synopsis)
+                {
+                    break;
+                }
+
+                elements[j].IsSuppressed = true;
+            }
+        }
+    }
+
     private static List<BoardLane> BuildBoardLanes(IReadOnlyList<OutlineNode> outline)
     {
         var lanes = new List<BoardLane>();
@@ -323,7 +363,7 @@ public sealed class DocumentAnalyzer
                 .Select(child => child.Label));
 
             yield return new BoardCard(
-                node.Label, node.Kind, synopsis, node.LineNumber, new List<BoardCard>());
+                node.Label, node.Kind, synopsis, node.LineNumber, new List<BoardCard>(), node.Id);
 
             foreach (var child in FlattenBoardCards(node.Children))
             {
