@@ -562,7 +562,7 @@ a session.
   Preview tab remains the exact layout. No editor rewrite (FUTURE_IMPROVEMENTS
   13 stays out of scope).
 
-### 3.4 Autocomplete + Enter-continuation — `missing`
+### 3.4 Autocomplete + Enter-continuation — `done` (autocomplete; see the Enter note)
 
 - **Linux:** VM 136–140 (`AutoCompleteSuggestions`, `_uniqueSceneHeadings`,
   `_uniqueCharacterNames`), 2213–2251 (`UpdateUniqueScreenplayElements`),
@@ -574,6 +574,38 @@ a session.
 - **Notes:** Must be client-side (CLAUDE.md trap 4). Push the character-name
   and scene-heading lists to JS after each parse and let CodeMirror's hint
   layer do the rest — do not round-trip per keystroke.
+- **Done:** Vendored CodeMirror 5.65.18's `show-hint` addon (js + css) beside
+  `searchcursor.js`, same approach as 2.1. The unique scene headings and
+  character names are collected in `DocumentAnalyzer` (porting
+  `UpdateUniqueScreenplayElements`, including taking names from Dialogue
+  elements as well as Character ones) and pushed once per parse. Prefix
+  matching, ordering and the 10-item cap happen in `passage.js`, mirroring
+  `UpdateSuggestions` — **typing never round-trips** (trap 4).
+- **Design note — where the classification lives.** The desktop decides which
+  list a line wants with `GetLatestEffectiveLineType`, which falls back to
+  `TextAnalysis.IsLiveCharacterCueCandidate` for lines the parse has no element
+  for. That fallback composes four shared helpers; reimplementing it in JS would
+  have been a real divergence risk. Instead `DocumentAnalysis` carries a
+  per-line `SuggestionKinds` array computed server-side with the actual shared
+  helpers, and the client only picks a list from it. Classification stays single
+  and shared; matching stays client-side. The INT./EXT. override is applied on
+  the client because it is instant, and the desktop applies it ahead of the
+  parse too.
+- **Verified:** typing `INT. KITCHEN` offered both matching headings; `EXT. GAR`
+  offered the one; `MAR` offered `MARGARET` and not the other characters;
+  `pick` applied the completion and replaced the whole line, as
+  `ApplyAutoCompleteSuggestion` does.
+- **Not verified — accepting with Enter/Tab.** The browser harness used for
+  testing does not deliver synthetic Enter or Tab to CodeMirror at all (a
+  Return there does not even insert a newline), so the accept keystroke could
+  not be exercised end to end. The binding is show-hint's stock keymap and the
+  underlying `pick` was confirmed working directly. **Worth a manual check.**
+- **Enter-continuation was not ported — there is nothing to port.**
+  `EnterContinuationText` (VM 75) is `=> "NewLine"` and is **referenced nowhere**
+  in `Passage.App.Linux`. Like the Scratchpad in 2.4, it is a declared-but-unused
+  property, so half this row's title has no implementation behind it. If
+  Enter-continuation is wanted (Enter after a character cue dropping into
+  dialogue, and so on), it is new feature work, not a port.
 
 ---
 

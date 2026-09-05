@@ -37,7 +37,15 @@ public sealed record DocumentAnalysis(
     // The parsed elements and the document's line count, which
     // BeatBoardText.GetCardLineRange needs to resolve a card to a line range.
     IReadOnlyList<ScreenplayElement> Elements,
-    int LineCount);
+    int LineCount,
+    // Autocomplete sources, pushed to the client after each parse so typing
+    // never round-trips (trap 4).
+    IReadOnlyList<string> SceneHeadingSuggestions,
+    IReadOnlyList<string> CharacterSuggestions,
+    // Per line: "scene", "character" or "". Which list (if any) autocomplete
+    // should offer there. Decided here so the shared TextAnalysis helpers stay
+    // the single implementation; the client only does the prefix matching.
+    string[] SuggestionKinds);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -64,6 +72,7 @@ public sealed class DocumentAnalyzer
             .ToList();
         var previewPages = BuildPreviewPages(parsed);
         var boardLanes = BuildBoardLanes(outline);
+        CollectSuggestions(parsed.Elements, out var sceneHeadings, out var characters);
         var wordCount = TextAnalysis.CountWords(text);
         var pageCount = previewPages.Count(page => !page.IsTitlePage);
 
@@ -78,7 +87,10 @@ public sealed class DocumentAnalyzer
             parsed.TitlePage.Entries,
             parsed.TitlePage.BodyStartLineIndex,
             parsed.Elements,
-            lineCount);
+            lineCount,
+            sceneHeadings,
+            characters,
+            BuildSuggestionKinds(parsed, text, lineCount));
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
@@ -139,7 +151,10 @@ public sealed class DocumentAnalyzer
             Array.Empty<TitlePageEntry>(),
             0,
             Array.Empty<ScreenplayElement>(),
-            CountLines(text));
+            CountLines(text),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>());
     }
 
     private static string[] BuildLineClasses(ParsedScreenplay parsed, int lineCount)
@@ -280,6 +295,128 @@ public sealed class DocumentAnalyzer
     /// BeatBoardText.GetCardLineRange include them in the card's own range —
     /// without it, editing a description would leave the old "= " lines behind.
     /// </summary>
+    /// <summary>
+    /// The unique scene headings and character names in the script, uppercased
+    /// and sorted. Ports UpdateUniqueScreenplayElements, including taking
+    /// character names from Dialogue elements as well as Character ones.
+    /// </summary>
+    /// <summary>
+    /// Which suggestion list belongs on each line. Ports
+    /// GetLatestEffectiveLineType: the parse wins where it has an opinion, and
+    /// otherwise the same live-cue fallback applies, so a half-typed character
+    /// name is offered completions before the parser can commit to it.
+    /// </summary>
+    private static string[] BuildSuggestionKinds(ParsedScreenplay parsed, string text, int lineCount)
+    {
+        var kinds = new string[lineCount];
+        for (var i = 0; i < kinds.Length; i++)
+        {
+            kinds[i] = string.Empty;
+        }
+
+        foreach (var element in parsed.Elements)
+        {
+            var kind = element.Type switch
+            {
+                ScreenplayElementType.SceneHeading => "scene",
+                ScreenplayElementType.Character => "character",
+                _ => string.Empty
+            };
+
+            if (kind.Length == 0)
+            {
+                continue;
+            }
+
+            for (var line = element.LineIndex; line <= element.EndLineIndex && line < kinds.Length; line++)
+            {
+                if (line >= 0)
+                {
+                    kinds[line] = kind;
+                }
+            }
+        }
+
+        // The fallback, for lines the parse has no element for — a name being
+        // typed on a fresh line is the case that matters.
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        for (var i = 0; i < kinds.Length && i < lines.Length; i++)
+        {
+            if (kinds[i].Length > 0)
+            {
+                continue;
+            }
+
+            var trimmed = lines[i].Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+
+            if (TextAnalysis.LooksLikeSceneHeadingStart(trimmed.AsSpan()))
+            {
+                kinds[i] = "scene";
+            }
+            else if (TextAnalysis.IsLiveCharacterCueCandidate(lines[i].AsSpan(), 45, 6))
+            {
+                kinds[i] = "character";
+            }
+        }
+
+        return kinds;
+    }
+
+    private static void CollectSuggestions(
+        IReadOnlyList<ScreenplayElement> elements,
+        out IReadOnlyList<string> sceneHeadings,
+        out IReadOnlyList<string> characters)
+    {
+        var headingSet = new HashSet<string>(StringComparer.Ordinal);
+        var characterSet = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var element in elements)
+        {
+            switch (element)
+            {
+                case SceneHeadingElement:
+                {
+                    var heading = element.Text.Trim();
+                    if (heading.Length > 0)
+                    {
+                        headingSet.Add(heading.ToUpperInvariant());
+                    }
+
+                    break;
+                }
+
+                case CharacterElement character:
+                {
+                    var name = character.CharacterName.Trim();
+                    if (name.Length > 0)
+                    {
+                        characterSet.Add(name.ToUpperInvariant());
+                    }
+
+                    break;
+                }
+
+                case DialogueElement dialogue:
+                {
+                    var name = dialogue.CharacterName.Trim();
+                    if (name.Length > 0)
+                    {
+                        characterSet.Add(name.ToUpperInvariant());
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        sceneHeadings = headingSet.OrderBy(entry => entry, StringComparer.Ordinal).ToList();
+        characters = characterSet.OrderBy(entry => entry, StringComparer.Ordinal).ToList();
+    }
+
     private static void SuppressCardSynopses(IReadOnlyList<ScreenplayElement> elements)
     {
         for (var i = 0; i < elements.Count; i++)

@@ -576,7 +576,7 @@ Open a .fountain file to see formatted pages.</div>
     private DocumentAnalysis _analysis = new(
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
         Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0,
-        Array.Empty<ScreenplayElement>(), 0);
+        Array.Empty<ScreenplayElement>(), 0, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -935,6 +935,7 @@ Open a .fountain file to see formatted pages.</div>
         RunAnalysis();
         UpdateCaretElementLabel();
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        await PushSuggestionsAsync();
         ScheduleAutosave();
         StateHasChanged();
     }
@@ -1121,11 +1122,28 @@ Open a .fountain file to see formatted pages.</div>
         var version = await JS.InvokeAsync<int>("passage.setContent", _content);
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
         await SyncPageRulesAsync();
+        await PushSuggestionsAsync();
         StateHasChanged();
     }
 
     // Page rules are for screenplays only, matching ApplyEditorWriteMode. The
     // web derives its mode from the file extension, so this follows the name.
+    // Pushed once per parse, not per keystroke — the client does the matching.
+    private async Task PushSuggestionsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "passage.setSuggestions",
+                _analysis.SceneHeadingSuggestions,
+                _analysis.CharacterSuggestions,
+                _analysis.SuggestionKinds);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
     private async Task SyncPageRulesAsync()
     {
         try

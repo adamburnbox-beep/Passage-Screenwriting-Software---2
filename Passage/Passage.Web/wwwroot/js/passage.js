@@ -277,6 +277,9 @@ window.passage = (function () {
         cm.on("change", (_, changeObj) => {
             if (changeObj.origin !== "setValue") {
                 scheduleInput();
+                if (changeObj.origin === "+input") {
+                    maybeHint();
+                }
             }
             reportCaret();
         });
@@ -601,6 +604,83 @@ window.passage = (function () {
         updatePageRules();
     }
 
+    // ---- Autocomplete ----
+    //
+    // Ports UpdateUniqueScreenplayElements / UpdateSuggestions. The lists are
+    // pushed from the server after each parse; matching and display happen
+    // entirely here, so typing never round-trips (trap 4).
+    //
+    // The current line's element type comes from appliedClasses, the per-line
+    // classes the parse already sends for colouring — so no extra call is
+    // needed to know whether the caret is on a scene heading or a character.
+    let sceneHeadingSuggestions = [];
+    let characterSuggestions = [];
+    let suggestionKinds = [];
+
+    const MAX_SUGGESTIONS = 10;
+
+    function setSuggestions(sceneHeadings, characters, kinds) {
+        sceneHeadingSuggestions = Array.isArray(sceneHeadings) ? sceneHeadings : [];
+        characterSuggestions = Array.isArray(characters) ? characters : [];
+        suggestionKinds = Array.isArray(kinds) ? kinds : [];
+    }
+
+    function looksLikeSceneHeading(prefix) {
+        const upper = prefix.toUpperCase();
+        return upper.startsWith(".") || upper.startsWith("INT.") ||
+            upper.startsWith("EXT.") || upper.startsWith("I/E.");
+    }
+
+    // The server decides which list a line wants, using the shared TextAnalysis
+    // helpers; this only picks the list. The INT./EXT. override is applied here
+    // too because it is instant and the desktop applies it before consulting the
+    // parse as well.
+    function suggestionSource(lineIndex, prefix) {
+        if (looksLikeSceneHeading(prefix)) return sceneHeadingSuggestions;
+
+        const kind = suggestionKinds[lineIndex] || "";
+        if (kind === "character") return characterSuggestions;
+        if (kind === "scene") return sceneHeadingSuggestions;
+        return null;
+    }
+
+    // Mirrors UpdateSuggestions: prefix match, drop an exact hit, sort, cap at 10.
+    function screenplayHints(editor) {
+        const cursor = editor.getCursor();
+        const prefix = editor.getLine(cursor.line).slice(0, cursor.ch).trim();
+        if (prefix.length === 0) return null;
+
+        const source = suggestionSource(cursor.line, prefix);
+        if (!source || source.length === 0) return null;
+
+        const normalized = prefix.toUpperCase();
+        const matches = source
+            .filter(entry => entry.startsWith(normalized) && entry !== normalized)
+            .sort()
+            .slice(0, MAX_SUGGESTIONS);
+
+        if (matches.length === 0) return null;
+
+        // Replace the whole line, as ApplyAutoCompleteSuggestion does.
+        return {
+            list: matches,
+            from: { line: cursor.line, ch: 0 },
+            to: { line: cursor.line, ch: editor.getLine(cursor.line).length }
+        };
+    }
+
+    function maybeHint() {
+        if (!cm || cm.state.completionActive) return;
+        const cursor = cm.getCursor();
+        if (cm.somethingSelected()) return;
+        if (!screenplayHints(cm)) return;
+
+        cm.showHint({
+            hint: screenplayHints,
+            completeSingle: false
+        });
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
@@ -677,7 +757,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }
