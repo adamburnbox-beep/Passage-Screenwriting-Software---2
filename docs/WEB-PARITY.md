@@ -75,7 +75,7 @@ never calls them. Highest value per token in the project. Do these first.
   snapshot can be sitting in the open prompt, and a tick that wiped it would
   destroy the work being offered back.
 
-### 1.3 Light/dark theme toggle — `missing`
+### 1.3 Light/dark theme toggle — `done`
 
 - **Linux:** VM 655–665 (`SetDarkTheme`), 666–676 (`SetLightTheme`);
   `Passage/Passage.App.Linux/App.axaml.cs` 173–264 (`Brush`,
@@ -87,6 +87,24 @@ never calls them. Highest value per token in the project. Do these first.
   `localStorage`. Take the light palette from `App.axaml.cs` `LoadThemeResources`
   so the two apps match exactly. Do **not** invent colours; see
   `docs/Linux Port UI Overhaul — Visual Consistency with Windows.md`.
+- **Done:** `:root` keeps the dark palette as the default; `:root[data-theme="light"]`
+  holds the light one. All 26 shared values are copied verbatim from
+  `LoadThemeResources` and verified equal at runtime. Note the UI-overhaul doc's
+  cream/paper table was **superseded** — the shipped code is the grey monochrome
+  scheme, and that is what was used.
+  Nine hardcoded colours in `app.css` were routed through new tokens:
+  `--selection-background`, `--backdrop`, `--page-background`/`--page-foreground`
+  and five `--shadow-*` values (light leans on shadows, dark on hairline borders,
+  matching the two schemes' comments). `--control-pressed-foreground` now colours
+  text on accent fills, which `--theme-background` only approximated in light.
+  The preview page is deliberately theme-invariant — it simulates printed paper —
+  but is tokenised so nothing is hardcoded. Tokens with no CSS consumer yet
+  (`--editor-page-border`, `--card-accent`, `--hierarchy-indicator`,
+  `--drag-over-background`) are defined for both themes ready for Tier 2/3.
+  The theme is stored under `passage.theme.v1` and applied by an inline script in
+  `App.razor` **before first paint**, so a stored light theme does not flash dark
+  on every load. Toggle lives in the topbar. Not done: Avalonia's startup system
+  detection (`prefers-color-scheme`) — the web app defaults to dark as before.
 
 ### 1.4 Keyboard shortcuts — `partial`
 

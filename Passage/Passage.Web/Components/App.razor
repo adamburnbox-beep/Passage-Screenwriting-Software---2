@@ -10,6 +10,14 @@
     <link rel="preload" href="fonts/CourierPrime-Bold.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="stylesheet" href="lib/codemirror/codemirror.css" />
     <link rel="stylesheet" href="css/app.css" />
+    <script>
+        // Applied before first paint so a stored light theme does not flash
+        // dark on every load. passage.js owns the value from here on.
+        try {
+            var t = window.localStorage.getItem("passage.theme.v1");
+            if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        } catch (e) { }
+    </script>
     <HeadOutlet @rendermode="InteractiveServer" />
     <title>Passage</title>
 </head>

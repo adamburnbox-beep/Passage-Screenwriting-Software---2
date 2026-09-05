@@ -28,6 +28,12 @@
     font-style: italic;
 }
 
+/* Palette values are copied verbatim from the Linux port's single runtime
+   source of truth — App.axaml.cs LoadThemeResources(bool isLight). Do not
+   tune them here; change them there and mirror the change across.
+   Avalonia's #AARRGGBB literals become rgba() (alpha 0x25 = .145, 0x22 = .133).
+
+   Dark is the default, matching the app's previous behaviour. */
 :root {
     --theme-background: #0D0D0C;
     --surface-background: #141413;
@@ -38,12 +44,18 @@
     --control-foreground: #F2F2F0;
     --control-border: #2E2E2C;
     --control-accent: #F4F4F2;
+    --control-pressed-background: #F4F4F2;
+    --control-pressed-foreground: #0D0D0C;
     --header-text: #FAFAF8;
     --secondary-text: #B2B2AD;
     --muted-text: #6E6E69;
     --editor-foreground: #EDEDEB;
+    --editor-page-border: #262624;
     --card-background: #1B1B1A;
     --card-border: #2A2A28;
+    --card-accent: #F4F4F2;
+    --hierarchy-indicator: #F4F4F2;
+    --drag-over-background: rgba(244, 244, 242, 0.145);
 
     --syntax-scene: #6797FF;
     --syntax-character: #C05587;
@@ -54,9 +66,70 @@
     --syntax-synopsis: #FFB74D;
     --syntax-note: #81C784;
 
+    --selection-background: rgba(103, 151, 255, 0.30);
+
+    /* On near-black, shadows carry almost nothing and elevation comes from the
+       hairline card strokes above — so these stay faint. The light theme
+       inverts that: borders go transparent and the shadows do the work, which
+       is how LoadThemeResources comments describe the two schemes. */
+    --shadow-soft: 0 3px 6px rgba(0, 0, 0, 0.05);
+    --shadow-card-hover: 0 4px 8px rgba(0, 0, 0, 0.07);
+    --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-page: 0 8px 28px rgba(0, 0, 0, 0.5);
+    --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.6);
+    --backdrop: rgba(0, 0, 0, 0.55);
+
+    /* The preview pane simulates a printed page, so paper stays paper in both
+       themes. Routed through tokens so nothing is hardcoded, but deliberately
+       not overridden below. */
+    --page-background: #FAFAF8;
+    --page-foreground: #1A1A19;
+
     --mono: "Courier Prime", "Courier New", monospace;
     --sans: "Inter", "Segoe UI", "Cantarell", system-ui, sans-serif;
     --radius: 10px;
+}
+
+:root[data-theme="light"] {
+    --theme-background: #F1F1EF;
+    --surface-background: #F7F7F5;
+    --surface-muted: #E9E9E6;
+    --surface-raised: #FFFFFF;
+    --surface-border: #E4E4E0;
+    --control-background: #FFFFFF;
+    --control-foreground: #111110;
+    --control-border: #E4E4E0;
+    --control-accent: #111110;
+    --control-pressed-background: #111110;
+    --control-pressed-foreground: #FFFFFF;
+    --header-text: #0B0B0A;
+    --secondary-text: #5A5A55;
+    --muted-text: #98988F;
+    --editor-foreground: #171716;
+    --editor-page-border: transparent;
+    --card-background: #FFFFFF;
+    --card-border: transparent;
+    --card-accent: #111110;
+    --hierarchy-indicator: #111110;
+    --drag-over-background: rgba(17, 17, 17, 0.133);
+
+    --syntax-scene: #2F55B8;
+    --syntax-character: #94306A;
+    --syntax-dialogue: #3C3C39;
+    --syntax-paren: #757570;
+    --syntax-transition: #5B4392;
+    --syntax-section: #1D6FA5;
+    --syntax-synopsis: #9A6A1C;
+    --syntax-note: #3E7D44;
+
+    --selection-background: rgba(47, 85, 184, 0.22);
+
+    --shadow-soft: 0 3px 6px rgba(0, 0, 0, 0.08);
+    --shadow-card-hover: 0 4px 10px rgba(0, 0, 0, 0.10);
+    --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-page: 0 8px 28px rgba(0, 0, 0, 0.15);
+    --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.18);
+    --backdrop: rgba(0, 0, 0, 0.35);
 }
 
 * { box-sizing: border-box; }
@@ -137,7 +210,7 @@ html, body {
 
 .view-tabs button.active {
     background: var(--control-accent);
-    color: var(--theme-background);
+    color: var(--control-pressed-foreground);
     font-weight: 600;
 }
 
@@ -151,7 +224,7 @@ html, body {
     padding: 7px 14px;
     font-size: 12px;
     cursor: pointer;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-soft);
 }
 
 .btn:hover { border-color: var(--muted-text); }
@@ -162,7 +235,7 @@ html, body {
 
 .btn.primary {
     background: var(--control-accent);
-    color: var(--theme-background);
+    color: var(--control-pressed-foreground);
     font-weight: 600;
 }
 
@@ -179,7 +252,7 @@ html, body {
     background: var(--surface-raised);
     border: 1px solid var(--surface-border);
     border-radius: var(--radius);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-raised);
     min-width: 180px;
     z-index: 30;
     padding: 6px;
@@ -353,7 +426,7 @@ html, body {
     background: var(--surface-background);
     border: 1px solid var(--surface-border);
     border-radius: 12px;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-soft);
     overflow: hidden;
 }
 
@@ -389,8 +462,8 @@ html, body {
 }
 
 .CodeMirror-cursor { border-left: 2px solid var(--control-accent); }
-.CodeMirror-selected { background: rgba(103, 151, 255, 0.30); }
-.CodeMirror-focused .CodeMirror-selected { background: rgba(103, 151, 255, 0.30); }
+.CodeMirror-selected { background: var(--selection-background); }
+.CodeMirror-focused .CodeMirror-selected { background: var(--selection-background); }
 pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 /* Per-line element styling: colour + industry-standard screenplay indents
@@ -426,14 +499,14 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .preview-page {
-    background: #FAFAF8;
-    color: #1A1A19;
+    background: var(--page-background);
+    color: var(--page-foreground);
     font-family: var(--mono);
     width: 85ch;
     max-width: 100%;
     padding: 3em 10ch 6em 15ch;
     border-radius: 4px;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-page);
     position: relative;
 }
 
@@ -442,7 +515,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     height: 3em;
     line-height: 1;
     padding-top: 0;
-    color: #1A1A19;
+    color: var(--page-foreground);
 }
 
 .preview-body { min-height: 54em; }
@@ -521,10 +594,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     padding: 12px 14px;
     margin-top: 10px;
     cursor: pointer;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-soft);
 }
 
-.board-card:hover { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.07); border-color: var(--muted-text); }
+.board-card:hover { box-shadow: var(--shadow-card-hover); border-color: var(--muted-text); }
 
 .board-card .card-kind {
     font-size: 9px;
@@ -690,7 +763,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--backdrop);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -704,7 +777,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     padding: 24px;
     width: 420px;
     max-width: calc(100vw - 48px);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-modal);
 }
 
 .modal h3 {
@@ -746,4 +819,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     .sidebar { display: none; }
     .editor-overlay, .editor-input { padding: 24px 20px; }
     .view-tabs button { padding: 6px 10px; }
+}
+
+.theme-toggle {
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 1;
 }

@@ -27,6 +27,7 @@ window.passage = (function () {
     const SESSION_DEBOUNCE_MS = 400;
     const RECOVERY_KEY = "passage.recovery.v1";
     const RECOVERY_INTERVAL_MS = 3000;
+    const THEME_KEY = "passage.theme.v1";
     const LINE_CLASSES = [
         "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
         "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
@@ -136,6 +137,24 @@ window.passage = (function () {
         } catch (e) {
             return null;
         }
+    }
+
+    // Theme. Kept in its own key because App.razor reads it inline before first
+    // paint, well before this file has loaded.
+    function getTheme() {
+        return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+    }
+
+    function setTheme(theme) {
+        const next = theme === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = next;
+        try {
+            window.localStorage.setItem(THEME_KEY, next);
+        } catch (e) {
+        }
+        // CodeMirror caches measurements against the old colours.
+        if (cm) cm.refresh();
+        return next;
     }
 
     function clearRecoverySnapshot() {
@@ -288,6 +307,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
+        getTheme, setTheme,
         get editor() { return cm; }
     };
 })();

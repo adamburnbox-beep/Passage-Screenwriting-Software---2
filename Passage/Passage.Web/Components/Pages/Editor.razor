@@ -26,6 +26,10 @@
         </nav>
 
         <div class="topbar-actions">
+            <button class="btn theme-toggle" @onclick="ToggleThemeAsync"
+                    title="@(_theme == "light" ? "Switch to dark theme" : "Switch to light theme")">
+                @(_theme == "light" ? "☾" : "☀")
+            </button>
             <label class="toggle" title="Save automatically shortly after you stop typing">
                 <input type="checkbox" @bind="_autosaveEnabled" /> AUTOSAVE
             </label>
@@ -401,8 +405,40 @@ Open a .fountain file to see formatted pages.</div>
         {
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("passage.init", _selfRef);
+            await SyncThemeAsync();
             await RestoreSessionAsync();
             await CheckForRecoveryAsync();
+        }
+    }
+
+    // The theme is applied by an inline script in App.razor before first paint,
+    // so the server only needs to read back which one is showing to label the
+    // toggle. Persisting is passage.js's job.
+    private string _theme = "dark";
+
+    private async Task SyncThemeAsync()
+    {
+        try
+        {
+            _theme = await JS.InvokeAsync<string>("passage.getTheme");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        var next = _theme == "light" ? "dark" : "light";
+        try
+        {
+            _theme = await JS.InvokeAsync<string>("passage.setTheme", next);
+        }
+        catch (JSException)
+        {
         }
     }
 
