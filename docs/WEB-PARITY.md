@@ -47,7 +47,7 @@ never calls them. Highest value per token in the project. Do these first.
   load with a status message rather than an error. Rows 1.5 (Open Recent) and
   3.2 (line-type overrides) should extend the same key.
 
-### 1.2 Crash recovery — `missing`
+### 1.2 Crash recovery — `done`
 
 - **Linux:** VM 2333–2397 (`StartRecoveryAutosave`, `StopRecoveryAutosave`,
   `SaveRecoverySnapshot`, `LoadRecoveryDocument`); VM 80 (`_recoveryTimer`);
@@ -59,6 +59,21 @@ never calls them. Highest value per token in the project. Do these first.
   which writes the real file. Recovery snapshots are a separate crash-safety
   net. On the server, scope snapshots by browser session so one client's crash
   recovery is not offered to another.
+- **Done:** Snapshots live in `localStorage` under `passage.recovery.v1`,
+  written by `saveRecoverySnapshot` in `passage.js` on a 3s timer while dirty —
+  the same interval as the Linux `_recoveryTimer`. **Deviation from the note
+  above:** they are kept client-side, not on the server. A server-side snapshot
+  needs a live Blazor circuit, which is exactly what a crash removes, so edits
+  made in the seconds before a kill would be lost; localStorage also scopes
+  snapshots to one browser with no session-id plumbing and no way to hand one
+  client's draft to another (there is no auth — trap 5).
+  `CheckForRecoveryAsync` (`Editor.razor`) offers the snapshot only when it is
+  newer than the file's `LastModifiedUtc`; an untitled snapshot has no file to
+  compare against and always counts as newer. Prompt wording and button order
+  match `RecoveryPromptDialog.axaml` exactly. Clearing is explicit — a real
+  save (`setDirty(false)`) or Discard. The timer must **never** clear: a
+  snapshot can be sitting in the open prompt, and a tick that wiped it would
+  destroy the work being offered back.
 
 ### 1.3 Light/dark theme toggle — `missing`
 

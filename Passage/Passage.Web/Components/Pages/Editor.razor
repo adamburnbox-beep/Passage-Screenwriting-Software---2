@@ -315,6 +315,20 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_recoveryPrompt is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Recover Document</h3>
+            <p>A recovered unsaved document was found. Would you like to restore it?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="DiscardRecoveryAsync">Discard</button>
+                <button class="btn primary" @onclick="RestoreRecoveryAsync">Restore</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_deleteTarget is not null)
 {
     <div class="modal-backdrop">
@@ -388,7 +402,99 @@ Open a .fountain file to see formatted pages.</div>
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("passage.init", _selfRef);
             await RestoreSessionAsync();
+            await CheckForRecoveryAsync();
         }
+    }
+
+    // Crash recovery. Separate from the file autosave below, which writes the
+    // real file: this offers back unsaved work after the server or the browser
+    // died. Snapshots are written client-side by passage.js — see the comment
+    // there for why they are not kept on the server.
+    private sealed record RecoverySnapshot
+    {
+        public string Text { get; init; } = string.Empty;
+
+        public string? FileName { get; init; }
+
+        public DateTimeOffset SavedAtUtc { get; init; }
+    }
+
+    private RecoverySnapshot? _recoveryPrompt;
+
+    private async Task CheckForRecoveryAsync()
+    {
+        RecoverySnapshot? snapshot;
+        try
+        {
+            snapshot = await JS.InvokeAsync<RecoverySnapshot?>("passage.readRecoverySnapshot");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (snapshot is null || snapshot.Text.Length == 0)
+        {
+            return;
+        }
+
+        // Only offer work the saved file does not already contain. An untitled
+        // snapshot has no file to compare against, so it always counts as newer.
+        var name = snapshot.FileName;
+        if (!string.IsNullOrEmpty(name))
+        {
+            var entry = _files.FirstOrDefault(file => file.Name == name);
+            if (entry is not null && snapshot.SavedAtUtc.UtcDateTime <= entry.LastModifiedUtc)
+            {
+                await JS.InvokeVoidAsync("passage.clearRecoverySnapshot");
+                return;
+            }
+        }
+
+        _recoveryPrompt = snapshot;
+        StateHasChanged();
+    }
+
+    private async Task RestoreRecoveryAsync()
+    {
+        var snapshot = _recoveryPrompt;
+        _recoveryPrompt = null;
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        _content = snapshot.Text;
+        _fileName = snapshot.FileName ?? string.Empty;
+        _mainViewIndex = 0;
+        _caretLine = 1;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        await PushHighlightsForCurrentVersionAsync();
+
+        // The recovered text is by definition not what is on disk, so the
+        // buffer stays dirty and keeps snapshotting until it is saved.
+        _isDirty = true;
+        await JS.InvokeVoidAsync("passage.setDirty", true);
+        CaptureSessionBaseline();
+        await PersistSessionAsync();
+        _statusMessage = "Recovered unsaved work";
+        StateHasChanged();
+    }
+
+    private async Task DiscardRecoveryAsync()
+    {
+        _recoveryPrompt = null;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.clearRecoverySnapshot");
+        }
+        catch (JSException)
+        {
+        }
+
+        _statusMessage = "Discarded recovered document";
+        StateHasChanged();
     }
 
     // Per-browser session state. Held in localStorage by passage.js rather than

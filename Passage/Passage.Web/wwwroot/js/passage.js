@@ -25,6 +25,8 @@ window.passage = (function () {
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
     const SESSION_DEBOUNCE_MS = 400;
+    const RECOVERY_KEY = "passage.recovery.v1";
+    const RECOVERY_INTERVAL_MS = 3000;
     const LINE_CLASSES = [
         "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
         "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
@@ -99,6 +101,50 @@ window.passage = (function () {
         scheduleSessionSave();
     }
 
+    // Crash recovery. Distinct from the file autosave in Editor.razor, which
+    // writes the real file on the server; this is an unsaved-work safety net.
+    // It is written client-side on a timer because it has to survive the server
+    // dying, and a server-side snapshot needs the live circuit that a crash
+    // takes away. localStorage also scopes it to one browser, so a recovered
+    // draft is never offered to a different client.
+    //
+    // This deliberately never clears. A snapshot may be sitting in front of the
+    // user in the recovery prompt, and a timer tick that wiped it would destroy
+    // the very work being offered back. Clearing is explicit: a real save
+    // (setDirty(false)), or Discard.
+    function saveRecoverySnapshot() {
+        if (!cm || !dirty) return;
+        try {
+            window.localStorage.setItem(RECOVERY_KEY, JSON.stringify({
+                text: cm.getValue("\n"),
+                fileName: session.fileName,
+                savedAtUtc: new Date().toISOString()
+            }));
+        } catch (e) {
+            // Private browsing or a full quota; the editor keeps working.
+        }
+    }
+
+    function readRecoverySnapshot() {
+        try {
+            const raw = window.localStorage.getItem(RECOVERY_KEY);
+            if (!raw) return null;
+            const stored = JSON.parse(raw);
+            if (!stored || typeof stored !== "object") return null;
+            if (typeof stored.text !== "string" || stored.text.length === 0) return null;
+            return stored;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function clearRecoverySnapshot() {
+        try {
+            window.localStorage.removeItem(RECOVERY_KEY);
+        } catch (e) {
+        }
+    }
+
     function init(reference) {
         dotnetRef = reference;
         const host = document.getElementById("editor-host");
@@ -132,6 +178,8 @@ window.passage = (function () {
                 }
             });
         });
+
+        setInterval(saveRecoverySnapshot, RECOVERY_INTERVAL_MS);
 
         window.addEventListener("beforeunload", (event) => {
             if (dirty) {
@@ -179,6 +227,10 @@ window.passage = (function () {
 
     function setDirty(value) {
         dirty = value;
+        if (!value) {
+            // Saved, so there is no unsaved work left to recover.
+            clearRecoverySnapshot();
+        }
     }
 
     function scrollToLine(line) {
@@ -235,6 +287,7 @@ window.passage = (function () {
         init, applyHighlights, setContent, setDirty, scrollToLine,
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
+        readRecoverySnapshot, clearRecoverySnapshot,
         get editor() { return cm; }
     };
 })();
