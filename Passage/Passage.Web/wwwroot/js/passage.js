@@ -465,6 +465,51 @@ window.passage = (function () {
         return true;
     }
 
+    // Insert lines before lineIndex, or at the end of the document when the
+    // index is past the last line. Ranged like replaceLineRange, so it keeps
+    // the undo history.
+    function insertLinesAt(lineIndex, text) {
+        if (!cm) return false;
+        const last = cm.lineCount() - 1;
+        const at = Math.max(0, Math.min(lineIndex, last + 1));
+
+        if (at > last) {
+            const end = { line: last, ch: cm.getLine(last).length };
+            cm.replaceRange("\n" + text, end, end);
+        } else {
+            const pos = { line: at, ch: 0 };
+            cm.replaceRange(text + "\n", pos, pos);
+        }
+
+        scheduleInput();
+        return true;
+    }
+
+    // Remove an inclusive line range, taking the line break with it so no blank
+    // line is left behind.
+    function deleteLineRange(startLine, endLine) {
+        if (!cm) return false;
+        const last = cm.lineCount() - 1;
+        if (startLine < 0 || startLine > last) return false;
+
+        const to = Math.min(endLine, last);
+        let from = { line: startLine, ch: 0 };
+        let until;
+
+        if (to < last) {
+            until = { line: to + 1, ch: 0 };
+        } else {
+            until = { line: to, ch: cm.getLine(to).length };
+            if (startLine > 0) {
+                from = { line: startLine - 1, ch: cm.getLine(startLine - 1).length };
+            }
+        }
+
+        cm.replaceRange("", from, until);
+        scheduleInput();
+        return true;
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
@@ -541,7 +586,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

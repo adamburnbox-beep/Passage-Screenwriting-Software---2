@@ -392,7 +392,7 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
 Do not attempt any of these in one session. Each bullet under "split into" is
 a session.
 
-### 3.1 Beat Board editing — `partial` (3.1a, 3.1b done; 3.1c–e outstanding)
+### 3.1 Beat Board editing — `partial` (3.1a–3.1d done; 3.1e outstanding)
 
 - **Linux — board build:** VM 1537–1602 (`UpdateBeatBoardCards`), 1603–1668
   (`RebuildBeatBoardLanes`), 2738–2799 (lane / group / card view models)
@@ -409,9 +409,28 @@ a session.
 - **Split into:**
   - 3.1a Act lanes and Sequence groups (render only) — port VM 1603–1668 — **done**
   - 3.1b Inline card edit + write-back — port VM 733–767, 886–952, 2586–2666 — **done**
-  - 3.1c Add scene to block — port VM 803–841
-  - 3.1d Delete card with confirmation — port VM 842–885
+  - 3.1c Add scene to block — port VM 803–841 — **done**
+  - 3.1d Delete card with confirmation — port VM 842–885 — **done**
   - 3.1e Drag-and-drop reorder — port VM 2678–2737 + MW.cs 1282–1348
+- **3.1c/3.1d done.** Both go through `BeatBoardText.GetCardLineRange` and new
+  ranged JS primitives — `insertLinesAt` and `deleteLineRange` — so neither
+  clears the undo stack. Verified: undo depth rose across an add and a delete,
+  and a single undo restored a deleted act whole.
+  Add inserts after the container's **full block** (`includeNestedBlock: true`),
+  so "+" on an act lands at the end of that act rather than under its heading,
+  and writes the same three lines as `AddSceneToBlock`.
+  Delete takes a Note's own lines and everything else's whole block, always
+  confirms, and states the scope and line count in the Avalonia wording
+  ("the act X and everything nested inside it (9 lines)").
+  `deleteLineRange` takes the line break with the range so no blank line is left
+  behind.
+- **Gap closed while doing 3.1d:** 3.1a drew Acts and Sequences as lane and
+  group headers, which left them with no edit or delete affordance — but on the
+  desktop board they are cards like any other, and 3.1d's own wording covers
+  them. The card editor was pulled out into a shared `RenderCardEditor`
+  fragment, so a lane or group header swaps into the same form. Acts and
+  sequences can now be renamed, re-typed and deleted.
+
 - **3.1b web half done — ranged write-back.** Cards carry the parser's `Guid`
   through `OutlineNode` → `BoardCard`, and `DocumentAnalysis` now also exposes
   `Elements` and `LineCount`, which is what `BeatBoardText.GetCardLineRange`

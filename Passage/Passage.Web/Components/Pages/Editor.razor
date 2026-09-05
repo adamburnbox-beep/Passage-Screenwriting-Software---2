@@ -276,10 +276,24 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                             var laneKey = LaneKey(lane);
                             var laneOpen = !_collapsedLanes.Contains(laneKey);
                             <div class="board-lane">
-                                <div class="board-lane-head" @onclick="() => ToggleLane(laneKey)">
-                                    <span class="board-twisty">@(laneOpen ? "▾" : "▸")</span>
-                                    <span class="board-lane-title">@(lane.ActCard?.Heading ?? "Script")</span>
-                                </div>
+                                @if (lane.ActCard is not null && _editingCardId == lane.ActCard.Id && lane.ActCard.Id != Guid.Empty)
+                                {
+                                    @RenderCardEditor(lane.ActCard)
+                                }
+                                else
+                                {
+                                    <div class="board-lane-head">
+                                        <span class="board-twisty" @onclick="() => ToggleLane(laneKey)">@(laneOpen ? "▾" : "▸")</span>
+                                        <span class="board-lane-title" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
+                                        @if (lane.ActCard is not null && lane.ActCard.Id != Guid.Empty)
+                                        {
+                                            <button class="icon-btn board-add" title="Edit act"
+                                                    @onclick="() => StartCardEdit(lane.ActCard)">✎</button>
+                                        }
+                                        <button class="icon-btn board-add" title="Add a scene to this act"
+                                                @onclick="() => AddSceneToBlockAsync(lane.ActCard)">+</button>
+                                    </div>
+                                }
                                 @if (lane.ActCard is { Description.Length: > 0 })
                                 {
                                     <div class="board-lane-synopsis">@lane.ActCard.Description</div>
@@ -293,10 +307,21 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                         <div class="board-group">
                                             @if (group.SequenceCard is not null)
                                             {
-                                                <div class="board-group-head" @onclick="() => ToggleGroup(groupKey)">
-                                                    <span class="board-twisty">@(groupOpen ? "▾" : "▸")</span>
-                                                    <span class="board-group-title">@group.SequenceCard.Heading</span>
-                                                </div>
+                                                @if (_editingCardId == group.SequenceCard.Id && group.SequenceCard.Id != Guid.Empty)
+                                                {
+                                                    @RenderCardEditor(group.SequenceCard)
+                                                }
+                                                else
+                                                {
+                                                    <div class="board-group-head">
+                                                        <span class="board-twisty" @onclick="() => ToggleGroup(groupKey)">@(groupOpen ? "▾" : "▸")</span>
+                                                        <span class="board-group-title" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
+                                                        <button class="icon-btn board-add" title="Edit sequence"
+                                                                @onclick="() => StartCardEdit(group.SequenceCard)">✎</button>
+                                                        <button class="icon-btn board-add" title="Add a scene to this sequence"
+                                                                @onclick="() => AddSceneToBlockAsync(group.SequenceCard)">+</button>
+                                                    </div>
+                                                }
                                                 @if (group.SequenceCard.Description.Length > 0)
                                                 {
                                                     <div class="board-group-synopsis">@group.SequenceCard.Description</div>
@@ -404,6 +429,20 @@ Open a .fountain file to see formatted pages.</div>
             <div class="modal-actions">
                 <button class="btn" @onclick="CancelPendingAction">Cancel</button>
                 <button class="btn primary" @onclick="ConfirmPendingActionAsync">Discard changes</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteCard is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Delete Card</h3>
+            <p>This removes @_deleteCardScope from the script (@_deleteCardLines line@(_deleteCardLines == 1 ? "" : "s")). Continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _deleteCard = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmDeleteCardAsync">Delete</button>
             </div>
         </div>
     </div>
@@ -1214,6 +1253,108 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
     }
 
+    // ---- Beat Board: delete a card ----
+    //
+    // Ports DeleteCard. A Note takes only its own lines; anything else takes its
+    // whole block, nested content included — which is why this always confirms,
+    // and why the prompt states the line count.
+
+    private BoardCard? _deleteCard;
+    private string _deleteCardScope = string.Empty;
+    private int _deleteCardLines;
+    private BeatBoardText.LineRange _deleteCardRange;
+
+    private void RequestDeleteCard(BoardCard card)
+    {
+        if (card.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        var range = BeatBoardText.GetCardLineRange(
+            _analysis.Elements, card.Id, _analysis.LineCount,
+            includeNestedBlock: card.Kind != "Note");
+
+        if (!range.IsFound)
+        {
+            _cardEditError = "That card is no longer in the script.";
+            return;
+        }
+
+        _deleteCard = card;
+        _deleteCardRange = range;
+        _deleteCardLines = range.LineCount;
+        _deleteCardScope = card.Kind is "Act" or "Sequence"
+            ? $"the {card.Kind.ToLowerInvariant()} \"{card.Heading}\" and everything nested inside it"
+            : $"\"{card.Heading}\" and its contents";
+    }
+
+    private async Task ConfirmDeleteCardAsync()
+    {
+        var card = _deleteCard;
+        var range = _deleteCardRange;
+        _deleteCard = null;
+        if (card is null || !range.IsFound)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "passage.deleteLineRange", range.StartLineIndex, range.EndLineIndex);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _editingCardId = Guid.Empty;
+        _cardEditError = string.Empty;
+        _statusMessage = $"Deleted {card.Kind.ToLowerInvariant()} \"{card.Heading}\"";
+    }
+
+    // ---- Beat Board: add a scene ----
+    //
+    // Ports AddSceneToBlock. The new scene goes after the container's *whole*
+    // block — nested content included — so adding to an act lands at the end of
+    // that act, not immediately under its heading.
+
+    private async Task AddSceneToBlockAsync(BoardCard? container)
+    {
+        var insertAt = _analysis.LineCount;
+
+        if (container is not null && container.Id != Guid.Empty)
+        {
+            var range = BeatBoardText.GetCardLineRange(
+                _analysis.Elements, container.Id, _analysis.LineCount, includeNestedBlock: true);
+
+            if (range.IsFound)
+            {
+                insertAt = Math.Min(range.EndLineIndex + 1, _analysis.LineCount);
+            }
+        }
+
+        var newId = Guid.NewGuid();
+        var lines = string.Join("\n", new[]
+        {
+            string.Empty,
+            $". NEW SCENE [[id:{newId}]]",
+            "= Click Edit to describe this scene."
+        });
+
+        try
+        {
+            await JS.InvokeVoidAsync("passage.insertLinesAt", insertAt, lines);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _statusMessage = "Added scene";
+    }
+
     // ---- Beat Board card editing ----
     //
     // Write-back goes through BeatBoardText (shared with the desktop app) to
@@ -1854,31 +1995,40 @@ Open a .fountain file to see formatted pages.</div>
         </div>
     };
 
+    // Shared by scene cards and by the act/sequence headers, so an Act can be
+    // renamed and deleted the same way a card can — it is a card on the desktop
+    // board, just drawn as a lane here.
+    private RenderFragment<BoardCard> RenderCardEditor => card => __builder =>
+    {
+        <div class="board-card editing" @onclick:stopPropagation="true">
+            <select class="card-type" @bind="_editType">
+                <option value="Act">Act</option>
+                <option value="Sequence">Sequence</option>
+                <option value="Section">Section</option>
+                <option value="Scene">Scene</option>
+                <option value="Note">Note</option>
+            </select>
+            <input class="card-heading-input" @bind="_editHeading" @bind:event="oninput"
+                   @onkeydown="OnCardEditKeyDown" placeholder="Heading" />
+            <textarea class="card-body-input" rows="2" @bind="_editDescription" @bind:event="oninput"
+                      placeholder="Synopsis"></textarea>
+            @if (_cardEditError.Length > 0)
+            {
+                <div class="modal-error">@_cardEditError</div>
+            }
+            <div class="card-edit-actions">
+                <button class="btn" @onclick="() => RequestDeleteCard(card)">Delete</button>
+                <button class="btn" @onclick="CancelCardEdit">Cancel</button>
+                <button class="btn primary" @onclick="SaveCardAsync">Save</button>
+            </div>
+        </div>
+    };
+
     private RenderFragment<BoardCard> RenderBoardCard => card => __builder =>
     {
         @if (_editingCardId == card.Id && card.Id != Guid.Empty)
         {
-            <div class="board-card editing" @onclick:stopPropagation="true">
-                <select class="card-type" @bind="_editType">
-                    <option value="Act">Act</option>
-                    <option value="Sequence">Sequence</option>
-                    <option value="Section">Section</option>
-                    <option value="Scene">Scene</option>
-                    <option value="Note">Note</option>
-                </select>
-                <input class="card-heading-input" @bind="_editHeading" @bind:event="oninput"
-                       @onkeydown="OnCardEditKeyDown" placeholder="Heading" />
-                <textarea class="card-body-input" rows="2" @bind="_editDescription" @bind:event="oninput"
-                          placeholder="Synopsis"></textarea>
-                @if (_cardEditError.Length > 0)
-                {
-                    <div class="modal-error">@_cardEditError</div>
-                }
-                <div class="card-edit-actions">
-                    <button class="btn" @onclick="CancelCardEdit">Cancel</button>
-                    <button class="btn primary" @onclick="SaveCardAsync">Save</button>
-                </div>
-            </div>
+            @RenderCardEditor(card)
         }
         else
         {

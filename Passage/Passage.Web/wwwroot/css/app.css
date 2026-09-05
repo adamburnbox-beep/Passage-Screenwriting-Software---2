@@ -1110,3 +1110,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .board-card.editing .card-body-input { font-family: inherit; resize: vertical; }
 
 .card-edit-actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+.board-lane-head, .board-group-head { justify-content: flex-start; }
+
+.board-add { margin-left: auto; opacity: 0; }
+
+.board-lane-head:hover .board-add,
+.board-group-head:hover .board-add { opacity: 1; }
