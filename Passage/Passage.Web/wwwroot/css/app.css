@@ -1123,3 +1123,36 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .board-card[draggable="true"] { cursor: grab; }
 
 .board-card.drop-target { outline: 2px solid var(--control-accent); outline-offset: 1px; }
+
+/* ---- Page-break rules ---- */
+
+.page-rules {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.page-rule {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--surface-border);
+}
+
+.page-rule-pill {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    background: var(--surface-background);
+    border: 1px solid var(--surface-border);
+    border-radius: 999px;
+    color: var(--muted-text);
+    font-family: var(--sans);
+    font-size: 9.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    white-space: nowrap;
+}

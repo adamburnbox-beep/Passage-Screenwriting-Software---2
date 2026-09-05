@@ -281,6 +281,8 @@ window.passage = (function () {
             reportCaret();
         });
         cm.on("cursorActivity", reportCaret);
+        cm.on("changes", updatePageRules);
+        cm.on("refresh", updatePageRules);
 
         // Close any open dropdown menu after a choice or an outside click.
         document.addEventListener("click", (event) => {
@@ -533,6 +535,72 @@ window.passage = (function () {
         return dropAfter;
     }
 
+    // ---- Page-break rules ----
+    //
+    // Ports ScreenplayPageRuler: a dashed rule every 55 lines with a "PAGE N"
+    // pill, snapped to a line boundary so it sits between lines instead of
+    // through them. Purely visual — the document is untouched, and this is the
+    // same line-count approximation the page estimator uses; the Preview tab
+    // stays the exact layout.
+    //
+    // Like the desktop editor this one wraps, so the boundary is every 55 line
+    // *heights* of vertical space, not every 55 document lines — with wrapping
+    // those diverge, and the desktop measures the visual one.
+    const LINES_PER_PAGE = 55;
+    let pageRuleLayer = null;
+    let pageRulesEnabled = false;
+
+    function ensurePageRuleLayer() {
+        if (!cm) return null;
+        // Re-created if CodeMirror ever rebuilds the sizer out from under it.
+        if (pageRuleLayer && pageRuleLayer.isConnected) return pageRuleLayer;
+
+        const sizer = cm.getWrapperElement().querySelector(".CodeMirror-sizer");
+        if (!sizer) return null;
+
+        pageRuleLayer = document.createElement("div");
+        pageRuleLayer.className = "page-rules";
+        sizer.insertBefore(pageRuleLayer, sizer.firstChild);
+        return pageRuleLayer;
+    }
+
+    function updatePageRules() {
+        if (!cm) return;
+        const layer = ensurePageRuleLayer();
+        if (!layer) return;
+
+        layer.textContent = "";
+        if (!pageRulesEnabled) return;
+
+        const lineHeight = cm.defaultTextHeight();
+        if (!(lineHeight > 0)) return;
+
+        const pageHeight = LINES_PER_PAGE * lineHeight;
+        const docHeight = cm.heightAtLine(cm.lastLine(), "local") + lineHeight;
+        if (docHeight <= pageHeight) return;
+
+        const totalPages = Math.ceil(docHeight / pageHeight);
+        for (let page = 1; page < totalPages; page++) {
+            const line = cm.lineAtHeight(page * pageHeight, "local");
+            const rule = document.createElement("div");
+            rule.className = "page-rule";
+            rule.style.top = cm.heightAtLine(line, "local") + "px";
+
+            const pill = document.createElement("span");
+            pill.className = "page-rule-pill";
+            pill.textContent = "PAGE " + (page + 1);
+            rule.appendChild(pill);
+            layer.appendChild(rule);
+        }
+    }
+
+    // Screenplay mode only, matching ApplyEditorWriteMode, which adds the ruler
+    // for screenplays and removes it for markdown.
+    function setPageRules(enabled) {
+        pageRulesEnabled = !!enabled;
+        updatePageRules();
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
@@ -609,7 +677,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

@@ -533,7 +533,7 @@ a session.
   check how `SetLineTypeOverride` handles renumbering before designing the web
   side. Overrides are session state, not file content, so they belong with 1.1.
 
-### 3.3 In-editor page-break rules — `missing`
+### 3.3 In-editor page-break rules — `done`
 
 - **Linux:** `Views/ScreenplayPageRuler.cs` (93 lines, whole file); wired in
   MW.cs 44–145 (editor setup) and 180–212 (`ApplyEditorWriteMode`)
@@ -542,6 +542,25 @@ a session.
   decoration layer client-side. This is the cheap version of
   FUTURE_IMPROVEMENTS 13 (true discrete pages), which is out of scope — do not
   let a session drift into rewriting the editor.
+- **Done:** `passage.js` gains a `.page-rules` overlay inside CodeMirror's
+  sizer, redrawn on `changes` and `refresh`. Dashed rule plus a "PAGE N" pill at
+  the right margin, snapped to a line boundary via
+  `lineAtHeight`/`heightAtLine` so it sits between lines rather than through
+  them. Colours come from the theme tokens, so it follows light and dark.
+  **Measured in visual lines, not document lines.** The desktop editor has
+  `WordWrap="True"`, so `ScreenplayPageRuler` works in visual space — every 55
+  line *heights*. This editor wraps too, and with wrapping the two diverge, so
+  the same visual measure is used. Verified: at a 22.5px line height the
+  boundaries computed to 1237.5px and 2475px and snapped to 1232.5px and 2470px.
+  Suppressed in the same two cases as the desktop: nothing is drawn for a
+  document shorter than one page, and nothing in Markdown mode — matching
+  `ApplyEditorWriteMode`, which adds the ruler for screenplays and removes it
+  otherwise. All three cases verified (markdown 0 rules, screenplay 2, short
+  script 0).
+  The overlay re-creates itself if CodeMirror ever rebuilds the sizer, so it
+  cannot silently disappear. Purely visual — the document is untouched and the
+  Preview tab remains the exact layout. No editor rewrite (FUTURE_IMPROVEMENTS
+  13 stays out of scope).
 
 ### 3.4 Autocomplete + Enter-continuation — `missing`
 

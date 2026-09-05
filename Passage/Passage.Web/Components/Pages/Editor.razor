@@ -674,6 +674,7 @@ Open a .fountain file to see formatted pages.</div>
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("passage.init", _selfRef);
             await SyncThemeAsync();
+            await SyncPageRulesAsync();
             await RestoreSessionAsync();
             await CheckForRecoveryAsync();
         }
@@ -1119,7 +1120,21 @@ Open a .fountain file to see formatted pages.</div>
         UpdateCaretElementLabel();
         var version = await JS.InvokeAsync<int>("passage.setContent", _content);
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        await SyncPageRulesAsync();
         StateHasChanged();
+    }
+
+    // Page rules are for screenplays only, matching ApplyEditorWriteMode. The
+    // web derives its mode from the file extension, so this follows the name.
+    private async Task SyncPageRulesAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setPageRules", IsScreenplayMode);
+        }
+        catch (JSException)
+        {
+        }
     }
 
     private void RequestDeleteFile(string name)
