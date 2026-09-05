@@ -817,6 +817,10 @@ Open a .fountain file to see formatted pages.</div>
         public double PreviewZoom { get; init; } = 1.25;
 
         public IReadOnlyList<string>? RecentFiles { get; init; }
+
+        // "Classify As" overrides ride in the session key, per row 3.2's note
+        // that they are session state rather than file content.
+        public Dictionary<string, string>? LineOverrides { get; init; }
     }
 
     // Matches the Linux MaxRecentFiles.
@@ -898,6 +902,11 @@ Open a .fountain file to see formatted pages.</div>
             {
                 await OpenFileAsync(name);
                 await JS.InvokeVoidAsync("passage.scrollToLine", Math.Max(1, snapshot.CaretLine));
+
+                if (snapshot.LineOverrides is { Count: > 0 })
+                {
+                    await JS.InvokeVoidAsync("passage.restoreLineOverrides", snapshot.LineOverrides);
+                }
             }
             else
             {
@@ -927,8 +936,10 @@ Open a .fountain file to see formatted pages.</div>
     // ---- JS callbacks ----
 
     [JSInvokable]
-    public async Task OnEditorChanged(string text, int version, int caretLine)
+    public async Task OnEditorChanged(
+        string text, int version, int caretLine, Dictionary<string, string>? overrides)
     {
+        SetLineTypeOverrides(overrides);
         _content = text;
         _isDirty = true;
         _caretLine = caretLine;
@@ -1235,9 +1246,39 @@ Open a .fountain file to see formatted pages.</div>
 
     // ---- Analysis / rendering helpers ----
 
+    // ---- "Classify As" line-type overrides ----
+    //
+    // Keyed by 1-based line number, the shape the parser takes. The client owns
+    // them against CodeMirror line handles, which follow a line as text is
+    // inserted or removed above it, and sends the current numbers with every
+    // content push. The desktop keeps a plain Dictionary<int, …> and never
+    // renumbers it, so an edit above an overridden line silently moves the
+    // override onto the wrong one; handles are how the web avoids that.
+    private Dictionary<int, ScreenplayElementType> _lineTypeOverrides = new();
+
+    private void SetLineTypeOverrides(Dictionary<string, string>? overrides)
+    {
+        var map = new Dictionary<int, ScreenplayElementType>();
+        if (overrides is not null)
+        {
+            foreach (var (line, typeName) in overrides)
+            {
+                if (int.TryParse(line, out var lineNumber) &&
+                    Enum.TryParse<ScreenplayElementType>(typeName, out var type))
+                {
+                    map[lineNumber] = type;
+                }
+            }
+        }
+
+        _lineTypeOverrides = map;
+    }
+
     private void RunAnalysis()
     {
-        _analysis = IsScreenplayMode ? _analyzer.Analyze(_content) : DocumentAnalyzer.AnalyzeMarkdown(_content);
+        _analysis = IsScreenplayMode
+            ? _analyzer.Analyze(_content, _lineTypeOverrides.Count > 0 ? _lineTypeOverrides : null)
+            : DocumentAnalyzer.AnalyzeMarkdown(_content);
     }
 
     // Replaces the whole document: clears CodeMirror's undo stack and resets

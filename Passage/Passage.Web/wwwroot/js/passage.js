@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [] };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {} };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -37,7 +37,18 @@ window.passage = (function () {
     function pushContent() {
         if (!dotnetRef || !cm) return;
         const caretLine = cm.getCursor().line + 1;
-        dotnetRef.invokeMethodAsync("OnEditorChanged", cm.getValue("\n"), version, caretLine);
+        pruneDeletedOverrides();
+        const overrides = overridesByLineNumber();
+
+        // Refresh the stored copy as well as the server's: the handles have
+        // moved with the text, and a reload restores from these numbers.
+        if (JSON.stringify(session.lineOverrides) !== JSON.stringify(overrides)) {
+            session.lineOverrides = overrides;
+            scheduleSessionSave();
+        }
+
+        dotnetRef.invokeMethodAsync(
+            "OnEditorChanged", cm.getValue("\n"), version, caretLine, overrides);
     }
 
     function scheduleInput() {
@@ -297,6 +308,13 @@ window.passage = (function () {
         });
 
         document.addEventListener("dragover", trackDropSide, true);
+
+        cm.getWrapperElement().addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            openClassifyMenu(event);
+        });
+        document.addEventListener("click", closeClassifyMenu);
+        cm.on("scroll", closeClassifyMenu);
 
         setInterval(saveRecoverySnapshot, RECOVERY_INTERVAL_MS);
 
@@ -619,6 +637,20 @@ window.passage = (function () {
 
     const MAX_SUGGESTIONS = 10;
 
+    // Re-attach stored overrides to the handles of the document just loaded.
+    function restoreLineOverrides(map) {
+        if (!cm || !map) return;
+        lineOverrides = new Map();
+        for (const key of Object.keys(map)) {
+            const lineIndex = parseInt(key, 10) - 1;
+            if (!(lineIndex >= 0) || lineIndex > cm.lastLine()) continue;
+            const handle = cm.getLineHandle(lineIndex);
+            if (handle) lineOverrides.set(handle, map[key]);
+        }
+        session.lineOverrides = overridesByLineNumber();
+        pushContent();
+    }
+
     function setSuggestions(sceneHeadings, characters, kinds) {
         sceneHeadingSuggestions = Array.isArray(sceneHeadings) ? sceneHeadings : [];
         characterSuggestions = Array.isArray(characters) ? characters : [];
@@ -681,10 +713,124 @@ window.passage = (function () {
         });
     }
 
+    // ---- "Classify As" line-type overrides ----
+    //
+    // Held against CodeMirror line handles rather than line numbers, so an
+    // override follows its line when text is inserted or removed above it. The
+    // desktop keys a plain dictionary by line number and never renumbers it, so
+    // there the override silently lands on the wrong line after such an edit.
+    // Converted back to numbers only when handing them to the parser.
+    const CLASSIFY_TYPES = [
+        ["Action", "Classify As Action"],
+        ["SceneHeading", "Classify As Scene Heading"],
+        ["Character", "Classify As Character"],
+        ["Dialogue", "Classify As Dialogue"],
+        ["Parenthetical", "Classify As Parenthetical"],
+        ["Transition", "Classify As Transition"],
+        ["Note", "Classify As Note"]
+    ];
+
+    let lineOverrides = new Map();
+    let classifyMenu = null;
+
+    function overridesByLineNumber() {
+        const map = {};
+        for (const [handle, type] of lineOverrides) {
+            const line = cm.getLineNumber(handle);
+            if (line === null) continue;      // the line was deleted
+            map[String(line + 1)] = type;     // the parser counts from 1
+        }
+        return map;
+    }
+
+    function pruneDeletedOverrides() {
+        for (const handle of [...lineOverrides.keys()]) {
+            if (cm.getLineNumber(handle) === null) {
+                lineOverrides.delete(handle);
+            }
+        }
+    }
+
+    function setLineOverride(lineIndex, type) {
+        if (!cm) return;
+        const handle = cm.getLineHandle(lineIndex);
+        if (!handle) return;
+
+        if (type) {
+            lineOverrides.set(handle, type);
+        } else {
+            lineOverrides.delete(handle);
+        }
+
+        session.lineOverrides = overridesByLineNumber();
+        scheduleSessionSave();
+        pushContent();
+    }
+
+    function closeClassifyMenu() {
+        if (classifyMenu) {
+            classifyMenu.remove();
+            classifyMenu = null;
+        }
+    }
+
+    function openClassifyMenu(event) {
+        if (!cm) return;
+        closeClassifyMenu();
+
+        // The line comes from the caret, not the click point — SetLineTypeOverride
+        // works off CaretOffset too. It also avoids hit-testing the mouse against
+        // wrapped lines, which is fiddly and easy to get subtly wrong.
+        const lineIndex = cm.getCursor().line;
+
+        classifyMenu = document.createElement("div");
+        classifyMenu.className = "classify-menu";
+
+        // Say which line will change, since it is the caret's, not the click's.
+        const heading = document.createElement("div");
+        heading.className = "classify-menu-head";
+        heading.textContent = "Line " + (lineIndex + 1);
+        classifyMenu.appendChild(heading);
+        classifyMenu.style.left = event.clientX + "px";
+        classifyMenu.style.top = event.clientY + "px";
+
+        const current = lineOverrides.get(cm.getLineHandle(lineIndex));
+
+        for (const [type, label] of CLASSIFY_TYPES) {
+            const item = document.createElement("button");
+            item.textContent = label;
+            if (current === type) item.classList.add("active");
+            item.addEventListener("click", () => {
+                closeClassifyMenu();
+                setLineOverride(lineIndex, type);
+            });
+            classifyMenu.appendChild(item);
+        }
+
+        if (current) {
+            // The desktop offers no way back once a line is classified; this does.
+            const clear = document.createElement("button");
+            clear.textContent = "Clear Classification";
+            clear.className = "clear";
+            clear.addEventListener("click", () => {
+                closeClassifyMenu();
+                setLineOverride(lineIndex, null);
+            });
+            classifyMenu.appendChild(clear);
+        }
+
+        document.body.appendChild(classifyMenu);
+    }
+
     function setContent(text) {
         if (!cm) return version;
         version++;
         appliedClasses = [];
+        // A different document: its line numbers mean nothing here, and the
+        // stored copy has to go too or it would be re-saved and then restored
+        // onto whatever happens to sit at those lines next.
+        lineOverrides = new Map();
+        session.lineOverrides = {};
         cm.setValue(text);
         cm.clearHistory();
         cm.setCursor({ line: 0, ch: 0 });
@@ -757,7 +903,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

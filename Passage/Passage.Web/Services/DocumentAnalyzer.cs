@@ -57,9 +57,16 @@ public sealed class DocumentAnalyzer
 {
     private readonly FountainParser _parser = new();
 
-    public DocumentAnalysis Analyze(string text)
+    public DocumentAnalysis Analyze(string text) => Analyze(text, null);
+
+    /// <summary>
+    /// <paramref name="lineTypeOverrides"/> is the "Classify As" map, keyed by
+    /// 1-based line number — the same shape the parser takes on the desktop.
+    /// </summary>
+    public DocumentAnalysis Analyze(
+        string text, IReadOnlyDictionary<int, ScreenplayElementType>? lineTypeOverrides)
     {
-        var parsed = _parser.Parse(text);
+        var parsed = _parser.Parse(text, lineTypeOverrides);
         var lineCount = CountLines(text);
 
         SuppressCardSynopses(parsed.Elements);

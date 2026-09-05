@@ -520,7 +520,7 @@ a session.
   sanctioned reasons to edit `Passage.Core`; the desktop apps must keep
   building afterwards.
 
-### 3.2 "Classify As" line-type override — `missing`
+### 3.2 "Classify As" line-type override — `done`
 
 - **Linux:** VM 82 (`_lineTypeOverrides`), 915–933 (the seven `ClassifyAs*`
   commands), 935–951 (`SetLineTypeOverride`), 953–964
@@ -532,6 +532,32 @@ a session.
   keyed by line number, and the overrides must survive edits above the line —
   check how `SetLineTypeOverride` handles renumbering before designing the web
   side. Overrides are session state, not file content, so they belong with 1.1.
+- **Renumbering, as asked — the desktop does not handle it.** `_lineTypeOverrides`
+  is a plain `Dictionary<int, ScreenplayElementType>` keyed by 1-based line
+  number, written in `SetLineTypeOverride` and read once at VM 1158. **Nothing
+  anywhere adjusts the keys.** Insert a line above an overridden one on the
+  desktop and the override silently moves to the wrong line.
+- **Done, and the web does handle it.** Overrides are held client-side against
+  **CodeMirror line handles**, which follow their line as text is inserted or
+  removed above. They are converted to line numbers only when handed to the
+  parser, which already accepts them —
+  `FountainParser.Parse(text, lineTypeOverrides)` — so no parser change was
+  needed. Handles for deleted lines are pruned on each push.
+  **Verified:** classifying line 5 as Action cleared its `sx-character` class;
+  inserting two lines above left the line correctly overridden at its new
+  position **and** renumbered the stored map from `5` to `7`.
+- Context menu on right-click in the editor with the seven "Classify As …"
+  items, labelled as in MW.axaml. It acts on the **caret's** line, not the
+  click point — `SetLineTypeOverride` works off `CaretOffset` too, and it avoids
+  hit-testing a mouse position against wrapped lines. The menu names the line it
+  will change so that is never ambiguous.
+- **Added beyond the desktop:** a "Clear Classification" item, shown only when
+  the line has an override, and the active type is marked. The desktop offers no
+  way to undo a classification once applied.
+- Overrides ride in the `passage.session.v1` key, as this row asked — session
+  state, not file content — and are re-attached to handles on load. Opening a
+  different document clears both the live map and the stored copy, or a stale
+  override would land on whatever happened to occupy those lines next.
 
 ### 3.3 In-editor page-break rules — `done`
 
