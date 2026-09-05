@@ -180,6 +180,10 @@ window.passage = (function () {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnZoomShortcut", -1);
     }
 
+    function goToLine() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnGoToLineShortcut");
+    }
+
     function init(reference) {
         dotnetRef = reference;
         const host = document.getElementById("editor-host");
@@ -203,7 +207,9 @@ window.passage = (function () {
                 "Shift-Ctrl-=": zoomIn,
                 "Shift-Cmd-=": zoomIn,
                 "Ctrl--": zoomOut,
-                "Cmd--": zoomOut
+                "Cmd--": zoomOut,
+                "Ctrl-G": goToLine,
+                "Cmd-G": goToLine
             }
         });
 

@@ -210,13 +210,27 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   no guaranteed internet egress. Find must stay client-side (CLAUDE.md
   trap 4).
 
-### 2.2 Go to Line — `missing`
+### 2.2 Go to Line — `done`
 
 - **Linux:** MW.cs 805–814 (`ShowGoToLineDialog`); VM 677–685;
   `Views/GoToLineDialog.axaml` + `.axaml.cs` (25 + 28 lines)
 - **Web:** `Editor.razor` 690–695 (`JumpToLineAsync`) — the navigation half
   already exists
 - **Notes:** Only the prompt is missing. Smallest row in Tier 2; good first one.
+- **Done:** Modal matching `GoToLineDialog.axaml` — title "Go to Line", label
+  "Line number:", placeholder "Enter line number...", Go and Cancel. Two
+  deliberate differences from Avalonia: button order follows this app's other
+  four modals (Cancel left, primary right) rather than Avalonia's Go-then-Cancel,
+  since in-app consistency wins (rule 11); and bad input shows
+  "Enter a line number of 1 or more." instead of Avalonia's silent refusal to
+  close, which leaves the user guessing (rule 12).
+  The input is focused on open — Avalonia focuses a new window's first control
+  for free, a browser does not focus a freshly inserted node, so it is done
+  explicitly. Out-of-range numbers clamp to the last line via
+  `passage.scrollToLine`, matching `NavigateToLine`.
+  Two entry points: `Ctrl-G` (bound now that the feature exists, per row 1.4)
+  and the status bar's "Ln N", which is now a button — the web app has no
+  Navigate menu to hang it off.
 
 ### 2.3 Go to Scene — `missing`
 

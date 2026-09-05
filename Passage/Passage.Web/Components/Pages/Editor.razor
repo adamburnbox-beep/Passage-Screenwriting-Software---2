@@ -286,7 +286,7 @@ Open a .fountain file to see formatted pages.</div>
 
     <footer class="statusbar">
         <span>@ModeStatusText</span>
-        <span>Ln @_caretLine</span>
+        <button class="status-link" title="Go to line (Ctrl+G)" @onclick="OpenGoToLine">Ln @_caretLine</button>
         <span>@_caretElementLabel</span>
         <span>~@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s")</span>
         <span>@_analysis.WordCount.ToString("N0") words</span>
@@ -328,6 +328,26 @@ Open a .fountain file to see formatted pages.</div>
             <div class="modal-actions">
                 <button class="btn" @onclick="CancelPendingAction">Cancel</button>
                 <button class="btn primary" @onclick="ConfirmPendingActionAsync">Discard changes</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_goToLineOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Go to Line</h3>
+            <p>Line number:</p>
+            <input type="text" @ref="_goToLineInput" @bind="_goToLineValue" @bind:event="oninput"
+                   placeholder="Enter line number..." @onkeydown="OnGoToLineKeyDown" />
+            @if (_goToLineError.Length > 0)
+            {
+                <div class="modal-error">@_goToLineError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn" @onclick="CloseGoToLine">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmGoToLineAsync">Go</button>
             </div>
         </div>
     </div>
@@ -415,6 +435,18 @@ Open a .fountain file to see formatted pages.</div>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusGoToLine)
+        {
+            _focusGoToLine = false;
+            try
+            {
+                await _goToLineInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
         if (firstRender)
         {
             _selfRef = DotNetObjectReference.Create(this);
@@ -997,6 +1029,69 @@ Open a .fountain file to see formatted pages.</div>
     {
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    // ---- Go to Line ----
+
+    private bool _goToLineOpen;
+    private string _goToLineValue = string.Empty;
+    private string _goToLineError = string.Empty;
+    private ElementReference _goToLineInput;
+    private bool _focusGoToLine;
+
+    [JSInvokable]
+    public void OnGoToLineShortcut()
+    {
+        OpenGoToLine();
+        StateHasChanged();
+    }
+
+    private void OpenGoToLine()
+    {
+        _goToLineValue = string.Empty;
+        _goToLineError = string.Empty;
+        _goToLineOpen = true;
+        // Avalonia focuses the dialog's first control for free; the browser
+        // does not focus a node that was only just inserted, so ask for it.
+        _focusGoToLine = true;
+    }
+
+    private void CloseGoToLine()
+    {
+        _goToLineOpen = false;
+        _goToLineError = string.Empty;
+    }
+
+    private async Task ConfirmGoToLineAsync()
+    {
+        if (!int.TryParse(_goToLineValue.Trim(), out var lineNumber) || lineNumber < 1)
+        {
+            // The Avalonia dialog just refuses to close on bad input, which
+            // leaves the user guessing. Say what is wrong instead (rule 12).
+            _goToLineError = "Enter a line number of 1 or more.";
+            return;
+        }
+
+        _goToLineOpen = false;
+        _goToLineError = string.Empty;
+        // scrollToLine clamps past the end of the document, matching the
+        // Linux NavigateToLine.
+        await JumpToLineAsync(lineNumber);
+    }
+
+    // Awaited, not fire-and-forget: Blazor renders when the handler completes,
+    // so a detached task would set the validation error after the only render
+    // it could have appeared in.
+    private async Task OnGoToLineKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await ConfirmGoToLineAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CloseGoToLine();
+        }
     }
 
     // CodeMirror owns the undo stack; these just drive it and hand focus back.
