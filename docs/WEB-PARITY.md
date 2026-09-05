@@ -191,7 +191,7 @@ never calls them. Highest value per token in the project. Do these first.
 
 Each is one panel or dialog with a clear boundary. Roughly one session each.
 
-### 2.1 Find / Replace — `missing`
+### 2.1 Find / Replace — `done`
 
 - **Linux:** MW.cs 829–857 (`ShowFindReplaceDialog`), 858–995 (`FindNext`,
   `FindPrevious`, `FindText`, `FindTextIndex`, `IsWholeWord`,
@@ -209,6 +209,37 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   and do not load the addons from a CDN — the app is self-hosted on a LAN with
   no guaranteed internet egress. Find must stay client-side (CLAUDE.md
   trap 4).
+- **Done, with one deviation from the session prompt.** Vendored
+  **`searchcursor.js` only** (5.65.18, from cdnjs, committed to
+  `wwwroot/lib/codemirror/` beside `placeholder.js` — the flat layout this repo
+  already vendors addons in, not the upstream `addon/search/` nesting).
+  `search.js` and `dialog.js` were downloaded, inspected and **not** vendored:
+  `search.js` contains zero references to whole-word (verified by grep — the
+  option does not exist in it), and decides case sensitivity from a smart-case
+  heuristic (`query == query.toLowerCase()`) rather than an explicit checkbox.
+  It therefore cannot produce the Avalonia option set the success criteria
+  name, and its `openDialog` bar would be unthemed. Vendoring files that are
+  then unused would be dead code (rule 2).
+  So the option set is driven directly off `getSearchCursor`, which is what the
+  addon is for — this is **not** the 320 lines of Avalonia index maths the
+  prompt warned against.
+  Whole word uses lookarounds, `(?<![A-Za-z0-9_])term(?![A-Za-z0-9_])`, not
+  `\b`, so it behaves correctly when the term itself begins or ends with a
+  non-word character. That mirrors `IsWholeWord`, which inspects the characters
+  either side of the match and never the term.
+  Wrap-around matches `FindText`: forward starts at the end of the selection
+  and wraps to the top, backward starts at its head and wraps to the bottom.
+  **Verified** against a crafted corpus — Replace All counts came out 8 / 6 / 4
+  / 3 for substring, match-case, whole-word and both, matching the Avalonia
+  semantics computed by hand, including `cat-like` counting as a whole word and
+  `concatenated` not. Replace All is one undo unit, pushes through to the
+  circuit, and the replaced text was confirmed on disk after a save.
+- **UI deviation:** a docked bar under the topbar, not Avalonia's floating
+  window — a modal would take focus from the editor it is searching, and there
+  is no second window to put it in. Same fields, same two checkboxes, same
+  buttons, plus Previous. `Ctrl-F` opens find, `Ctrl-H` opens it with replace
+  shown; both browser defaults suppressed. Opening seeds the term from the
+  selection.
 
 ### 2.2 Go to Line — `done`
 

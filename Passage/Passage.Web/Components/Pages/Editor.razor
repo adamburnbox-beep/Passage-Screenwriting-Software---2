@@ -48,6 +48,46 @@
         </div>
     </header>
 
+    @if (_findOpen)
+    {
+        <div class="find-bar">
+            <div class="find-fields">
+                <label class="find-field">
+                    <span>Find:</span>
+                    <input type="text" @ref="_findInput" @bind="_findTerm" @bind:event="oninput"
+                           placeholder="Text to find..." @onkeydown="OnFindKeyDown" />
+                </label>
+                @if (_replaceShown)
+                {
+                    <label class="find-field">
+                        <span>Replace with:</span>
+                        <input type="text" @bind="_replaceTerm" @bind:event="oninput"
+                               placeholder="Replacement text..." @onkeydown="OnFindKeyDown" />
+                    </label>
+                }
+            </div>
+            <div class="find-options">
+                <label class="toggle"><input type="checkbox" @bind="_matchCase" /> Match case</label>
+                <label class="toggle"><input type="checkbox" @bind="_wholeWord" /> Whole word</label>
+            </div>
+            <div class="find-actions">
+                <button class="btn" @onclick="() => FindAsync(false)">Previous</button>
+                <button class="btn primary" @onclick="() => FindAsync(true)">Find Next</button>
+                @if (_replaceShown)
+                {
+                    <button class="btn" @onclick="ReplaceCurrentAsync">Replace</button>
+                    <button class="btn" @onclick="ReplaceAllAsync">Replace All</button>
+                }
+                else
+                {
+                    <button class="btn" @onclick="() => { _replaceShown = true; }">Replace…</button>
+                }
+                <span class="find-status">@_findStatus</span>
+                <button class="icon-btn" title="Close (Esc)" @onclick="CloseFind">✕</button>
+            </div>
+        </div>
+    }
+
     <div class="main-area">
         <aside class="sidebar">
             <div class="sidebar-tabs">
@@ -473,6 +513,18 @@ Open a .fountain file to see formatted pages.</div>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusFind)
+        {
+            _focusFind = false;
+            try
+            {
+                await _findInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
         if (_focusSceneFilter)
         {
             _focusSceneFilter = false;
@@ -1079,6 +1131,140 @@ Open a .fountain file to see formatted pages.</div>
     {
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    // ---- Find / Replace ----
+    //
+    // A docked bar rather than Avalonia's floating window: a modal dialog would
+    // take focus away from the editor it is searching, and the web app has no
+    // separate window to put it in. Same option set and same buttons.
+
+    private bool _findOpen;
+    private bool _replaceShown;
+    private string _findTerm = string.Empty;
+    private string _replaceTerm = string.Empty;
+    private bool _matchCase;
+    private bool _wholeWord;
+    private string _findStatus = string.Empty;
+    private ElementReference _findInput;
+    private bool _focusFind;
+
+    [JSInvokable]
+    public async Task OnFindShortcut(bool showReplace)
+    {
+        _findOpen = true;
+        _replaceShown = _replaceShown || showReplace;
+        _findStatus = string.Empty;
+        _focusFind = true;
+
+        // Seed from the selection, the way an editor's find normally behaves.
+        try
+        {
+            var selected = await JS.InvokeAsync<string>("passage.selectedText");
+            if (!string.IsNullOrEmpty(selected) && !selected.Contains('\n'))
+            {
+                _findTerm = selected;
+            }
+        }
+        catch (JSException)
+        {
+        }
+
+        StateHasChanged();
+    }
+
+    private void CloseFind()
+    {
+        _findOpen = false;
+        _findStatus = string.Empty;
+    }
+
+    private async Task FindAsync(bool forward)
+    {
+        if (_findTerm.Length == 0)
+        {
+            _findStatus = string.Empty;
+            return;
+        }
+
+        bool found;
+        try
+        {
+            found = await JS.InvokeAsync<bool>(
+                forward ? "passage.findNext" : "passage.findPrevious",
+                _findTerm, _matchCase, _wholeWord);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _findStatus = found ? string.Empty : "No matches";
+    }
+
+    private sealed record ReplaceOutcome
+    {
+        public int Replaced { get; init; }
+
+        public bool Found { get; init; }
+    }
+
+    private async Task ReplaceCurrentAsync()
+    {
+        if (_findTerm.Length == 0)
+        {
+            return;
+        }
+
+        ReplaceOutcome outcome;
+        try
+        {
+            outcome = await JS.InvokeAsync<ReplaceOutcome>(
+                "passage.replaceCurrent", _findTerm, _replaceTerm, _matchCase, _wholeWord);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _findStatus = outcome.Replaced > 0
+            ? "Replaced 1"
+            : (outcome.Found ? string.Empty : "No matches");
+    }
+
+    private async Task ReplaceAllAsync()
+    {
+        if (_findTerm.Length == 0)
+        {
+            return;
+        }
+
+        ReplaceOutcome outcome;
+        try
+        {
+            outcome = await JS.InvokeAsync<ReplaceOutcome>(
+                "passage.replaceAll", _findTerm, _replaceTerm, _matchCase, _wholeWord);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _findStatus = outcome.Replaced == 0
+            ? "No matches"
+            : $"Replaced {outcome.Replaced}";
+    }
+
+    private async Task OnFindKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await FindAsync(!args.ShiftKey);
+        }
+        else if (args.Key == "Escape")
+        {
+            CloseFind();
+        }
     }
 
     // ---- Go to Scene ----

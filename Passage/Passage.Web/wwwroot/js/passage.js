@@ -193,6 +193,18 @@ window.passage = (function () {
         if (el) el.scrollIntoView({ block: "nearest" });
     }
 
+    function openFind() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnFindShortcut", false);
+    }
+
+    function openReplace() {
+        if (dotnetRef) dotnetRef.invokeMethodAsync("OnFindShortcut", true);
+    }
+
+    function selectedText() {
+        return cm && cm.somethingSelected() ? cm.getSelection() : "";
+    }
+
     function toggleSyntaxPanel() {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnSyntaxPanelShortcut");
     }
@@ -254,6 +266,10 @@ window.passage = (function () {
                 "Cmd-G": goToLine,
                 "Shift-Ctrl-G": goToScene,
                 "Shift-Cmd-G": goToScene,
+                "Ctrl-F": openFind,
+                "Cmd-F": openFind,
+                "Ctrl-H": openReplace,
+                "Cmd-H": openReplace,
                 "F1": toggleSyntaxPanel
             }
         });
@@ -328,6 +344,107 @@ window.passage = (function () {
         if (!cm) return;
         cm.redo();
         cm.focus();
+    }
+
+    // ---- Find / Replace ----
+    //
+    // Built on the vendored searchcursor addon. CodeMirror's own search.js is
+    // deliberately not used: it has no whole-word option at all, and decides
+    // case sensitivity from a smart-case heuristic rather than an explicit
+    // checkbox, so it cannot reproduce the Avalonia dialog's option set.
+    //
+    // Whole word uses lookarounds rather than \b so it behaves the same when
+    // the term itself starts or ends with a non-word character ("INT."), which
+    // is what the Linux IsWholeWord does — it inspects the characters either
+    // side of the match, never the term.
+    const WORD_CHAR = "A-Za-z0-9_";
+
+    function escapeRegExp(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function buildQuery(term, matchCase, wholeWord) {
+        if (!wholeWord) {
+            return { query: term, options: { caseFold: !matchCase } };
+        }
+        const pattern = "(?<![" + WORD_CHAR + "])" + escapeRegExp(term) + "(?![" + WORD_CHAR + "])";
+        return { query: new RegExp(pattern, matchCase ? "" : "i"), options: {} };
+    }
+
+    function searchFrom(term, matchCase, wholeWord, pos, forward) {
+        const built = buildQuery(term, matchCase, wholeWord);
+        const cursor = cm.getSearchCursor(built.query, pos, built.options);
+        return cursor.find(!forward) ? cursor : null;
+    }
+
+    // Forward searches start at the end of the selection and wrap to the top;
+    // backward starts at its head and wraps to the bottom. Same as FindText.
+    function findInEditor(term, matchCase, wholeWord, forward) {
+        if (!cm || !term) return false;
+        const from = forward ? cm.getCursor("to") : cm.getCursor("from");
+        let cursor = searchFrom(term, matchCase, wholeWord, from, forward);
+        if (!cursor) {
+            const wrapPos = forward
+                ? { line: cm.firstLine(), ch: 0 }
+                : { line: cm.lastLine(), ch: cm.getLine(cm.lastLine()).length };
+            cursor = searchFrom(term, matchCase, wholeWord, wrapPos, forward);
+        }
+        if (!cursor) return false;
+
+        cm.setSelection(cursor.from(), cursor.to());
+        cm.scrollIntoView({ from: cursor.from(), to: cursor.to() }, 80);
+        cm.focus();
+        reportCaret();
+        return true;
+    }
+
+    function findNext(term, matchCase, wholeWord) {
+        return findInEditor(term, matchCase, wholeWord, true);
+    }
+
+    function findPrevious(term, matchCase, wholeWord) {
+        return findInEditor(term, matchCase, wholeWord, false);
+    }
+
+    function selectionMatches(term, matchCase, wholeWord) {
+        if (!cm || !cm.somethingSelected()) return false;
+        const selected = cm.getSelection();
+        const built = buildQuery(term, matchCase, wholeWord);
+        if (built.query instanceof RegExp) {
+            const anchored = new RegExp("^(?:" + built.query.source + ")$", built.query.flags);
+            return anchored.test(selected);
+        }
+        return matchCase
+            ? selected === term
+            : selected.toLowerCase() === term.toLowerCase();
+    }
+
+    // Replace the current match if the selection is one, then advance —
+    // matching ReplaceCurrent. Otherwise just advance to the first match.
+    function replaceCurrent(term, replacement, matchCase, wholeWord) {
+        if (!cm || !term) return { replaced: 0, found: false };
+        if (selectionMatches(term, matchCase, wholeWord)) {
+            cm.replaceSelection(replacement, "around");
+            scheduleInput();
+            const found = findNext(term, matchCase, wholeWord);
+            return { replaced: 1, found: found };
+        }
+        return { replaced: 0, found: findNext(term, matchCase, wholeWord) };
+    }
+
+    function replaceAll(term, replacement, matchCase, wholeWord) {
+        if (!cm || !term) return { replaced: 0, found: false };
+        const built = buildQuery(term, matchCase, wholeWord);
+        let replaced = 0;
+        cm.operation(function () {
+            const cursor = cm.getSearchCursor(built.query, { line: cm.firstLine(), ch: 0 }, built.options);
+            while (cursor.findNext()) {
+                cursor.replace(replacement);
+                replaced++;
+            }
+        });
+        if (replaced > 0) scheduleInput();
+        return { replaced: replaced, found: false };
     }
 
     function setContent(text) {
@@ -407,6 +524,7 @@ window.passage = (function () {
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
         refreshHighlights, undo, redo, copyText, scrollIntoView,
+        findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }
     };
