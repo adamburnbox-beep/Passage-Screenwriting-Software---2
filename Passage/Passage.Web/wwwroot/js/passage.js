@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {} };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -28,6 +28,8 @@ window.passage = (function () {
     const RECOVERY_KEY = "passage.recovery.v1";
     const RECOVERY_INTERVAL_MS = 3000;
     const THEME_KEY = "passage.theme.v1";
+    const WORKSHOP_MIN_WIDTH = 260;
+    const WORKSHOP_MAX_WIDTH = 720;
     const LINE_CLASSES = [
         "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
         "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
@@ -100,18 +102,56 @@ window.passage = (function () {
             const stored = JSON.parse(raw);
             if (!stored || typeof stored !== "object") return null;
             session = Object.assign(session, stored);
+            applyWorkshopWidth();
             return session;
         } catch (e) {
             return null;
         }
     }
 
-    function setSessionDocument(fileName, editorFontPx, previewZoom, recentFiles) {
+    function setSessionDocument(fileName, editorFontPx, previewZoom, recentFiles, workshopOpen) {
         session.fileName = fileName || "";
         session.editorFontPx = editorFontPx;
         session.previewZoom = previewZoom;
         session.recentFiles = Array.isArray(recentFiles) ? recentFiles : [];
+        session.workshopOpen = !!workshopOpen;
         scheduleSessionSave();
+    }
+
+    // The Slate dock's width is a per-browser preference like the font size,
+    // but it never needs a server round-trip: the drag handle writes the CSS
+    // variable directly and the session key remembers it. Whether the dock is
+    // open is Blazor's, since it renders the dock; only the width lives here.
+    function applyWorkshopWidth() {
+        const width = Math.min(WORKSHOP_MAX_WIDTH, Math.max(WORKSHOP_MIN_WIDTH, Number(session.workshopWidth) || 340));
+        session.workshopWidth = width;
+        document.documentElement.style.setProperty("--workshop-width", width + "px");
+    }
+
+    function initWorkshopResize() {
+        const handle = document.getElementById("workshop-resize");
+        if (!handle) return;
+        applyWorkshopWidth();
+        handle.addEventListener("pointerdown", (down) => {
+            down.preventDefault();
+            const startX = down.clientX;
+            const startWidth = session.workshopWidth;
+            handle.setPointerCapture(down.pointerId);
+            const move = (e) => {
+                // The handle sits on the dock's left edge, so dragging left widens it.
+                session.workshopWidth = startWidth + (startX - e.clientX);
+                applyWorkshopWidth();
+            };
+            const up = () => {
+                handle.removeEventListener("pointermove", move);
+                handle.removeEventListener("pointerup", up);
+                handle.removeEventListener("pointercancel", up);
+                scheduleSessionSave();
+            };
+            handle.addEventListener("pointermove", move);
+            handle.addEventListener("pointerup", up);
+            handle.addEventListener("pointercancel", up);
+        });
     }
 
     // Crash recovery. Distinct from the file autosave in Editor.razor, which
@@ -284,6 +324,8 @@ window.passage = (function () {
                 "F1": toggleSyntaxPanel
             }
         });
+
+        initWorkshopResize();
 
         cm.on("change", (_, changeObj) => {
             if (changeObj.origin !== "setValue") {

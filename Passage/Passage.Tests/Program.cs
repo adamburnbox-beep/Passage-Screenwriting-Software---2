@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Passage.Parser;
 using Passage.Core;
+using Passage.Web.Services;
 
 namespace Passage.Tests;
 
@@ -25,6 +29,10 @@ class Program
         failures += RunTest("Test BeatBoard Build And Splice Card Lines", TestBeatBoardBuildAndSpliceCardLines);
         failures += RunTest("Test BeatBoard Plan Move", TestBeatBoardPlanMove);
         failures += RunTest("Test BeatBoard Plan Move Rejections", TestBeatBoardPlanMoveRejections);
+        failures += RunTest("Test SlateStore Round Trip", TestSlateStoreRoundTrip);
+        failures += RunTest("Test SlateStore Rejects Invalid Names", TestSlateStoreRejectsInvalidNames);
+        failures += RunTest("Test SlateStore Prunes Orphans", TestSlateStorePrunesOrphans);
+        failures += RunTest("Test SlateStore Corrupt Sidecar Fails Visibly", TestSlateStoreCorruptSidecarFailsVisibly);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -281,6 +289,133 @@ class Program
             new BeatBoardText.LineRange(2, 99), new BeatBoardText.LineRange(0, 0),
             insertAfter: false, out _, out _),
             "A source range running past the document should be refused");
+    }
+
+    // ---- SlateStore (Passage.Web) ----
+    //
+    // The sidecar store is pure file logic with no circuit behind it, so it is
+    // exercised here against a throwaway library root.
+
+    static (ScriptLibrary library, SlateStore store, string root) NewSlateFixture()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "passage-tests-" + Guid.NewGuid().ToString("N"));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Passage:DataDir"] = root })
+            .Build();
+        var library = new ScriptLibrary(configuration);
+        return (library, new SlateStore(library), root);
+    }
+
+    static void TestSlateStoreRoundTrip()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            Assert(store.Load("draft") is null, "A script with no sidecar loads as null");
+            Assert(!store.Exists("draft"), "Exists is false before the first save");
+
+            store.Save("draft", new SlateDocument { SlateVersion = 0 });
+
+            var path = Path.Combine(root, ".slate", "draft.fountain.json");
+            Assert(File.Exists(path), "Sidecar lands in .slate under the validated script name");
+            Assert(store.Exists("draft.fountain"), "The bare and extended names resolve to the same sidecar");
+
+            var loaded = store.Load("draft");
+            Assert(loaded is not null, "Sidecar loads back");
+            Assert(loaded!.SlateVersion == SlateStore.CurrentVersion, "Save stamps the current schema version");
+
+            Assert(library.List().Count == 0, "The .slate directory never appears in the script list");
+
+            store.Delete("draft");
+            Assert(!store.Exists("draft"), "Delete removes the sidecar");
+            store.Delete("draft"); // deleting twice is not an error
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreRejectsInvalidNames()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            foreach (var bad in new[] { "", "   ", "../escape", "sub/dir", ".hidden", "bad\0name" })
+            {
+                var threw = false;
+                try
+                {
+                    store.Save(bad, new SlateDocument());
+                }
+                catch (ArgumentException)
+                {
+                    threw = true;
+                }
+
+                Assert(threw, $"Save rejects '{bad}'");
+                Assert(!store.Exists(bad), $"Exists is false for '{bad}' rather than throwing");
+            }
+
+            Assert(!Directory.Exists(Path.Combine(root, ".slate")), "Nothing was written for a rejected name");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStorePrunesOrphans()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            Assert(store.PruneOrphans(new[] { "a.fountain" }).Count == 0, "Pruning with no .slate directory is a no-op");
+
+            library.Save("kept", "INT. ROOM - DAY");
+            store.Save("kept", new SlateDocument());
+            store.Save("gone", new SlateDocument());
+            store.Save("also-gone.md", new SlateDocument());
+
+            var pruned = store.PruneOrphans(library.List().Select(entry => entry.Name));
+
+            Assert(pruned.Count == 2, $"Two orphans reported, got {pruned.Count}");
+            Assert(pruned.Contains("gone.fountain") && pruned.Contains("also-gone.md"), "Pruned names are the script names, not file paths");
+            Assert(store.Exists("kept"), "A sidecar whose script exists survives");
+            Assert(!store.Exists("gone") && !store.Exists("also-gone.md"), "Orphaned sidecars are deleted");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreCorruptSidecarFailsVisibly()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var dir = Path.Combine(root, ".slate");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "broken.fountain.json"), "{ not json");
+
+            var threw = false;
+            try
+            {
+                store.Load("broken");
+            }
+            catch (JsonException)
+            {
+                threw = true;
+            }
+
+            Assert(threw, "A corrupt sidecar throws rather than being read as empty");
+            Assert(store.Exists("broken"), "The corrupt file is left in place for the user to recover");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     static void Assert(bool condition, string message)
