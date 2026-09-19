@@ -275,8 +275,8 @@ bracket from your phone, and the script is edited correctly with undo intact.
   SOMETHING / CONDITION / TODO; rank 1 = everything else, still listed.
   Tests `TestBracketScanner*` in `Passage.Tests/Program.cs`.
   `DocumentAnalysis.Brackets` is derived on every parse, screenplay and
-  markdown alike. Dock views in `Editor.razor`: BRACKETS panel (~427) with
-  "Hand me one" above the list, and the FILL runner (~465); handlers under
+  markdown alike. Dock views in `Editor.razor`: BRACKETS panel (~445) with
+  "Hand me one" above the list, and the FILL runner (~478); handlers under
   `LoadSlate` / `HandMeOneAsync` / `AcceptFillAsync` (~2173–2360). Accept goes
   through `passage.replaceInLine` (passage.js ~540), which matches the span by
   text on the named line and returns false if it is gone — verified by hand:
