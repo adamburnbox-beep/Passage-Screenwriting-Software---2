@@ -396,49 +396,83 @@ Open a .fountain file to see formatted pages.</div>
             <div class="workshop-body">
                 @if (_workshopView == WorkshopView.Tools)
                 {
-                    <div class="sidebar-heading">WHAT HAVE YOU GOT?</div>
+                    <p class="tool-note">Tools for when you're stuck. Find the line that matches where you are and open the tool under it. Each one works in small steps — do one step and stop, or keep going.</p>
+
                     <div class="tool-group">
-                        <div class="tool-have">Nothing fixed, need raw material from anywhere — or two fixed points with a gap between them</div>
+                        <div class="tool-have">You have nothing yet — no idea, or just a scrap of one</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled title="Not built yet">Ideation burst</button>
-                            <button class="workshop-tool" disabled title="Not built yet">Bridge</button>
-                        </div>
-                    </div>
-                    <div class="tool-group">
-                        <div class="tool-have">An ending only, a rough shape of events, or a character and no events yet</div>
-                        <div class="tool-paths">
-                            <button class="workshop-tool" disabled title="Not built yet">A→Z→Split</button>
-                            <button class="workshop-tool" disabled title="Not built yet">Belief Split</button>
-                            <button class="workshop-tool" disabled title="Not built yet">Extend Backward</button>
-                        </div>
-                    </div>
-                    <div class="tool-group">
-                        <div class="tool-have">A floating scene with no home, or a known [BRACKET] with no scene yet</div>
-                        <div class="tool-paths">
-                            <button class="workshop-tool" disabled title="Not built yet">Position</button>
-                            <button class="workshop-tool" @onclick="() => _workshopView = WorkshopView.Brackets">
-                                Fill
-                                @if (_analysis.Brackets.Count > 0)
-                                {
-                                    <span class="workshop-count">@_analysis.Brackets.Count</span>
-                                }
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Ideation burst <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">Short timed rounds of fast, throwaway writing from a random prompt. Nothing has to be good; the point is to get words moving. You keep one line at the end.</span>
+                            </button>
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Bridge <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">You know two moments that will happen — a start and an end, a setup and its payoff — but not what connects them. Bridge builds the links between them, three guesses at a time.</span>
                             </button>
                         </div>
                     </div>
+
                     <div class="tool-group">
-                        <div class="tool-have">A scene already placed or filled that needs building forward</div>
+                        <div class="tool-have">You have an ending, a rough shape, or a character — but not the events</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled title="Not built yet">WOAC chain</button>
-                            <button class="workshop-tool" disabled title="Not built yet">Character Flaw Brainstorm</button>
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">A→Z→Split <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">Start with your first event and your last. Find the one event in the middle that makes the ending inevitable, then split each half the same way, until you have a story's seven turning points.</span>
+                            </button>
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Belief Split <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">The same idea, run on what a character believes instead of what happens: the false belief they start with, the truth they end with, and the steps in between.</span>
+                            </button>
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Extend Backward <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">You only know how it ends. Work backwards one step at a time — what had to happen right before this? — until you reach a beginning.</span>
+                            </button>
                         </div>
                     </div>
+
                     <div class="tool-group">
-                        <div class="tool-have">A finished-enough scene, sequence or draft that's gone dead or flat</div>
+                        <div class="tool-have">You have a scene but not where it goes — or a gap where a scene should be</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled title="Not built yet">Push/Pull and Lens</button>
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Position <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">Try a scene you love in each of a story's seven slots and see where it comes alive — what would have to be true before it, and what it would force to happen after.</span>
+                            </button>
+                            <button class="workshop-tool" @onclick="() => _workshopView = WorkshopView.Brackets">
+                                <span class="tool-name">
+                                    Fill
+                                    @if (_analysis.Brackets.Count > 0)
+                                    {
+                                        <span class="workshop-count">@_analysis.Brackets.Count in this script</span>
+                                    }
+                                </span>
+                                <span class="tool-desc">When you don't know what happens next, write [SOMETHING happens] in your script and keep going. Fill hands those gaps back to you one at a time and helps you work out the real event.</span>
+                            </button>
                         </div>
                     </div>
-                    <div class="sidebar-empty">Every tool paces itself: one round, one turn, one bracket is a complete session. Stop there, or keep going — the next unit is right where you are.</div>
+
+                    <div class="tool-group">
+                        <div class="tool-have">You have a scene in motion and need what happens next</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">WOAC chain <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">Four questions on repeat: what does the character want, what's in the way, what do they do about it, what happens as a result. The result becomes the next want, so you never have to invent the next question.</span>
+                            </button>
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Character Flaw Brainstorm <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">Eight fixed questions that take one character flaw from the worst situation it causes to a surprising final action.</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tool-group">
+                        <div class="tool-have">You have a finished scene or draft that feels dead or flat</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled>
+                                <span class="tool-name">Push/Pull and Lens <span class="tool-soon">not built yet</span></span>
+                                <span class="tool-desc">Six checks that find why a scene isn't working — does it end somewhere different from where it started, does it cause the next beat — and a set of lenses for rewriting only the part that's flagged.</span>
+                            </button>
+                        </div>
+                    </div>
                 }
                 else if (_workshopView == WorkshopView.Brackets)
                 {
@@ -446,7 +480,7 @@ Open a .fountain file to see formatted pages.</div>
                         <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
                         <span class="sidebar-heading">FILL</span>
                     </div>
-                    <p class="tool-note">A bracket is a gap you marked instead of stalling on it — <code>[SOMETHING happens]</code> sitting in the draft. Filling it means swapping it for the real, concrete event, not a better-worded placeholder.</p>
+                    <p class="tool-note">When you don't know what happens next, don't stop — write it as a placeholder in square brackets, like <code>[SOMETHING forces her to stay]</code>, and keep writing. Each one is a gap to come back to. Filling it means swapping it for the real, concrete event — not a better-worded placeholder.</p>
                     <button class="btn primary workshop-hand" disabled="@(!EligibleBrackets.Any())" @onclick="HandMeOneAsync">Hand me one</button>
                     @if (_analysis.Brackets.Count == 0)
                     {

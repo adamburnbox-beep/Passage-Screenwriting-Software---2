@@ -68,6 +68,13 @@ The dock's top level is `0 — Which Worksheet.md`'s one question, *what have
 you got?*, with its five rows and the paths under each. That is how the
 writer finds the tool; a flat list of engine names is not.
 
+**Copy rule, binding on every tool.** Write for someone who has never seen
+the vault and may never have written anything: each tool says in plain
+words what it is, what you do, and what you end up with. No filler lines,
+no slogans, nothing that reads as generated — the writer will notice and
+call it out (2026-09-20). The worksheets supply the mechanics; the
+descriptions have to supply the *why*.
+
 Current shell: `.app-shell > .main-area > aside.sidebar + main.center-pane`,
 with SCRIPT / BOARD / PREVIEW as view tabs in the topbar.
 

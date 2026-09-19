@@ -1003,6 +1003,9 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .workshop-tool {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
     text-align: left;
     background: var(--control-background);
     color: var(--control-foreground);
@@ -1013,17 +1016,32 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     cursor: pointer;
 }
 
-.workshop-tool:disabled { opacity: 0.45; cursor: default; }
+.workshop-tool:hover:not(:disabled) { border-color: var(--muted-text); }
+
+.workshop-tool:disabled { opacity: 0.55; cursor: default; }
+
+.tool-name { font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+.tool-desc { font-weight: 400; line-height: 1.5; color: var(--secondary-text); }
+
+.tool-soon {
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+}
 
 /* The dock's top level is the worksheets' own question — what have you
    got — so each group is a "you have" line and the paths that answer it. */
 .tool-group { margin-bottom: 8px; }
 
 .tool-have {
-    font-size: 12px;
+    font-size: 12.5px;
+    font-weight: 600;
     line-height: 1.5;
-    color: var(--secondary-text);
-    padding: 0 2px 6px;
+    color: var(--header-text);
+    padding: 6px 2px;
 }
 
 .tool-paths { display: flex; flex-direction: column; gap: 4px; }
@@ -1045,7 +1063,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .workshop-count {
-    float: right;
+    font-weight: 400;
     color: var(--muted-text);
     font-size: 11px;
 }
