@@ -154,6 +154,29 @@ write-back it was fixed for). Filling a bracket is a one-line replacement —
 it should be the easiest case in the app to get right, and it will be the most
 frequently used write path in the whole feature.
 
+### E. Burst timers — ready, prompt, write; never a click in between
+
+Binding on every timed round (Chain in Phase 2, Ideation in Phase 6, and any
+"three ideas in ten seconds" style burst). The timer exists to supply
+external pressure; anything that costs the writer a click or a glance once
+it is running defeats it.
+
+1. **Ready.** The round's input is focused *before* anything counts. The
+   caret is already where the words go; the writer never has to place it.
+2. **Read-in.** The prompt appears with a short countdown (about five
+   seconds, configurable) so it can be read. Typing during the read-in is
+   allowed and simply starts the round early.
+3. **Write.** The real timer runs (ten seconds, ninety, whatever the
+   worksheet says). Enter commits a line and moves focus to the next slot.
+   No mouse needed for the whole round.
+4. **Done.** The round ends when the slots are filled — the timer stops and
+   is not shown again — or when the timer expires. Expiry does nothing but
+   advance (rule 0.4): the fields stay editable, late text still counts, no
+   red, no sound of failure, no count of misses.
+
+All of this runs in `passage.js` (decision D, trap 4): focus, countdown and
+advance are client-side, and the server sees only the saved round.
+
 ---
 
 ## Phases
@@ -274,9 +297,9 @@ bracket from your phone, and the script is edited correctly with undo intact.
 - **Path B, Character Flaw Brainstorm**: the fixed eight-question chain. This
   one *is* fixed-length by design — the eight land on a shape together — so the
   UI may show all eight, but must still allow stopping at any one.
-- **Burst timer**, in JS: per-round countdown, configurable, default off.
-  Expiry advances the round and does nothing else. No sound of failure, no
-  colour change to red, no count of missed rounds.
+- **Burst timer**, in JS, per decision E: ready → read-in → write, input
+  focused before anything counts; configurable, default off. Expiry
+  advances the round and does nothing else.
 - **Promotion path:** "read it back — what's the scene now, in one line?" →
   that line inserts into the script as a synopsis (`=`) under the current
   section, by ranged insert.
@@ -347,8 +370,8 @@ own row.
 Full-screen overlay, the one engine that isn't about your script.
 
 - Ten lanes, lane locked for the sitting, roller to pick.
-- 90-second rounds, timer in JS, "the only failure state is silence" as the
-  only rule shown.
+- 90-second rounds, timer in JS per decision E, "the only failure state is
+  silence" as the only rule shown.
 - Close: circle one line worth keeping. One. Output goes to a sidecar keyed to
   no script at all.
 - **Open question:** the Collision prompt needs your `Brainstorming/` corpus
