@@ -35,7 +35,7 @@
             <button class="btn theme-toggle @(_syntaxPanelOpen ? "on" : null)"
                     title="Syntax reference (F1)" @onclick="ToggleSyntaxPanel">?</button>
             <button class="btn theme-toggle @(_workshopOpen ? "on" : null)"
-                    title="Slate workshop" @onclick="ToggleWorkshopAsync">SLATE</button>
+                    title="Writer's tools" @onclick="ToggleWorkshopAsync">TOOLS</button>
             <label class="toggle" title="Save automatically shortly after you stop typing">
                 <input type="checkbox" @bind="_autosaveEnabled" /> AUTOSAVE
             </label>
@@ -390,32 +390,63 @@ Open a .fountain file to see formatted pages.</div>
         <aside class="workshop" hidden="@(!_workshopOpen)">
             <div id="workshop-resize" class="workshop-resize" title="Drag to resize"></div>
             <div class="workshop-head">
-                <h2>SLATE</h2>
+                <h2>WRITER'S TOOLS</h2>
                 <button class="btn" title="Close (keeps everything as it is)" @onclick="ToggleWorkshopAsync">×</button>
             </div>
             <div class="workshop-body">
                 @if (_workshopView == WorkshopView.Tools)
                 {
-                    <div class="sidebar-heading">ENGINES</div>
-                    <button class="workshop-tool" @onclick="() => _workshopView = WorkshopView.Brackets">
-                        Brackets · Fill
-                        @if (_analysis.Brackets.Count > 0)
-                        {
-                            <span class="workshop-count">@_analysis.Brackets.Count</span>
-                        }
-                    </button>
-                    @foreach (var tool in WorkshopTools)
-                    {
-                        <button class="workshop-tool" disabled title="Not built yet">@tool</button>
-                    }
-                    <div class="sidebar-empty">The rest arrive one session at a time.</div>
+                    <div class="sidebar-heading">WHAT HAVE YOU GOT?</div>
+                    <div class="tool-group">
+                        <div class="tool-have">Nothing fixed, need raw material from anywhere — or two fixed points with a gap between them</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled title="Not built yet">Ideation burst</button>
+                            <button class="workshop-tool" disabled title="Not built yet">Bridge</button>
+                        </div>
+                    </div>
+                    <div class="tool-group">
+                        <div class="tool-have">An ending only, a rough shape of events, or a character and no events yet</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled title="Not built yet">A→Z→Split</button>
+                            <button class="workshop-tool" disabled title="Not built yet">Belief Split</button>
+                            <button class="workshop-tool" disabled title="Not built yet">Extend Backward</button>
+                        </div>
+                    </div>
+                    <div class="tool-group">
+                        <div class="tool-have">A floating scene with no home, or a known [BRACKET] with no scene yet</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled title="Not built yet">Position</button>
+                            <button class="workshop-tool" @onclick="() => _workshopView = WorkshopView.Brackets">
+                                Fill
+                                @if (_analysis.Brackets.Count > 0)
+                                {
+                                    <span class="workshop-count">@_analysis.Brackets.Count</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                    <div class="tool-group">
+                        <div class="tool-have">A scene already placed or filled that needs building forward</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled title="Not built yet">WOAC chain</button>
+                            <button class="workshop-tool" disabled title="Not built yet">Character Flaw Brainstorm</button>
+                        </div>
+                    </div>
+                    <div class="tool-group">
+                        <div class="tool-have">A finished-enough scene, sequence or draft that's gone dead or flat</div>
+                        <div class="tool-paths">
+                            <button class="workshop-tool" disabled title="Not built yet">Push/Pull and Lens</button>
+                        </div>
+                    </div>
+                    <div class="sidebar-empty">Every tool paces itself: one round, one turn, one bracket is a complete session. Stop there, or keep going — the next unit is right where you are.</div>
                 }
                 else if (_workshopView == WorkshopView.Brackets)
                 {
                     <div class="workshop-nav">
                         <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
-                        <span class="sidebar-heading">BRACKETS</span>
+                        <span class="sidebar-heading">FILL</span>
                     </div>
+                    <p class="tool-note">A bracket is a gap you marked instead of stalling on it — <code>[SOMETHING happens]</code> sitting in the draft. Filling it means swapping it for the real, concrete event, not a better-worded placeholder.</p>
                     <button class="btn primary workshop-hand" disabled="@(!EligibleBrackets.Any())" @onclick="HandMeOneAsync">Hand me one</button>
                     @if (_analysis.Brackets.Count == 0)
                     {
@@ -454,9 +485,10 @@ Open a .fountain file to see formatted pages.</div>
                     {
                         <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
                     }
+                    <p class="tool-note">Invent three candidate events for the bracket, each one you expect to be wrong, and for each write why it's wrong. The reasons are the actual work — together they narrow down what the real answer has to do, before you know what it is. Most of the time the real answer shows up before the third candidate; when it does, stop and write it down. You don't owe the table anything else.</p>
                     <div class="fill-options">
-                        <span class="fill-label">Option</span>
-                        <span class="fill-label">Why it's probably wrong</span>
+                        <span class="fill-label">Candidate — what could happen here</span>
+                        <span class="fill-label">Why it's probably wrong (one line)</span>
                         @foreach (var option in _fillRun.Options)
                         {
                             <textarea rows="2" @bind="option.Text" @bind:after="SaveSlate"></textarea>
@@ -465,16 +497,19 @@ Open a .fountain file to see formatted pages.</div>
                     </div>
                     <label class="fill-field">
                         <span class="fill-label">What the wrongness points to</span>
+                        <span class="fill-hint">Read your "why it's wrong" answers together. What do they agree the real event needs to do, or needs to avoid?</span>
                         <textarea rows="3" @bind="_fillRun.PointsTo" @bind:after="SaveSlate"></textarea>
                     </label>
                     <label class="fill-field">
-                        <span class="fill-label">If the real answer showed up on its own before you'd finished the options, write it here and stop.</span>
+                        <span class="fill-label">Landed on the real answer before finishing the table? Write it here and stop.</span>
+                        <span class="fill-hint">The real, concrete, filmable event — <em>[SOMETHING forces her to stay]</em> becomes <em>her car won't start, and the last bus already left</em>.</span>
                         <textarea rows="3" @bind="_fillRun.Answer" @bind:after="SaveSlate"></textarea>
                     </label>
                     <div class="fill-actions">
-                        <button class="btn primary" disabled="@string.IsNullOrWhiteSpace(_fillRun.Answer)" title="Replace the bracket with the answer" @onclick="AcceptFillAsync">Accept</button>
+                        <button class="btn primary" disabled="@string.IsNullOrWhiteSpace(_fillRun.Answer)" title="Swap the bracket in the script for this" @onclick="AcceptFillAsync">Fill it</button>
                         <button class="btn" title="Prose, not a placeholder — leave it out" @onclick="() => IgnoreBracketAsync(_fillBracket)">Not a bracket</button>
                     </div>
+                    <div class="fill-meta">Filled it? The next bracket comes straight away. There's no built-in stopping point — the stop is yours to call.</div>
                 }
             </div>
         </aside>
@@ -699,14 +734,6 @@ Open a .fountain file to see formatted pages.</div>
     private string _pendingOpenName = string.Empty;
     private string? _deleteTarget;
     private bool _workshopOpen;
-
-    // The engines still to come, in the order docs/SLATE-PLAN.md builds them.
-    // Every entry is a disabled placeholder until its phase lands.
-    private static readonly string[] WorkshopTools =
-    [
-        "Chain", "Character Flaw Brainstorm", "A→Z→Split", "Belief Split",
-        "Extend Backward", "Bridge", "Position", "Lens", "Push/Pull", "Ideation burst"
-    ];
 
     private string DisplayName => _fileName.Length == 0 ? "Untitled" : _fileName;
     private bool IsScreenplayMode => !_fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
@@ -2144,7 +2171,7 @@ Open a .fountain file to see formatted pages.</div>
 
     private void CloseSyntaxPanel() => _syntaxPanelOpen = false;
 
-    // ---- Slate workshop dock ----
+    // ---- Writer's tools dock (the Slate engines; docs/SLATE-PLAN.md) ----
 
     private async Task ToggleWorkshopAsync()
     {

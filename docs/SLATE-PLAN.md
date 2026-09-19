@@ -14,8 +14,17 @@ status per row, one row per session. `docs/SLATE-SESSIONS.md` holds the
 copy-paste prompt per row, mirroring `WEB-SESSIONS.md`.
 
 Source material lives in the vault at `Story/Slate/`: `Slate.md`,
-`How the Slate Works.md`, `engines.md`, `loosening-up-practice.md`, and the six
-files in `Worksheets/`.
+`How the Slate Works.md`, `engines.md`, `loosening-up-practice.md`, and the
+five live files in `Worksheets/` (the numbered Short/Medium/Long files are
+stubs). **The worksheets are the spec for each runner's text.** Labels,
+hints and stop-callouts come from them verbatim or near it — the 2026-09-20
+review found the first runner had paraphrased them into something thinner,
+and the writer noticed.
+
+**Naming:** in the app this is *Writer's Tools* (topbar button `TOOLS`), not
+Slate — it is a set of nudges for getting unstuck, not a system to announce.
+`Slate` stays in code identifiers, the sidecar directory and these docs,
+where it points back at the vault.
 
 ---
 
@@ -54,6 +63,10 @@ If a row below conflicts with this section, this section wins.
 ## Architecture decisions
 
 ### A. Where the engines live in the UI — a right-hand dock
+
+The dock's top level is `0 — Which Worksheet.md`'s one question, *what have
+you got?*, with its five rows and the paths under each. That is how the
+writer finds the tool; a flat list of engine names is not.
 
 Current shell: `.app-shell > .main-area > aside.sidebar + main.center-pane`,
 with SCRIPT / BOARD / PREVIEW as view tabs in the topbar.
@@ -262,8 +275,8 @@ bracket from your phone, and the script is edited correctly with undo intact.
   SOMETHING / CONDITION / TODO; rank 1 = everything else, still listed.
   Tests `TestBracketScanner*` in `Passage.Tests/Program.cs`.
   `DocumentAnalysis.Brackets` is derived on every parse, screenplay and
-  markdown alike. Dock views in `Editor.razor`: BRACKETS panel (~410) with
-  "Hand me one" above the list, and the FILL runner (~440); handlers under
+  markdown alike. Dock views in `Editor.razor`: BRACKETS panel (~427) with
+  "Hand me one" above the list, and the FILL runner (~465); handlers under
   `LoadSlate` / `HandMeOneAsync` / `AcceptFillAsync` (~2173–2360). Accept goes
   through `passage.replaceInLine` (passage.js ~540), which matches the span by
   text on the named line and returns false if it is gone — verified by hand:
@@ -332,53 +345,72 @@ matching `Generate — Split, Belief, or Extend Backward.md`.
   the most recent link generates the next field. Mystery-lens variant as a
   toggle on the next link.
 
-### Phase 4 — Bridge, Position, Lens · `not started`
+### Phase 4 — Bridge and Position · `not started`
 
-Three small runners, plausibly one session each or one session for all three.
+Two small runners, plausibly one session for both. (The Lens moved to Phase
+5: the Revise worksheet has it as "pick one", applied only where a check is
+flagged. The earlier "roll for a lens" idea was a misreading — rolling is
+how Ideation picks a *lane*.)
 
-- **Bridge**: two fixed ends (entered first, non-skippable *as a matter of
-  sequence*, not validation — the tool is meaningless without them), then
-  rounds of three candidate links. The slow card version is Treatment-stage
-  work and is out of scope; the runner should say so where the worksheet says
-  so rather than silently omitting it.
-- **Position**: the seven slots are the app's own seven turns, so this runner
-  can read them live from the script instead of asking you to name them.
-  Alive/flat per slot, shortlist of one or two out. The only place in Slate
-  with a natural ceiling — seven slots, and the UI can say that.
-- **The Lens**: seven lenses with a roller (the worksheet says roll if
-  choosing feels like another way to stall — so the roller is the default
-  affordance and picking manually is secondary). Applies to the current
-  selection. Output is a fragment, and a fragment goes to the sidecar, never
-  into the script automatically.
+- **Bridge** (`Generate — Ideation or Bridge.md`, Path B): A and Z entered
+  first, non-skippable *as a matter of sequence*, not validation — the
+  worksheet's own words are "don't skip this — the whole tool depends on
+  it". Then rounds of three candidate links, 30 seconds each (decision E),
+  with a "picked / half-picked" line per round. Close: "the wire, read start
+  to finish". The slow card version is Treatment-stage work and is out of
+  scope; the runner says so where the worksheet says so.
+- **Position** (`Place or Build — Position or Fill.md`, Path A): "the
+  moment" first, then turns of Slot / Needs before it / Forces after it /
+  Alive or flat, with the worksheet's question shown: *if this moment sat
+  right here, what would it need to be true right before it, and what would
+  it force to happen right after?* The seven slots are the app's own seven
+  turns. Close: a shortlist of one or two alive answers, and the line that
+  Split or Fill picks the winner another day. The only place with a natural
+  ceiling — seven slots, and the UI can say that.
 
 ### Phase 5 — Push/Pull · `not started`
 
 The only independent check in the system and the stated payout, so it gets its
 own row.
 
+- Setup first: the scene or sequence, and "what it's supposed to do in the
+  story".
 - Six checks in the worksheet's priority order — polarity, linkage, third
-  rail, migration, escalation, two-test — each with an answer field and a Y/N
-  flag. Run one and stop, or run all six.
-- Scope selector: this scene (derived from caret position) or this stretch.
-- A flagged check offers a Lens **on the flagged thing only**, not the whole
-  scene.
+  rail, migration, escalation, two-test — each shown as its actual question,
+  with an answer field and a Y/N flag. Run one and stop, or run all six.
+- Scope selector: this scene (derived from caret position) or this stretch;
+  the worksheet's "going deeper" note says a stretch is checked as a whole,
+  not scene by scene.
+- A flagged check offers **the Lens** on the flagged thing only, not the
+  whole scene: the seven lenses as a pick-one list, each with its "what you
+  actually do" line, timed 3–5 minutes (decision E). Output is a fragment in
+  the sidecar, never inserted. Close: "did it move the flagged problem? Y/N —
+  one line why".
 - Clean checks are not punished with more work. That's in the worksheet and it
   should be in the UI's behaviour, not just its copy.
+- **Going deeper, both optional and both after the checks:** the diagnostic
+  Belief Split (A, Z, which named shape, muddled between two? seam?) and the
+  read-back and crit (what's working / what still doesn't sit right / ready to
+  move on or sit another day). These are fillable fields in the worksheet
+  now, so they are in scope — the "not going in" line below is narrowed to
+  crit that needs a reader.
 
 ### Phase 6 — Ideation burst mode · `not started`
 
 Full-screen overlay, the one engine that isn't about your script.
 
-- Ten lanes, lane locked for the sitting, roller to pick.
-- 90-second rounds, timer in JS per decision E, "the only failure state is
-  silence" as the only rule shown.
-- Close: circle one line worth keeping. One. Output goes to a sidecar keyed to
-  no script at all.
-- **Open question:** the Collision prompt needs your `Brainstorming/` corpus
-  (86 files, 3,655 pairs), which lives in Obsidian, not `/data`. Either a
-  seeds file gets synced into `/data`, or Collision is dropped from the app
-  version and stays a vault-side prompt. Worth deciding before this phase, not
-  during it.
+- Ten lanes, lane locked for the sitting, roller to pick ("don't deliberate
+  — deliberating isn't the drill"). Each lane's prompt from the worksheet,
+  shown once: "read it once, then start the round — don't re-read mid-round".
+- 90-second rounds of Input → Output, timer in JS per decision E, "the only
+  failure state is silence" as the only rule shown.
+- Close: circle one line worth keeping. One. "You don't have to know why
+  yet." Output goes to a sidecar keyed to no script at all.
+- Lane 10 is a three-step Character Flaw Brainstorm; the full eight-question
+  chain is Phase 2's, and the runner should point there rather than repeat it.
+- **Resolved:** the worksheet's Situation collision lane is "two unrelated
+  fragments — anything, don't cherry-pick", so it needs no corpus. Nothing
+  from `Brainstorming/` is required.
 
 ### Phase 7 — The assist seam · `not started`
 
@@ -408,8 +440,8 @@ meantime.
 Stated so a later session doesn't re-derive them as gaps:
 
 - The Slate board, Seeds, stages, last-touched, next-move. Obsidian.
-- Briefs, read-back and crit, script sessions. These need a person or a model
-  and aren't engines.
+- Briefs, script sessions, and crit that needs a reader. (The Revise
+  worksheet's own read-back fields are in — see Phase 5.)
 - The Bridge card version, misbelief-first, five-layer scene build, structure
   remix. Undecided in `engines.md` itself, so undecided here.
 - Anything that logs, counts, streaks or reviews. Rule 0.

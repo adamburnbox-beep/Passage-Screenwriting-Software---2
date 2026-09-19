@@ -951,7 +951,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--control-pressed-foreground);
 }
 
-/* ---- Slate workshop dock ---- */
+/* ---- Writer's tools dock (the Slate engines; docs/SLATE-PLAN.md) ---- */
 
 /* Width comes from --workshop-width, set by passage.js from the session key
    and by the drag handle; the fallback only shows before the session loads. */
@@ -1014,6 +1014,35 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .workshop-tool:disabled { opacity: 0.45; cursor: default; }
+
+/* The dock's top level is the worksheets' own question — what have you
+   got — so each group is a "you have" line and the paths that answer it. */
+.tool-group { margin-bottom: 8px; }
+
+.tool-have {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--secondary-text);
+    padding: 0 2px 6px;
+}
+
+.tool-paths { display: flex; flex-direction: column; gap: 4px; }
+
+.tool-note {
+    margin: 0 0 4px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--secondary-text);
+    padding: 0 2px;
+}
+
+.tool-note code { font-family: var(--mono); font-size: 11.5px; }
+
+.fill-hint {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--muted-text);
+}
 
 .workshop-count {
     float: right;

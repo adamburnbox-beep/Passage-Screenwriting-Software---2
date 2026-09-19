@@ -102,18 +102,20 @@ reflects them; undo survives. Build clean, tests pass. Set Phase 3 to `done`
 and commit.
 ```
 
-## Phase 4 — Bridge, Position, Lens
+## Phase 4 — Bridge and Position
 
 ```
-Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0 and the
-Phase 4 row, plus earlier "Done" notes. Read only what those name.
+Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,
+decision E and the Phase 4 row, plus earlier "Done" notes. Then the two
+worksheets the row names in the vault — they are the spec for every label.
 
-Three small runners. Bridge: two ends first (sequence, not validation), then
-rounds of three links; say where the card version is out of scope rather than
-omitting it silently. Position: slots read live from the script's seven
-turns; alive/flat per slot; the UI may say seven is the ceiling. Lens: roller
-is the default affordance, manual pick secondary; applies to the editor
-selection; output is a fragment saved to the sidecar, never inserted.
+Two small runners. Bridge: A and Z first (sequence, not validation), then
+30-second rounds of three links with a picked/half-picked line, closing on
+"the wire, read start to finish"; say where the card version is out of scope
+rather than omitting it silently. Position: the moment first, then turns of
+slot / needs before / forces after / alive or flat against the script's seven
+turns, closing on a shortlist of one or two; the UI may say seven is the
+ceiling.
 
 Success: each runner opens, closes mid-way with state kept, and reopens.
 Build clean, tests pass. Set Phase 4 to `done` and commit.
@@ -125,9 +127,14 @@ Build clean, tests pass. Set Phase 4 to `done` and commit.
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0 and the
 Phase 5 row, plus earlier "Done" notes. Read only what those name.
 
-Six checks in the worksheet's order, each with an answer and a Y/N flag; run
-one or all. Scope: this scene (from caret) or this stretch. A flagged check
-offers a Lens on the flagged thing only. A clean check offers nothing more.
+Setup (scene, what it's supposed to do), then six checks in the worksheet's
+order as their actual questions, each with an answer and a Y/N flag; run one
+or all. Scope: this scene (from caret) or this stretch. A flagged check
+offers the Lens on the flagged thing only — pick one of seven, each with its
+"what you actually do" line, timed 3–5 minutes per decision E, fragment to
+the sidecar. A clean check offers nothing more. After the checks, optional:
+the diagnostic Belief Split and the read-back fields, as the worksheet has
+them. Read the Revise worksheet in the vault first — it is the spec.
 
 Success: run one check on the scene under the caret, flag it, get a Lens on
 just that. Build clean, tests pass. Set Phase 5 to `done` and commit.
@@ -136,9 +143,9 @@ just that. Build clean, tests pass. Set Phase 5 to `done` and commit.
 ## Phase 6 — Ideation burst mode
 
 ```
-Decide the Collision open question in docs/SLATE-PLAN.md Phase 6 before
-starting. Then read CLAUDE.md, PROJECT_RULES.md, and in SLATE-PLAN.md: Rule 0,
-decisions A and D, and the Phase 6 row.
+Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,
+decisions A, D and E, and the Phase 6 row. Then the Ideation worksheet in the
+vault — the ten lane prompts come from it verbatim.
 
 Full-screen overlay with nothing else on it. Ten lanes, locked for the
 sitting, roller to pick. 90-second rounds timed in passage.js; the only rule
