@@ -2,6 +2,7 @@
 @using Passage.Core.Goals
 @using Passage.Export
 @using Passage.Parser
+@using System.Text.Json
 @inject ScriptLibrary Library
 @inject ExportService Exports
 @inject GoalSettingsStore GoalStore
@@ -393,12 +394,88 @@ Open a .fountain file to see formatted pages.</div>
                 <button class="btn" title="Close (keeps everything as it is)" @onclick="ToggleWorkshopAsync">×</button>
             </div>
             <div class="workshop-body">
-                <div class="sidebar-heading">ENGINES</div>
-                @foreach (var tool in WorkshopTools)
+                @if (_workshopView == WorkshopView.Tools)
                 {
-                    <button class="workshop-tool" disabled title="Not built yet">@tool</button>
+                    <div class="sidebar-heading">ENGINES</div>
+                    <button class="workshop-tool" @onclick="() => _workshopView = WorkshopView.Brackets">
+                        Brackets · Fill
+                        @if (_analysis.Brackets.Count > 0)
+                        {
+                            <span class="workshop-count">@_analysis.Brackets.Count</span>
+                        }
+                    </button>
+                    @foreach (var tool in WorkshopTools)
+                    {
+                        <button class="workshop-tool" disabled title="Not built yet">@tool</button>
+                    }
+                    <div class="sidebar-empty">The rest arrive one session at a time.</div>
                 }
-                <div class="sidebar-empty">Nothing here runs yet. Each engine arrives in its own session, Fill first.</div>
+                else if (_workshopView == WorkshopView.Brackets)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
+                        <span class="sidebar-heading">BRACKETS</span>
+                    </div>
+                    <button class="btn primary workshop-hand" disabled="@(!EligibleBrackets.Any())" @onclick="HandMeOneAsync">Hand me one</button>
+                    @if (_analysis.Brackets.Count == 0)
+                    {
+                        <div class="sidebar-empty">No [brackets] in this script.</div>
+                    }
+                    else
+                    {
+                        <div class="sidebar-heading">@_analysis.Brackets.Count IN THE SCRIPT</div>
+                        @foreach (var bracket in _analysis.Brackets)
+                        {
+                            var ignored = IsIgnored(bracket);
+                            <div class="bracket-row @(ignored ? "ignored" : null)">
+                                <button class="bracket-text" title="Line @bracket.LineNumber" @onclick="() => JumpToLineAsync(bracket.LineNumber)">@bracket.Text</button>
+                                @if (ignored)
+                                {
+                                    <button class="icon-btn" title="Treat as a placeholder again" @onclick="() => RestoreBracket(bracket)">↩</button>
+                                }
+                                else
+                                {
+                                    <button class="icon-btn" title="Fill this one" @onclick="() => OpenFillAsync(bracket)">Fill</button>
+                                    <button class="icon-btn" title="Prose, not a placeholder — leave it out" @onclick="() => IgnoreBracketAsync(bracket)">×</button>
+                                }
+                            </div>
+                        }
+                    }
+                }
+                else if (_fillBracket is not null && _fillRun is not null)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseFill">←</button>
+                        <span class="sidebar-heading">FILL</span>
+                    </div>
+                    <button class="bracket-text fill-bracket" title="Line @_fillBracket.LineNumber" @onclick="() => JumpToLineAsync(_fillBracket.LineNumber)">@_fillBracket.Text</button>
+                    <div class="fill-meta">Line @_fillBracket.LineNumber@(_fillBracket.Rank == 1 ? " · reads like prose" : "")</div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <div class="fill-options">
+                        <span class="fill-label">Option</span>
+                        <span class="fill-label">Why it's probably wrong</span>
+                        @foreach (var option in _fillRun.Options)
+                        {
+                            <textarea rows="2" @bind="option.Text" @bind:after="SaveSlate"></textarea>
+                            <textarea rows="2" @bind="option.WhyWrong" @bind:after="SaveSlate"></textarea>
+                        }
+                    </div>
+                    <label class="fill-field">
+                        <span class="fill-label">What the wrongness points to</span>
+                        <textarea rows="3" @bind="_fillRun.PointsTo" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <label class="fill-field">
+                        <span class="fill-label">If the real answer showed up on its own before you'd finished the options, write it here and stop.</span>
+                        <textarea rows="3" @bind="_fillRun.Answer" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="fill-actions">
+                        <button class="btn primary" disabled="@string.IsNullOrWhiteSpace(_fillRun.Answer)" title="Replace the bracket with the answer" @onclick="AcceptFillAsync">Accept</button>
+                        <button class="btn" title="Prose, not a placeholder — leave it out" @onclick="() => IgnoreBracketAsync(_fillBracket)">Not a bracket</button>
+                    </div>
+                }
             </div>
         </aside>
     </div>
@@ -594,7 +671,8 @@ Open a .fountain file to see formatted pages.</div>
     private DocumentAnalysis _analysis = new(
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
         Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0,
-        Array.Empty<ScreenplayElement>(), 0, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
+        Array.Empty<ScreenplayElement>(), 0, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(),
+        Array.Empty<Bracket>());
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -622,11 +700,11 @@ Open a .fountain file to see formatted pages.</div>
     private string? _deleteTarget;
     private bool _workshopOpen;
 
-    // The engines, in the order docs/SLATE-PLAN.md builds them. Every entry is
-    // a disabled placeholder until its phase lands.
+    // The engines still to come, in the order docs/SLATE-PLAN.md builds them.
+    // Every entry is a disabled placeholder until its phase lands.
     private static readonly string[] WorkshopTools =
     [
-        "Brackets · Fill", "Chain", "Character Flaw Brainstorm", "A→Z→Split", "Belief Split",
+        "Chain", "Character Flaw Brainstorm", "A→Z→Split", "Belief Split",
         "Extend Backward", "Bridge", "Position", "Lens", "Push/Pull", "Ideation burst"
     ];
 
@@ -1043,6 +1121,9 @@ Open a .fountain file to see formatted pages.</div>
         AddRecentFile(validated);
         await PersistSessionAsync();
         await SaveAsync();
+        // The buffer has a name now, so any working-out done while it was
+        // Untitled can finally be kept.
+        SaveSlate();
 
         // Only the name changed. The extension can flip screenplay/markdown
         // mode, so the classification is refreshed — but the document is left
@@ -1129,6 +1210,7 @@ Open a .fountain file to see formatted pages.</div>
         _content = string.Empty;
         _isDirty = false;
         _statusMessage = "New script";
+        LoadSlate();
         await ResetEditorAsync();
         CaptureSessionBaseline();
         await PersistSessionAsync();
@@ -1149,6 +1231,7 @@ Open a .fountain file to see formatted pages.</div>
         _fileName = name;
         _isDirty = false;
         _statusMessage = $"Opened {name}";
+        LoadSlate();
         AddRecentFile(name);
         await ResetEditorAsync();
         CaptureSessionBaseline();
@@ -2067,6 +2150,213 @@ Open a .fountain file to see formatted pages.</div>
     {
         _workshopOpen = !_workshopOpen;
         await PersistSessionAsync();
+    }
+
+    private enum WorkshopView { Tools, Brackets, Fill }
+
+    private WorkshopView _workshopView;
+    private SlateDocument _slate = new();
+    private string? _slateLoadError;
+    private Bracket? _fillBracket;
+    private FillRun? _fillRun;
+
+    // "Hand me one" walks the ranked, non-ignored brackets from the top. The
+    // cursor only advances when a handed bracket is put back unfilled, and
+    // resets whenever the queue changes, so the top of the queue is always
+    // what comes next after a fill.
+    private int _handCursor;
+
+    private IEnumerable<Bracket> EligibleBrackets => _analysis.Brackets.Where(bracket => !IsIgnored(bracket));
+
+    private bool IsIgnored(Bracket bracket) => _slate.IgnoredBrackets.Contains(bracket.Text, StringComparer.Ordinal);
+
+    private void LoadSlate()
+    {
+        _slate = new SlateDocument();
+        _slateLoadError = null;
+        _handCursor = 0;
+        _fillBracket = null;
+        _fillRun = null;
+        if (_workshopView == WorkshopView.Fill)
+        {
+            _workshopView = WorkshopView.Brackets;
+        }
+
+        if (_fileName.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _slate = Slate.Load(_fileName) ?? new SlateDocument();
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            // Left on disk untouched: overwriting it would destroy whatever
+            // working-out it holds, so saves are refused until it is fixed.
+            _slateLoadError = $"Slate data for {_fileName} could not be read: {exception.Message}";
+            _statusMessage = _slateLoadError;
+        }
+    }
+
+    private void SaveSlate()
+    {
+        _slate.Fills.RemoveAll(run => run != _fillRun && IsEmpty(run));
+        if (_fileName.Length == 0)
+        {
+            return;
+        }
+
+        if (_slateLoadError is not null)
+        {
+            _statusMessage = "Not saving Slate data — " + _slateLoadError;
+            return;
+        }
+
+        try
+        {
+            Slate.Save(_fileName, _slate);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _statusMessage = $"Could not save Slate data: {exception.Message}";
+        }
+    }
+
+    private static bool IsEmpty(FillRun run) =>
+        string.IsNullOrWhiteSpace(run.PointsTo) && string.IsNullOrWhiteSpace(run.Answer)
+        && run.Options.All(option => string.IsNullOrWhiteSpace(option.Text) && string.IsNullOrWhiteSpace(option.WhyWrong));
+
+    private async Task HandMeOneAsync()
+    {
+        var eligible = EligibleBrackets.ToList();
+        if (eligible.Count == 0)
+        {
+            _workshopView = WorkshopView.Brackets;
+            return;
+        }
+
+        await OpenFillAsync(eligible[_handCursor % eligible.Count]);
+    }
+
+    private async Task OpenFillAsync(Bracket bracket)
+    {
+        _fillBracket = bracket;
+        _fillRun = _slate.Fills.FirstOrDefault(run => run.Bracket == bracket.Text);
+        if (_fillRun is null)
+        {
+            _fillRun = new FillRun { Bracket = bracket.Text };
+            _slate.Fills.Add(_fillRun);
+        }
+
+        while (_fillRun.Options.Count < 3)
+        {
+            _fillRun.Options.Add(new FillOption());
+        }
+
+        _workshopView = WorkshopView.Fill;
+        _mainViewIndex = 0;
+        // Reveal the line without taking focus: the writer is about to type in
+        // the runner, and on a phone the editor is underneath it.
+        await JS.InvokeVoidAsync("passage.scrollToLine", bracket.LineNumber, false);
+    }
+
+    // Closing keeps everything as it is (rule 0); the run was saved on every
+    // change. Only the hand-me-one cursor moves on, so pressing it again offers
+    // a different bracket.
+    private void CloseFill()
+    {
+        _handCursor++;
+        _fillBracket = null;
+        _fillRun = null;
+        _workshopView = WorkshopView.Brackets;
+        SaveSlate();
+    }
+
+    private async Task IgnoreBracketAsync(Bracket bracket)
+    {
+        if (!IsIgnored(bracket))
+        {
+            _slate.IgnoredBrackets.Add(bracket.Text);
+        }
+
+        _slate.Fills.RemoveAll(run => run.Bracket == bracket.Text);
+        _handCursor = 0;
+        if (_workshopView == WorkshopView.Fill)
+        {
+            _fillBracket = null;
+            _fillRun = null;
+            SaveSlate();
+            await HandMeOneAsync();
+            return;
+        }
+
+        SaveSlate();
+    }
+
+    private void RestoreBracket(Bracket bracket)
+    {
+        _slate.IgnoredBrackets.Remove(bracket.Text);
+        _handCursor = 0;
+        SaveSlate();
+    }
+
+    private async Task AcceptFillAsync()
+    {
+        if (_fillBracket is null || _fillRun is null || string.IsNullOrWhiteSpace(_fillRun.Answer))
+        {
+            return;
+        }
+
+        var bracket = _fillBracket;
+        var answer = _fillRun.Answer.Trim();
+        bool replaced;
+        try
+        {
+            replaced = await JS.InvokeAsync<bool>("passage.replaceInLine", bracket.LineIndex, bracket.Text, answer);
+        }
+        catch (JSException)
+        {
+            replaced = false;
+        }
+
+        if (!replaced)
+        {
+            // The script changed underneath the runner. Keep the run; the
+            // bracket list re-derives on the next parse.
+            _statusMessage = $"{bracket.Text} is no longer on line {bracket.LineNumber} — nothing changed";
+            _fillBracket = null;
+            _fillRun = null;
+            _workshopView = WorkshopView.Brackets;
+            return;
+        }
+
+        // Mirror the edit here so the next hand-me-one sees the filled line
+        // now rather than after the editor's debounced change callback.
+        var lines = _content.Split('\n');
+        if (bracket.LineIndex < lines.Length)
+        {
+            var at = lines[bracket.LineIndex].IndexOf(bracket.Text, StringComparison.Ordinal);
+            if (at >= 0)
+            {
+                lines[bracket.LineIndex] = lines[bracket.LineIndex].Remove(at, bracket.Text.Length).Insert(at, answer);
+                _content = string.Join('\n', lines);
+            }
+        }
+
+        _isDirty = true;
+        _slate.Fills.Remove(_fillRun);
+        _fillBracket = null;
+        _fillRun = null;
+        _handCursor = 0;
+        SaveSlate();
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        _statusMessage = $"Filled line {bracket.LineNumber}";
+
+        // Chaining: the next one, straight away. Stopping is the writer's call.
+        await HandMeOneAsync();
     }
 
     // Scripts can be deleted from the volume outside the app. A sidecar left

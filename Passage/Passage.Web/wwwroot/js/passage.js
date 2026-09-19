@@ -532,6 +532,24 @@ window.passage = (function () {
         return true;
     }
 
+    // Replace one span inside a line, matched by its text rather than trusting
+    // a column: the server's copy of the document can be a debounce behind the
+    // editor, and a placeholder that has moved or gone must not clobber other
+    // text. Returns false when the span is not on that line any more. Ranged,
+    // so undo keeps working (docs/WEB-PARITY.md 1.6).
+    function replaceInLine(lineIndex, expected, replacement) {
+        if (!cm) return false;
+        if (lineIndex < 0 || lineIndex >= cm.lineCount()) return false;
+        const line = cm.getLine(lineIndex);
+        const ch = line.indexOf(expected);
+        if (ch < 0) return false;
+
+        cm.replaceRange(replacement, { line: lineIndex, ch }, { line: lineIndex, ch: ch + expected.length });
+        cm.setCursor({ line: lineIndex, ch: ch + replacement.length });
+        scheduleInput();
+        return true;
+    }
+
     // Insert lines before lineIndex, or at the end of the document when the
     // index is past the last line. Ranged like replaceLineRange, so it keeps
     // the undo history.
@@ -890,14 +908,14 @@ window.passage = (function () {
         }
     }
 
-    function scrollToLine(line) {
+    function scrollToLine(line, focus = true) {
         if (!cm) return;
         const target = Math.max(0, Math.min(line - 1, cm.lineCount() - 1));
         cm.setCursor({ line: target, ch: 0 });
         const coords = cm.charCoords({ line: target, ch: 0 }, "local");
         const scroller = cm.getScrollInfo();
         cm.scrollTo(null, Math.max(0, coords.top - scroller.clientHeight / 3));
-        cm.focus();
+        if (focus) cm.focus();
         reportCaret();
     }
 
@@ -945,7 +963,7 @@ window.passage = (function () {
         exportDocument, focusEditor,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

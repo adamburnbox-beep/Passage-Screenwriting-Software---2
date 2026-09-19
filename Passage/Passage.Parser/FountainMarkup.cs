@@ -32,6 +32,35 @@ public static class FountainMarkup
         return NotesRegex.Replace(BoneyardRegex.Replace(text, string.Empty), string.Empty);
     }
 
+    /// <summary>
+    /// Like <see cref="StripOmissions"/>, but replaces each [[note]] and
+    /// boneyard span with spaces of the same length, keeping line breaks, so
+    /// positions in the result still map onto the original text.
+    /// </summary>
+    public static string MaskOmissions(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        return NotesRegex.Replace(BoneyardRegex.Replace(text, Blank), Blank);
+    }
+
+    private static string Blank(Match match)
+    {
+        var chars = match.Value.ToCharArray();
+        for (var index = 0; index < chars.Length; index++)
+        {
+            if (chars[index] != '\n' && chars[index] != '\r')
+            {
+                chars[index] = ' ';
+            }
+        }
+
+        return new string(chars);
+    }
+
     private static string ExtractDelimitedText(string text, Regex regex, string openMarker)
     {
         if (string.IsNullOrEmpty(text))

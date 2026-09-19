@@ -29,6 +29,9 @@ class Program
         failures += RunTest("Test BeatBoard Build And Splice Card Lines", TestBeatBoardBuildAndSpliceCardLines);
         failures += RunTest("Test BeatBoard Plan Move", TestBeatBoardPlanMove);
         failures += RunTest("Test BeatBoard Plan Move Rejections", TestBeatBoardPlanMoveRejections);
+        failures += RunTest("Test BracketScanner Finds And Ranks", TestBracketScannerFindsAndRanks);
+        failures += RunTest("Test BracketScanner Ignores Notes And Boneyard", TestBracketScannerIgnoresNotesAndBoneyard);
+        failures += RunTest("Test BracketScanner Malformed Input", TestBracketScannerMalformedInput);
         failures += RunTest("Test SlateStore Round Trip", TestSlateStoreRoundTrip);
         failures += RunTest("Test SlateStore Rejects Invalid Names", TestSlateStoreRejectsInvalidNames);
         failures += RunTest("Test SlateStore Prunes Orphans", TestSlateStorePrunesOrphans);
@@ -291,6 +294,67 @@ class Program
             "A source range running past the document should be refused");
     }
 
+    // ---- BracketScanner (Passage.Parser) ----
+
+    static void TestBracketScannerFindsAndRanks()
+    {
+        const string script =
+            "INT. KITCHEN - DAY\n" +                       // 0
+            "She reads the letter [sic] twice.\n" +        // 1
+            "\n" +                                         // 2
+            "[SOMETHING forces her to stay] She sits.\n" + // 3
+            "= [todo: name the neighbour] arrives\n" +     // 4
+            "He says [nothing] and [NOTHING].";             // 5
+
+        var brackets = BracketScanner.Scan(script);
+
+        Assert(brackets.Count == 5, $"Five brackets found, got {brackets.Count}");
+
+        // Rank 0 first, in document order; then rank 1 in document order.
+        Assert(brackets[0].Text == "[SOMETHING forces her to stay]" && brackets[0].LineIndex == 3 && brackets[0].Column == 0,
+            "Keyword bracket sorts first with its position");
+        Assert(brackets[1].Text == "[todo: name the neighbour]" && brackets[1].LineNumber == 5,
+            "Keyword match is case-insensitive and stops at punctuation");
+        Assert(brackets[2].Text == "[NOTHING]" && brackets[2].Rank == 0, "All-caps content ranks 0");
+        Assert(brackets[3].Text == "[sic]" && brackets[3].Rank == 1, "Prose bracket is listed, ranked 1");
+        Assert(brackets[4].Text == "[nothing]" && brackets[4].Column == 8, "Second prose bracket keeps its column");
+        Assert(brackets[1].Content == "todo: name the neighbour", "Content is the text inside the brackets");
+    }
+
+    static void TestBracketScannerIgnoresNotesAndBoneyard()
+    {
+        const string script =
+            "[[a note with [brackets] in it]]\n" +
+            "/* boneyard [HIDDEN]\n" +
+            "still boneyard [HIDDEN] */ [VISIBLE]\n" +
+            "Action [[note]] then [KEPT].";
+
+        var brackets = BracketScanner.Scan(script);
+
+        Assert(brackets.Count == 2, $"Only the two brackets outside omissions are found, got {brackets.Count}");
+        Assert(brackets[0].Text == "[VISIBLE]" && brackets[0].LineIndex == 2 && brackets[0].Column == 27,
+            "A bracket after a multi-line boneyard keeps its real line and column");
+        Assert(brackets[1].Text == "[KEPT]" && brackets[1].LineIndex == 3 && brackets[1].Column == 21,
+            "Masking a note on the same line does not shift later columns");
+    }
+
+    static void TestBracketScannerMalformedInput()
+    {
+        Assert(BracketScanner.Scan(null).Count == 0, "Null text scans to nothing");
+        Assert(BracketScanner.Scan("").Count == 0, "Empty text scans to nothing");
+        Assert(BracketScanner.Scan("No brackets here.").Count == 0, "Plain prose scans to nothing");
+        Assert(BracketScanner.Scan("Unclosed [bracket runs\nonto the next line]").Count == 0,
+            "A bracket does not span lines");
+        Assert(BracketScanner.Scan("Empty [] and blank [   ] spans").Count == 0, "Empty brackets are not placeholders");
+
+        var nested = BracketScanner.Scan("Outer [a [INNER] c] end");
+        Assert(nested.Count == 1 && nested[0].Text == "[INNER]", "Nested brackets yield the innermost span only");
+
+        var spaced = BracketScanner.Scan("[ SOMETHING padded ]");
+        Assert(spaced.Count == 1 && spaced[0].Text == "[ SOMETHING padded ]" && spaced[0].Rank == 0,
+            "Text keeps the padding as written so a replacement can match it; ranking uses the trimmed content");
+    }
+
     // ---- SlateStore (Passage.Web) ----
     //
     // The sidecar store is pure file logic with no circuit behind it, so it is
@@ -314,7 +378,16 @@ class Program
             Assert(store.Load("draft") is null, "A script with no sidecar loads as null");
             Assert(!store.Exists("draft"), "Exists is false before the first save");
 
-            store.Save("draft", new SlateDocument { SlateVersion = 0 });
+            var document = new SlateDocument { SlateVersion = 0 };
+            document.IgnoredBrackets.Add("[sic]");
+            document.Fills.Add(new FillRun
+            {
+                Bracket = "[SOMETHING forces her to stay]",
+                Options = { [0] = new FillOption { Text = "the storm", WhyWrong = "weather is never a reason" } },
+                PointsTo = "she wants to be made to stay",
+                Answer = string.Empty
+            });
+            store.Save("draft", document);
 
             var path = Path.Combine(root, ".slate", "draft.fountain.json");
             Assert(File.Exists(path), "Sidecar lands in .slate under the validated script name");
@@ -323,6 +396,11 @@ class Program
             var loaded = store.Load("draft");
             Assert(loaded is not null, "Sidecar loads back");
             Assert(loaded!.SlateVersion == SlateStore.CurrentVersion, "Save stamps the current schema version");
+            Assert(loaded.IgnoredBrackets.SequenceEqual(new[] { "[sic]" }), "Ignore list round-trips");
+            Assert(loaded.Fills.Count == 1 && loaded.Fills[0].Bracket == "[SOMETHING forces her to stay]", "Fill run round-trips by bracket text");
+            Assert(loaded.Fills[0].Options.Count == 3 && loaded.Fills[0].Options[0].WhyWrong == "weather is never a reason"
+                && loaded.Fills[0].Options[2].Text == string.Empty, "All three option rows round-trip, empty ones included");
+            Assert(loaded.Fills[0].PointsTo == "she wants to be made to stay", "Free-text fields round-trip");
 
             Assert(library.List().Count == 0, "The .slate directory never appears in the script list");
 

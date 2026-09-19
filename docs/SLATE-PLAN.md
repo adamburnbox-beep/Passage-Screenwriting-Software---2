@@ -204,7 +204,7 @@ Passage.Web.slnf` clean with `TreatWarningsAsErrors`.
   clean. If a real Save As is ever added, the cascade (copy the sidecar to the
   new name) goes in the same change.
 
-### Phase 1 — Brackets and Fill · `not started` · **build this one first and stop**
+### Phase 1 — Brackets and Fill · `done` · **use it for two weeks before Phase 2**
 
 The highest-value row in the plan and the one that decides whether the rest is
 worth building. See "The honest risk" below.
@@ -231,6 +231,37 @@ worth building. See "The honest risk" below.
 
 **Success:** open a script with brackets in it, press one button, fill one
 bracket from your phone, and the script is edited correctly with undo intact.
+
+- **Done:** `Passage/Passage.Parser/BracketScanner.cs` + `FountainMarkup.MaskOmissions`
+  (blanks notes/boneyard in place so positions hold). `Bracket.Text` is the
+  span exactly as written, brackets and padding included, because that is
+  what the replacement has to match. Rank 0 = all caps or opens with
+  SOMETHING / CONDITION / TODO; rank 1 = everything else, still listed.
+  Tests `TestBracketScanner*` in `Passage.Tests/Program.cs`.
+  `DocumentAnalysis.Brackets` is derived on every parse, screenplay and
+  markdown alike. Dock views in `Editor.razor`: BRACKETS panel (~410) with
+  "Hand me one" above the list, and the FILL runner (~440); handlers under
+  `LoadSlate` / `HandMeOneAsync` / `AcceptFillAsync` (~2173–2360). Accept goes
+  through `passage.replaceInLine` (passage.js ~540), which matches the span by
+  text on the named line and returns false if it is gone — verified by hand:
+  undo restores the bracket, redo re-applies, caret stays on the line, and a
+  bracket edited away underneath an open runner yields a status line and no
+  edit. `SlateDocument` gained `IgnoredBrackets` (by text, not line — drift
+  safe) and `Fills` (one `FillRun` per bracket text, saved on every field
+  change, so closing keeps everything).
+- **Deviations, all deliberate:** every line is scanned rather than only
+  Action/Dialogue/Section/Synopsis — a bracketed cue like `[SOMEONE]` parses as
+  a character and is still a placeholder, and there is no line type where a
+  bracket cannot be one. A run is dropped from the sidecar on accept: the
+  filled line is the truth and there is no view that could retrieve it
+  (rule 0.3). "Not a bracket" from inside the runner hands the next one, the
+  same as accept, so the phone path is one tap per bracket. The hand-me-one
+  cursor advances only when a bracket is put back unfilled and resets on any
+  queue change, so the top of the queue is always what follows a fill.
+- **Untitled buffers:** the runner works but says the working-out is kept only
+  once the script has a name; the first Save then writes the sidecar. A
+  sidecar that fails to parse is left on disk and saves are refused with a
+  status line until it is fixed, rather than overwritten.
 
 ### Phase 2 — Forward chain (WOAC + Character Flaw Brainstorm) · `not started`
 

@@ -32,7 +32,7 @@ Success: dock opens, closes, resizes, and all three survive a reload.
 `dotnet build Passage.Web.slnf` clean. Set Phase 0 to `done` and commit.
 ```
 
-## Phase 1 — Brackets and Fill
+## Phase 1 — Brackets and Fill · done
 
 ```
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,

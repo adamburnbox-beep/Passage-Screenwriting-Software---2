@@ -1015,6 +1015,81 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .workshop-tool:disabled { opacity: 0.45; cursor: default; }
 
+.workshop-count {
+    float: right;
+    color: var(--muted-text);
+    font-size: 11px;
+}
+
+.workshop-nav { display: flex; align-items: center; gap: 10px; }
+
+.workshop-nav .sidebar-heading { margin: 0; }
+
+.workshop-hand { padding: 10px 14px; font-size: 13px; }
+
+.bracket-row { display: flex; align-items: center; gap: 4px; }
+
+.bracket-row.ignored .bracket-text { opacity: 0.45; text-decoration: line-through; }
+
+/* The bracket as it reads: script face, wrapped, click to jump. */
+.bracket-text {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--secondary-text);
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.bracket-text:hover { background: var(--surface-raised); color: var(--control-foreground); }
+
+.fill-bracket { font-size: 13.5px; color: var(--control-foreground); }
+
+.fill-meta { color: var(--muted-text); font-size: 11px; padding: 0 8px; }
+
+.fill-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.fill-field { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+
+.fill-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+    line-height: 1.5;
+}
+
+.workshop textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+}
+
+.workshop textarea:focus { border-color: var(--control-accent); }
+
+.fill-actions { display: flex; gap: 8px; margin-top: 10px; }
+
 /* On a phone the dock takes the whole main area rather than squeezing the
    editor: the engines are meant to be usable from there (SLATE-PLAN Phase 1). */
 @media (max-width: 900px) {

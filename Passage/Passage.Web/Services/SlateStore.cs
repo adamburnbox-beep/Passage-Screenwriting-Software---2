@@ -11,6 +11,29 @@ namespace Passage.Web.Services;
 public sealed class SlateDocument
 {
     public int SlateVersion { get; set; } = SlateStore.CurrentVersion;
+
+    // Bracket spans dismissed as prose, matched by text rather than line so a
+    // reference survives the script being edited underneath it.
+    public List<string> IgnoredBrackets { get; set; } = new();
+
+    // Fill working-out, keyed by bracket text. A run is dropped on accept: the
+    // filled line in the script is then the only truth.
+    public List<FillRun> Fills { get; set; } = new();
+}
+
+/// <summary>The Fill worksheet (Path B) for one bracket. Every field is optional.</summary>
+public sealed class FillRun
+{
+    public string Bracket { get; set; } = string.Empty;
+    public List<FillOption> Options { get; set; } = new() { new(), new(), new() };
+    public string PointsTo { get; set; } = string.Empty;
+    public string Answer { get; set; } = string.Empty;
+}
+
+public sealed class FillOption
+{
+    public string Text { get; set; } = string.Empty;
+    public string WhyWrong { get; set; } = string.Empty;
 }
 
 /// <summary>
