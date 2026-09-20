@@ -467,8 +467,8 @@ Open a .fountain file to see formatted pages.</div>
                     <div class="tool-group">
                         <div class="tool-have">You have a finished scene or draft that feels dead or flat</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Push/Pull and Lens <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="OpenRevisionsAsync">
+                                <span class="tool-name">Push/Pull and Lens</span>
                                 <span class="tool-desc">Six checks that find why a scene isn't working — does it end somewhere different from where it started, does it cause the next beat — and a set of lenses for rewriting only the part that's flagged.</span>
                             </button>
                         </div>
@@ -870,6 +870,212 @@ Open a .fountain file to see formatted pages.</div>
                         <label class="fill-field">
                             <span class="fill-label">Shortlist @(shortlistIndex + 1)</span>
                             <textarea rows="2" @bind="_position.Shortlist[shortlistIndex]" @bind:after="SaveSlate"></textarea>
+                        </label>
+                    }
+                }
+                else if (_workshopView == WorkshopView.Revisions)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
+                        <span class="sidebar-heading">PUSH/PULL AND LENS</span>
+                    </div>
+                    <p class="tool-note">For a finished (or finished-enough) scene, sequence or draft that's gone dead or flat. Six checks find why; a Lens rewrites only the part that's flagged.</p>
+                    <button class="btn primary workshop-hand" @onclick="StartRevisionAsync">Start a new one</button>
+                    @if (_slate.Revisions.Count > 0)
+                    {
+                        <div class="sidebar-heading">KEPT FOR THIS SCRIPT</div>
+                        @foreach (var revision in _slate.Revisions)
+                        {
+                            <div class="bracket-row">
+                                <button class="bracket-text chain-seed" title="Open — everything is as you left it" @onclick="() => OpenRevisionAsync(revision)">@(string.IsNullOrWhiteSpace(revision.Scene) ? "(no scene named yet)" : revision.Scene)</button>
+                                <button class="icon-btn" title="Remove this run and its working-out" @onclick="() => RemoveRevision(revision)">×</button>
+                            </div>
+                        }
+                    }
+                }
+                else if (_revision is not null && _workshopView == WorkshopView.Revise)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseRevisionAsync">←</button>
+                        <span class="sidebar-heading">PUSH/PULL AND LENS</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">For a finished (or finished-enough) scene, sequence or draft that's gone dead or flat. This is one of the few worksheets where judging quality out loud is the point, not a distraction: closure beats quality on pass one, but a read-back and crit is the payout.</p>
+
+                    <div class="rung-label">Setup</div>
+                    <label class="fill-field">
+                        <span class="fill-label">Scene / sequence</span>
+                        <textarea rows="2" @bind="_revision.Scene" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="fill-actions">
+                        <button class="btn" title="Names the scene or section heading nearest above the caret" @onclick="UseSceneUnderCaret">Use the scene under the caret</button>
+                    </div>
+                    <div class="fill-hint">For a whole sequence rather than one scene, name the stretch and run the six checks against it as a whole — you're checking whether the sequence itself has the shape, not auditing every scene individually.</div>
+                    <label class="fill-field">
+                        <span class="fill-label">What it's supposed to do in the story</span>
+                        <textarea rows="2" @bind="_revision.Purpose" @bind:after="SaveSlate"></textarea>
+                    </label>
+
+                    <div class="rung-label">Checks, in priority order</div>
+                    <p class="tool-note">Run them one at a time, top to bottom, or skip straight to whichever you already suspect is the problem. Stop after any single check — a clean or flagged check is a complete session. Clean checks don't get punished with more work; only a flagged one owes you a Lens.</p>
+                    @for (var c = 0; c < ReviseRun.CheckNames.Length; c++)
+                    {
+                        var checkIndex = c;
+                        var check = _revision.Check(ReviseRun.CheckNames[checkIndex]);
+                        var lensRootId = $"lens-slot-{checkIndex}";
+                        <div class="chain-round">
+                            <div class="chain-round-label">@(checkIndex + 1). @check.Name</div>
+                            <label class="fill-field">
+                                <span class="fill-hint">@CheckQuestions[checkIndex]</span>
+                                <textarea rows="2" @bind="check.Answer" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            <div class="stress-row">
+                                <span class="fill-hint">Flag</span>
+                                <AliveFlat Left="Y" Right="N" @bind-Value="check.Flag" @bind-Value:after="SaveSlate" />
+                            </div>
+                            @if (check.Flag == "Y")
+                            {
+                                <div class="belief-cut lens-block" id="@lensRootId">
+                                    <div class="rung-label">Lens — on the flagged thing only, not the whole scene</div>
+                                    <label class="fill-field">
+                                        <span class="fill-label">Pick one</span>
+                                        <select class="workshop-select" @bind="check.Lens" @bind:after="SaveSlate">
+                                            <option value="">—</option>
+                                            @foreach (var lens in Lenses)
+                                            {
+                                                <option value="@lens.Name">@lens.Name</option>
+                                            }
+                                        </select>
+                                        @if (LensDo(check.Lens) is { } lensDo)
+                                        {
+                                            <span class="fill-hint">What you actually do: @lensDo</span>
+                                        }
+                                    </label>
+                                    <div class="burst-row">
+                                        <span class="fill-hint">Apply it timed —</span>
+                                        <input type="number" class="burst-seconds" min="1" max="30" @bind="_slate.Burst.LensMinutes" @bind:after="SaveSlate" />
+                                        <span class="fill-meta">minutes</span>
+                                        @if (_burstRunning)
+                                        {
+                                            <button class="btn" @onclick="StopBurstAsync">Stop</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn primary" title="Puts the caret in the fragment and starts the clock" @onclick="() => StartLensAsync(lensRootId)">Go</button>
+                                        }
+                                        <span class="burst-display" data-burst-display></span>
+                                    </div>
+                                    <label class="fill-field">
+                                        <span class="fill-label">Rewrite / fragment</span>
+                                        <textarea rows="5" data-slot data-slot-multiline @bind="check.Fragment" @bind:after="SaveSlate"></textarea>
+                                    </label>
+                                    <div class="stress-row">
+                                        <span class="fill-hint">Did it move the flagged problem?</span>
+                                        <AliveFlat Left="Y" Right="N" @bind-Value="check.Moved" @bind-Value:after="SaveSlate" />
+                                    </div>
+                                    <label class="fill-field">
+                                        <span class="fill-label">One line why</span>
+                                        <textarea rows="2" @bind="check.MovedWhy" @bind:after="SaveSlate"></textarea>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <div class="stop-callout">That's a complete session, whether it was one check or all six.</div>
+
+                    @if (!_reviseDeeper && !_revision.HasDiagnostic)
+                    {
+                        <button class="btn" @onclick="() => _reviseDeeper = true">Going deeper still — check the belief arc already on the page</button>
+                    }
+                    else
+                    {
+                        <div class="rung-label">Going deeper still — Belief Split, diagnostic</div>
+                        <p class="tool-note">Not building a new arc — checking whether the one already on the page actually holds.</p>
+                        <label class="fill-field">
+                            <span class="fill-label">Point A — the Lie, stable/wrong at the start of this stretch</span>
+                            <textarea rows="2" @bind="_revision.DiagA" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <label class="fill-field">
+                            <span class="fill-label">Point Z — where the protagonist's belief lands by the end</span>
+                            <textarea rows="2" @bind="_revision.DiagZ" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <label class="fill-field">
+                            <span class="fill-label">Which named shape does A→Z actually match?</span>
+                            <select class="workshop-select" @bind="_revision.DiagShape" @bind:after="SaveSlate">
+                                <option value="">—</option>
+                                @foreach (var shape in BeliefShapes)
+                                {
+                                    <option value="@shape.Name">@shape.Name — @shape.A → @shape.Z</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="fill-field">
+                            <span class="fill-label">Does it match cleanly, or is it muddled between two?</span>
+                            <textarea rows="2" @bind="_revision.DiagMatch" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <label class="fill-field">
+                            <span class="fill-label">If muddled — which two, and where's the seam</span>
+                            <textarea rows="2" @bind="_revision.DiagSeam" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <div class="belief-cut lens-block" id="lens-slot-seam">
+                            <div class="rung-label">If muddled — a Lens on the scene at the seam, not the whole stretch</div>
+                            <label class="fill-field">
+                                <span class="fill-label">Lens</span>
+                                <select class="workshop-select" @bind="_revision.DiagLens" @bind:after="SaveSlate">
+                                    <option value="">—</option>
+                                    @foreach (var lens in Lenses)
+                                    {
+                                        <option value="@lens.Name">@lens.Name</option>
+                                    }
+                                </select>
+                                @if (LensDo(_revision.DiagLens) is { } seamDo)
+                                {
+                                    <span class="fill-hint">What you actually do: @seamDo</span>
+                                }
+                            </label>
+                            <div class="burst-row">
+                                <span class="fill-hint">Apply it timed —</span>
+                                <input type="number" class="burst-seconds" min="1" max="30" @bind="_slate.Burst.LensMinutes" @bind:after="SaveSlate" />
+                                <span class="fill-meta">minutes</span>
+                                @if (_burstRunning)
+                                {
+                                    <button class="btn" @onclick="StopBurstAsync">Stop</button>
+                                }
+                                else
+                                {
+                                    <button class="btn primary" title="Puts the caret in the fragment and starts the clock" @onclick="() => StartLensAsync(SeamLensId)">Go</button>
+                                }
+                                <span class="burst-display" data-burst-display></span>
+                            </div>
+                            <label class="fill-field">
+                                <span class="fill-label">Fragment</span>
+                                <textarea rows="5" data-slot data-slot-multiline @bind="_revision.DiagFragment" @bind:after="SaveSlate"></textarea>
+                            </label>
+                        </div>
+                    }
+
+                    @if (!_reviseReadBack && !_revision.HasReadBack)
+                    {
+                        <button class="btn" @onclick="() => _reviseReadBack = true">Ready to close for real — read it back</button>
+                    }
+                    else
+                    {
+                        <div class="rung-label">Read-back and crit</div>
+                        <p class="tool-note">Read the stretch back once, out loud if you can. This is not a chore — a read-back and crit is Slate's actual payout, the reason the diagnosis and the Lens work happened at all.</p>
+                        <label class="fill-field">
+                            <span class="fill-label">What's working — one line, no hedging</span>
+                            <textarea rows="2" @bind="_revision.Working" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <label class="fill-field">
+                            <span class="fill-label">What still doesn't sit right, even after the Lens passes above</span>
+                            <textarea rows="2" @bind="_revision.NotSitting" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <label class="fill-field">
+                            <span class="fill-label">Is this ready to move to Fill / Treatment, or does it need to sit another day?</span>
+                            <textarea rows="2" @bind="_revision.Ready" @bind:after="SaveSlate"></textarea>
                         </label>
                     }
                 }
@@ -2892,7 +3098,7 @@ Open a .fountain file to see formatted pages.</div>
         await PersistSessionAsync();
     }
 
-    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain, Split, Belief, Extend, Bridges, Bridge, Positions, Position }
+    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain, Split, Belief, Extend, Bridges, Bridge, Positions, Position, Revisions, Revise }
 
     private WorkshopView _workshopView;
     private SlateDocument _slate = new();
@@ -2947,6 +3153,12 @@ Open a .fountain file to see formatted pages.</div>
             _workshopView = WorkshopView.Positions;
         }
 
+        _revision = null;
+        if (_workshopView == WorkshopView.Revise)
+        {
+            _workshopView = WorkshopView.Revisions;
+        }
+
         if (_burstRunning)
         {
             _burstRunning = false;
@@ -2977,6 +3189,7 @@ Open a .fountain file to see formatted pages.</div>
         _slate.Chains.RemoveAll(chain => chain != _chain && chain.IsEmpty);
         _slate.Bridges.RemoveAll(bridge => bridge != _bridge && bridge.IsEmpty);
         _slate.Positions.RemoveAll(position => position != _position && position.IsEmpty);
+        _slate.Revisions.RemoveAll(revision => revision != _revision && revision.IsEmpty);
         if (_fileName.Length == 0)
         {
             return;
@@ -3747,6 +3960,118 @@ Open a .fountain file to see formatted pages.</div>
 
     private static List<string> AliveSlots(PositionRun position) =>
         position.Turns.Where(turn => turn.Alive == "alive" && !string.IsNullOrWhiteSpace(turn.Slot)).Select(turn => turn.Slot).ToList();
+
+    // ---- Push/Pull and Lens (Phase 5) ----
+    //
+    // The only independent check in the system. Six checks as their own
+    // questions; a flagged one — and only a flagged one — opens a Lens on
+    // that thing. Kept per script by the scene or stretch checked.
+
+    private ReviseRun? _revision;
+    private bool _reviseDeeper;
+    private bool _reviseReadBack;
+
+    private const string SeamLensId = "lens-slot-seam";
+
+    private static readonly string[] CheckQuestions =
+    {
+        "Does the scene/sequence end in a different charge than it started?",
+        "Does it cause the next beat, or is it deletable?",
+        "What does the protagonist believe now that she didn't five minutes ago?",
+        "Where does the emotional/tactical centre of gravity move — who's in control at the start vs. the end?",
+        "Is the stakes/pressure higher at the end than the start, or just different?",
+        "External: can this escalate for the whole story, is there a real consequence, a clock? Internal: does it force the internal struggle, does it cost something regardless of outcome?"
+    };
+
+    private static readonly (string Name, string Do)[] Lenses =
+    {
+        ("Role inversion", "Swap protagonist/antagonist, or relabel the hero as the villain."),
+        ("Tone swap, minimum edit", "Same scene, opposite tone, fewest possible changes."),
+        ("Compression to breaking point", "Cut it to ten words, or half the word count. What survives is what mattered."),
+        ("Container swap", "Same content, different form — a fortune cookie, a tabloid headline, a police statement, a personal ad."),
+        ("Sequential relanguaging", "Run the material through several tones in a row (e.g. grief, then comedy, then fairy tale), then translate it back to plain. Compare what came home with you."),
+        ("Metaphorical-relationship overlay", "Impose a behavioural template on the scene without the characters noticing — play it as noir, or play the roommates like a bickering married couple."),
+        ("Expectation inversion", "Name what the genre expects here, on the nose — then do the opposite on purpose.")
+    };
+
+    private static string? LensDo(string name) =>
+        Lenses.FirstOrDefault(lens => lens.Name == name) is { Name.Length: > 0 } lens ? lens.Do : null;
+
+    private async Task OpenRevisionsAsync()
+    {
+        if (_slate.Revisions.Count == 0)
+        {
+            await StartRevisionAsync();
+            return;
+        }
+
+        _workshopView = WorkshopView.Revisions;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private async Task StartRevisionAsync()
+    {
+        var revision = new ReviseRun();
+        _slate.Revisions.Add(revision);
+        await OpenRevisionAsync(revision);
+    }
+
+    private async Task OpenRevisionAsync(ReviseRun revision)
+    {
+        _revision = revision;
+        _reviseDeeper = false;
+        _reviseReadBack = false;
+        _workshopView = WorkshopView.Revise;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private async Task CloseRevisionAsync()
+    {
+        await StopBurstAsync();
+        _revision = null;
+        _workshopView = WorkshopView.Revisions;
+        SaveSlate();
+    }
+
+    private void RemoveRevision(ReviseRun revision)
+    {
+        _slate.Revisions.Remove(revision);
+        SaveSlate();
+        _statusMessage = "Removed the run";
+    }
+
+    // "This scene" is whatever heading sits nearest above the caret.
+    private void UseSceneUnderCaret()
+    {
+        if (_revision is null)
+        {
+            return;
+        }
+
+        var (_, headingIndex) = SynopsisPlacement.Find(_analysis.LineClasses, _caretLine - 1);
+        if (headingIndex < 0)
+        {
+            _statusMessage = "No scene or section heading above the caret";
+            return;
+        }
+
+        _revision.Scene = LineText(headingIndex);
+        SaveSlate();
+    }
+
+    // A Lens is one slot with a long clock; Enter stays a line break there.
+    private async Task StartLensAsync(string rootId)
+    {
+        var seconds = Math.Clamp(_slate.Burst.LensMinutes, 1, 30) * 60;
+        try
+        {
+            _burstRunning = await JS.InvokeAsync<bool>("passage.startBurst", rootId, BurstReadInSeconds, seconds);
+        }
+        catch (JSException)
+        {
+            _burstRunning = false;
+        }
+    }
 
     // Scripts can be deleted from the volume outside the app. A sidecar left
     // behind is dropped on load and said so, the same way stale recent-files

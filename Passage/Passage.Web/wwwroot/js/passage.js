@@ -980,7 +980,7 @@ window.passage = (function () {
 
         burst = {
             root,
-            display: document.querySelector("[data-burst-display]"),
+            display: root.querySelector("[data-burst-display]") || document.querySelector("[data-burst-display]"),
             readIn: readInSeconds,
             write: writeSeconds,
             slot: null,
@@ -1070,8 +1070,11 @@ window.passage = (function () {
         }
     }
 
+    // Enter commits a one-line slot. A slot marked multiline (a Lens rewrite,
+    // minutes long) keeps Enter as a line break; only the clock moves it on.
     function onBurstKeyDown(event) {
         if (!burst || event.target !== burst.slot || event.key !== "Enter" || event.shiftKey) return;
+        if ("slotMultiline" in event.target.dataset) return;
         event.preventDefault();
         advanceBurst();
     }

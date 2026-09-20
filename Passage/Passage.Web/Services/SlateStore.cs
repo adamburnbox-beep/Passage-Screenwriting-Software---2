@@ -38,6 +38,76 @@ public sealed class SlateDocument
     // the moment — never by when it was run.
     public List<BridgeRun> Bridges { get; set; } = new();
     public List<PositionRun> Positions { get; set; } = new();
+
+    // Push/Pull and Lens runs, kept by the scene or stretch they check.
+    public List<ReviseRun> Revisions { get; set; } = new();
+}
+
+/// <summary>Push/Pull and Lens ("Revise — Push-Pull and Lens"): six checks
+/// on one scene or stretch, a Lens where a check is flagged, and the
+/// optional diagnostic belief layer and read-back beneath.</summary>
+public sealed class ReviseRun
+{
+    public static readonly string[] CheckNames = { "Polarity", "Linkage", "Third rail", "Migration", "Escalation", "Two-test" };
+
+    public string Scene { get; set; } = string.Empty;
+    public string Purpose { get; set; } = string.Empty;
+    public List<ReviseCheck> Checks { get; set; } = CheckNames.Select(name => new ReviseCheck { Name = name }).ToList();
+
+    // Going deeper still — Belief Split, diagnostic.
+    public string DiagA { get; set; } = string.Empty;
+    public string DiagZ { get; set; } = string.Empty;
+    public string DiagShape { get; set; } = string.Empty;
+    public string DiagMatch { get; set; } = string.Empty;
+    public string DiagSeam { get; set; } = string.Empty;
+    public string DiagLens { get; set; } = string.Empty;
+    public string DiagFragment { get; set; } = string.Empty;
+
+    // Read-back and crit.
+    public string Working { get; set; } = string.Empty;
+    public string NotSitting { get; set; } = string.Empty;
+    public string Ready { get; set; } = string.Empty;
+
+    public ReviseCheck Check(string name)
+    {
+        var check = Checks.FirstOrDefault(existing => existing.Name == name);
+        if (check is null)
+        {
+            check = new ReviseCheck { Name = name };
+            Checks.Add(check);
+        }
+
+        return check;
+    }
+
+    public bool HasDiagnostic =>
+        !string.IsNullOrWhiteSpace(DiagA) || !string.IsNullOrWhiteSpace(DiagZ) || !string.IsNullOrWhiteSpace(DiagShape)
+        || !string.IsNullOrWhiteSpace(DiagMatch) || !string.IsNullOrWhiteSpace(DiagSeam)
+        || !string.IsNullOrWhiteSpace(DiagLens) || !string.IsNullOrWhiteSpace(DiagFragment);
+
+    public bool HasReadBack =>
+        !string.IsNullOrWhiteSpace(Working) || !string.IsNullOrWhiteSpace(NotSitting) || !string.IsNullOrWhiteSpace(Ready);
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Scene) && string.IsNullOrWhiteSpace(Purpose)
+        && Checks.All(check => check.IsEmpty) && !HasDiagnostic && !HasReadBack;
+}
+
+/// <summary>One check: its answer and Y/N flag, and — only where flagged —
+/// the Lens applied to that flagged thing.</summary>
+public sealed class ReviseCheck
+{
+    public string Name { get; set; } = string.Empty;
+    public string Answer { get; set; } = string.Empty;
+    public string Flag { get; set; } = string.Empty;
+    public string Lens { get; set; } = string.Empty;
+    public string Fragment { get; set; } = string.Empty;
+    public string Moved { get; set; } = string.Empty;
+    public string MovedWhy { get; set; } = string.Empty;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Answer) && string.IsNullOrWhiteSpace(Flag) && string.IsNullOrWhiteSpace(Lens)
+        && string.IsNullOrWhiteSpace(Fragment) && string.IsNullOrWhiteSpace(Moved) && string.IsNullOrWhiteSpace(MovedWhy);
 }
 
 /// <summary>Bridge ("Generate — Ideation or Bridge", Path B): two fixed
@@ -97,6 +167,9 @@ public sealed class BurstSettings
 {
     public bool Enabled { get; set; }
     public int Seconds { get; set; } = 30;
+
+    // The Lens is applied timed, 3–5 minutes in the worksheet.
+    public int LensMinutes { get; set; } = 4;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

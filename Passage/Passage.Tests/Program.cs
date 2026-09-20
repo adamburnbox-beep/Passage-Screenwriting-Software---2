@@ -42,6 +42,7 @@ class Program
         failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
         failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
         failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
+        failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -669,6 +670,38 @@ class Program
             Assert(loaded.Positions.Count == 1 && loaded.Positions[0].Turns[0].Slot == "Midpoint"
                 && loaded.Positions[0].Turns[0].Alive == "alive" && loaded.Positions[0].Shortlist.Count == 2, "Position turns and shortlist round-trip");
             Assert(new PositionRun().IsEmpty && !position.IsEmpty, "A fresh run is empty; one with a moment is not");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreReviseRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var revision = new ReviseRun { Scene = "INT. KITCHEN - DAY", Purpose = "she decides to leave" };
+            revision.Check("Polarity").Answer = "starts warm, ends warm";
+            revision.Check("Polarity").Flag = "Y";
+            revision.Check("Polarity").Lens = "Tone swap, minimum edit";
+            revision.Check("Polarity").Fragment = "line one\nline two";
+            revision.Check("Polarity").Moved = "Y";
+            document.Revisions.Add(revision);
+            document.Burst.LensMinutes = 3;
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Revisions.Count == 1 && loaded.Revisions[0].Scene == "INT. KITCHEN - DAY", "Revise run round-trips by scene");
+            Assert(loaded.Revisions[0].Checks.Count == ReviseRun.CheckNames.Length, "All six checks are stored, unanswered ones included");
+            var polarity = loaded.Revisions[0].Check("Polarity");
+            Assert(polarity.Flag == "Y" && polarity.Lens == "Tone swap, minimum edit" && polarity.Fragment == "line one\nline two" && polarity.Moved == "Y", "A flagged check keeps its Lens, multi-line fragment and verdict");
+            Assert(loaded.Revisions[0].Check("Linkage").IsEmpty, "An untouched check is empty");
+            Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
+            Assert(new ReviseRun().IsEmpty && !revision.IsEmpty && !revision.HasDiagnostic && !revision.HasReadBack, "Emptiness and the deeper sections read the content");
+            Assert(new ReviseRun().Check("Made up").Name == "Made up", "Check() adds a missing check rather than throwing");
         }
         finally
         {

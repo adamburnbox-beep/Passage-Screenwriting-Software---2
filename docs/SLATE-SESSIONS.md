@@ -121,7 +121,7 @@ Success: each runner opens, closes mid-way with state kept, and reopens.
 Build clean, tests pass. Set Phase 4 to `done` and commit.
 ```
 
-## Phase 5 — Push/Pull
+## Phase 5 — Push/Pull · done
 
 ```
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0 and the

@@ -487,7 +487,7 @@ how Ideation picks a *lane*.)
   second timer design for one tool. No timer on Position — the worksheet
   has none.
 
-### Phase 5 — Push/Pull · `not started`
+### Phase 5 — Push/Pull · `done`
 
 The only independent check in the system and the stated payout, so it gets its
 own row.
@@ -513,6 +513,36 @@ own row.
   move on or sit another day). These are fillable fields in the worksheet
   now, so they are in scope — the "not going in" line below is narrowed to
   crit that needs a reader.
+
+- **Done:** `SlateDocument.Revisions` (`ReviseRun`: scene, purpose, the six
+  `ReviseCheck`s by name — answer, Y/N flag, and the check's own Lens,
+  fragment, moved Y/N and why — plus the diagnostic belief fields and the
+  three read-back fields), kept per script and listed by the scene or
+  stretch checked; the same list-or-open shape as the chains. Views
+  `WorkshopView.Revisions` / `Revise`, handlers under `// ---- Push/Pull
+  and Lens`. Scope: *Use the scene under the caret* fills the scene field
+  from the nearest scene or section heading above the caret
+  (`SynopsisPlacement.Find`), and the worksheet's "going deeper — the whole
+  stretch" note sits under the field; no selector. Each check is its
+  question, an answer and a Y/N flag (`AliveFlat` with Y / N labels). A
+  **Y** reveals that check's Lens block and nothing else does: pick one of
+  the seven (select, with its "what you actually do" line beneath), *Apply
+  it timed — N minutes* (`BurstSettings.LensMinutes`, default 4, one
+  `startBurst` on a root holding only that fragment field), the fragment,
+  and *Did it move the flagged problem?* Y/N with one line why. The
+  diagnostic Belief Split (A, Z, named shape, cleanly or muddled, the seam,
+  a Lens at the seam) and the read-back and crit sit behind *Going deeper
+  still* / *Ready to close for real* buttons unless they have text.
+  `passage.js`: the burst display is now looked up inside the root first,
+  and a `data-slot-multiline` slot keeps Enter as a line break — a
+  four-minute rewrite is not a one-liner. Test `TestSlateStoreReviseRoundTrip`.
+- **Deviations, all deliberate:** the Lens lives under each flagged check
+  rather than as one block for the run, because the worksheet's own rule is
+  "to the flagged thing only" and two flagged checks are two flagged
+  things. Scope is a button plus the worksheet's note, not a scene/stretch
+  toggle — a toggle would be state with nothing to do. The Lens minutes are
+  their own setting beside the burst seconds so a Lens never inherits a
+  ten-second clock from the chain.
 
 ### Phase 6 — Ideation burst mode · `not started`
 
