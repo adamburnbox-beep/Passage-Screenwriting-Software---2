@@ -594,6 +594,19 @@ Full-screen overlay, the one engine that isn't about your script.
   worksheet says nothing depends on it. The round length is one setting in
   the ideation file rather than the per-script burst seconds, because the
   overlay belongs to no script.
+- **The input is dealt, not asked for.** The tool's purpose is starting
+  from nothing, and an empty Input box asks the writer to supply the
+  nothing. `IdeationDealer.Deal(lane)` (`Services/IdeationDealer.cs`) fills
+  every new round's Input offline from small per-lane banks — an object,
+  headline or image for Noise-seed; a grievance shape; one fixed event; two
+  fragments that are never the same one; a noun; a person and the thing
+  they won't say; a person; a stock type; two people and a place; a flaw.
+  *Deal another* re-deals (disabled mid-round); the field stays editable
+  for a writer who does have one. This is the worksheet's own "pick blind"
+  and "don't cherry-pick" done by the machine, which is the one place the
+  drill is better for not choosing. Also the natural first seat for Phase
+  7's partner if it is ever built: same call, same one string back. Tested,
+  `TestIdeationDealerDealsEveryLane`.
 
 ### Phase 7 — The assist seam · `not started`
 

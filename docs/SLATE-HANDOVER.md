@@ -42,6 +42,7 @@ not new runners.
 | Shape line | `Passage/Passage.Web/Services/ShapeLine.cs` |
 | Alive / flat and Y / N pills | `Passage/Passage.Web/Components/AliveFlat.razor` |
 | Dock markup and all handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~548; Bridge / Position ~666; Revise ~876; Split / Belief / Extend ~1082; the ideation overlay `@if (_ideationOpen` ~1440; handlers from `// ---- Writer's tools dock` ~3200, then `// ---- Forward chain` ~3470, `// ---- The Split family` ~3700, `// ---- Bridge and Position` ~3930, `// ---- Push/Pull and Lens` ~4070, `// ---- Ideation burst` ~4190 |
+| Ideation's offline dealer | `Passage/Passage.Web/Services/IdeationDealer.cs` — `Deal(lane)` and the ten lanes' banks; called from `StartSitting`, `AddIdeationRound` and *Deal another* |
 | Client-side pieces | `Passage/Passage.Web/wwwroot/js/passage.js` — `applyWorkshopWidth` / `initWorkshopResize` ~125, `scrollToTop`, `replaceInLine` ~545, `insertLinesAt` ~561, `scrollToLine(line, focus)`, burst timer `startBurst` / `stopBurst` ~976 |
 | Styles | `Passage/Passage.Web/wwwroot/css/app.css` from `/* ---- Writer's tools dock` ~954 (chain, split, burst, ideation overlay sections follow) |
 | Tests | `Passage/Passage.Tests/Program.cs` — `TestBracketScanner*`, `TestSlateStore*`, `TestSynopsisPlacement`, `TestSplitScript*`, `TestShapeLine*` (the test project references `Passage.Web`) |

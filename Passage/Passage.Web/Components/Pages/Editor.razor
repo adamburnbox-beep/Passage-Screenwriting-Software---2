@@ -1494,7 +1494,7 @@ Open a .fountain file to see formatted pages.</div>
                     <input type="number" class="burst-seconds" min="10" max="600" @bind="_ideation.RoundSeconds" @bind:after="SaveIdeation" />
                     <span class="fill-meta">seconds</span>
                 </div>
-                <p class="tool-note">Write the input, work it for the round, move on whether or not it feels finished.</p>
+                <p class="tool-note">The input is dealt for you, so there's nothing to think up — deal another if it lands flat, or type over it if you've got one of your own. Work it for the round, move on whether or not it feels finished.</p>
                 @for (var r = 0; r < sitting.Rounds.Count; r++)
                 {
                     var roundIndex = r;
@@ -1506,6 +1506,9 @@ Open a .fountain file to see formatted pages.</div>
                             <span class="fill-label">Input</span>
                             <textarea rows="2" @bind="round.Input" @bind:after="SaveIdeation"></textarea>
                         </label>
+                        <div class="fill-actions">
+                            <button class="btn" title="Replaces the input with a fresh one for this lane" disabled="@_burstRunning" @onclick="() => DealRound(round)">Deal another</button>
+                        </div>
                         <div class="burst-row">
                             @if (_burstRunning)
                             {
@@ -4268,6 +4271,19 @@ Open a .fountain file to see formatted pages.</div>
         }
 
         _ideation.Current = new IdeationSitting { Lane = lane };
+        DealRound(_ideation.Current.Rounds[0]);
+    }
+
+    // The seed is forced on you, not chosen — the worksheet's "pick blind".
+    // A writer with something of their own types over it.
+    private void DealRound(IdeationRound round)
+    {
+        if (_ideation?.Current is null)
+        {
+            return;
+        }
+
+        round.Input = IdeationDealer.Deal(_ideation.Current.Lane);
         SaveIdeation();
     }
 
@@ -4291,8 +4307,14 @@ Open a .fountain file to see formatted pages.</div>
 
     private void AddIdeationRound()
     {
-        _ideation?.Current?.Rounds.Add(new IdeationRound());
-        SaveIdeation();
+        if (_ideation?.Current is null)
+        {
+            return;
+        }
+
+        var round = new IdeationRound();
+        _ideation.Current.Rounds.Add(round);
+        DealRound(round);
     }
 
     private void KeepFromRound(IdeationRound round)

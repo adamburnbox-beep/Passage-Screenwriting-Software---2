@@ -44,6 +44,7 @@ class Program
         failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
         failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
         failures += RunTest("Test SlateStore Ideation Is Kept Apart", TestSlateStoreIdeationIsKeptApart);
+        failures += RunTest("Test IdeationDealer Deals Every Lane", TestIdeationDealerDealsEveryLane);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -708,6 +709,26 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestIdeationDealerDealsEveryLane()
+    {
+        var rng = new Random(7);
+        for (var lane = 1; lane <= 10; lane++)
+        {
+            var dealt = Enumerable.Range(0, 12).Select(_ => IdeationDealer.Deal(lane, rng)).ToList();
+            Assert(dealt.All(d => !string.IsNullOrWhiteSpace(d)), $"Lane {lane} never deals an empty input");
+            Assert(dealt.Distinct().Count() > 1, $"Lane {lane} deals more than one thing");
+        }
+
+        // The colliding lanes never collide a thing with itself.
+        for (var i = 0; i < 200; i++)
+        {
+            var halves = IdeationDealer.Deal(4, rng).Split("  ×  ");
+            Assert(halves.Length == 2 && halves[0] != halves[1], "Situation collision deals two different fragments");
+        }
+
+        Assert(!string.IsNullOrWhiteSpace(IdeationDealer.Deal(99, rng)), "An out-of-range lane still deals something");
     }
 
     static void TestSlateStoreIdeationIsKeptApart()
