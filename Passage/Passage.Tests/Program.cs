@@ -48,6 +48,8 @@ class Program
         failures += RunTest("Test IdeationDealer Deals Every Lane", TestIdeationDealerDealsEveryLane);
         failures += RunTest("Test Suggestions Ask For The Next Field", TestSuggestionsAskForTheNextField);
         failures += RunTest("Test NullStoryPartner Offers Nothing", TestNullStoryPartnerOffersNothing);
+        failures += RunTest("Test SyntaxSchemes Presets Are Complete", TestSyntaxSchemesPresetsAreComplete);
+        failures += RunTest("Test SyntaxSchemes Custom Falls Back And Round Trips", TestSyntaxSchemesCustomFallsBackAndRoundTrips);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -909,6 +911,65 @@ class Program
         Assert(screenplay.Elements[0] is SceneHeadingElement, "First element should be overridden to SceneHeadingElement");
         var heading = (SceneHeadingElement)screenplay.Elements[0];
         Assert(heading.Text == "JOHN", $"Expected overridden heading text 'JOHN', got '{heading.Text}'");
+    }
+
+    static void TestSyntaxSchemesPresetsAreComplete()
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var preset in SyntaxSchemes.Presets)
+        {
+            Assert(ids.Add(preset.Id), $"Duplicate preset id '{preset.Id}'");
+            Assert(preset.Id != SyntaxSchemes.CustomId, "A preset must not use the custom id");
+            foreach (var (token, _, _) in SyntaxSchemes.Tokens)
+            {
+                Assert(preset.Dark.TryGetValue(token, out var darkColour) && SyntaxSchemes.IsValidColour(darkColour),
+                    $"Preset '{preset.Id}' has no valid dark colour for '{token}'");
+                Assert(preset.Light.TryGetValue(token, out var lightColour) && SyntaxSchemes.IsValidColour(lightColour),
+                    $"Preset '{preset.Id}' has no valid light colour for '{token}'");
+            }
+        }
+
+        // Classic must match app.css, which is the palette painted before any
+        // scheme is chosen.
+        Assert(SyntaxSchemes.Classic.Dark["section"] == "#4FC3F7" && SyntaxSchemes.Classic.Light["section"] == "#1D6FA5",
+            "Classic section colours should mirror app.css");
+
+        var (dark, light) = SyntaxSchemes.Resolve(new SyntaxSchemeState { Preset = "ember" });
+        Assert(dark["scene"] == "#F0A868" && light["scene"] == "#B35A1E", "A preset id should resolve to that preset");
+
+        var (unknownDark, _) = SyntaxSchemes.Resolve(new SyntaxSchemeState { Preset = "no-such-preset" });
+        Assert(unknownDark["scene"] == SyntaxSchemes.Classic.Dark["scene"], "An unknown preset should resolve to Classic");
+    }
+
+    static void TestSyntaxSchemesCustomFallsBackAndRoundTrips()
+    {
+        var state = new SyntaxSchemeState
+        {
+            Preset = SyntaxSchemes.CustomId,
+            CustomDark = new Dictionary<string, string>
+            {
+                ["scene"] = "#123456",
+                ["note"] = "not a colour"
+            }
+        };
+
+        var (dark, light) = SyntaxSchemes.Resolve(state);
+        Assert(dark["scene"] == "#123456", "A custom colour should be used");
+        Assert(dark["note"] == SyntaxSchemes.Classic.Dark["note"], "An invalid custom colour should fall back to Classic");
+        Assert(dark["character"] == SyntaxSchemes.Classic.Dark["character"], "An unset custom token should fall back to Classic");
+        Assert(dark.Count == SyntaxSchemes.Tokens.Count, "A resolved palette should cover every token");
+        Assert(light["scene"] == SyntaxSchemes.Classic.Light["scene"], "A missing custom light set should fall back to Classic");
+
+        var restored = SyntaxSchemes.Parse(SyntaxSchemes.Serialize(state));
+        Assert(restored.Preset == SyntaxSchemes.CustomId, "Preset should survive the round trip");
+        Assert(restored.CustomDark is not null && restored.CustomDark["scene"] == "#123456",
+            "Custom colours should survive the round trip");
+        Assert(restored.CustomLight is null, "An unset light palette should stay unset");
+
+        Assert(SyntaxSchemes.Parse(null).Preset == SyntaxSchemes.Classic.Id, "No stored blob should mean Classic");
+        Assert(SyntaxSchemes.Parse("{not json").Preset == SyntaxSchemes.Classic.Id, "A corrupt blob should mean Classic");
+        Assert(SyntaxSchemes.Parse("{\"preset\":\"gone\"}").Preset == SyntaxSchemes.Classic.Id,
+            "A preset that no longer exists should mean Classic");
     }
 
     static void TestTextAnalysisHelperMethods()

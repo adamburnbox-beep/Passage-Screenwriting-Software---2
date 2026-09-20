@@ -394,7 +394,8 @@ Open a .fountain file to see formatted pages.</div>
         </main>
         @if (_syntaxPanelOpen)
         {
-            <SyntaxReferencePanel OnClose="CloseSyntaxPanel" />
+            <SyntaxReferencePanel OnClose="CloseSyntaxPanel" Theme="@_theme"
+                                  Scheme="_syntaxScheme" SchemeChanged="ApplySyntaxSchemeAsync" />
         }
         <aside class="workshop" hidden="@(!_workshopOpen)">
             <div id="workshop-resize" class="workshop-resize" title="Drag to resize"></div>
@@ -1852,6 +1853,7 @@ Open a .fountain file to see formatted pages.</div>
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("passage.init", _selfRef);
             await SyncThemeAsync();
+            await LoadSyntaxSchemeAsync();
             await SyncPageRulesAsync();
             PruneSlateOrphans();
             await RestoreSessionAsync();
@@ -3322,6 +3324,43 @@ Open a .fountain file to see formatted pages.</div>
     private void ToggleSyntaxPanel() => _syntaxPanelOpen = !_syntaxPanelOpen;
 
     private void CloseSyntaxPanel() => _syntaxPanelOpen = false;
+
+    // Syntax colour scheme. Presets and resolution live in SyntaxSchemes; the
+    // chosen state is per-browser in localStorage (passage.js), like the
+    // theme, and the resolved palettes are painted as --syntax-* overrides so
+    // the editor, outline and reference panel all follow it.
+    private SyntaxSchemeState _syntaxScheme = new();
+
+    private async Task LoadSyntaxSchemeAsync()
+    {
+        try
+        {
+            _syntaxScheme = SyntaxSchemes.Parse(await JS.InvokeAsync<string?>("passage.getSyntaxScheme"));
+            await PaintSyntaxSchemeAsync();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task ApplySyntaxSchemeAsync(SyntaxSchemeState state)
+    {
+        _syntaxScheme = state;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setSyntaxScheme", SyntaxSchemes.Serialize(state));
+            await PaintSyntaxSchemeAsync();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task PaintSyntaxSchemeAsync()
+    {
+        var (dark, light) = SyntaxSchemes.Resolve(_syntaxScheme);
+        await JS.InvokeVoidAsync("passage.applySyntaxColours", new { dark, light });
+    }
 
     // ---- Writer's tools dock (the Slate engines; docs/SLATE-PLAN.md) ----
 

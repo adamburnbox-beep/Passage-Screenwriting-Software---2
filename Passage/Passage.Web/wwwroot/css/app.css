@@ -1000,6 +1000,35 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--secondary-text);
 }
 
+.syntax-scheme-pick {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.syntax-scheme-pick select {
+    flex: 1;
+    background: var(--control-background);
+    color: var(--control-foreground);
+    border: 1px solid var(--control-border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font: inherit;
+    font-size: 12px;
+}
+
+.syntax-row input[type="color"] {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+}
+
 .syntax-panel-foot {
     border-top: 1px solid var(--surface-border);
     padding: 8px 18px;

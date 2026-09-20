@@ -364,6 +364,15 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
 - **Not ported:** the draggable splitter and remembered panel width
   (`SetSyntaxPanelVisible`, MW.cs 337–380). The panel is a fixed 320px. Raise
   it if resizing turns out to matter.
+- **Web-only addition:** a "Colours" card at the foot of the panel picks a
+  syntax colour scheme — six presets (Classic, Solarized, Arctic, Ember, Ink,
+  High Contrast) plus Custom with a picker per token. A scheme sets all eight
+  `--syntax-*` variables, so the editor, outline and panel markers follow it
+  together; each has a dark and a light palette, and Custom edits whichever
+  theme is showing. Presets and resolution live in `Services/SyntaxSchemes.cs`
+  ("Classic" mirrors `app.css` and must be kept in step); the choice is
+  per-browser in localStorage (`passage.syntaxScheme.v1`), like the theme.
+  No desktop counterpart.
 
 ### 2.6 Title Page editor — `done`
 

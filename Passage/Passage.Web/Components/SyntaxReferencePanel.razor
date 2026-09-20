@@ -31,6 +31,38 @@
                 }
             </section>
         }
+
+        <section class="syntax-card">
+            <h3>Colours</h3>
+            <p>Choose how markers are coloured here, in the editor and in the outline. Remembered by this browser.</p>
+            <label class="syntax-scheme-pick">
+                <span class="syntax-desc">Scheme</span>
+                <select value="@Scheme.Preset" @onchange="OnPresetChangedAsync">
+                    @foreach (var preset in SyntaxSchemes.Presets)
+                    {
+                        <option value="@preset.Id">@preset.Name</option>
+                    }
+                    <option value="@SyntaxSchemes.CustomId">Custom</option>
+                </select>
+            </label>
+            @if (IsCustom)
+            {
+                var palette = CustomPalette;
+                <p>Editing the @Theme theme's colours. Switch theme to set the other set.</p>
+                @foreach (var (token, label, sample) in SyntaxSchemes.Tokens)
+                {
+                    <label class="syntax-row">
+                        <input type="color" value="@palette[token]" title="@label colour"
+                               @onchange="e => OnColourChangedAsync(token, e)" />
+                        <span class="syntax-token" style="color: @palette[token]">@sample</span>
+                        <span class="syntax-desc">@label</span>
+                    </label>
+                }
+                <div class="syntax-row">
+                    <button class="btn" @onclick="ResetCustomAsync">Reset to Classic</button>
+                </div>
+            }
+        </section>
     </div>
 
     @if (_copyStatus.Length > 0)
@@ -42,6 +74,83 @@
 @code {
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public SyntaxSchemeState Scheme { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<SyntaxSchemeState> SchemeChanged { get; set; }
+
+    /// <summary>"dark" or "light" — which custom palette the pickers edit.</summary>
+    [Parameter]
+    public string Theme { get; set; } = "dark";
+
+    private bool IsCustom => Scheme.Preset == SyntaxSchemes.CustomId;
+
+    private bool EditingLight => Theme == "light";
+
+    // The pickers show the resolved palette so a token the user has not set
+    // yet still shows the colour that is actually painted.
+    private IReadOnlyDictionary<string, string> CustomPalette
+    {
+        get
+        {
+            var (dark, light) = SyntaxSchemes.Resolve(Scheme);
+            return EditingLight ? light : dark;
+        }
+    }
+
+    private async Task OnPresetChangedAsync(ChangeEventArgs e)
+    {
+        var id = e.Value?.ToString() ?? SyntaxSchemes.Classic.Id;
+        var next = new SyntaxSchemeState
+        {
+            Preset = id,
+            CustomDark = Scheme.CustomDark,
+            CustomLight = Scheme.CustomLight
+        };
+
+        // First visit to Custom starts from whatever was showing, so the
+        // pickers do not all jump to Classic.
+        if (id == SyntaxSchemes.CustomId && next.CustomDark is null && next.CustomLight is null)
+        {
+            var (dark, light) = SyntaxSchemes.Resolve(Scheme);
+            next.CustomDark = new Dictionary<string, string>(dark);
+            next.CustomLight = new Dictionary<string, string>(light);
+        }
+
+        await SchemeChanged.InvokeAsync(next);
+    }
+
+    private async Task OnColourChangedAsync(string token, ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (!SyntaxSchemes.IsValidColour(value))
+        {
+            return;
+        }
+
+        var (dark, light) = SyntaxSchemes.Resolve(Scheme);
+        var next = new SyntaxSchemeState
+        {
+            Preset = SyntaxSchemes.CustomId,
+            CustomDark = new Dictionary<string, string>(dark),
+            CustomLight = new Dictionary<string, string>(light)
+        };
+        (EditingLight ? next.CustomLight : next.CustomDark)[token] = value!;
+        await SchemeChanged.InvokeAsync(next);
+    }
+
+    private async Task ResetCustomAsync()
+    {
+        var next = new SyntaxSchemeState
+        {
+            Preset = SyntaxSchemes.CustomId,
+            CustomDark = new Dictionary<string, string>(SyntaxSchemes.Classic.Dark),
+            CustomLight = new Dictionary<string, string>(SyntaxSchemes.Classic.Light)
+        };
+        await SchemeChanged.InvokeAsync(next);
+    }
 
     private string _copyStatus = string.Empty;
 
