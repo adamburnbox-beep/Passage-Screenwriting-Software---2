@@ -1137,6 +1137,63 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .fill-actions { display: flex; gap: 8px; margin-top: 10px; }
 
+/* Forward chain runner. A kept chain is listed by its seed line in the
+   ordinary face, not the script face the bracket rows use. */
+.chain-seed { font-family: inherit; }
+
+.chain-round {
+    border-top: 1px solid var(--surface-border);
+    margin-top: 10px;
+    padding-top: 6px;
+}
+
+.chain-round-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--header-text);
+    font-weight: 600;
+}
+
+/* The carried Want: the previous consequence, read live, so it is text
+   rather than a field. */
+.chain-carried {
+    padding: 8px 10px;
+    border: 1px dashed var(--control-border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--control-foreground);
+    white-space: pre-wrap;
+}
+
+.chain-carried.empty { color: var(--muted-text); font-style: italic; }
+
+.chain-readback { margin-top: 12px; }
+
+.burst-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+
+.burst-toggle { display: flex; align-items: center; gap: 6px; color: var(--secondary-text); cursor: pointer; }
+
+.workshop .burst-seconds {
+    width: 64px;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+/* The countdown: a number, nothing else. Cleared when the run ends. */
+.burst-display {
+    min-width: 3em;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--secondary-text);
+}
+
 /* On a phone the dock takes the whole main area rather than squeezing the
    editor: the engines are meant to be usable from there (SLATE-PLAN Phase 1). */
 @media (max-width: 900px) {

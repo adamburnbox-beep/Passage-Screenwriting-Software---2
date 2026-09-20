@@ -63,7 +63,7 @@ by hand, do not assume. `dotnet build Passage.Web.slnf` clean, tests pass.
 Set Phase 1 to `done` and commit. Then stop; do not start Phase 2.
 ```
 
-## Phase 2 — Forward chain
+## Phase 2 — Forward chain · done
 
 ```
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,

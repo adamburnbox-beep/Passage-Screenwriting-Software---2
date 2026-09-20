@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Passage.Web.Services;
 
@@ -19,6 +20,67 @@ public sealed class SlateDocument
     // Fill working-out, keyed by bracket text. A run is dropped on accept: the
     // filled line in the script is then the only truth.
     public List<FillRun> Fills { get; set; } = new();
+
+    // Forward-chain working-out (WOAC and Character Flaw Brainstorm), kept by
+    // what each chain is about, never by when it was run.
+    public List<ChainRun> Chains { get; set; } = new();
+
+    public BurstSettings Burst { get; set; } = new();
+}
+
+/// <summary>
+/// The per-answer burst timer (SLATE-PLAN decision E). Off unless the writer
+/// turns it on; expiry only ever advances to the next answer.
+/// </summary>
+public sealed class BurstSettings
+{
+    public bool Enabled { get; set; }
+    public int Seconds { get; set; } = 30;
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ChainPath { Woac, Flaw }
+
+/// <summary>
+/// One forward chain (the "Place or Build — Forward Chain" worksheet). WOAC
+/// stores its rounds; the Flaw brainstorm stores its eight answers. Every
+/// field is optional and a chain can be left at any point.
+/// </summary>
+public sealed class ChainRun
+{
+    public ChainPath Path { get; set; }
+
+    // "Character + starting want" or "Character + the flaw".
+    public string Seed { get; set; } = string.Empty;
+
+    // WOAC rounds. Only the first round's Want is stored: every later Want
+    // is the previous round's Consequence, read live, so it cannot drift.
+    public List<ChainRound> Rounds { get; set; } = new() { new() };
+
+    // Character Flaw Brainstorm, one answer per fixed question.
+    public List<string> Answers { get; set; } = Enumerable.Repeat(string.Empty, ChainRun.FlawQuestionCount).ToList();
+
+    // "Read it back — what's the scene now, in one line?"
+    public string ReadBack { get; set; } = string.Empty;
+
+    public const int FlawQuestionCount = 8;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Seed) && string.IsNullOrWhiteSpace(ReadBack)
+        && Rounds.All(round => round.IsEmpty)
+        && Answers.All(string.IsNullOrWhiteSpace);
+}
+
+public sealed class ChainRound
+{
+    public string Want { get; set; } = string.Empty;
+    public string Obstacle { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Consequence { get; set; } = string.Empty;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Want) && string.IsNullOrWhiteSpace(Obstacle)
+        && string.IsNullOrWhiteSpace(Action) && string.IsNullOrWhiteSpace(Consequence);
 }
 
 /// <summary>The Fill worksheet (Path B) for one bracket. Every field is optional.</summary>

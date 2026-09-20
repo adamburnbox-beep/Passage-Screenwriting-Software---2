@@ -36,6 +36,8 @@ class Program
         failures += RunTest("Test SlateStore Rejects Invalid Names", TestSlateStoreRejectsInvalidNames);
         failures += RunTest("Test SlateStore Prunes Orphans", TestSlateStorePrunesOrphans);
         failures += RunTest("Test SlateStore Corrupt Sidecar Fails Visibly", TestSlateStoreCorruptSidecarFailsVisibly);
+        failures += RunTest("Test SlateStore Chain Round Trip", TestSlateStoreChainRoundTrip);
+        failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -494,6 +496,61 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestSlateStoreChainRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key" };
+            woac.Rounds[0].Want = "the key";
+            woac.Rounds[0].Consequence = "the door is open but the dog is loose";
+            woac.Rounds.Add(new ChainRound { Obstacle = "the dog" });
+            document.Chains.Add(woac);
+            var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA — never asks for help" };
+            flaw.Answers[2] = "she carries it alone and drops it";
+            document.Chains.Add(flaw);
+            document.Burst.Enabled = true;
+            document.Burst.Seconds = 10;
+            store.Save("draft", document);
+
+            var json = File.ReadAllText(Path.Combine(root, ".slate", "draft.fountain.json"));
+            Assert(json.Contains("\"Woac\"") && json.Contains("\"Flaw\""), "The path is stored by name, not by enum number");
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Chains.Count == 2, "Both chains round-trip");
+            Assert(loaded.Chains[0].Path == ChainPath.Woac && loaded.Chains[0].Rounds.Count == 2
+                && loaded.Chains[0].Rounds[1].Obstacle == "the dog", "WOAC rounds round-trip in order");
+            Assert(loaded.Chains[0].Rounds[1].Want == string.Empty, "A later round stores no Want: it is read from the consequence above");
+            Assert(loaded.Chains[1].Path == ChainPath.Flaw && loaded.Chains[1].Answers.Count == ChainRun.FlawQuestionCount
+                && loaded.Chains[1].Answers[2] == "she carries it alone and drops it", "All eight flaw answers round-trip, empty ones included");
+            Assert(loaded.Burst.Enabled && loaded.Burst.Seconds == 10, "Burst settings round-trip");
+
+            Assert(new ChainRun().IsEmpty, "A fresh chain is empty");
+            Assert(!new ChainRun { ReadBack = "x" }.IsEmpty, "A read-back line alone makes a chain worth keeping");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSynopsisPlacement()
+    {
+        // 0 "# Act 1", 1 "= old synopsis", 2 "", 3 "INT. KITCHEN", 4 "Action", 5 "## Seq", 6 "Action"
+        var classes = new[] { "sx-section", "sx-synopsis", "", "sx-scene", "", "sx-section", "" };
+
+        Assert(SynopsisPlacement.Find(classes, 4) == (4, 3), "Under the scene heading above the caret");
+        Assert(SynopsisPlacement.Find(classes, 2) == (2, 0), "After the synopsis lines already under the section");
+        Assert(SynopsisPlacement.Find(classes, 0) == (2, 0), "The caret on the heading itself counts as under it");
+        Assert(SynopsisPlacement.Find(classes, 6) == (6, 5), "The nearest heading wins, not the first");
+        Assert(SynopsisPlacement.Find(classes, 99) == (6, 5), "A caret past the end clamps to the last line");
+
+        var noHeading = new[] { "", "sx-character", "sx-dialogue" };
+        Assert(SynopsisPlacement.Find(noHeading, 2) == (2, -1), "No heading above: insert at the caret and say so");
+        Assert(SynopsisPlacement.Find(Array.Empty<string>(), 0) == (0, -1), "An empty document inserts at line 0");
     }
 
     static void Assert(bool condition, string message)

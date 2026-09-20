@@ -306,7 +306,7 @@ bracket from your phone, and the script is edited correctly with undo intact.
   sidecar that fails to parse is left on disk and saves are refused with a
   status line until it is fixed, rather than overwritten.
 
-### Phase 2 — Forward chain (WOAC + Character Flaw Brainstorm) · `not started`
+### Phase 2 — Forward chain (WOAC + Character Flaw Brainstorm) · `done`
 
 - **Chain runner**, Path A: a round table where each round's Consequence
   auto-populates the next round's Want. That auto-carry *is* the tool — it's
@@ -323,6 +323,45 @@ bracket from your phone, and the script is edited correctly with undo intact.
 - **Promotion path:** "read it back — what's the scene now, in one line?" →
   that line inserts into the script as a synopsis (`=`) under the current
   section, by ranged insert.
+
+- **Done:** `SlateDocument` gained `Chains` (one `ChainRun` per chain, `Path`
+  = `Woac` | `Flaw`, stored by name) and `Burst` settings (off by default,
+  30 s when turned on, 5–600 s; per script, since it rides in the sidecar).
+  A WOAC round stores Want only for round 1: every later Want is the
+  previous round's Consequence *read live* in the view, never copied, so
+  editing an earlier round moves the carry with it. Writing a consequence
+  into the last round appends the next one. The Flaw path stores its eight
+  answers; all eight show, none is required. Dock views in `Editor.razor`:
+  `WorkshopView.Chains` (the chains kept for this script, listed by seed
+  line — no dates, no numbering; empty ones are pruned on save) and
+  `WorkshopView.Chain` (one runner, both paths); handlers under
+  `// ---- Forward chain`. Opening a tool with nothing kept goes straight
+  into a new chain. The burst is `passage.startBurst` / `stopBurst`
+  (passage.js, after `focusEditor`): slots are the runner's
+  `textarea[data-slot]` in DOM order, starting at the first empty one;
+  focus → 5 s read-in (typing cuts it short) → write clock → Enter or expiry
+  moves to the next slot; a consequence with no slot after it waits up to
+  2 s (MutationObserver) for Blazor to render the next round, then ends.
+  Tapping another slot re-targets the run; focus leaving the slots ends it.
+  Blazor hears only `OnBurstEnded`. Promotion: `SynopsisPlacement.Find`
+  (`Passage.Web/Services`, tested) picks the nearest section / scene /
+  markdown heading at or above the caret and the slot after its existing
+  `=` lines, or the caret itself when there is no heading — the runner says
+  which before the button is pressed. Insert goes through
+  `passage.insertLinesAt`; verified by hand: undo removes the line exactly,
+  redo restores it, the caret shifts with the text. The chain stays in the
+  sidecar after promotion; the list's `×` removes it. Tests
+  `TestSlateStoreChainRoundTrip`, `TestSynopsisPlacement`.
+- **Deviations, all deliberate:** the seed line ("Character + starting
+  want" / "Character + the flaw") is not a timed slot — it is the writer's
+  own starting point, not a question the chain asks. The promote button is
+  never disabled: the field's change event and the tap arrive together, and
+  a button that is disabled until the change lands swallows the tap (the
+  Fill runner's "Fill it" has this exact problem — two taps needed after
+  typing the answer straight into the field — and is left as is, out of
+  scope). A blank line gets a status message instead. The read-in length is
+  a constant (`BurstReadInSeconds`), not a setting: one number to set is
+  enough, and 5 s read fine in practice.
 
 ### Phase 3 — The Split family · `not started`
 

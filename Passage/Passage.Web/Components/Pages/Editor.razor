@@ -453,12 +453,12 @@ Open a .fountain file to see formatted pages.</div>
                     <div class="tool-group">
                         <div class="tool-have">You have a scene in motion and need what happens next</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">WOAC chain <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="() => OpenChainsAsync(ChainPath.Woac)">
+                                <span class="tool-name">WOAC chain</span>
                                 <span class="tool-desc">Four questions on repeat: what does the character want, what's in the way, what do they do about it, what happens as a result. The result becomes the next want, so you never have to invent the next question.</span>
                             </button>
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Character Flaw Brainstorm <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="() => OpenChainsAsync(ChainPath.Flaw)">
+                                <span class="tool-name">Character Flaw Brainstorm</span>
                                 <span class="tool-desc">Eight fixed questions that take one character flaw from the worst situation it causes to a surprising final action.</span>
                             </button>
                         </div>
@@ -544,6 +544,124 @@ Open a .fountain file to see formatted pages.</div>
                         <button class="btn" title="Prose, not a placeholder — leave it out" @onclick="() => IgnoreBracketAsync(_fillBracket)">Not a bracket</button>
                     </div>
                     <div class="fill-meta">Filled it? The next bracket comes straight away. There's no built-in stopping point — the stop is yours to call.</div>
+                }
+                else if (_workshopView == WorkshopView.Chains)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
+                        <span class="sidebar-heading">@ChainTitle</span>
+                    </div>
+                    <p class="tool-note">@ChainNote</p>
+                    <button class="btn primary workshop-hand" @onclick="StartChainAsync">Start a new one</button>
+                    @if (ChainsOnPath.Any())
+                    {
+                        <div class="sidebar-heading">KEPT FOR THIS SCRIPT</div>
+                        @foreach (var chain in ChainsOnPath)
+                        {
+                            <div class="bracket-row">
+                                <button class="bracket-text chain-seed" title="Open — everything is as you left it" @onclick="() => OpenChainAsync(chain)">@(string.IsNullOrWhiteSpace(chain.Seed) ? "(no character named yet)" : chain.Seed)</button>
+                                <button class="icon-btn" title="Remove this chain and its working-out" @onclick="() => RemoveChain(chain)">×</button>
+                            </div>
+                        }
+                    }
+                }
+                else if (_chain is not null)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseChainAsync">←</button>
+                        <span class="sidebar-heading">@ChainTitle</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">@ChainNote</p>
+                    <div class="burst-row">
+                        <label class="burst-toggle"><input type="checkbox" @bind="_slate.Burst.Enabled" @bind:after="BurstSettingChangedAsync" /> Time each answer</label>
+                        @if (_slate.Burst.Enabled)
+                        {
+                            <input type="number" class="burst-seconds" min="5" max="600" @bind="_slate.Burst.Seconds" @bind:after="SaveSlate" />
+                            <span class="fill-meta">seconds</span>
+                            @if (_burstRunning)
+                            {
+                                <button class="btn" @onclick="StopBurstAsync">Stop</button>
+                            }
+                            else
+                            {
+                                <button class="btn primary" title="Starts at the first empty answer" @onclick="StartBurstAsync">Go</button>
+                            }
+                            <span class="burst-display" data-burst-display></span>
+                        }
+                    </div>
+                    @if (_slate.Burst.Enabled)
+                    {
+                        <div class="fill-hint">Five seconds to read the question, then the clock. Enter moves to the next answer; so does the clock running out. Whatever is there when it moves on counts, and you can still go back and add to it.</div>
+                    }
+                    <div id="chain-slots" class="chain-slots">
+                        <label class="fill-field">
+                            <span class="fill-label">@(_chain.Path == ChainPath.Woac ? "Character + starting want" : "Character + the flaw")</span>
+                            <textarea rows="2" @bind="_chain.Seed" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        @if (_chain.Path == ChainPath.Woac)
+                        {
+                            @for (var i = 0; i < _chain.Rounds.Count; i++)
+                            {
+                                var index = i;
+                                var round = _chain.Rounds[index];
+                                <div class="chain-round">
+                                    <div class="chain-round-label">Round @(index + 1)</div>
+                                    @if (index == 0)
+                                    {
+                                        <label class="fill-field">
+                                            <span class="fill-label">Want — what does the character want right now?</span>
+                                            <textarea rows="2" data-slot @bind="round.Want" @bind:after="SaveSlate"></textarea>
+                                        </label>
+                                    }
+                                    else
+                                    {
+                                        var carried = _chain.Rounds[index - 1].Consequence;
+                                        <div class="fill-field">
+                                            <span class="fill-label">Want (= round @index consequence)</span>
+                                            <div class="chain-carried @(string.IsNullOrWhiteSpace(carried) ? "empty" : null)">@(string.IsNullOrWhiteSpace(carried) ? "Carried down from the consequence above once it's written." : carried)</div>
+                                        </div>
+                                    }
+                                    <label class="fill-field">
+                                        <span class="fill-label">Obstacle — what's in their way?</span>
+                                        <textarea rows="2" data-slot @bind="round.Obstacle" @bind:after="SaveSlate"></textarea>
+                                    </label>
+                                    <label class="fill-field">
+                                        <span class="fill-label">Action — what do they do about it?</span>
+                                        <textarea rows="2" data-slot @bind="round.Action" @bind:after="SaveSlate"></textarea>
+                                    </label>
+                                    <label class="fill-field">
+                                        <span class="fill-label">Consequence — what happens as a result?</span>
+                                        <textarea rows="2" data-slot @bind="round.Consequence" @bind:after="() => ConsequenceChanged(round)"></textarea>
+                                    </label>
+                                </div>
+                            }
+                            <div class="fill-meta">Write a consequence and the next round appears with it as the want. No limit. A scene usually finds its shape somewhere around 5–7 rounds, but that's a pattern, not a rule.</div>
+                        }
+                        else
+                        {
+                            @for (var i = 0; i < ChainRun.FlawQuestionCount; i++)
+                            {
+                                var index = i;
+                                <label class="fill-field">
+                                    <span class="fill-label">@(index + 1). @FlawQuestions[index]</span>
+                                    <textarea rows="2" data-slot @bind="_chain.Answers[index]" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            }
+                            <div class="fill-meta">You can stop after any question — a partial chain is still real material — but the eight are designed to land on a shape together, so if you're mid-flow, finishing the set in one sitting is worth more here than with WOAC's open-ended rounds.</div>
+                        }
+                    </div>
+                    <label class="fill-field chain-readback">
+                        <span class="fill-label">Read it back — what's the scene now, in one line?</span>
+                        <textarea rows="2" @bind="_chain.ReadBack" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="fill-actions">
+                        <button class="btn primary" title="Adds it to the script as a synopsis line" @onclick="PromoteReadBackAsync">Put it in the script</button>
+                    </div>
+                    <div class="fill-meta">@PromotionTargetLabel</div>
                 }
             </div>
         </aside>
@@ -2213,7 +2331,7 @@ Open a .fountain file to see formatted pages.</div>
         await PersistSessionAsync();
     }
 
-    private enum WorkshopView { Tools, Brackets, Fill }
+    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain }
 
     private WorkshopView _workshopView;
     private SlateDocument _slate = new();
@@ -2243,6 +2361,18 @@ Open a .fountain file to see formatted pages.</div>
             _workshopView = WorkshopView.Brackets;
         }
 
+        _chain = null;
+        if (_workshopView == WorkshopView.Chain)
+        {
+            _workshopView = WorkshopView.Chains;
+        }
+
+        if (_burstRunning)
+        {
+            _burstRunning = false;
+            _ = StopBurstAsync();
+        }
+
         if (_fileName.Length == 0)
         {
             return;
@@ -2264,6 +2394,7 @@ Open a .fountain file to see formatted pages.</div>
     private void SaveSlate()
     {
         _slate.Fills.RemoveAll(run => run != _fillRun && IsEmpty(run));
+        _slate.Chains.RemoveAll(chain => chain != _chain && chain.IsEmpty);
         if (_fileName.Length == 0)
         {
             return;
@@ -2418,6 +2549,246 @@ Open a .fountain file to see formatted pages.</div>
 
         // Chaining: the next one, straight away. Stopping is the writer's call.
         await HandMeOneAsync();
+    }
+
+    // ---- Forward chain: WOAC and Character Flaw Brainstorm (Phase 2) ----
+    //
+    // One runner, two paths. A WOAC round's Want is the previous round's
+    // Consequence read live, never copied, so editing an earlier round moves
+    // the carry with it. Chains are kept by what they are about (the seed
+    // line), never listed by when they were run (rule 0.3).
+
+    private ChainPath _chainPath;
+    private ChainRun? _chain;
+    private bool _burstRunning;
+
+    private const int BurstReadInSeconds = 5;
+
+    private static readonly string[] FlawQuestions =
+    {
+        "Worst situation the flaw causes",
+        "The character's first (wrong) response",
+        "How that backfires",
+        "Who unexpectedly helps",
+        "The next (also wrong) action",
+        "The obstacle that creates",
+        "The flaw reframed as a hidden skill",
+        "A surprising final action"
+    };
+
+    private string ChainTitle => _chainPath == ChainPath.Woac ? "WOAC CHAIN" : "CHARACTER FLAW BRAINSTORM";
+
+    private string ChainNote => _chainPath == ChainPath.Woac
+        ? "Want → Obstacle → Action → Consequence. Each round: what does the character want right now, what's in their way, what do they do about it, and what happens as a result? That consequence becomes next round's want automatically — you never have to invent a new question, just carry it down. Do one round or ten, stop whenever, read it back before you close."
+        : "Eight fixed questions, same chain grammar as WOAC — but this one is a fixed-length loop, not an open one, each question different from the last rather than the same one recurring.";
+
+    private IEnumerable<ChainRun> ChainsOnPath => _slate.Chains.Where(chain => chain.Path == _chainPath);
+
+    private async Task OpenChainsAsync(ChainPath path)
+    {
+        _chainPath = path;
+        if (!ChainsOnPath.Any())
+        {
+            await StartChainAsync();
+            return;
+        }
+
+        _workshopView = WorkshopView.Chains;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private async Task StartChainAsync()
+    {
+        var chain = new ChainRun { Path = _chainPath };
+        _slate.Chains.Add(chain);
+        await OpenChainAsync(chain);
+    }
+
+    // The dock body is one scroll container, so a runner opened from the
+    // bottom of the tool list would otherwise open at its own bottom.
+    private async Task ScrollWorkshopToTopAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await JS.InvokeVoidAsync("passage.scrollIntoView", ".workshop-nav");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task OpenChainAsync(ChainRun chain)
+    {
+        // A sidecar edited by hand can be short a row; the runner always has
+        // somewhere to type.
+        if (chain.Rounds.Count == 0)
+        {
+            chain.Rounds.Add(new ChainRound());
+        }
+
+        while (chain.Answers.Count < ChainRun.FlawQuestionCount)
+        {
+            chain.Answers.Add(string.Empty);
+        }
+
+        _chain = chain;
+        _chainPath = chain.Path;
+        _workshopView = WorkshopView.Chain;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    // Closing keeps everything as it is (rule 0); the chain was saved on every
+    // change.
+    private async Task CloseChainAsync()
+    {
+        await StopBurstAsync();
+        _chain = null;
+        _workshopView = WorkshopView.Chains;
+        SaveSlate();
+    }
+
+    private void RemoveChain(ChainRun chain)
+    {
+        _slate.Chains.Remove(chain);
+        SaveSlate();
+        _statusMessage = "Removed the chain";
+    }
+
+    // The carry: a written consequence opens the next round, whose Want reads
+    // it live. Nothing is copied.
+    private void ConsequenceChanged(ChainRound round)
+    {
+        if (_chain is not null && round == _chain.Rounds[^1] && !string.IsNullOrWhiteSpace(round.Consequence))
+        {
+            _chain.Rounds.Add(new ChainRound());
+        }
+
+        SaveSlate();
+    }
+
+    private async Task BurstSettingChangedAsync()
+    {
+        if (!_slate.Burst.Enabled)
+        {
+            await StopBurstAsync();
+        }
+
+        SaveSlate();
+    }
+
+    // The timer itself lives in passage.js (decision E, trap 4): focus, read-in,
+    // countdown and advance are all client-side. The server hears only that it
+    // ended, and gets each answer through the ordinary change events.
+    private async Task StartBurstAsync()
+    {
+        if (_chain is null)
+        {
+            return;
+        }
+
+        var seconds = Math.Clamp(_slate.Burst.Seconds, 5, 600);
+        try
+        {
+            _burstRunning = await JS.InvokeAsync<bool>("passage.startBurst", "chain-slots", BurstReadInSeconds, seconds);
+        }
+        catch (JSException)
+        {
+            _burstRunning = false;
+        }
+    }
+
+    private async Task StopBurstAsync()
+    {
+        _burstRunning = false;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.stopBurst");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public void OnBurstEnded()
+    {
+        _burstRunning = false;
+        StateHasChanged();
+    }
+
+    private (int InsertAt, int HeadingIndex) PromotionTarget => SynopsisPlacement.Find(_analysis.LineClasses, _caretLine - 1);
+
+    private string PromotionTargetLabel
+    {
+        get
+        {
+            var (insertAt, headingIndex) = PromotionTarget;
+            if (headingIndex < 0)
+            {
+                return $"Goes in as a = synopsis line at the caret (line {insertAt + 1}) — there's no section or scene heading above it.";
+            }
+
+            return $"Goes in as a = synopsis line under {LineText(headingIndex)} (line {headingIndex + 1}).";
+        }
+    }
+
+    private string LineText(int index)
+    {
+        var lines = _content.Split('\n');
+        return index >= 0 && index < lines.Length ? lines[index].Trim() : string.Empty;
+    }
+
+    // Promotion: the one line goes into the script as a synopsis under the
+    // current heading, by ranged insert so undo survives. The chain stays in
+    // the sidecar; the script now holds the result and the sidecar the
+    // working-out (decision B).
+    private async Task PromoteReadBackAsync()
+    {
+        if (_chain is null)
+        {
+            return;
+        }
+
+        // Not a disabled button: the field's change event and the click arrive
+        // on the same tap, and a button disabled until the change lands
+        // would swallow that tap.
+        if (string.IsNullOrWhiteSpace(_chain.ReadBack))
+        {
+            _statusMessage = "Nothing to add yet — write the one line first";
+            return;
+        }
+
+        var line = "= " + string.Join(' ', _chain.ReadBack.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(part => part.Trim()));
+        var (insertAt, headingIndex) = PromotionTarget;
+        var heading = headingIndex >= 0 ? LineText(headingIndex) : null;
+        bool inserted;
+        try
+        {
+            inserted = await JS.InvokeAsync<bool>("passage.insertLinesAt", insertAt, line);
+        }
+        catch (JSException)
+        {
+            inserted = false;
+        }
+
+        if (!inserted)
+        {
+            _statusMessage = "Could not add the line — nothing changed";
+            return;
+        }
+
+        // Mirror the edit so the next promotion targets the right line now,
+        // rather than after the editor's debounced change callback.
+        var lines = _content.Split('\n').ToList();
+        lines.Insert(Math.Min(insertAt, lines.Count), line);
+        _content = string.Join('\n', lines);
+        _isDirty = true;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        _statusMessage = heading is null
+            ? $"Added a synopsis at line {insertAt + 1}"
+            : $"Added a synopsis under {heading} (line {insertAt + 1})";
     }
 
     // Scripts can be deleted from the volume outside the app. A sidecar left

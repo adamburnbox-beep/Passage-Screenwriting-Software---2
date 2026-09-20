@@ -957,10 +957,168 @@ window.passage = (function () {
         if (cm) cm.focus();
     }
 
+    // ---- Burst timer for the Writer's Tools runners (SLATE-PLAN decision E) ----
+    //
+    // Ready → read-in → write → advance, entirely client-side so a circuit
+    // blip cannot stall it. The slots are the runner's textarea[data-slot]
+    // elements in DOM order. Enter commits an answer and moves on; so does the
+    // clock running out, and that is all expiry does — the answer stays
+    // editable, nothing is marked, nothing is counted. Blazor hears each
+    // answer through the ordinary change event the focus move fires, and is
+    // told once when the run ends.
+    let burst = null;
+
+    function startBurst(rootId, readInSeconds, writeSeconds) {
+        endBurst(false);
+        const root = document.getElementById(rootId);
+        if (!root) return false;
+
+        burst = {
+            root,
+            display: document.querySelector("[data-burst-display]"),
+            readIn: readInSeconds,
+            write: writeSeconds,
+            slot: null,
+            phase: "",
+            timer: null,
+            waitTimer: null,
+            observer: null,
+            advancing: false
+        };
+        root.addEventListener("keydown", onBurstKeyDown);
+        root.addEventListener("input", onBurstInput);
+        root.addEventListener("focusout", onBurstFocusOut);
+
+        const slots = burstSlots();
+        const first = slots.find(slot => slot.value.trim() === "") || slots[0];
+        if (!first) {
+            endBurst(false);
+            return false;
+        }
+        beginBurstSlot(first);
+        return true;
+    }
+
+    function stopBurst() {
+        endBurst(true);
+    }
+
+    // notify: tell Blazor the run is over. Not when a new run replaces it,
+    // or the "ended" would land after the "started" and flip the button back.
+    function endBurst(notify) {
+        if (!burst) return;
+        clearInterval(burst.timer);
+        clearTimeout(burst.waitTimer);
+        if (burst.observer) burst.observer.disconnect();
+        burst.root.removeEventListener("keydown", onBurstKeyDown);
+        burst.root.removeEventListener("input", onBurstInput);
+        burst.root.removeEventListener("focusout", onBurstFocusOut);
+        showBurst("", 0);
+        burst = null;
+        if (notify && dotnetRef) dotnetRef.invokeMethodAsync("OnBurstEnded");
+    }
+
+    function burstSlots() {
+        return Array.from(burst.root.querySelectorAll("textarea[data-slot]"));
+    }
+
+    function burstSlotAfter(slot) {
+        const slots = burstSlots();
+        return slots[slots.indexOf(slot) + 1] || null;
+    }
+
+    // Ready: the caret is in the slot before anything counts. Then the
+    // read-in, which typing cuts short.
+    function beginBurstSlot(slot) {
+        burst.slot = slot;
+        burst.advancing = true;
+        slot.focus();
+        burst.advancing = false;
+        runBurstCountdown("read", burst.readIn, () => runBurstCountdown("write", burst.write, advanceBurst));
+    }
+
+    function runBurstCountdown(phase, seconds, done) {
+        clearInterval(burst.timer);
+        burst.phase = phase;
+        let left = seconds;
+        showBurst(phase, left);
+        burst.timer = setInterval(() => {
+            left--;
+            if (left <= 0) {
+                clearInterval(burst.timer);
+                burst.timer = null;
+                done();
+                return;
+            }
+            showBurst(phase, left);
+        }, 1000);
+    }
+
+    function showBurst(phase, left) {
+        if (!burst || !burst.display) return;
+        burst.display.textContent = phase === "read" ? "read\u2026 " + left : phase === "write" ? String(left) : "";
+    }
+
+    function onBurstInput(event) {
+        if (burst && burst.phase === "read" && event.target === burst.slot) {
+            runBurstCountdown("write", burst.write, advanceBurst);
+        }
+    }
+
+    function onBurstKeyDown(event) {
+        if (!burst || event.target !== burst.slot || event.key !== "Enter" || event.shiftKey) return;
+        event.preventDefault();
+        advanceBurst();
+    }
+
+    // Focus leaving the slot other than by our own move: a tap on another
+    // slot re-targets the run there; anything else means the writer has
+    // stepped out, and the run ends quietly.
+    function onBurstFocusOut(event) {
+        if (!burst || burst.advancing) return;
+        const next = event.relatedTarget;
+        if (next && burst.root.contains(next) && next.matches("textarea[data-slot]")) {
+            beginBurstSlot(next);
+        } else {
+            stopBurst();
+        }
+    }
+
+    function advanceBurst() {
+        if (!burst) return;
+        clearInterval(burst.timer);
+        burst.timer = null;
+        burst.phase = "";
+        const current = burst.slot;
+        const next = burstSlotAfter(current);
+        if (next) {
+            beginBurstSlot(next);
+            return;
+        }
+
+        // No slot after this one yet. Committing the answer may make Blazor
+        // add a round (WOAC), so wait briefly for it to render; otherwise the
+        // chain is complete and the run is over.
+        burst.advancing = true;
+        current.blur();
+        burst.advancing = false;
+        showBurst("", 0);
+        burst.observer = new MutationObserver(() => {
+            const added = burstSlotAfter(current);
+            if (!added) return;
+            burst.observer.disconnect();
+            burst.observer = null;
+            clearTimeout(burst.waitTimer);
+            beginBurstSlot(added);
+        });
+        burst.observer.observe(burst.root, { childList: true, subtree: true });
+        burst.waitTimer = setTimeout(stopBurst, 2000);
+    }
+
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
         init, applyHighlights, setContent, setDirty, scrollToLine,
-        exportDocument, focusEditor,
+        exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
         refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
