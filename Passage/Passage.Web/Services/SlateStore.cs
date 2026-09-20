@@ -33,6 +33,60 @@ public sealed class SlateDocument
     public SplitRun Split { get; set; } = new();
     public BeliefRun Belief { get; set; } = new();
     public ExtendRun Extend { get; set; } = new();
+
+    // Bridge and Position runs, kept by what each is about — the two ends,
+    // the moment — never by when it was run.
+    public List<BridgeRun> Bridges { get; set; } = new();
+    public List<PositionRun> Positions { get; set; } = new();
+}
+
+/// <summary>Bridge ("Generate — Ideation or Bridge", Path B): two fixed
+/// points, rounds of three candidate links between them.</summary>
+public sealed class BridgeRun
+{
+    public string A { get; set; } = string.Empty;
+    public string Z { get; set; } = string.Empty;
+    public List<BridgeRound> Rounds { get; set; } = new() { new() };
+    public string Wire { get; set; } = string.Empty;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(A) && string.IsNullOrWhiteSpace(Z) && string.IsNullOrWhiteSpace(Wire)
+        && Rounds.All(round => round.IsEmpty);
+}
+
+public sealed class BridgeRound
+{
+    public List<string> Candidates { get; set; } = new() { string.Empty, string.Empty, string.Empty };
+    public string Picked { get; set; } = string.Empty;
+
+    public bool IsEmpty => string.IsNullOrWhiteSpace(Picked) && Candidates.All(string.IsNullOrWhiteSpace);
+}
+
+/// <summary>Position ("Place or Build — Position or Fill", Path A): one
+/// moment tried in the story's seven slots, one turn at a time.</summary>
+public sealed class PositionRun
+{
+    public string Moment { get; set; } = string.Empty;
+    public List<PositionTurn> Turns { get; set; } = new() { new() };
+    public List<string> Shortlist { get; set; } = new() { string.Empty, string.Empty };
+
+    public const int SlotCount = 7;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Moment) && Shortlist.All(string.IsNullOrWhiteSpace) && Turns.All(turn => turn.IsEmpty);
+}
+
+public sealed class PositionTurn
+{
+    // One of the seven turn labels (SplitScript.Turns), or empty.
+    public string Slot { get; set; } = string.Empty;
+    public string Before { get; set; } = string.Empty;
+    public string After { get; set; } = string.Empty;
+    public string Alive { get; set; } = string.Empty;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Slot) && string.IsNullOrWhiteSpace(Before)
+        && string.IsNullOrWhiteSpace(After) && string.IsNullOrWhiteSpace(Alive);
 }
 
 /// <summary>

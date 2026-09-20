@@ -102,7 +102,7 @@ reflects them; undo survives. Build clean, tests pass. Set Phase 3 to `done`
 and commit.
 ```
 
-## Phase 4 — Bridge and Position
+## Phase 4 — Bridge and Position · done
 
 ```
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,

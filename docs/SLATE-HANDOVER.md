@@ -5,7 +5,7 @@
 State of play for the Writer's Tools work in `Passage.Web` (internally "Slate",
 after the vault system it comes from), written for the next agent. Read this,
 then `CLAUDE.md`, `PROJECT_RULES.md`, and `docs/SLATE-PLAN.md` — in that
-order — before touching anything. Everything below is as of the Phase 3
+order — before touching anything. Everything below is as of the Phase 4
 commit on branch `web-scope`, 2026-09-20.
 
 ---
@@ -14,16 +14,17 @@ commit on branch `web-scope`, 2026-09-20.
 
 The writer (Adam) has a set of writing-block exercises in his Obsidian vault
 ("the Slate"). We are bringing the *tools* — not the board, not the practice —
-into the web app as a right-hand dock called **Writer's Tools**. Four of
+into the web app as a right-hand dock called **Writer's Tools**. Five of
 seven phases are built: the foundations (sidecar storage, the dock), **Fill**,
 which finds `[SOMETHING happens]` placeholders in a script and walks the
 writer through resolving one, the **forward chain** (WOAC and the Character
-Flaw Brainstorm, with the first burst timer), and the **Split family**
+Flaw Brainstorm, with the first burst timer), the **Split family**
 (A→Z→Split, which writes the eight-sequence shape into the script for the
-Board; Belief Split; Extend Backward) with the shape line in the status bar.
-Bridge, Position, Push/Pull and Lens, and Ideation burst are still "not
-built yet". **Building them, one per session in plan order, is the next
-step** — unless he names a different one first.
+Board; Belief Split; Extend Backward) with the shape line in the status bar,
+and **Bridge and Position**. Push/Pull and Lens, and Ideation burst are
+still "not built yet". **Building them, one per session in plan order, is
+the next step** — unless he names a different one first. PR #13 on GitHub
+carries the whole branch.
 
 ---
 
@@ -35,7 +36,7 @@ step** — unless he names a different one first.
 | Copy-paste prompt per phase | `docs/SLATE-SESSIONS.md` |
 | Sidecar store | `Passage/Passage.Web/Services/SlateStore.cs` |
 | Placeholder scanner | `Passage/Passage.Parser/BracketScanner.cs` (+ `FountainMarkup.MaskOmissions`) |
-| Dock markup, views, handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~545–660; Split / Belief / Extend views ~660–1000; handlers from `// ---- Writer's tools dock` ~2680, `// ---- Forward chain` ~2920, `// ---- The Split family` ~3160 |
+| Dock markup, views, handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~545–660; Bridge / Position views ~660–880; Split / Belief / Extend views ~880–1220; handlers from `// ---- Writer's tools dock` ~2900, `// ---- Forward chain` ~3140, `// ---- The Split family` ~3380, `// ---- Bridge and Position` ~3620 |
 | Synopsis placement (promotion target) | `Passage/Passage.Web/Services/SynopsisPlacement.cs` |
 | Split write-back and turn-line parsing | `Passage/Passage.Web/Services/SplitScript.cs` |
 | Shape line | `Passage/Passage.Web/Services/ShapeLine.cs` |
@@ -108,6 +109,16 @@ step** — unless he names a different one first.
   render of the status bar and shown only when a Sequence exists.
 - See the row's Done and Deviations notes in `SLATE-PLAN.md`.
 
+### Phase 4 — Bridge and Position
+
+- `SlateDocument.Bridges` / `Positions`, kept per script, listed by "A → Z"
+  and by the moment. Same list-or-open shape as the chains.
+- Bridge's candidates are burst slots under `#bridge-slots`;
+  `StartBurstAsync(rootId)` takes the root now.
+- Position's slot select is `SplitScript.Turns`, with the script's own
+  synopsis for that turn shown beneath. Seven turns is a hard ceiling.
+- See the row's Done and Deviations notes in `SLATE-PLAN.md`.
+
 ### Decisions made in conversation that the plan now records
 
 - **Name:** "Writer's Tools" in the UI. `Slate` stays in identifiers, the
@@ -140,12 +151,13 @@ step** — unless he names a different one first.
 Adam wants to test the other tools. Build them **one per session, in this
 order**, each with its own commit and its own row update in `SLATE-PLAN.md`:
 
-1. **Phase 4 — Bridge + Position.** Bridge's 30-second rounds use
-   `startBurst`. Position's seven slots are `SplitScript.Turns`.
-2. **Phase 5 — Push/Pull and Lens** (plus the optional diagnostic Belief
-   Split — reuse `BeliefRun` — and read-back fields).
-3. **Phase 6 — Ideation burst**, full-screen overlay, on `startBurst`.
-4. Phase 7, the model seam, is deliberately last and probably not wanted yet.
+1. **Phase 5 — Push/Pull and Lens** (plus the optional diagnostic Belief
+   Split — reuse `BeliefRun` — and read-back fields). The Lens's timed
+   3–5 minutes is one `startBurst` slot with a long clock.
+2. **Phase 6 — Ideation burst**, full-screen overlay, on `startBurst`. Lane
+   10 points at the Character Flaw Brainstorm (Phase 2) rather than
+   repeating it.
+3. Phase 7, the model seam, is deliberately last and probably not wanted yet.
 
 Each session: read Rule 0 again, read the worksheet in the vault, use the
 prompt in `SLATE-SESSIONS.md`. Every runner: no required fields, closable at
@@ -183,8 +195,8 @@ with a list, a timer and a promotion.
 - **Dev data** lives at `Passage/Passage.Web/bin/Debug/net9.0/data/` (there is
   no `/data` on this machine). `fill-test.fountain` there has four brackets
   for testing; `split-test.fountain` holds a written shape with six
-  bracketed turns and a Split run in its sidecar. Sidecars are in `.slate/`
-  beside it.
+  bracketed turns and Split, Bridge and Position runs in its sidecar.
+  Sidecars are in `.slate/` beside it.
 - **Git shows ~140 files modified.** Those are exec-bit flips from the
   filesystem, not content. Commit with `git -c core.fileMode=false add <paths>`
   and `git -c core.fileMode=false commit`; never `git add -A`. Commits end

@@ -436,7 +436,7 @@ matching `Generate — Split, Belief, or Extend Backward.md`.
   the script alone. Belief Split's matched plot turn is shown as a hint
   from the Split run in the same sidecar; nothing is copied between them.
 
-### Phase 4 — Bridge and Position · `not started`
+### Phase 4 — Bridge and Position · `done`
 
 Two small runners, plausibly one session for both. (The Lens moved to Phase
 5: the Revise worksheet has it as "pick one", applied only where a check is
@@ -458,6 +458,34 @@ how Ideation picks a *lane*.)
   turns. Close: a shortlist of one or two alive answers, and the line that
   Split or Fill picks the winner another day. The only place with a natural
   ceiling — seven slots, and the UI can say that.
+
+- **Done:** `SlateDocument.Bridges` (`BridgeRun`: A, Z, rounds of three
+  candidates + picked/half-picked, wire) and `Positions` (`PositionRun`:
+  moment, up to seven turns of slot / before / after / alive, shortlist of
+  two), kept per script and listed by what they are about — "A → Z" and the
+  moment — the same shape as the chains; empty runs vanish on save. Views
+  `WorkshopView.Bridges` / `Bridge` / `Positions` / `Position` in
+  `Editor.razor`, handlers under `// ---- Bridge and Position`. Bridge: the
+  ends come first on the page and the label says why, nothing validates;
+  the three candidates of every round are burst slots (`#bridge-slots`,
+  same `startBurst`, same per-script setting — the hint says the
+  worksheet's 30 s a round is about 10 each); *Another round — the gap still
+  needs more than one link* is an explicit button, not an auto-append, since
+  the worksheet makes the next round conditional; the close shows the wire
+  read forward (A, the picked lines, Z) above the wire field; the card
+  version is named in the stop-callout as Treatment-stage work not built
+  here, pointing at A→Z→Split for a whole story's gap. Position: the slot is
+  a select over `SplitScript.Turns` (a slot already tried in another turn is
+  marked), with "In the script: …" under it when the script's synopsis for
+  that turn has text; alive / flat is the `AliveFlat` pills; *Another turn*
+  disappears at seven with the worksheet's own ceiling line; the shortlist
+  shows "Alive so far: …" above it. `StartBurstAsync` now takes the slots'
+  root id. Test `TestSlateStoreBridgeAndPositionRoundTrip`.
+- **Deviations, all deliberate:** the burst timer is per candidate, not per
+  round of three, because decision E's Enter-moves-to-the-next-slot is the
+  mechanism and a single 30-second clock over three fields would need a
+  second timer design for one tool. No timer on Position — the worksheet
+  has none.
 
 ### Phase 5 — Push/Pull · `not started`
 

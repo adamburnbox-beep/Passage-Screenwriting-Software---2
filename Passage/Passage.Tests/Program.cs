@@ -41,6 +41,7 @@ class Program
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
         failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
         failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
+        failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -634,6 +635,40 @@ class Program
             Assert(loaded.Belief.Cuts.Count == 5, "All five named cuts, no more");
             Assert(loaded.Extend.Links.Count == 2 && loaded.Extend.Links[1].Mystery, "Extend links round-trip with the mystery lens");
             Assert(!loaded.Split.HasRung2 && !loaded.Belief.HasRung3, "Rung flags read the content, nothing stored");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreBridgeAndPositionRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var bridge = new BridgeRun { A = "the ring is planted", Z = "the ring is found" };
+            bridge.Rounds[0].Candidates[1] = "she pawns it";
+            bridge.Rounds[0].Picked = "she pawns it";
+            bridge.Rounds.Add(new BridgeRound());
+            document.Bridges.Add(bridge);
+            document.Bridges.Add(new BridgeRun());
+            var position = new PositionRun { Moment = "the dog on the roof" };
+            position.Turns[0].Slot = "Midpoint";
+            position.Turns[0].Alive = "alive";
+            position.Shortlist[0] = "midpoint";
+            document.Positions.Add(position);
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Bridges.Count == 2, "Bridges round-trip; pruning empties is the runner's job, not the store's");
+            Assert(loaded.Bridges[0].Rounds.Count == 2 && loaded.Bridges[0].Rounds[0].Picked == "she pawns it"
+                && loaded.Bridges[0].Rounds[0].Candidates.Count == 3, "Rounds, their three candidates and the picked line round-trip");
+            Assert(loaded.Bridges[1].IsEmpty && !loaded.Bridges[0].IsEmpty, "IsEmpty reads every field");
+            Assert(loaded.Positions.Count == 1 && loaded.Positions[0].Turns[0].Slot == "Midpoint"
+                && loaded.Positions[0].Turns[0].Alive == "alive" && loaded.Positions[0].Shortlist.Count == 2, "Position turns and shortlist round-trip");
+            Assert(new PositionRun().IsEmpty && !position.IsEmpty, "A fresh run is empty; one with a moment is not");
         }
         finally
         {

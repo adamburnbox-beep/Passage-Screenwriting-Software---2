@@ -405,8 +405,8 @@ Open a .fountain file to see formatted pages.</div>
                                 <span class="tool-name">Ideation burst <span class="tool-soon">not built yet</span></span>
                                 <span class="tool-desc">Short timed rounds of fast, throwaway writing from a random prompt. Nothing has to be good; the point is to get words moving. You keep one line at the end.</span>
                             </button>
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Bridge <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="OpenBridgesAsync">
+                                <span class="tool-name">Bridge</span>
                                 <span class="tool-desc">You know two moments that will happen — a start and an end, a setup and its payoff — but not what connects them. Bridge builds the links between them, three guesses at a time.</span>
                             </button>
                         </div>
@@ -433,8 +433,8 @@ Open a .fountain file to see formatted pages.</div>
                     <div class="tool-group">
                         <div class="tool-have">You have a scene but not where it goes — or a gap where a scene should be</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Position <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="OpenPositionsAsync">
+                                <span class="tool-name">Position</span>
                                 <span class="tool-desc">Try a scene you love in each of a story's seven slots and see where it comes alive — what would have to be true before it, and what it would force to happen after.</span>
                             </button>
                             <button class="workshop-tool" @onclick="() => _workshopView = WorkshopView.Brackets">
@@ -588,7 +588,7 @@ Open a .fountain file to see formatted pages.</div>
                             }
                             else
                             {
-                                <button class="btn primary" title="Starts at the first empty answer" @onclick="StartBurstAsync">Go</button>
+                                <button class="btn primary" title="Starts at the first empty answer" @onclick="() => StartBurstAsync(ChainSlotsId)">Go</button>
                             }
                             <span class="burst-display" data-burst-display></span>
                         }
@@ -597,7 +597,7 @@ Open a .fountain file to see formatted pages.</div>
                     {
                         <div class="fill-hint">Five seconds to read the question, then the clock. Enter moves to the next answer; so does the clock running out. Whatever is there when it moves on counts, and you can still go back and add to it.</div>
                     }
-                    <div id="chain-slots" class="chain-slots">
+                    <div id="@ChainSlotsId" class="chain-slots">
                         <label class="fill-field">
                             <span class="fill-label">@(_chain.Path == ChainPath.Woac ? "Character + starting want" : "Character + the flaw")</span>
                             <textarea rows="2" @bind="_chain.Seed" @bind:after="SaveSlate"></textarea>
@@ -662,6 +662,216 @@ Open a .fountain file to see formatted pages.</div>
                         <button class="btn primary" title="Adds it to the script as a synopsis line" @onclick="PromoteReadBackAsync">Put it in the script</button>
                     </div>
                     <div class="fill-meta">@PromotionTargetLabel</div>
+                }
+                else if (_workshopView == WorkshopView.Bridges)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
+                        <span class="sidebar-heading">BRIDGE</span>
+                    </div>
+                    <p class="tool-note">Two fixed points — a planted detail and its payoff, an opening image and the climax, two characters who haven't met yet but will — and nothing between them. Bridge fixes both ends before anything else; that's the whole trick.</p>
+                    <button class="btn primary workshop-hand" @onclick="StartBridgeAsync">Start a new one</button>
+                    @if (_slate.Bridges.Count > 0)
+                    {
+                        <div class="sidebar-heading">KEPT FOR THIS SCRIPT</div>
+                        @foreach (var bridge in _slate.Bridges)
+                        {
+                            <div class="bracket-row">
+                                <button class="bracket-text chain-seed" title="Open — everything is as you left it" @onclick="() => OpenBridgeAsync(bridge)">@BridgeLabel(bridge)</button>
+                                <button class="icon-btn" title="Remove this bridge and its working-out" @onclick="() => RemoveBridge(bridge)">×</button>
+                            </div>
+                        }
+                    }
+                }
+                else if (_bridge is not null && _workshopView == WorkshopView.Bridge)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseBridgeAsync">←</button>
+                        <span class="sidebar-heading">BRIDGE</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">Fix both ends first, then rounds of three candidate links between them. Stop after any round — a picked or half-picked link is a complete session.</p>
+
+                    <div class="rung-label">Fix the ends — don't skip this, the whole tool depends on it</div>
+                    <label class="fill-field">
+                        <span class="fill-label">A — the point you're starting from</span>
+                        <textarea rows="2" @bind="_bridge.A" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <label class="fill-field">
+                        <span class="fill-label">Z — the point you're building to</span>
+                        <textarea rows="2" @bind="_bridge.Z" @bind:after="SaveSlate"></textarea>
+                    </label>
+
+                    <div class="rung-label">Rounds — three candidates each</div>
+                    <p class="tool-note">Write three candidate links, then either pick the one that works, or half-pick one that's close but not quite right. Move to the next round only if the gap still needs more than one link.</p>
+                    <div class="burst-row">
+                        <label class="burst-toggle"><input type="checkbox" @bind="_slate.Burst.Enabled" @bind:after="BurstSettingChangedAsync" /> Time each candidate</label>
+                        @if (_slate.Burst.Enabled)
+                        {
+                            <input type="number" class="burst-seconds" min="5" max="600" @bind="_slate.Burst.Seconds" @bind:after="SaveSlate" />
+                            <span class="fill-meta">seconds</span>
+                            @if (_burstRunning)
+                            {
+                                <button class="btn" @onclick="StopBurstAsync">Stop</button>
+                            }
+                            else
+                            {
+                                <button class="btn primary" title="Starts at the first empty candidate" @onclick="() => StartBurstAsync(BridgeSlotsId)">Go</button>
+                            }
+                            <span class="burst-display" data-burst-display></span>
+                        }
+                    </div>
+                    @if (_slate.Burst.Enabled)
+                    {
+                        <div class="fill-hint">The worksheet gives a round 30 seconds for its three candidates — about 10 each. Five seconds to read, then the clock; Enter moves to the next candidate, and so does the clock running out. Whatever is there counts.</div>
+                    }
+                    <div id="@BridgeSlotsId">
+                        @for (var r = 0; r < _bridge.Rounds.Count; r++)
+                        {
+                            var roundIndex = r;
+                            var round = _bridge.Rounds[roundIndex];
+                            <div class="chain-round">
+                                <div class="chain-round-label">Round @(roundIndex + 1)</div>
+                                @for (var c = 0; c < round.Candidates.Count; c++)
+                                {
+                                    var candidateIndex = c;
+                                    <label class="fill-field">
+                                        <span class="fill-label">Candidate @(candidateIndex + 1)</span>
+                                        <textarea rows="2" data-slot @bind="round.Candidates[candidateIndex]" @bind:after="SaveSlate"></textarea>
+                                    </label>
+                                }
+                                <label class="fill-field">
+                                    <span class="fill-label">Picked / half-picked</span>
+                                    <textarea rows="2" @bind="round.Picked" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                    <button class="btn" @onclick="AddBridgeRound">Another round — the gap still needs more than one link</button>
+                    <div class="fill-meta">No limit — but a gap that needs more than three or four links is probably a whole story's gap, not a scene-to-scene one.</div>
+
+                    <div class="rung-label">Close, whenever you stop</div>
+                    @if (_bridge.Rounds.Any(round => !string.IsNullOrWhiteSpace(round.Picked)))
+                    {
+                        <ol class="chain-forward">
+                            @if (!string.IsNullOrWhiteSpace(_bridge.A))
+                            {
+                                <li class="chain-z">@_bridge.A</li>
+                            }
+                            @foreach (var round in _bridge.Rounds.Where(round => !string.IsNullOrWhiteSpace(round.Picked)))
+                            {
+                                <li>@round.Picked</li>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_bridge.Z))
+                            {
+                                <li class="chain-z">@_bridge.Z</li>
+                            }
+                        </ol>
+                    }
+                    <label class="fill-field">
+                        <span class="fill-label">The wire, read start to finish</span>
+                        <textarea rows="3" @bind="_bridge.Wire" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="stop-callout">If it's a whole story's gap rather than a scene-to-scene one, this burst version isn't the right tool — that's the slower card version, which is Treatment-stage work, and it isn't built here. A→Z→Split is the tool for a whole story's shape.</div>
+                }
+                else if (_workshopView == WorkshopView.Positions)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
+                        <span class="sidebar-heading">POSITION</span>
+                    </div>
+                    <p class="tool-note">A scene, image or line you already have and love, with nowhere to put it yet. Try it in each of the story's seven slots and see where it comes alive.</p>
+                    <button class="btn primary workshop-hand" @onclick="StartPositionAsync">Start a new one</button>
+                    @if (_slate.Positions.Count > 0)
+                    {
+                        <div class="sidebar-heading">KEPT FOR THIS SCRIPT</div>
+                        @foreach (var position in _slate.Positions)
+                        {
+                            <div class="bracket-row">
+                                <button class="bracket-text chain-seed" title="Open — everything is as you left it" @onclick="() => OpenPositionAsync(position)">@(string.IsNullOrWhiteSpace(position.Moment) ? "(no moment written yet)" : position.Moment)</button>
+                                <button class="icon-btn" title="Remove this run and its working-out" @onclick="() => RemovePosition(position)">×</button>
+                            </div>
+                        }
+                    }
+                }
+                else if (_position is not null && _workshopView == WorkshopView.Position)
+                {
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="ClosePositionAsync">←</button>
+                        <span class="sidebar-heading">POSITION</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">Runs one turn at a time. Seven candidate slots exist — the story's seven turns. Do as few or as many as you want: stop after one, or work through all seven in a sitting.</p>
+                    <label class="fill-field">
+                        <span class="fill-label">The moment — the scene, image or line you already have and love, with nowhere to put it yet</span>
+                        <textarea rows="2" @bind="_position.Moment" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <p class="tool-note">Each turn: pick one of the seven slots and ask, <em>if this moment sat right here, what would it need to be true right before it, and what would it force to happen right after?</em> If an answer comes easily and feels like it belongs, that's alive. If you have to force it, or nothing comes, that's flat — not a failure, just proof this isn't the slot.</p>
+                    @for (var t = 0; t < _position.Turns.Count; t++)
+                    {
+                        var turnIndex = t;
+                        var turn = _position.Turns[turnIndex];
+                        <div class="chain-round">
+                            <div class="chain-round-label">Turn @(turnIndex + 1)</div>
+                            <label class="fill-field">
+                                <span class="fill-label">Slot</span>
+                                <select class="workshop-select" @bind="turn.Slot" @bind:after="SaveSlate">
+                                    <option value="">—</option>
+                                    @foreach (var slot in SplitScript.Turns)
+                                    {
+                                        <option value="@slot.Label">@slot.Label@(_position.Turns.Any(other => other != turn && other.Slot == slot.Label) ? " (tried)" : "")</option>
+                                    }
+                                </select>
+                                @if (ScriptTurnHintFor(turn.Slot) is { } inScript)
+                                {
+                                    <span class="fill-hint">In the script: @inScript</span>
+                                }
+                            </label>
+                            <label class="fill-field">
+                                <span class="fill-label">Needs before it</span>
+                                <textarea rows="2" @bind="turn.Before" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            <label class="fill-field">
+                                <span class="fill-label">Forces after it</span>
+                                <textarea rows="2" @bind="turn.After" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            <div class="stress-row">
+                                <span class="fill-hint">Alive or flat?</span>
+                                <AliveFlat @bind-Value="turn.Alive" @bind-Value:after="SaveSlate" />
+                            </div>
+                        </div>
+                    }
+                    @if (_position.Turns.Count < PositionRun.SlotCount)
+                    {
+                        <button class="btn" @onclick="AddPositionTurn">Another turn</button>
+                        <div class="fill-meta">There are only seven slots, so this is the one place in Slate where "keep going" has a natural ceiling.</div>
+                    }
+                    else
+                    {
+                        <div class="fill-meta">All seven slots tried — the one place in Slate where "keep going" has a natural ceiling.</div>
+                    }
+                    <div class="stop-callout">Flat is information — wrong slot, not a wasted turn. More than one alive isn't a problem either — it means you've found candidates, not committed to an answer.</div>
+
+                    <div class="rung-label">Stopping, any turn</div>
+                    <p class="tool-note">Shortlist the strongest one or two alive answers and stop there — Split or Fill picks the winner another day, not this worksheet.</p>
+                    @if (AliveSlots(_position) is { Count: > 0 } alive)
+                    {
+                        <div class="fill-hint">Alive so far: @string.Join(", ", alive)</div>
+                    }
+                    @for (var i = 0; i < _position.Shortlist.Count; i++)
+                    {
+                        var shortlistIndex = i;
+                        <label class="fill-field">
+                            <span class="fill-label">Shortlist @(shortlistIndex + 1)</span>
+                            <textarea rows="2" @bind="_position.Shortlist[shortlistIndex]" @bind:after="SaveSlate"></textarea>
+                        </label>
+                    }
                 }
                 else if (_workshopView == WorkshopView.Split)
                 {
@@ -2682,7 +2892,7 @@ Open a .fountain file to see formatted pages.</div>
         await PersistSessionAsync();
     }
 
-    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain, Split, Belief, Extend }
+    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain, Split, Belief, Extend, Bridges, Bridge, Positions, Position }
 
     private WorkshopView _workshopView;
     private SlateDocument _slate = new();
@@ -2725,6 +2935,18 @@ Open a .fountain file to see formatted pages.</div>
             _workshopView = WorkshopView.Tools;
         }
 
+        _bridge = null;
+        _position = null;
+        if (_workshopView == WorkshopView.Bridge)
+        {
+            _workshopView = WorkshopView.Bridges;
+        }
+
+        if (_workshopView == WorkshopView.Position)
+        {
+            _workshopView = WorkshopView.Positions;
+        }
+
         if (_burstRunning)
         {
             _burstRunning = false;
@@ -2753,6 +2975,8 @@ Open a .fountain file to see formatted pages.</div>
     {
         _slate.Fills.RemoveAll(run => run != _fillRun && IsEmpty(run));
         _slate.Chains.RemoveAll(chain => chain != _chain && chain.IsEmpty);
+        _slate.Bridges.RemoveAll(bridge => bridge != _bridge && bridge.IsEmpty);
+        _slate.Positions.RemoveAll(position => position != _position && position.IsEmpty);
         if (_fileName.Length == 0)
         {
             return;
@@ -2930,6 +3154,8 @@ Open a .fountain file to see formatted pages.</div>
     private bool _burstRunning;
 
     private const int BurstReadInSeconds = 5;
+    private const string ChainSlotsId = "chain-slots";
+    private const string BridgeSlotsId = "bridge-slots";
 
     private static readonly string[] FlawQuestions =
     {
@@ -3044,17 +3270,12 @@ Open a .fountain file to see formatted pages.</div>
     // The timer itself lives in passage.js (decision E, trap 4): focus, read-in,
     // countdown and advance are all client-side. The server hears only that it
     // ended, and gets each answer through the ordinary change events.
-    private async Task StartBurstAsync()
+    private async Task StartBurstAsync(string rootId)
     {
-        if (_chain is null)
-        {
-            return;
-        }
-
         var seconds = Math.Clamp(_slate.Burst.Seconds, 5, 600);
         try
         {
-            _burstRunning = await JS.InvokeAsync<bool>("passage.startBurst", "chain-slots", BurstReadInSeconds, seconds);
+            _burstRunning = await JS.InvokeAsync<bool>("passage.startBurst", rootId, BurstReadInSeconds, seconds);
         }
         catch (JSException)
         {
@@ -3378,6 +3599,154 @@ Open a .fountain file to see formatted pages.</div>
 
         _statusMessage = parts.Count == 0 ? "The script already has all of this" : string.Join("; ", parts);
     }
+
+    // ---- Bridge and Position (Phase 4) ----
+    //
+    // Two small runners, kept per script by what they are about, the same
+    // shape as the chains. Bridge's candidates are burst slots; Position's
+    // seven slots are the script's own seven turns.
+
+    private BridgeRun? _bridge;
+    private PositionRun? _position;
+
+    private static string BridgeLabel(BridgeRun bridge)
+    {
+        var a = string.IsNullOrWhiteSpace(bridge.A) ? "?" : bridge.A.Trim();
+        var z = string.IsNullOrWhiteSpace(bridge.Z) ? "?" : bridge.Z.Trim();
+        return a == "?" && z == "?" ? "(ends not fixed yet)" : $"{a} → {z}";
+    }
+
+    private async Task OpenBridgesAsync()
+    {
+        if (_slate.Bridges.Count == 0)
+        {
+            await StartBridgeAsync();
+            return;
+        }
+
+        _workshopView = WorkshopView.Bridges;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private async Task StartBridgeAsync()
+    {
+        var bridge = new BridgeRun();
+        _slate.Bridges.Add(bridge);
+        await OpenBridgeAsync(bridge);
+    }
+
+    private async Task OpenBridgeAsync(BridgeRun bridge)
+    {
+        if (bridge.Rounds.Count == 0)
+        {
+            bridge.Rounds.Add(new BridgeRound());
+        }
+
+        foreach (var round in bridge.Rounds)
+        {
+            while (round.Candidates.Count < 3)
+            {
+                round.Candidates.Add(string.Empty);
+            }
+        }
+
+        _bridge = bridge;
+        _workshopView = WorkshopView.Bridge;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private async Task CloseBridgeAsync()
+    {
+        await StopBurstAsync();
+        _bridge = null;
+        _workshopView = WorkshopView.Bridges;
+        SaveSlate();
+    }
+
+    private void RemoveBridge(BridgeRun bridge)
+    {
+        _slate.Bridges.Remove(bridge);
+        SaveSlate();
+        _statusMessage = "Removed the bridge";
+    }
+
+    // A round is the writer's call, not the form's: it is added only when the
+    // gap still needs more than one link.
+    private void AddBridgeRound()
+    {
+        _bridge?.Rounds.Add(new BridgeRound());
+        SaveSlate();
+    }
+
+    private async Task OpenPositionsAsync()
+    {
+        if (_slate.Positions.Count == 0)
+        {
+            await StartPositionAsync();
+            return;
+        }
+
+        _workshopView = WorkshopView.Positions;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private async Task StartPositionAsync()
+    {
+        var position = new PositionRun();
+        _slate.Positions.Add(position);
+        await OpenPositionAsync(position);
+    }
+
+    private async Task OpenPositionAsync(PositionRun position)
+    {
+        if (position.Turns.Count == 0)
+        {
+            position.Turns.Add(new PositionTurn());
+        }
+
+        while (position.Shortlist.Count < 2)
+        {
+            position.Shortlist.Add(string.Empty);
+        }
+
+        _position = position;
+        _workshopView = WorkshopView.Position;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private Task ClosePositionAsync()
+    {
+        _position = null;
+        _workshopView = WorkshopView.Positions;
+        SaveSlate();
+        return Task.CompletedTask;
+    }
+
+    private void RemovePosition(PositionRun position)
+    {
+        _slate.Positions.Remove(position);
+        SaveSlate();
+        _statusMessage = "Removed the run";
+    }
+
+    private void AddPositionTurn()
+    {
+        if (_position is not null && _position.Turns.Count < PositionRun.SlotCount)
+        {
+            _position.Turns.Add(new PositionTurn());
+        }
+
+        SaveSlate();
+    }
+
+    private string? ScriptTurnHintFor(string slotLabel)
+    {
+        var index = Array.FindIndex(SplitScript.Slots, slot => slot.Label == slotLabel);
+        return index < 0 ? null : ScriptTurnHint(index);
+    }
+
+    private static List<string> AliveSlots(PositionRun position) =>
+        position.Turns.Where(turn => turn.Alive == "alive" && !string.IsNullOrWhiteSpace(turn.Slot)).Select(turn => turn.Slot).ToList();
 
     // Scripts can be deleted from the volume outside the app. A sidecar left
     // behind is dropped on load and said so, the same way stale recent-files
