@@ -401,8 +401,8 @@ Open a .fountain file to see formatted pages.</div>
                     <div class="tool-group">
                         <div class="tool-have">You have nothing yet — no idea, or just a scrap of one</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Ideation burst <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="OpenIdeationAsync">
+                                <span class="tool-name">Ideation burst</span>
                                 <span class="tool-desc">Short timed rounds of fast, throwaway writing from a random prompt. Nothing has to be good; the point is to get words moving. You keep one line at the end.</span>
                             </button>
                             <button class="workshop-tool" @onclick="OpenBridgesAsync">
@@ -1436,6 +1436,116 @@ Open a .fountain file to see formatted pages.</div>
         <span class="status-message">@_statusMessage</span>
     </footer>
 </div>
+
+@if (_ideationOpen && _ideation is not null)
+{
+    <div class="ideation-overlay">
+        <div class="ideation-page">
+            <div class="workshop-nav">
+                <button class="btn" title="Close — keeps the sitting as it is" @onclick="CloseIdeationAsync">×</button>
+                <span class="sidebar-heading">IDEATION BURST</span>
+            </div>
+            @if (_ideationLoadError is not null)
+            {
+                <div class="fill-meta">@_ideationLoadError — nothing here will be saved until it is fixed.</div>
+            }
+            @if (_ideation.Current is null)
+            {
+                <p class="tool-note">Rapid-fire, throwaway writing from a prompt. Nothing here is about your script — invented material, or something borrowed from a film you don't much like, never your own characters. One round is a complete session. Keep rolling new rounds for as long as you want more.</p>
+                <div class="rung-label">Pick your lane (10 seconds)</div>
+                <p class="tool-note">Roll a die, pick a number at random, or just pick one. Don't deliberate — deliberating isn't the drill. Stay on the same lane for the whole sitting; re-roll only when you come back another time.</p>
+                <button class="btn primary workshop-hand" @onclick="RollLane">Roll</button>
+                <div class="tool-paths">
+                    @for (var i = 0; i < Lanes.Length; i++)
+                    {
+                        var laneIndex = i;
+                        <button class="workshop-tool" @onclick="() => StartSitting(laneIndex + 1)">
+                            <span class="tool-name">@(laneIndex + 1). @Lanes[laneIndex].Name</span>
+                        </button>
+                    }
+                </div>
+                @if (_ideation.Kept.Count > 0)
+                {
+                    <div class="rung-label">Lines kept</div>
+                    @foreach (var line in _ideation.Kept.ToList())
+                    {
+                        <div class="bracket-row">
+                            <span class="bracket-text chain-seed kept-line">@line</span>
+                            <button class="icon-btn" title="Let it go" @onclick="() => DropKeptLine(line)">×</button>
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                var sitting = _ideation.Current;
+                var lane = Lanes[Math.Clamp(sitting.Lane, 1, Lanes.Length) - 1];
+                <div class="rung-label">Lane @sitting.Lane — @lane.Name</div>
+                <p class="tool-note">@lane.Prompt</p>
+                @if (sitting.Lane == Lanes.Length)
+                {
+                    <div class="fill-hint">Three steps is enough for a round here — the full eight-question chain is the Character Flaw Brainstorm in Writer's Tools, if you want to take this one further.</div>
+                }
+                <div class="fill-hint">Read it once, then start the round — don't re-read mid-round.</div>
+                <div class="stop-callout">The only failure state is silence.</div>
+
+                <div class="burst-row">
+                    <span class="fill-hint">Rounds of</span>
+                    <input type="number" class="burst-seconds" min="10" max="600" @bind="_ideation.RoundSeconds" @bind:after="SaveIdeation" />
+                    <span class="fill-meta">seconds</span>
+                </div>
+                <p class="tool-note">Write the input, work it for the round, move on whether or not it feels finished.</p>
+                @for (var r = 0; r < sitting.Rounds.Count; r++)
+                {
+                    var roundIndex = r;
+                    var round = sitting.Rounds[roundIndex];
+                    var roundId = $"ideation-round-{roundIndex}";
+                    <div class="chain-round" id="@roundId">
+                        <div class="chain-round-label">Round @(roundIndex + 1)</div>
+                        <label class="fill-field">
+                            <span class="fill-label">Input</span>
+                            <textarea rows="2" @bind="round.Input" @bind:after="SaveIdeation"></textarea>
+                        </label>
+                        <div class="burst-row">
+                            @if (_burstRunning)
+                            {
+                                <button class="btn" @onclick="StopBurstAsync">Stop</button>
+                            }
+                            else
+                            {
+                                <button class="btn primary" title="Puts the caret in the output and starts the round" @onclick="() => StartRoundAsync(roundId)">Start the round</button>
+                            }
+                            <span class="burst-display" data-burst-display></span>
+                        </div>
+                        <label class="fill-field">
+                            <span class="fill-label">Output</span>
+                            <textarea rows="5" data-slot data-slot-multiline @bind="round.Output" @bind:after="SaveIdeation"></textarea>
+                        </label>
+                        @if (!string.IsNullOrWhiteSpace(round.Output))
+                        {
+                            <div class="fill-actions">
+                                <button class="btn" title="Copies this output into the kept line below" @onclick="() => KeepFromRound(round)">Keep a line from this</button>
+                            </div>
+                        }
+                    </div>
+                }
+                <button class="btn" @onclick="AddIdeationRound">Next round</button>
+                <div class="fill-meta">No limit.</div>
+
+                <div class="rung-label">Stopping, any round</div>
+                <p class="tool-note">Circle one line above worth keeping. Just one. You don't have to know why yet. That's a complete session, whether it was one round or fifteen.</p>
+                <label class="fill-field">
+                    <span class="fill-label">Kept line</span>
+                    <textarea rows="2" @bind="sitting.KeptLine" @bind:after="SaveIdeation"></textarea>
+                </label>
+                <div class="fill-actions">
+                    <button class="btn primary" title="Files the kept line and clears the rounds" @onclick="FinishSittingAsync">Done for this sitting</button>
+                </div>
+                <div class="stop-callout">Thirty seconds, on your phone, in a queue at Woolworths. That is a real session and it counts. One round of that is enough on its own.</div>
+            }
+        </div>
+    </div>
+}
 
 @if (_saveAsOpen)
 {
@@ -4071,6 +4181,155 @@ Open a .fountain file to see formatted pages.</div>
         {
             _burstRunning = false;
         }
+    }
+
+    // ---- Ideation burst (Phase 6) ----
+    //
+    // The one tool that is not about the script: a full-screen overlay with
+    // nothing else on it, and its own file under .slate. The rounds are
+    // throwaway; the kept line is the output.
+
+    private bool _ideationOpen;
+    private IdeationDocument? _ideation;
+    private string? _ideationLoadError;
+
+    private static readonly (string Name, string Prompt)[] Lanes =
+    {
+        ("Noise-seed", "Grab the nearest object, headline, or image within reach. Whatever it is, it forces the premise. \"This is now load-bearing in the story. How?\""),
+        ("Grievance-to-premise", "Something that angered or moved you this month. Name it in one line, then: \"A character's whole fight, right now, is this.\""),
+        ("Branch-from-catastrophe", "One fixed event. Then five continuations from it — mutually exclusive, all kept alive, none crossed out."),
+        ("Situation collision", "Two unrelated fragments — anything, don't cherry-pick for compatibility — forced into one scene."),
+        ("Metaphor method", "Pick a noun. List its qualities. Ask what else has those qualities. Splice."),
+        ("Adversarial interrogation", "A character who won't open up to a plain question. Write both sides of a confrontation instead — force the answer out of them."),
+        ("Voice journal", "Become the character. Talk as them, out loud or typed as if out loud. Don't plan what you'll say, don't stop."),
+        ("Stock-character improv", "A random stock type (the villain, the sidekick, the ingenue — pick blind). Ninety seconds in their voice, no editing."),
+        ("Cheap champagne", "Two voices talking, no attribution, no punctuation rules. Most of it is expected to be thrown away — that's fine, that's the point."),
+        ("Character Flaw Brainstorm", "One fixed character flaw. Run it through: worst situation it causes → their first (wrong) response → how that backfires.")
+    };
+
+    private async Task OpenIdeationAsync()
+    {
+        if (_ideation is null)
+        {
+            _ideationLoadError = null;
+            try
+            {
+                _ideation = Slate.LoadIdeation() ?? new IdeationDocument();
+            }
+            catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+            {
+                // Left on disk untouched, as with a script's sidecar.
+                _ideation = new IdeationDocument();
+                _ideationLoadError = $"Ideation data could not be read: {exception.Message}";
+            }
+        }
+
+        _ideationOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task CloseIdeationAsync()
+    {
+        await StopBurstAsync();
+        _ideationOpen = false;
+        SaveIdeation();
+    }
+
+    private void SaveIdeation()
+    {
+        if (_ideation is null)
+        {
+            return;
+        }
+
+        if (_ideationLoadError is not null)
+        {
+            _statusMessage = "Not saving ideation data — " + _ideationLoadError;
+            return;
+        }
+
+        try
+        {
+            Slate.SaveIdeation(_ideation);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _statusMessage = $"Could not save ideation data: {exception.Message}";
+        }
+    }
+
+    private void RollLane() => StartSitting(Random.Shared.Next(1, Lanes.Length + 1));
+
+    private void StartSitting(int lane)
+    {
+        if (_ideation is null)
+        {
+            return;
+        }
+
+        _ideation.Current = new IdeationSitting { Lane = lane };
+        SaveIdeation();
+    }
+
+    private async Task StartRoundAsync(string roundId)
+    {
+        if (_ideation is null)
+        {
+            return;
+        }
+
+        var seconds = Math.Clamp(_ideation.RoundSeconds, 10, 600);
+        try
+        {
+            _burstRunning = await JS.InvokeAsync<bool>("passage.startBurst", roundId, BurstReadInSeconds, seconds);
+        }
+        catch (JSException)
+        {
+            _burstRunning = false;
+        }
+    }
+
+    private void AddIdeationRound()
+    {
+        _ideation?.Current?.Rounds.Add(new IdeationRound());
+        SaveIdeation();
+    }
+
+    private void KeepFromRound(IdeationRound round)
+    {
+        if (_ideation?.Current is null)
+        {
+            return;
+        }
+
+        _ideation.Current.KeptLine = round.Output.Trim();
+        SaveIdeation();
+    }
+
+    // The sitting ends: the kept line is filed, the rounds are not. Don't
+    // review — the worksheet says skim later, not in the same sitting.
+    private async Task FinishSittingAsync()
+    {
+        if (_ideation?.Current is null)
+        {
+            return;
+        }
+
+        await StopBurstAsync();
+        var kept = _ideation.Current.KeptLine.Trim();
+        if (kept.Length > 0)
+        {
+            _ideation.Kept.Add(kept);
+        }
+
+        _ideation.Current = null;
+        SaveIdeation();
+    }
+
+    private void DropKeptLine(string line)
+    {
+        _ideation?.Kept.Remove(line);
+        SaveIdeation();
     }
 
     // Scripts can be deleted from the volume outside the app. A sidecar left

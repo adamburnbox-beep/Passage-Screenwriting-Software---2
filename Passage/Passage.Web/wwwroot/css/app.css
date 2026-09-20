@@ -1263,6 +1263,55 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     cursor: help;
 }
 
+/* Ideation burst: full screen, nothing else on it (SLATE-PLAN decision A).
+   The page is a single column the width of the dock's content. */
+.ideation-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: var(--surface-background);
+    overflow-y: auto;
+}
+
+.ideation-page {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 16px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ideation-page textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+}
+
+.ideation-page textarea:focus { border-color: var(--control-accent); }
+
+.ideation-page .burst-seconds {
+    width: 64px;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.kept-line { cursor: default; }
+
 /* The countdown: a number, nothing else. Cleared when the run ends. */
 .burst-display {
     min-width: 3em;

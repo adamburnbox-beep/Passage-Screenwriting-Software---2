@@ -5,25 +5,25 @@
 State of play for the Writer's Tools work in `Passage.Web` (internally "Slate",
 after the vault system it comes from), written for the next agent. Read this,
 then `CLAUDE.md`, `PROJECT_RULES.md`, and `docs/SLATE-PLAN.md` — in that
-order — before touching anything. Everything below is as of the Phase 5
-commit on branch `web-scope`, 2026-09-20.
+order — before touching anything. Everything below is as of the Phase 6
+commit on branch `web-scope`, 2026-09-20, which is on GitHub as PR #13.
 
 ---
 
 ## The one-paragraph version
 
 The writer (Adam) has a set of writing-block exercises in his Obsidian vault
-("the Slate"). We are bringing the *tools* — not the board, not the practice —
-into the web app as a right-hand dock called **Writer's Tools**. Six of
-seven phases are built: the foundations (sidecar storage, the dock), **Fill**,
-which finds `[SOMETHING happens]` placeholders in a script and walks the
-writer through resolving one, the **forward chain** (WOAC and the Character
-Flaw Brainstorm, with the first burst timer), the **Split family**
-(A→Z→Split, which writes the eight-sequence shape into the script for the
-Board; Belief Split; Extend Backward) with the shape line in the status bar,
-**Bridge and Position**, and **Push/Pull and Lens**. Only Ideation burst
-(Phase 6) is still "not built yet"; Phase 7, the model seam, is deliberately
-last and probably not wanted. PR #13 on GitHub carries the whole branch.
+("the Slate"). We brought the *tools* — not the board, not the practice —
+into the web app as a right-hand dock called **Writer's Tools**, plus one
+full-screen overlay. **All six tool phases are built and verified**: the
+foundations, Fill, the forward chain (WOAC and Character Flaw Brainstorm),
+the Split family (A→Z→Split, Belief Split, Extend Backward), Bridge and
+Position, Push/Pull and Lens, and Ideation burst. The only unbuilt row is
+Phase 7, the model-assist seam, which the plan deliberately puts last and
+argues against building until it is actually wanted. **There is no next tool
+to build.** What comes next is Adam using the tools for real and reporting
+back; the next agent's work is most likely fixes and copy changes from that,
+not new runners.
 
 ---
 
@@ -31,155 +31,109 @@ last and probably not wanted. PR #13 on GitHub carries the whole branch.
 
 | Thing | Path |
 | --- | --- |
-| The plan — phases, decisions, Rule 0, status per row | `docs/SLATE-PLAN.md` (**source of truth for remaining work; update the row in the same session as the change**) |
+| The plan — phases, decisions, Rule 0, status and Done/Deviation notes per row | `docs/SLATE-PLAN.md` (**source of truth; update the row in the same session as any change**) |
 | Copy-paste prompt per phase | `docs/SLATE-SESSIONS.md` |
-| Sidecar store | `Passage/Passage.Web/Services/SlateStore.cs` |
+| Sidecar store and every run's record type | `Passage/Passage.Web/Services/SlateStore.cs` |
 | Placeholder scanner | `Passage/Passage.Parser/BracketScanner.cs` (+ `FountainMarkup.MaskOmissions`) |
-| Dock markup, views, handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~545–660; Bridge / Position views ~660–880; Revise views ~876–1080; Split / Belief / Extend views ~1082–1420; handlers from `// ---- Writer's tools dock` ~3090, `// ---- Forward chain` ~3360, `// ---- The Split family` ~3590, `// ---- Bridge and Position` ~3820, `// ---- Push/Pull and Lens` ~3960 |
-| Synopsis placement (promotion target) | `Passage/Passage.Web/Services/SynopsisPlacement.cs` |
-| Split write-back and turn-line parsing | `Passage/Passage.Web/Services/SplitScript.cs` |
+| Synopsis placement (chain promotion, "scene under the caret") | `Passage/Passage.Web/Services/SynopsisPlacement.cs` |
+| Split write-back and `= Turn: text` parsing | `Passage/Passage.Web/Services/SplitScript.cs` |
 | Shape line | `Passage/Passage.Web/Services/ShapeLine.cs` |
-| Alive / flat pills | `Passage/Passage.Web/Components/AliveFlat.razor` |
-| Client-side pieces | `Passage/Passage.Web/wwwroot/js/passage.js` — `applyWorkshopWidth` / `initWorkshopResize` ~125, `replaceInLine` ~540, `insertLinesAt` ~556, `scrollToLine(line, focus)`, burst timer `startBurst` / `stopBurst` after `focusEditor` ~960 |
-| Styles | `Passage/Passage.Web/wwwroot/css/app.css` from `/* ---- Writer's tools dock` ~954 |
+| Alive / flat and Y / N pills | `Passage/Passage.Web/Components/AliveFlat.razor` |
+| Dock markup and all handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~548; Bridge / Position ~666; Revise ~876; Split / Belief / Extend ~1082; the ideation overlay `@if (_ideationOpen` ~1440; handlers from `// ---- Writer's tools dock` ~3200, then `// ---- Forward chain` ~3470, `// ---- The Split family` ~3700, `// ---- Bridge and Position` ~3930, `// ---- Push/Pull and Lens` ~4070, `// ---- Ideation burst` ~4190 |
+| Client-side pieces | `Passage/Passage.Web/wwwroot/js/passage.js` — `applyWorkshopWidth` / `initWorkshopResize` ~125, `scrollToTop`, `replaceInLine` ~545, `insertLinesAt` ~561, `scrollToLine(line, focus)`, burst timer `startBurst` / `stopBurst` ~976 |
+| Styles | `Passage/Passage.Web/wwwroot/css/app.css` from `/* ---- Writer's tools dock` ~954 (chain, split, burst, ideation overlay sections follow) |
 | Tests | `Passage/Passage.Tests/Program.cs` — `TestBracketScanner*`, `TestSlateStore*`, `TestSynopsisPlacement`, `TestSplitScript*`, `TestShapeLine*` (the test project references `Passage.Web`) |
 | Source material (the spec for every tool's text) | `/home/arosa/Sync/Obsidian Vault/Story/Slate/` — five live files in `Worksheets/` (the numbered Short/Medium/Long files are stubs), `How the Slate Works.md`, `loosening-up-practice.md`, `engines.md` |
 
+`Editor.razor` is now ~4,400 lines. Read the ranges above, not the file.
+
 ---
 
-## What's built
+## What's built, in one line each
 
-### Phase 0 — foundations (`42bfa92`)
+Every row's full Done and Deviations notes are in `SLATE-PLAN.md`; this is
+the map.
 
-- `SlateStore`: `<data>/.slate/<validated script name>.json`, `slateVersion: 1`.
-  Keys go through `ScriptLibrary.TryValidateName`. Delete cascades; orphans are
-  pruned on the first interactive render with a status message. A sidecar
-  that fails to parse is left alone and saves are refused with a status line.
-- The dock: collapsible (`TOOLS` button in the topbar), drag-resizable, both
-  persisted in the existing `passage.session.v1` localStorage key. Below 900px
-  it covers the main area (the tools are meant to work from a phone).
+- **Phase 0 — foundations.** `SlateStore`: `<data>/.slate/<validated script
+  name>.json`, `slateVersion: 1`, orphans pruned on the first interactive
+  render with a status line, a corrupt sidecar left alone and saves refused.
+  The dock: `TOOLS` button, drag-resizable, persisted in `passage.session.v1`;
+  below 900px it covers the main area.
+- **Phase 1 — Fill.** `BracketScanner` ranks `[SOMETHING …]` spans; "Hand
+  me one"; the worksheet; **Fill it** replaces the span via `replaceInLine`
+  and hands the next. A run is dropped on accept.
+- **Phase 2 — forward chain.** `Chains` per script by seed line. WOAC round
+  ≥ 2 stores no Want — it reads the previous Consequence live. The burst
+  timer (decision E) in `passage.js`. "Read it back" promotes one line as a
+  `=` synopsis under the nearest heading above the caret
+  (`SynopsisPlacement`).
+- **Phase 3 — Split family.** One `Split` / `Belief` / `Extend` run per
+  script; belief cuts shared. Rungs behind "Keep going" buttons under the
+  worksheet's stop-callouts. *Write the shape into the script* appends four
+  acts / eight sequences with `= Turn: text` lines and brackets for unknown
+  turns (`SplitScript`); *Update* fills only bracketed turns in place. Shape
+  line in the status bar from `ShapeLine.Derive(BoardLanes)`.
+- **Phase 4 — Bridge and Position.** `Bridges` by "A → Z", candidates as
+  burst slots, wire read forward; `Positions` by the moment, slot select
+  over `SplitScript.Turns` with the script's own turn text beneath, seven
+  turns is the ceiling.
+- **Phase 5 — Push/Pull and Lens.** `Revisions` by scene; *Use the scene
+  under the caret*; six checks with Y/N; a **Y** opens that check's own Lens
+  (seven lenses, `LensMinutes` clock on the fragment alone, multiline slot);
+  diagnostic Belief Split and read-back behind buttons.
+- **Phase 6 — Ideation burst.** `.slate/ideation.json`, belongs to no
+  script, skipped by the orphan sweep. Full-screen overlay: roll or pick a
+  lane, locked for the sitting; rounds of Input + timed Output; *Done for
+  this sitting* files the one kept line and drops the rounds.
 
-### Phase 1 — Fill (`de4884d`, revised in `b15b95c`, `4cc1c84`)
+## Patterns every tool follows
 
-- `BracketScanner.Scan(text)` → ranked `Bracket(LineIndex, Column, Text, Rank)`.
-  Rank 0 = all caps or opens with SOMETHING / CONDITION / TODO; rank 1 = the
-  rest, still listed. Every line is scanned. `Text` is the span as written,
-  brackets and padding included — it is what the replacement matches.
-- `DocumentAnalysis.Brackets`, derived on every parse, never stored.
-- BRACKETS view: "Hand me one" (round-robin over non-ignored, ranked
-  brackets; cursor resets on any queue change), then the list with jump /
-  Fill / ignore per row. Ignored brackets are struck through, restorable.
-- FILL view: the worksheet's text, three candidate rows, "what the wrongness
-  points to", the escape-hatch answer field. Every field change saves the
-  run to the sidecar keyed by bracket text. **Fill it** replaces the span via
-  `passage.replaceInLine`, which matches by text on the named line and
-  returns false if the bracket has gone — undo/redo verified by hand. On
-  success the next bracket is handed straight away.
+Copy these, don't reinvent them.
 
-### Phase 2 — Forward chain
-
-- `SlateDocument.Chains` (`ChainRun`: `Path` Woac | Flaw, `Seed`, `Rounds`
-  or `Answers`, `ReadBack`) and `SlateDocument.Burst` (`Enabled`, `Seconds`).
-- A WOAC round ≥ 2 has no stored Want: the view shows the previous round's
-  Consequence live. Writing a consequence in the last round appends the next.
-- Burst timer (decision E) is now built, in `passage.js`: slots are
-  `textarea[data-slot]` in DOM order; 5 s read-in, then the clock; Enter or
-  expiry advances; a MutationObserver waits up to 2 s for Blazor to add the
-  next round. Off by default, 30 s when on, per script.
-- Promotion inserts `= line` under the nearest heading above the caret via
-  `insertLinesAt`; `SynopsisPlacement.Find` decides where and the runner
-  says so before the tap. Undo verified.
-- See the row's Done and Deviations notes in `SLATE-PLAN.md` for the rest,
-  including why neither the promote button nor Fill's "Fill it" is ever
-  disabled.
-
-### Phase 3 — The Split family
-
-- `SlateDocument.Split` / `Belief` / `Extend`, one each per script. The
-  five belief cuts live in `Belief.Cuts` and Split's optional layer edits
-  the same ones.
-- Rungs below the current one are behind a "Keep going" button under the
-  worksheet's stop-callout; a rung with text is open already.
-- "Write the shape into the script" appends four acts / eight sequences
-  with `= Turn: text` lines and brackets for unknown turns; "Update" after
-  that fills only bracketed turns in place and names turns the script
-  already has. `SplitScript` is the single definition of those lines.
-- The shape line (`ShapeLine.Derive`) is derived from `BoardLanes` on every
-  render of the status bar and shown only when a Sequence exists.
-- See the row's Done and Deviations notes in `SLATE-PLAN.md`.
-
-### Phase 4 — Bridge and Position
-
-- `SlateDocument.Bridges` / `Positions`, kept per script, listed by "A → Z"
-  and by the moment. Same list-or-open shape as the chains.
-- Bridge's candidates are burst slots under `#bridge-slots`;
-  `StartBurstAsync(rootId)` takes the root now.
-- Position's slot select is `SplitScript.Turns`, with the script's own
-  synopsis for that turn shown beneath. Seven turns is a hard ceiling.
-- See the row's Done and Deviations notes in `SLATE-PLAN.md`.
-
-### Phase 5 — Push/Pull and Lens
-
-- `SlateDocument.Revisions`, kept per script by the scene or stretch.
-- A flagged check (Y) opens its own Lens block; N opens nothing. The Lens
-  clock is `BurstSettings.LensMinutes` on a root holding only the fragment
-  (`#lens-slot-N`), and the fragment is a `data-slot-multiline` slot, so
-  Enter is a line break there.
-- `startBurst` now finds its display inside the root first — more than one
-  `[data-burst-display]` can be on the page at once.
-- See the row's Done and Deviations notes in `SLATE-PLAN.md`.
-
-### Decisions made in conversation that the plan now records
-
-- **Name:** "Writer's Tools" in the UI. `Slate` stays in identifiers, the
-  sidecar directory and the doc filenames.
-- **Dock top level** is *"what have you got"* — five situations, the tools
-  under each, every tool with a plain-language description. See the **copy
-  rule** in `SLATE-PLAN.md` decision A: written for someone who has never
-  seen the vault and may never have written anything; no filler, no slogans.
-  Adam called out one generated-sounding line within minutes of seeing it.
-- **Decision E — burst timers:** ready (input focused *before* anything
-  counts) → read-in countdown (~5s) → write (the real timer; Enter commits
-  and moves to the next slot) → done (slots filled, or expiry, which only
-  advances). All client-side. Built in Phase 2; Phase 6 should reuse
-  `startBurst` rather than write another. Adam said "10 seconds for three
-  ideas"; the vault says 30-second bursts — the default is 30 and the
-  number is his to change in the runner; not yet settled with him.
-- **The worksheets are the spec** for each runner's text, verbatim or near
-  it. The 2026-09-20 review found the first runner had paraphrased them
-  thinner and Adam noticed. Read the worksheet in the vault before building
-  its tool.
-- **Save As / .docx export:** dropped. Not needed.
-- **Plan corrections from the worksheet review:** the Lens is pick-one inside
-  Revise (Phase 5), not a rolled standalone tool; Situation collision needs no
-  corpus; Revise's read-back fields are in scope.
+- **Record type in `SlateDocument`**, saved on every `@bind:after="SaveSlate"`.
+  Per-script tools that can run more than once per script (chains, bridges,
+  positions, revisions) are a `List<>` shown as a list keyed by what the run
+  is about — never a date — with "Start a new one" on top; empty runs are
+  pruned in `SaveSlate`. Opening a tool with nothing kept goes straight into
+  a new run. One-per-script tools (the Split family) open directly.
+- **A `WorkshopView` enum value per view**, a "← back" that keeps state, and
+  `ScrollWorkshopToTopAsync()` on open (a flag `OnAfterRenderAsync` acts on).
+- **Every write into the script is ranged**: `replaceInLine` (matches by
+  text, returns false if gone), `insertLinesAt`, `replaceLineRange`. Never
+  `ReplaceEditorContentAsync`. Mirror the edit into `_content` and
+  `RunAnalysis()` afterwards. Undo verified by hand every time.
+- **Timers**: `passage.startBurst(rootId, readIn, seconds)` over the
+  `textarea[data-slot]` elements under the root, in DOM order, starting at
+  the first empty one; Enter or expiry advances; a `data-slot-multiline`
+  slot keeps Enter as a line break; the display is `[data-burst-display]`
+  inside the root. Blazor hears only `OnBurstEnded`. `_burstRunning` is one
+  flag for the whole page — one run at a time.
+- **Copy rule** (decision A): the worksheets' words, near-verbatim. Stop
+  callouts are `.stop-callout`. Labels are the worksheet's labels. Adam
+  notices generated-sounding lines within minutes.
+- **Never a disabled button that reads a field just typed**: the change
+  event and the tap travel together. Leave it enabled; put "nothing to do"
+  in the status line.
 
 ---
 
 ## What's next
 
-Adam wants to test the other tools. Build them **one per session, in this
-order**, each with its own commit and its own row update in `SLATE-PLAN.md`:
+Nothing is scheduled. In order of likelihood:
 
-1. **Phase 6 — Ideation burst**, full-screen overlay, on `startBurst` with
-   90-second rounds (Input is not a slot; Output is, multiline). Lane 10
-   points at the Character Flaw Brainstorm (Phase 2) rather than repeating
-   it. Output goes to a sidecar keyed to no script — `SlateStore` needs a
-   key for that (e.g. a fixed name under `.slate/` that
-   `PruneOrphans` must skip).
-2. Phase 7, the model seam, is deliberately last and probably not wanted yet.
-
-Each session: read Rule 0 again, read the worksheet in the vault, use the
-prompt in `SLATE-SESSIONS.md`. Every runner: no required fields, closable at
-any point with state kept, no progress indicators, no history view, and every
-write into the script through a ranged operation (`replaceInLine`,
-`insertLinesAt`, `replaceLineRange`) — never `ReplaceEditorContentAsync`.
-
-Shape to copy: each tool is a `WorkshopView` with its record type in
-`SlateDocument`, saved on every `@bind:after`, and a "← back" that keeps
-state. The Fill runner is the reference for a tool aimed at one thing in
-the script; the chain runner is the reference for a kept-per-script run
-with a list, a timer and a promotion.
+1. **Fixes and copy from real use.** Adam has not yet used any of this from
+   a phone for a real session. Expect wording changes, field sizes, and the
+   odd flow that reads fine but feels wrong in the hand. Treat each as a
+   small session: read the row, change it, update the row's notes, commit.
+2. **The burst timer's default seconds.** 30 (the vault's number) versus
+   Adam's "10 seconds for three ideas". Configurable in every runner that
+   uses it; the default was never settled with him.
+3. **Phase 7 — the assist seam.** Only if Adam asks. The plan's own pushback
+   (rule 2, speculative abstraction) still stands; the records are already
+   the shape an assist would need.
+4. **The scope question** in `SLATE-PLAN.md` "The honest risk": whether the
+   board should come across from Obsidian after all. That is Adam's call
+   after using the tools, not something to build unasked.
 
 ---
 
@@ -187,44 +141,40 @@ with a list, a timer and a promotion.
 
 - **The `dotnet` on `PATH` is broken.** `/usr/bin/dotnet` is a stray
   `dotnet-host-10.0` apt package with no runtime under it. The real SDK is
-  `~/.dotnet/dotnet` (9.0 and 10.0). Adam has since appended
-  `~/.dotnet` to `PATH` in `.bashrc`, but in any shell that predates that,
-  or in your Bash tool, use the full path or `export PATH="$HOME/.dotnet:$PATH"`.
-- **Run as Development.** `Properties/launchSettings.json` (added `a79f460`)
-  sets it and port 5210. Running as Production outside a publish serves
-  static files as empty responses to browsers that ask for gzip — the page
-  renders unstyled and never connects. The Docker build is unaffected.
-- **A server may already be running.** Check with `pgrep -af Passage.Web`;
-  `pkill -f Passage.Web` stops it. The Phase 2 session ran it through the
-  agent browser's `preview_start` (`passage-web`), which stops with the
-  session. It does **not** hot-reload — rebuild and restart after every
-  change. Static files (`passage.js`, `app.css`) do pick up on reload.
-- **Preview in the agent browser:** `.claude/launch.json` (untracked, has a
-  machine-specific path) defines `passage-web` on 5210 and `passage-web-alt`
-  on 5211 — use the alt one when Adam's server holds 5210.
+  `~/.dotnet/dotnet` (9.0 and 10.0). In your Bash tool use the full path or
+  `export PATH="$HOME/.dotnet:$PATH"`.
+- **Build:** `dotnet build Passage.Web.slnf` (must be warning-free —
+  `TreatWarningsAsErrors`). **Tests:** `DOTNET_ROLL_FORWARD=Major dotnet run
+  --project Passage/Passage.Tests/Passage.Tests.csproj`.
+- **Run as Development.** `Properties/launchSettings.json` sets it and port
+  5210. Production outside a publish serves static files empty to browsers
+  that ask for gzip — the page renders unstyled and never connects.
+- **Adam runs his own server on 5210**, from his terminal, with the absolute
+  path: `~/.dotnet/dotnet run --project ~/"Code
+  Projects/passage-web/Passage/Passage.Web/Passage.Web.csproj"`. It does
+  **not** hot-reload; he has to restart it to see a new build. Check with
+  `pgrep -af Passage.Web` before assuming the port is free. **For your own
+  verification use the agent browser's `preview_start` with
+  `passage-web-alt`** (`.claude/launch.json`, untracked, port 5211) so his
+  server is untouched; stop it when you're done or his next start fails
+  with "address already in use". Both servers share the same dev data.
 - **Dev data** lives at `Passage/Passage.Web/bin/Debug/net9.0/data/` (there is
-  no `/data` on this machine). `fill-test.fountain` there has four brackets
-  for testing, and a Push/Pull run on EXT. GARDEN in its sidecar;
-  `split-test.fountain` holds a written shape with six bracketed turns and
-  Split, Bridge and Position runs in its sidecar. Sidecars are in `.slate/`
-  beside it.
-- **Git shows ~140 files modified.** Those are exec-bit flips from the
-  filesystem, not content. Commit with `git -c core.fileMode=false add <paths>`
-  and `git -c core.fileMode=false commit`; never `git add -A`. Commits end
-  with the `Co-Authored-By` line the session gives you.
-- Build: `dotnet build Passage.Web.slnf` (must be warning-free —
-  `TreatWarningsAsErrors`). Tests: `dotnet run --project
-  Passage/Passage.Tests/Passage.Tests.csproj`.
-- **The agent browser's "Return" key sends an empty `key`.** Use
-  `key: "Enter"` when testing anything that listens for Enter, or the
-  handler will look broken when it is not. Its `type` also lands a beat
-  after a click that causes a Blazor round-trip; check state after a wait.
+  no `/data` on this machine). `fill-test.fountain` has four brackets and a
+  Push/Pull run in its sidecar; `split-test.fountain` holds a written shape
+  with six bracketed turns and Split, Bridge and Position runs. Sidecars are
+  in `.slate/` beside them, `ideation.json` too.
+- **Git shows ~150 files modified.** Those are exec-bit flips from the
+  filesystem, not content. Commit with `git -c core.fileMode=false add
+  <paths>` and `git -c core.fileMode=false commit`; never `git add -A`.
+  Commits end with the `Co-Authored-By` line the session gives you. Push to
+  `origin web-scope`; PR #13 (web-scope → main) picks it up — update its
+  description with `gh pr edit 13 --body-file -` when a phase lands.
 
 ---
 
-## Verifying a tool
+## Verifying a change
 
-The minimum bar for calling a runner done, all checked by hand in a browser:
+The minimum bar, all checked by hand in a browser:
 
 1. Open it from the dock at phone width (375px) and at desktop width.
 2. Type into it, press ←, reopen: the text is still there.
@@ -250,18 +200,22 @@ The minimum bar for calling a runner done, all checked by hand in a browser:
 - **Jumping to a line focuses the editor** and steals focus from the runner —
   on a phone that raises the keyboard over nothing. Pass `false` as the
   second argument to `passage.scrollToLine` from a runner.
+- **A button disabled until a bound field has a value needs two taps** when
+  the writer types and taps straight away. Leave it enabled; status line.
+- **The dock body is one scroll container.** A JS call made inside a click
+  handler runs before the new view renders; `ScrollWorkshopToTopAsync` sets
+  a flag that `OnAfterRenderAsync` acts on.
+- **Razor attributes can't hold a C# string literal in double quotes**
+  (`@onclick="() => Foo("x")"` breaks the generated code). Use a `const` or
+  a field.
+- **Blazor `@bind` and a scripted `.click()`.** A programmatic click doesn't
+  blur the focused textarea, so its change event never reaches the server.
+  Use a real click (the `computer` tool) when testing a button that reads a
+  field just typed.
+- **The agent browser's "Return" key sends an empty `key`.** Use `key:
+  "Enter"` when testing anything that listens for Enter. Its Enter also
+  inserts no newline in a textarea — verify multiline handling by checking
+  `defaultPrevented` on a dispatched `KeyboardEvent`, not by looking for the
+  line break.
 - **Save As does not exist** in the web app; the dialog only names untitled
   buffers. Don't build a cascade for it.
-- **A button disabled until a bound field has a value needs two taps** when
-  the writer types and taps straight away: the field's change event and the
-  click travel together and the click hits a still-disabled button. Leave
-  the button enabled and put the "nothing to do" in the status line.
-- **The dock body is one scroll container.** A view opened from the bottom
-  of a long list opens scrolled to its own bottom unless it scrolls itself
-  to the top — `ScrollWorkshopToTopAsync` sets a flag that
-  `OnAfterRenderAsync` acts on, because a JS call made inside the click
-  handler runs before the new view has rendered and scrolls the old one.
-- **Blazor `@bind` and a scripted `.click()`.** A programmatic click does
-  not blur the focused textarea, so its change event never reaches the
-  server and the handler sees the old value. Use a real click (the
-  `computer` tool) when testing a button that reads a field just typed.

@@ -140,7 +140,7 @@ Success: run one check on the scene under the caret, flag it, get a Lens on
 just that. Build clean, tests pass. Set Phase 5 to `done` and commit.
 ```
 
-## Phase 6 — Ideation burst mode
+## Phase 6 — Ideation burst mode · done
 
 ```
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,

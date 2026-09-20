@@ -544,7 +544,7 @@ own row.
   their own setting beside the burst seconds so a Lens never inherits a
   ten-second clock from the chain.
 
-### Phase 6 — Ideation burst mode · `not started`
+### Phase 6 — Ideation burst mode · `done`
 
 Full-screen overlay, the one engine that isn't about your script.
 
@@ -560,6 +560,36 @@ Full-screen overlay, the one engine that isn't about your script.
 - **Resolved:** the worksheet's Situation collision lane is "two unrelated
   fragments — anything, don't cherry-pick", so it needs no corpus. Nothing
   from `Brainstorming/` is required.
+
+- **Done:** its own file, `<root>/.slate/ideation.json` (`IdeationDocument`:
+  `RoundSeconds` default 90, `Current` sitting — lane, rounds of Input /
+  Output, kept line — and `Kept`, one line per finished sitting).
+  `SlateStore.LoadIdeation` / `SaveIdeation`; `PruneOrphans` skips the file
+  by name since it belongs to no script (tested,
+  `TestSlateStoreIdeationIsKeptApart`). The overlay is `.ideation-overlay`
+  at the end of `Editor.razor`, fixed full-screen over everything, opened
+  from the dock's *Ideation burst* button and closed with × keeping the
+  sitting; handlers under `// ---- Ideation burst`. No sitting: the lane
+  pick — *Roll* (`Random.Shared`) or tap one of the ten — and below it the
+  lines kept, each with an × to let it go. In a sitting: the lane's prompt
+  verbatim, shown once with "read it once, then start the round"; lane 10
+  points at the Character Flaw Brainstorm for the full chain; the only rule
+  on the page is the stop-callout *The only failure state is silence*.
+  Each round is Input (untimed), *Start the round* (one `startBurst` on
+  `#ideation-round-N`, a multiline slot, the seconds as set) and Output;
+  *Keep a line from this* copies the output into the kept line; *Next
+  round* is a button. *Done for this sitting* files the kept line, drops
+  the rounds and returns to the lane pick — the worksheet says don't review
+  in the same sitting, so nothing invites it. Verified by hand at 375 px:
+  roll, round with the clock on the output, close, reload, reopen — the
+  sitting is there with its lane locked — then done.
+- **Deviations, all deliberate:** kept lines are listed on the pick screen.
+  They are lines, not sessions — no date, no lane, no count — and the
+  worksheet's own "optionally skim later" needs somewhere to skim. Rounds
+  are never listed after a sitting ends. No ten-minute session timer: the
+  worksheet says nothing depends on it. The round length is one setting in
+  the ideation file rather than the per-script burst seconds, because the
+  overlay belongs to no script.
 
 ### Phase 7 — The assist seam · `not started`
 

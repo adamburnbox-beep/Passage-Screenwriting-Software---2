@@ -43,6 +43,7 @@ class Program
         failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
         failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
         failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
+        failures += RunTest("Test SlateStore Ideation Is Kept Apart", TestSlateStoreIdeationIsKeptApart);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -702,6 +703,36 @@ class Program
             Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
             Assert(new ReviseRun().IsEmpty && !revision.IsEmpty && !revision.HasDiagnostic && !revision.HasReadBack, "Emptiness and the deeper sections read the content");
             Assert(new ReviseRun().Check("Made up").Name == "Made up", "Check() adds a missing check rather than throwing");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreIdeationIsKeptApart()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            Assert(store.LoadIdeation() is null, "No ideation file loads as null");
+
+            var document = new IdeationDocument { RoundSeconds = 60, Current = new IdeationSitting { Lane = 4 } };
+            document.Current.Rounds[0].Input = "a kettle and a eulogy";
+            document.Current.Rounds[0].Output = "line one\nline two";
+            document.Current.KeptLine = "line two";
+            document.Kept.Add("an earlier sitting's line");
+            store.SaveIdeation(document);
+
+            Assert(File.Exists(Path.Combine(root, ".slate", SlateStore.IdeationFile)), "Ideation lives in its own file under .slate");
+
+            var loaded = store.LoadIdeation()!;
+            Assert(loaded.RoundSeconds == 60 && loaded.Current is { Lane: 4 } && loaded.Current.Rounds[0].Output == "line one\nline two"
+                && loaded.Current.KeptLine == "line two", "The sitting in progress round-trips");
+            Assert(loaded.Kept.SequenceEqual(new[] { "an earlier sitting's line" }), "Kept lines round-trip as plain lines");
+
+            var pruned = store.PruneOrphans(Array.Empty<string>());
+            Assert(pruned.Count == 0 && store.LoadIdeation() is not null, "The orphan sweep leaves the ideation file alone — it belongs to no script");
         }
         finally
         {

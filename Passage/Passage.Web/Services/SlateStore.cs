@@ -298,6 +298,37 @@ public sealed class ChainRound
         && string.IsNullOrWhiteSpace(Action) && string.IsNullOrWhiteSpace(Consequence);
 }
 
+/// <summary>
+/// Ideation burst ("Generate — Ideation or Bridge", Path A). Deliberately
+/// about no script at all, so it lives in its own file. The rounds are
+/// disposable; the one kept line per sitting is the output.
+/// </summary>
+public sealed class IdeationDocument
+{
+    public int SlateVersion { get; set; } = SlateStore.CurrentVersion;
+    public int RoundSeconds { get; set; } = 90;
+
+    // The sitting in progress, so closing the overlay or reloading keeps it.
+    public IdeationSitting? Current { get; set; }
+
+    // One line per finished sitting. Lines, not sessions: no dates, no lane.
+    public List<string> Kept { get; set; } = new();
+}
+
+public sealed class IdeationSitting
+{
+    // 1–10, locked for the sitting.
+    public int Lane { get; set; }
+    public List<IdeationRound> Rounds { get; set; } = new() { new() };
+    public string KeptLine { get; set; } = string.Empty;
+}
+
+public sealed class IdeationRound
+{
+    public string Input { get; set; } = string.Empty;
+    public string Output { get; set; } = string.Empty;
+}
+
 /// <summary>The Fill worksheet (Path B) for one bracket. Every field is optional.</summary>
 public sealed class FillRun
 {
@@ -323,6 +354,9 @@ public sealed class FillOption
 public sealed class SlateStore
 {
     public const int CurrentVersion = 1;
+
+    // Ideation's file. Not a script sidecar, so the orphan sweep leaves it.
+    public const string IdeationFile = "ideation.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -406,6 +440,11 @@ public sealed class SlateStore
 
             foreach (var path in Directory.EnumerateFiles(_root, "*.json"))
             {
+                if (Path.GetFileName(path) == IdeationFile)
+                {
+                    continue;
+                }
+
                 var scriptName = Path.GetFileNameWithoutExtension(path);
                 if (present.Contains(scriptName))
                 {
@@ -418,6 +457,32 @@ public sealed class SlateStore
         }
 
         return pruned;
+    }
+
+    /// <summary>The ideation file, or null when there is none yet. A corrupt
+    /// file throws, as <see cref="Load"/> does.</summary>
+    public IdeationDocument? LoadIdeation()
+    {
+        var path = Path.Combine(_root, IdeationFile);
+        lock (_gate)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<IdeationDocument>(File.ReadAllText(path), JsonOptions);
+        }
+    }
+
+    public void SaveIdeation(IdeationDocument document)
+    {
+        document.SlateVersion = CurrentVersion;
+        lock (_gate)
+        {
+            Directory.CreateDirectory(_root);
+            File.WriteAllText(Path.Combine(_root, IdeationFile), JsonSerializer.Serialize(document, JsonOptions));
+        }
     }
 
     private string ResolvePath(string scriptName)
