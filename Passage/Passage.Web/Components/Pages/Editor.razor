@@ -3,6 +3,7 @@
 @using Passage.Core.Goals
 @using Passage.Export
 @using Passage.Parser
+@using System.Text
 @using System.Text.Json
 @inject ScriptLibrary Library
 @inject ExportService Exports
@@ -51,6 +52,12 @@ Click New to start one — files are stored on the server volume.</div>
                                 @onclick="() => RequestDeleteFile(file.Name)" @onclick:stopPropagation="true">✕</button>
                     </div>
                 }
+                <div class="menu-divider"></div>
+                <label class="menu-file-item" title="Copy a .fountain, .md or .txt file from this device into the library and open it">
+                    Open from this device…
+                    <InputFile @key="_importKey" OnChange="ImportFileAsync" accept=".fountain,.md,.txt" />
+                </label>
+                <button @onclick="OpenTitlePage">Title Page…</button>
             </div>
         </details>
 
@@ -75,9 +82,8 @@ Click New to start one — files are stored on the server volume.</div>
             <button class="btn" @onclick="RequestNewFile">New</button>
             <button class="btn primary" @onclick="SaveAsync">Save</button>
             <details class="menu">
-                <summary class="btn">Document ▾</summary>
+                <summary class="btn">Export ▾</summary>
                 <div class="menu-items">
-                    <button @onclick="OpenTitlePage">Title Page…</button>
                     <button @onclick='() => ExportAsync("pdf")'>PDF (.pdf)</button>
                     <button @onclick='() => ExportAsync("txt")'>Plain text (.txt)</button>
                     <button @onclick='() => ExportAsync("fountain")'>Fountain source (.fountain)</button>
@@ -1725,7 +1731,7 @@ Open a .fountain file to see formatted pages.</div>
 }
 
 @code {
-    private enum PendingAction { None, NewFile, OpenFile }
+    private enum PendingAction { None, NewFile, OpenFile, ImportFile }
 
     private readonly DocumentAnalyzer _analyzer = new();
     private DotNetObjectReference<Editor>? _selfRef;
@@ -2253,12 +2259,114 @@ Open a .fountain file to see formatted pages.</div>
     {
         _pendingAction = PendingAction.None;
         _pendingOpenName = string.Empty;
+        _pendingImport = default;
+    }
+
+    // "Open from this device…": the browser uploads the file and it is copied
+    // into the library under its own name, then opened like any other script.
+    // The library is the web app's disk, so this is what "open" means here;
+    // nothing is written until the unsaved-changes guard has been passed.
+    private const long MaxImportBytes = 5 * 1024 * 1024;
+    private static readonly string[] ImportExtensions = [".fountain", ".md", ".txt"];
+
+    private int _importKey;
+    private (string OriginalName, string Content) _pendingImport;
+
+    private async Task ImportFileAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        // A fresh InputFile each time, so re-choosing the same file fires again.
+        _importKey++;
+
+        if (!ImportExtensions.Contains(Path.GetExtension(file.Name), StringComparer.OrdinalIgnoreCase))
+        {
+            _statusMessage = $"Could not open {file.Name}: only .fountain, .md and .txt files can be opened.";
+            return;
+        }
+
+        if (!ScriptLibrary.TryValidateName(file.Name, out _))
+        {
+            _statusMessage = $"Could not open {file.Name}: not a usable script name.";
+            return;
+        }
+
+        if (file.Size > MaxImportBytes)
+        {
+            _statusMessage = $"Could not open {file.Name}: larger than {MaxImportBytes / (1024 * 1024)} MB.";
+            return;
+        }
+
+        string content;
+        try
+        {
+            using var stream = file.OpenReadStream(MaxImportBytes);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            content = await reader.ReadToEndAsync();
+        }
+        catch (Exception exception) when (exception is IOException or OperationCanceledException)
+        {
+            _statusMessage = $"Could not read {file.Name}: {exception.Message}";
+            return;
+        }
+
+        if (_isDirty)
+        {
+            _pendingAction = PendingAction.ImportFile;
+            _pendingImport = (file.Name, content);
+            return;
+        }
+
+        await FinishImportAsync(file.Name, content);
+    }
+
+    private async Task FinishImportAsync(string originalName, string content)
+    {
+        ScriptLibrary.TryValidateName(originalName, out var name);
+        name = UniqueLibraryName(name);
+
+        try
+        {
+            Library.Save(name, content);
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            _statusMessage = $"Could not open {originalName}: {exception.Message}";
+            return;
+        }
+
+        _files = Library.List();
+        await OpenFileAsync(name);
+        _statusMessage = name == originalName
+            ? $"Opened {name}"
+            : $"Opened {originalName} as {name} — a script with that name was already in the library";
+    }
+
+    // Never overwrite a script that is already in the library: "draft.fountain"
+    // lands as "draft-2.fountain" when the name is taken.
+    private string UniqueLibraryName(string name)
+    {
+        if (!Library.Exists(name))
+        {
+            return name;
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(name);
+        var extension = Path.GetExtension(name);
+        for (var i = 2; ; i++)
+        {
+            var candidate = $"{stem}-{i}{extension}";
+            if (!Library.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
     }
 
     private async Task ConfirmPendingActionAsync()
     {
         var action = _pendingAction;
         var openName = _pendingOpenName;
+        var import = _pendingImport;
         CancelPendingAction();
 
         if (action == PendingAction.NewFile)
@@ -2268,6 +2376,10 @@ Open a .fountain file to see formatted pages.</div>
         else if (action == PendingAction.OpenFile)
         {
             await OpenFileAsync(openName);
+        }
+        else if (action == PendingAction.ImportFile)
+        {
+            await FinishImportAsync(import.OriginalName, import.Content);
         }
     }
 
