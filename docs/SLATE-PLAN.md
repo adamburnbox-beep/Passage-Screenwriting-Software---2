@@ -362,7 +362,7 @@ bracket from your phone, and the script is edited correctly with undo intact.
   a constant (`BurstReadInSeconds`), not a setting: one number to set is
   enough, and 5 s read fine in practice.
 
-### Phase 3 — The Split family · `not started`
+### Phase 3 — The Split family · `done`
 
 A→Z→Split, Belief Split and Extend Backward share one runner with three paths,
 matching `Generate — Split, Belief, or Extend Backward.md`.
@@ -389,6 +389,52 @@ matching `Generate — Split, Belief, or Extend Backward.md`.
   ahead to fill the middle from the front" rule is enforceable in UI — only
   the most recent link generates the next field. Mystery-lens variant as a
   toggle on the next link.
+
+- **Done:** one run of each per script — `SlateDocument.Split`, `Belief`,
+  `Extend` — because the worksheet runs them once per story, and the five
+  belief cuts are one record (`BeliefRun.Cuts`, by ratio) that Split's
+  optional layer and Belief Split both edit. Three dock views
+  (`WorkshopView.Split` / `Belief` / `Extend`) in `Editor.razor`; handlers
+  under `// ---- The Split family`. Every stop-callout is the worksheet's
+  words in a `.stop-callout`, and the rung below each sits behind a "Keep
+  going — rung N" button until the writer presses it or the rung has text
+  (`_splitRung` / `_beliefRung`, session only — a reopened run shows what it
+  holds and nothing about how far it got). Alive / flat and y / n are the
+  `AliveFlat` component: two pills, press again to clear.
+  **Write-back** is `SplitScript` (`Passage.Web/Services`, tested): eight
+  `##` sequences under four `#` acts (1, 2A, 2B, 3), the seven turns as
+  `= Turn name: text` synopsis lines on the sequence each one closes, A and
+  Z as `= Starts:` / `= Ends:`, and every turn not found yet as a bracket
+  (`[MIDPOINT]`, `[PINCH 1]`, …) so Fill hands it back. Headings carry
+  `[[id:…]]` via `BeatBoardText.BuildCardLines`, the same path the board's
+  own edits use, so the Board populates from a run at any rung. The first
+  write appends the whole structure by `insertLinesAt`; every write after
+  fills in only the turns the script still holds as brackets, by
+  `replaceInLine` on the exact line text, and names any turn that already
+  has text in the script rather than overwriting it (decision B: promoted
+  text is the script's). Each field shows "In the script: …" when the
+  script's line has real text. Verified by hand: undo steps back through
+  both writes exactly, redo restores, the Board shows the lanes.
+  **Shape line** is `ShapeLine.Derive(BoardLanes)` (tested) in the status
+  bar, only when the script has a Sequence: `▪`/`▫` from whether the
+  sequence holds a scene or section, `●`/`·`/`–` from the turn's synopsis
+  value on that sequence (real text / bracket or absent / a dash). Nothing
+  stored. Extend Backward appends the next link only when the last one has
+  text; the mystery-lens toggle sits on that open link alone and swaps its
+  question; the chain is shown read forward, start to Z, above the alive /
+  flat mark. Tests `TestSplitScriptLinesAndParse`,
+  `TestShapeLineDerivesFromLanes`, `TestSlateStoreSplitFamilyRoundTrip`.
+- **Deviations, all deliberate:** write-back is offered at every rung, not
+  only on completing rung 3 — the worksheet's own stop-callouts say each
+  rung is a complete shape, and a rung-1 write gives the Board a split
+  story with six brackets to fill, which is more use than a form that
+  withholds the Board until all seven are typed. The plan's "emits `#`/`##`
+  sections" became eight sequences under four acts because the vault
+  defines the shape as eight sequences with seven joins; the acts are the
+  frame the Board needs for lanes. A dropped pinch is marked in the script
+  (`= Pinch 1: –`), not in the runner, because the shape line derives from
+  the script alone. Belief Split's matched plot turn is shown as a hint
+  from the Split run in the same sidecar; nothing is copied between them.
 
 ### Phase 4 — Bridge and Position · `not started`
 

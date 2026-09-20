@@ -83,7 +83,7 @@ the rounds are still there; promote a line and undo still works. Build clean,
 tests pass. Set Phase 2 to `done` and commit.
 ```
 
-## Phase 3 — The Split family
+## Phase 3 — The Split family · done
 
 ```
 Read CLAUDE.md, PROJECT_RULES.md, and in docs/SLATE-PLAN.md: Rule 0,

@@ -38,6 +38,9 @@ class Program
         failures += RunTest("Test SlateStore Corrupt Sidecar Fails Visibly", TestSlateStoreCorruptSidecarFailsVisibly);
         failures += RunTest("Test SlateStore Chain Round Trip", TestSlateStoreChainRoundTrip);
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
+        failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
+        failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
+        failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -551,6 +554,91 @@ class Program
         var noHeading = new[] { "", "sx-character", "sx-dialogue" };
         Assert(SynopsisPlacement.Find(noHeading, 2) == (2, -1), "No heading above: insert at the caret and say so");
         Assert(SynopsisPlacement.Find(Array.Empty<string>(), 0) == (0, -1), "An empty document inserts at line 0");
+    }
+
+    static void TestSplitScriptLinesAndParse()
+    {
+        var run = new SplitRun { A = "She arrives at the lighthouse", Z = "She leaves it burning", Midpoint = "The keeper\nconfesses" };
+        var lines = SplitScript.BuildLines(run);
+        var text = string.Join("\n", lines);
+
+        Assert(lines.Count(line => line.StartsWith("# ")) == 4, "Four acts");
+        Assert(lines.Count(line => line.StartsWith("## ")) == 8, "Eight sequences");
+        Assert(lines.Count(line => line.StartsWith("= ")) == 9, "Nine slot lines: the two ends and seven turns");
+        Assert(text.Contains("= Starts: She arrives at the lighthouse"), "A goes on sequence 1");
+        Assert(text.Contains("= Midpoint: The keeper confesses"), "A multi-line value is written as one line");
+        Assert(text.Contains("= Plot point 1: [PLOT POINT 1]"), "An unknown turn is written as a bracket for Fill");
+        Assert(lines.IndexOf("= Midpoint: The keeper confesses") > lines.FindIndex(line => line.StartsWith("## Sequence 4")), "The midpoint sits on sequence 4");
+        Assert(lines.IndexOf("= Ends: She leaves it burning") > lines.FindIndex(line => line.StartsWith("## Sequence 8")), "Z sits on sequence 8");
+
+        // The Beat Board hands descriptions back without the "= ".
+        Assert(SplitScript.TryParse("Midpoint: The keeper confesses", out var label, out var value)
+            && label == "Midpoint" && value == "The keeper confesses", "A description line parses back to its slot");
+        Assert(SplitScript.TryParse("=   pinch 1 :  [PINCH 1]", out label, out value)
+            && label == "Pinch 1" && value == "[PINCH 1]", "Case and spacing do not matter");
+        Assert(!SplitScript.TryParse("= Some other synopsis: with a colon", out _, out _), "Only the nine labels parse");
+        Assert(!SplitScript.IsKnown("[PINCH 1]") && !SplitScript.IsKnown("") && SplitScript.IsKnown("the storm"), "Known means real text");
+        Assert(SplitScript.IsDropped("–") && !SplitScript.IsKnown("–"), "A dash drops the turn");
+
+        var scriptLines = text.Split('\n');
+        var midpointLine = SplitScript.FindLine(scriptLines, SplitScript.Slots[4]);
+        Assert(midpointLine >= 0 && scriptLines[midpointLine].StartsWith("= Midpoint:"), "FindLine locates a slot in the script");
+        Assert(SplitScript.FindLine(new[] { "INT. HOUSE", "Action." }, SplitScript.Slots[4]) == -1, "FindLine is -1 when absent");
+    }
+
+    static void TestShapeLineDerivesFromLanes()
+    {
+        Assert(ShapeLine.Derive(new List<BoardLane>()) is null, "No sequences: no shape line");
+
+        static BoardCard Sequence(string description) => new("Sequence", "Sequence", description, 1, new List<BoardCard>());
+        static BoardCard Scene() => new("INT. ROOM", "Scene", string.Empty, 1, new List<BoardCard>());
+
+        var lanes = new List<BoardLane>
+        {
+            new(null, new List<BoardGroup>
+            {
+                new(Sequence("Starts: she arrives\nInciting incident: the letter"), new List<BoardCard> { Scene() }),
+                new(Sequence("Plot point 1: [PLOT POINT 1]"), new List<BoardCard>()),
+                new(Sequence("Pinch 1: –"), new List<BoardCard>()),
+                new(Sequence("Midpoint: the keeper confesses"), new List<BoardCard>())
+            })
+        };
+
+        Assert(ShapeLine.Derive(lanes) == "▪●▫·▫–▫●▫·▫·▫·▫", "Known, unknown, dropped and missing sequences each get their glyph, in split order");
+
+        var prose = new List<BoardLane> { new(null, new List<BoardGroup> { new(Sequence("Just a synopsis"), new List<BoardCard>()) }) };
+        Assert(ShapeLine.Derive(prose) == "▫·▫·▫·▫·▫·▫·▫·▫", "A sequence with no slot lines shows everything unknown, not dropped");
+    }
+
+    static void TestSlateStoreSplitFamilyRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            document.Split.A = "arrives";
+            document.Split.Midpoint = "confesses";
+            document.Split.MidpointAlive = "alive";
+            document.Split.BeliefLayer = true;
+            document.Belief.Shape = "Fall";
+            document.Belief.Cut(50).Text = "she thinks she can leave";
+            document.Belief.Cut(50).Alive = "flat";
+            document.Extend.Z = "the lighthouse burns";
+            document.Extend.Links.Add(new ExtendLink { Text = "she lit it", Mystery = true });
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Split.Midpoint == "confesses" && loaded.Split.MidpointAlive == "alive" && loaded.Split.BeliefLayer, "Split run round-trips");
+            Assert(loaded.Split.Candidates.Count == 3, "Three candidate rows round-trip, empty included");
+            Assert(loaded.Belief.Shape == "Fall" && loaded.Belief.Cut(50).Text == "she thinks she can leave" && loaded.Belief.Cut(50).Alive == "flat", "Belief cuts round-trip by ratio");
+            Assert(loaded.Belief.Cuts.Count == 5, "All five named cuts, no more");
+            Assert(loaded.Extend.Links.Count == 2 && loaded.Extend.Links[1].Mystery, "Extend links round-trip with the mystery lens");
+            Assert(!loaded.Split.HasRung2 && !loaded.Belief.HasRung3, "Rung flags read the content, nothing stored");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     static void Assert(bool condition, string message)

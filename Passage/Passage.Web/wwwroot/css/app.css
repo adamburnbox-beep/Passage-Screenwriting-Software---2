@@ -1186,6 +1186,83 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     font-size: 12px;
 }
 
+/* The Split family. The stop-callouts are the worksheet's own words and the
+   only thing between one rung and the next. */
+.rung-label {
+    margin-top: 12px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--header-text);
+    font-weight: 600;
+}
+
+.stop-callout {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--control-accent);
+    background: var(--surface-raised);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--control-foreground);
+}
+
+.stress-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+
+.stress-row .fill-hint { flex: 1; min-width: 160px; }
+
+.alive-flat { display: inline-flex; gap: 4px; }
+
+.alive-btn {
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: 999px;
+    color: var(--secondary-text);
+    padding: 2px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.alive-btn.on {
+    background: var(--control-accent);
+    border-color: var(--control-accent);
+    color: var(--control-pressed-foreground);
+}
+
+.belief-cut { margin-left: 12px; padding-left: 8px; border-left: 1px dashed var(--control-border); }
+
+.workshop .workshop-select {
+    width: 100%;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 12.5px;
+}
+
+/* The chain read forward, start to Z. */
+.chain-forward {
+    margin: 6px 0 0;
+    padding-left: 22px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--control-foreground);
+}
+
+.chain-forward .chain-z { font-weight: 600; }
+
+/* The shape line: what is known, not how far along. */
+.statusbar .shape-line {
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    color: var(--secondary-text);
+    cursor: help;
+}
+
 /* The countdown: a number, nothing else. Cleared when the run ends. */
 .burst-display {
     min-width: 3em;

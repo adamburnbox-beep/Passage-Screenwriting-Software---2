@@ -26,6 +26,13 @@ public sealed class SlateDocument
     public List<ChainRun> Chains { get; set; } = new();
 
     public BurstSettings Burst { get; set; } = new();
+
+    // The Split family ("Generate — Split, Belief, or Extend Backward"). One
+    // of each per script: the worksheet runs them once per story, and the
+    // belief cuts are shared between Split's optional layer and Belief Split.
+    public SplitRun Split { get; set; } = new();
+    public BeliefRun Belief { get; set; } = new();
+    public ExtendRun Extend { get; set; } = new();
 }
 
 /// <summary>
@@ -69,6 +76,87 @@ public sealed class ChainRun
         string.IsNullOrWhiteSpace(Seed) && string.IsNullOrWhiteSpace(ReadBack)
         && Rounds.All(round => round.IsEmpty)
         && Answers.All(string.IsNullOrWhiteSpace);
+}
+
+/// <summary>Path A — A→Z→Split. Rung 0 fixes the ends; each rung after is one split.</summary>
+public sealed class SplitRun
+{
+    public string A { get; set; } = string.Empty;
+    public string Z { get; set; } = string.Empty;
+    public List<string> Candidates { get; set; } = new() { string.Empty, string.Empty, string.Empty };
+    public string Midpoint { get; set; } = string.Empty;
+    public string MidpointAlive { get; set; } = string.Empty;
+    public string PP1 { get; set; } = string.Empty;
+    public string Crisis { get; set; } = string.Empty;
+    public string Inciting { get; set; } = string.Empty;
+    public string Pinch1 { get; set; } = string.Empty;
+    public string Pinch2 { get; set; } = string.Empty;
+    public string LastObstacle { get; set; } = string.Empty;
+
+    // The optional matched belief cut, asked inline after each plot turn.
+    public bool BeliefLayer { get; set; }
+    public string Pinch1ThirdRail { get; set; } = string.Empty;
+    public string Pinch2ThirdRail { get; set; } = string.Empty;
+
+    public bool HasRung2 => !string.IsNullOrWhiteSpace(PP1) || !string.IsNullOrWhiteSpace(Crisis);
+    public bool HasRung3 => !string.IsNullOrWhiteSpace(Inciting) || !string.IsNullOrWhiteSpace(Pinch1)
+        || !string.IsNullOrWhiteSpace(Pinch2) || !string.IsNullOrWhiteSpace(LastObstacle);
+}
+
+/// <summary>Path B — Belief Split. The five named cuts, by ratio.</summary>
+public sealed class BeliefRun
+{
+    public string Shape { get; set; } = string.Empty;
+    public string A { get; set; } = string.Empty;
+    public string Z { get; set; } = string.Empty;
+    public string Ghost { get; set; } = string.Empty;
+    public string GhostSize { get; set; } = string.Empty;
+    public string GhostCommensurate { get; set; } = string.Empty;
+    public string GhostMismatch { get; set; } = string.Empty;
+    public string Cut50Change { get; set; } = string.Empty;
+    public List<BeliefCut> Cuts { get; set; } = BeliefCut.Ratios.Select(ratio => new BeliefCut { Ratio = ratio }).ToList();
+
+    public BeliefCut Cut(int ratio)
+    {
+        var cut = Cuts.FirstOrDefault(existing => existing.Ratio == ratio);
+        if (cut is null)
+        {
+            cut = new BeliefCut { Ratio = ratio };
+            Cuts.Add(cut);
+        }
+
+        return cut;
+    }
+
+    public bool HasRung3 => !string.IsNullOrWhiteSpace(Cut(25).Text) || !string.IsNullOrWhiteSpace(Cut(75).Text);
+    public bool HasRung4 => !string.IsNullOrWhiteSpace(Cut(12).Text) || !string.IsNullOrWhiteSpace(Cut(88).Text);
+}
+
+public sealed class BeliefCut
+{
+    public static readonly int[] Ratios = { 12, 25, 50, 75, 88 };
+
+    public int Ratio { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public string Alive { get; set; } = string.Empty;
+}
+
+/// <summary>Path C — Extend Backward. Links run from Z backwards, one at a time.</summary>
+public sealed class ExtendRun
+{
+    public string Z { get; set; } = string.Empty;
+    public List<ExtendLink> Links { get; set; } = new() { new() };
+    public string ChainAlive { get; set; } = string.Empty;
+    public string WeakestLink { get; set; } = string.Empty;
+}
+
+public sealed class ExtendLink
+{
+    public string Text { get; set; } = string.Empty;
+
+    // The mystery-lens variant: Z as a crime scene, what would a detective
+    // need to find — a different question for this link only.
+    public bool Mystery { get; set; }
 }
 
 public sealed class ChainRound

@@ -244,6 +244,11 @@ window.passage = (function () {
         if (el) el.scrollIntoView({ block: "nearest" });
     }
 
+    function scrollToTop(selector) {
+        const el = document.querySelector(selector);
+        if (el) el.scrollTop = 0;
+    }
+
     function openFind() {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnFindShortcut", false);
     }
@@ -1121,7 +1126,7 @@ window.passage = (function () {
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }

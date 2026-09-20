@@ -5,7 +5,7 @@
 State of play for the Writer's Tools work in `Passage.Web` (internally "Slate",
 after the vault system it comes from), written for the next agent. Read this,
 then `CLAUDE.md`, `PROJECT_RULES.md`, and `docs/SLATE-PLAN.md` — in that
-order — before touching anything. Everything below is as of the Phase 2
+order — before touching anything. Everything below is as of the Phase 3
 commit on branch `web-scope`, 2026-09-20.
 
 ---
@@ -14,14 +14,16 @@ commit on branch `web-scope`, 2026-09-20.
 
 The writer (Adam) has a set of writing-block exercises in his Obsidian vault
 ("the Slate"). We are bringing the *tools* — not the board, not the practice —
-into the web app as a right-hand dock called **Writer's Tools**. Three of
+into the web app as a right-hand dock called **Writer's Tools**. Four of
 seven phases are built: the foundations (sidecar storage, the dock), **Fill**,
 which finds `[SOMETHING happens]` placeholders in a script and walks the
-writer through resolving one, and the **forward chain** — the WOAC chain and
-the Character Flaw Brainstorm, with the first burst timer. The remaining
-tools are listed in the dock as "not built yet". The writer asked to be able
-to test the others, so **building them, one per session in plan order, is
-the next step** — unless he names a different one first.
+writer through resolving one, the **forward chain** (WOAC and the Character
+Flaw Brainstorm, with the first burst timer), and the **Split family**
+(A→Z→Split, which writes the eight-sequence shape into the script for the
+Board; Belief Split; Extend Backward) with the shape line in the status bar.
+Bridge, Position, Push/Pull and Lens, and Ideation burst are still "not
+built yet". **Building them, one per session in plan order, is the next
+step** — unless he names a different one first.
 
 ---
 
@@ -33,11 +35,14 @@ the next step** — unless he names a different one first.
 | Copy-paste prompt per phase | `docs/SLATE-SESSIONS.md` |
 | Sidecar store | `Passage/Passage.Web/Services/SlateStore.cs` |
 | Placeholder scanner | `Passage/Passage.Parser/BracketScanner.cs` (+ `FountainMarkup.MaskOmissions`) |
-| Dock markup, views, handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~545–660; handlers from `// ---- Writer's tools dock` ~2320, `// ---- Forward chain` ~2560 |
+| Dock markup, views, handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~545–660; Split / Belief / Extend views ~660–1000; handlers from `// ---- Writer's tools dock` ~2680, `// ---- Forward chain` ~2920, `// ---- The Split family` ~3160 |
 | Synopsis placement (promotion target) | `Passage/Passage.Web/Services/SynopsisPlacement.cs` |
+| Split write-back and turn-line parsing | `Passage/Passage.Web/Services/SplitScript.cs` |
+| Shape line | `Passage/Passage.Web/Services/ShapeLine.cs` |
+| Alive / flat pills | `Passage/Passage.Web/Components/AliveFlat.razor` |
 | Client-side pieces | `Passage/Passage.Web/wwwroot/js/passage.js` — `applyWorkshopWidth` / `initWorkshopResize` ~125, `replaceInLine` ~540, `insertLinesAt` ~556, `scrollToLine(line, focus)`, burst timer `startBurst` / `stopBurst` after `focusEditor` ~960 |
 | Styles | `Passage/Passage.Web/wwwroot/css/app.css` from `/* ---- Writer's tools dock` ~954 |
-| Tests | `Passage/Passage.Tests/Program.cs` — `TestBracketScanner*`, `TestSlateStore*`, `TestSynopsisPlacement` (the test project references `Passage.Web`) |
+| Tests | `Passage/Passage.Tests/Program.cs` — `TestBracketScanner*`, `TestSlateStore*`, `TestSynopsisPlacement`, `TestSplitScript*`, `TestShapeLine*` (the test project references `Passage.Web`) |
 | Source material (the spec for every tool's text) | `/home/arosa/Sync/Obsidian Vault/Story/Slate/` — five live files in `Worksheets/` (the numbered Short/Medium/Long files are stubs), `How the Slate Works.md`, `loosening-up-practice.md`, `engines.md` |
 
 ---
@@ -88,6 +93,21 @@ the next step** — unless he names a different one first.
   including why neither the promote button nor Fill's "Fill it" is ever
   disabled.
 
+### Phase 3 — The Split family
+
+- `SlateDocument.Split` / `Belief` / `Extend`, one each per script. The
+  five belief cuts live in `Belief.Cuts` and Split's optional layer edits
+  the same ones.
+- Rungs below the current one are behind a "Keep going" button under the
+  worksheet's stop-callout; a rung with text is open already.
+- "Write the shape into the script" appends four acts / eight sequences
+  with `= Turn: text` lines and brackets for unknown turns; "Update" after
+  that fills only bracketed turns in place and names turns the script
+  already has. `SplitScript` is the single definition of those lines.
+- The shape line (`ShapeLine.Derive`) is derived from `BoardLanes` on every
+  render of the status bar and shown only when a Sequence exists.
+- See the row's Done and Deviations notes in `SLATE-PLAN.md`.
+
 ### Decisions made in conversation that the plan now records
 
 - **Name:** "Writer's Tools" in the UI. `Slate` stays in identifiers, the
@@ -120,14 +140,12 @@ the next step** — unless he names a different one first.
 Adam wants to test the other tools. Build them **one per session, in this
 order**, each with its own commit and its own row update in `SLATE-PLAN.md`:
 
-1. **Phase 3 — A→Z→Split, Belief Split, Extend Backward.** Rung 3 of Split
-   writes `#`/`##` sections into the script by ranged insert.
-2. **Phase 4 — Bridge + Position.** Bridge's 30-second rounds use
-   `startBurst`.
-3. **Phase 5 — Push/Pull and Lens** (plus the optional diagnostic Belief
-   Split and read-back fields).
-4. **Phase 6 — Ideation burst**, full-screen overlay, on `startBurst`.
-5. Phase 7, the model seam, is deliberately last and probably not wanted yet.
+1. **Phase 4 — Bridge + Position.** Bridge's 30-second rounds use
+   `startBurst`. Position's seven slots are `SplitScript.Turns`.
+2. **Phase 5 — Push/Pull and Lens** (plus the optional diagnostic Belief
+   Split — reuse `BeliefRun` — and read-back fields).
+3. **Phase 6 — Ideation burst**, full-screen overlay, on `startBurst`.
+4. Phase 7, the model seam, is deliberately last and probably not wanted yet.
 
 Each session: read Rule 0 again, read the worksheet in the vault, use the
 prompt in `SLATE-SESSIONS.md`. Every runner: no required fields, closable at
@@ -164,7 +182,9 @@ with a list, a timer and a promotion.
   on 5211 — use the alt one when Adam's server holds 5210.
 - **Dev data** lives at `Passage/Passage.Web/bin/Debug/net9.0/data/` (there is
   no `/data` on this machine). `fill-test.fountain` there has four brackets
-  for testing. Sidecars are in `.slate/` beside it.
+  for testing; `split-test.fountain` holds a written shape with six
+  bracketed turns and a Split run in its sidecar. Sidecars are in `.slate/`
+  beside it.
 - **Git shows ~140 files modified.** Those are exec-bit flips from the
   filesystem, not content. Commit with `git -c core.fileMode=false add <paths>`
   and `git -c core.fileMode=false commit`; never `git add -A`. Commits end
@@ -215,4 +235,10 @@ The minimum bar for calling a runner done, all checked by hand in a browser:
   the button enabled and put the "nothing to do" in the status line.
 - **The dock body is one scroll container.** A view opened from the bottom
   of a long list opens scrolled to its own bottom unless it scrolls itself
-  to `.workshop-nav` (`ScrollWorkshopToTopAsync`).
+  to the top — `ScrollWorkshopToTopAsync` sets a flag that
+  `OnAfterRenderAsync` acts on, because a JS call made inside the click
+  handler runs before the new view has rendered and scrolls the old one.
+- **Blazor `@bind` and a scripted `.click()`.** A programmatic click does
+  not blur the focused textarea, so its change event never reaches the
+  server and the handler sees the old value. Use a real click (the
+  `computer` tool) when testing a button that reads a field just typed.

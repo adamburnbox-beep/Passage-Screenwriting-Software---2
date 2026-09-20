@@ -415,16 +415,16 @@ Open a .fountain file to see formatted pages.</div>
                     <div class="tool-group">
                         <div class="tool-have">You have an ending, a rough shape, or a character — but not the events</div>
                         <div class="tool-paths">
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">A→Z→Split <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="() => OpenGenerateAsync(WorkshopView.Split)">
+                                <span class="tool-name">A→Z→Split</span>
                                 <span class="tool-desc">Start with your first event and your last. Find the one event in the middle that makes the ending inevitable, then split each half the same way, until you have a story's seven turning points.</span>
                             </button>
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Belief Split <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="() => OpenGenerateAsync(WorkshopView.Belief)">
+                                <span class="tool-name">Belief Split</span>
                                 <span class="tool-desc">The same idea, run on what a character believes instead of what happens: the false belief they start with, the truth they end with, and the steps in between.</span>
                             </button>
-                            <button class="workshop-tool" disabled>
-                                <span class="tool-name">Extend Backward <span class="tool-soon">not built yet</span></span>
+                            <button class="workshop-tool" @onclick="() => OpenGenerateAsync(WorkshopView.Extend)">
+                                <span class="tool-name">Extend Backward</span>
                                 <span class="tool-desc">You only know how it ends. Work backwards one step at a time — what had to happen right before this? — until you reach a beginning.</span>
                             </button>
                         </div>
@@ -663,6 +663,341 @@ Open a .fountain file to see formatted pages.</div>
                     </div>
                     <div class="fill-meta">@PromotionTargetLabel</div>
                 }
+                else if (_workshopView == WorkshopView.Split)
+                {
+                    var split = _slate.Split;
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseGenerate">←</button>
+                        <span class="sidebar-heading">A→Z→SPLIT</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">Never "what happens next". Always: I'm at A, I need Z — what single event makes Z possible that wasn't before? Fix the ends, then do one split at a time. Stop after any one of them — that's a complete session. Keep going and the next rung is right there.</p>
+
+                    <div class="rung-label">Rung 0 — fix the ends</div>
+                    <label class="fill-field">
+                        <span class="fill-label">A — start event</span>
+                        @if (ScriptTurnHint(0) is { } hintA) { <span class="fill-hint">In the script: @hintA</span> }
+                        <textarea rows="2" @bind="split.A" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <label class="fill-field">
+                        <span class="fill-label">Z — end event</span>
+                        @if (ScriptTurnHint(8) is { } hintZ) { <span class="fill-hint">In the script: @hintZ</span> }
+                        <textarea rows="2" @bind="split.Z" @bind:after="SaveSlate"></textarea>
+                    </label>
+
+                    <div class="rung-label">Rung 1 — the midpoint</div>
+                    <p class="tool-note">Find the one event that, if it happened, makes the second half inevitable given the first half. Don't look for the <em>best</em> midpoint — the first one that holds.</p>
+                    @for (var i = 0; i < 3; i++)
+                    {
+                        var index = i;
+                        <label class="fill-field">
+                            <span class="fill-label">Candidate @(index + 1)@(index == 2 ? " (if needed)" : "")</span>
+                            <textarea rows="2" @bind="split.Candidates[index]" @bind:after="SaveSlate"></textarea>
+                        </label>
+                    }
+                    <label class="fill-field">
+                        <span class="fill-label">Chosen midpoint</span>
+                        @if (ScriptTurnHint(4) is { } hintMid) { <span class="fill-hint">In the script: @hintMid</span> }
+                        <textarea rows="2" @bind="split.Midpoint" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="stress-row">
+                        <span class="fill-hint">Stress it: given A, does this feel inevitable or invented? Given the midpoint, does Z?</span>
+                        <AliveFlat @bind-Value="split.MidpointAlive" @bind-Value:after="SaveSlate" />
+                    </div>
+                    @if (split.BeliefLayer)
+                    {
+                        <label class="fill-field belief-cut">
+                            <span class="fill-label">Belief at 50% — what does she believe now, and how has that moved since the last cut?</span>
+                            <textarea rows="2" @bind="_slate.Belief.Cut(50).Text" @bind:after="SaveSlate"></textarea>
+                        </label>
+                    }
+                    <label class="burst-toggle"><input type="checkbox" @bind="split.BeliefLayer" @bind:after="SaveSlate" /> Also ask what she believes at each turn</label>
+                    @if (split.BeliefLayer)
+                    {
+                        <div class="fill-hint">A matched belief cut after each plot turn: not just what happens, but what does she believe now, and how has that moved since the last cut. The pinches take the lighter third-rail question instead. These are the same cuts Belief Split fills in.</div>
+                    }
+
+                    <div class="stop-callout">Stop here and you've got a real shape — A, midpoint, Z. That's enough to carry into Fill or a later session. Nothing below is owed.</div>
+                    @if (_splitRung < 2 && !split.HasRung2 && !split.HasRung3)
+                    {
+                        <button class="btn" @onclick="() => _splitRung = 2">Keep going — rung 2</button>
+                    }
+                    else
+                    {
+                        <div class="rung-label">Rung 2 — split each half</div>
+                        <p class="tool-note">Same move, run twice.</p>
+                        <label class="fill-field">
+                            <span class="fill-label">PP1 — splits A → Midpoint</span>
+                            @if (ScriptTurnHint(2) is { } hintPP1) { <span class="fill-hint">In the script: @hintPP1</span> }
+                            <textarea rows="2" @bind="split.PP1" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        @if (split.BeliefLayer)
+                        {
+                            <label class="fill-field belief-cut">
+                                <span class="fill-label">Belief at 25% — what does she believe now, and how has that moved?</span>
+                                <textarea rows="2" @bind="_slate.Belief.Cut(25).Text" @bind:after="SaveSlate"></textarea>
+                            </label>
+                        }
+                        <label class="fill-field">
+                            <span class="fill-label">Crisis / PP2 — splits Midpoint → Z</span>
+                            @if (ScriptTurnHint(6) is { } hintCrisis) { <span class="fill-hint">In the script: @hintCrisis</span> }
+                            <textarea rows="2" @bind="split.Crisis" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        @if (split.BeliefLayer)
+                        {
+                            <label class="fill-field belief-cut">
+                                <span class="fill-label">Belief at 75% — what does she believe now, and how has that moved?</span>
+                                <textarea rows="2" @bind="_slate.Belief.Cut(75).Text" @bind:after="SaveSlate"></textarea>
+                            </label>
+                        }
+
+                        <div class="stop-callout">Stop here and four points are fixed — still a complete, usable shape.</div>
+                        @if (_splitRung < 3 && !split.HasRung3)
+                        {
+                            <button class="btn" @onclick="() => _splitRung = 3">Keep going — rung 3</button>
+                        }
+                        else
+                        {
+                            <div class="rung-label">Rung 3 — split the remaining four quarters</div>
+                            <label class="fill-field">
+                                <span class="fill-label">Inciting incident — splits A → PP1</span>
+                                @if (ScriptTurnHint(1) is { } hintInc) { <span class="fill-hint">In the script: @hintInc</span> }
+                                <textarea rows="2" @bind="split.Inciting" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            @if (split.BeliefLayer)
+                            {
+                                <label class="fill-field belief-cut">
+                                    <span class="fill-label">Belief at 12% — what does she believe now, and how has that moved?</span>
+                                    <textarea rows="2" @bind="_slate.Belief.Cut(12).Text" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            }
+                            <label class="fill-field">
+                                <span class="fill-label">Pinch 1 — splits PP1 → Midpoint</span>
+                                @if (ScriptTurnHint(3) is { } hintP1) { <span class="fill-hint">In the script: @hintP1</span> }
+                                <textarea rows="2" @bind="split.Pinch1" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            @if (split.BeliefLayer)
+                            {
+                                <label class="fill-field belief-cut">
+                                    <span class="fill-label">Third rail — what does this mean to her, what does she believe now that she didn't five minutes ago?</span>
+                                    <textarea rows="2" @bind="split.Pinch1ThirdRail" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            }
+                            <label class="fill-field">
+                                <span class="fill-label">Pinch 2 — splits Midpoint → Crisis/PP2</span>
+                                @if (ScriptTurnHint(5) is { } hintP2) { <span class="fill-hint">In the script: @hintP2</span> }
+                                <textarea rows="2" @bind="split.Pinch2" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            @if (split.BeliefLayer)
+                            {
+                                <label class="fill-field belief-cut">
+                                    <span class="fill-label">Third rail — what does this mean to her, what does she believe now that she didn't five minutes ago?</span>
+                                    <textarea rows="2" @bind="split.Pinch2ThirdRail" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            }
+                            <label class="fill-field">
+                                <span class="fill-label">Last obstacle — splits Crisis/PP2 → Z</span>
+                                @if (ScriptTurnHint(7) is { } hintLast) { <span class="fill-hint">In the script: @hintLast</span> }
+                                <textarea rows="2" @bind="split.LastObstacle" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            @if (split.BeliefLayer)
+                            {
+                                <label class="fill-field belief-cut">
+                                    <span class="fill-label">Belief at 88% — what does she believe now, and how has that moved?</span>
+                                    <textarea rows="2" @bind="_slate.Belief.Cut(88).Text" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            }
+                            <div class="stop-callout">All seven turns down. That's the full shape; there's no rung 4. If it still doesn't hold, that's Fill and Push/Pull's job, not another rung here.</div>
+                        }
+                    }
+
+                    <div class="fill-actions">
+                        <button class="btn primary" title="Eight sequences on the Board, each turn as its synopsis" @onclick="WriteShapeAsync">@(ScriptHasShape ? "Update the shape in the script" : "Write the shape into the script")</button>
+                    </div>
+                    <div class="fill-meta">@(ScriptHasShape
+                        ? "Fills in any turn the script still has as a bracket. A turn that already has text in the script is left alone — edit it there."
+                        : "Goes in at the end of the script as four acts and eight sequences, each turn as a synopsis line. A turn you haven't found yet goes in as a bracket, so Fill hands it back to you.")</div>
+                }
+                else if (_workshopView == WorkshopView.Belief)
+                {
+                    var belief = _slate.Belief;
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseGenerate">←</button>
+                        <span class="sidebar-heading">BELIEF SPLIT</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">The "Lie" is the false belief the character organises their life around at the start; the "Truth" is what they actually need to believe by the end. Same fix-the-ends move as A→Z→Split, just run on belief instead of plot events.</p>
+
+                    <div class="rung-label">Rung 0 — name the shape and fix the ends</div>
+                    <label class="fill-field">
+                        <span class="fill-label">Shape</span>
+                        <select class="workshop-select" @bind="belief.Shape" @bind:after="SaveSlate">
+                            <option value="">—</option>
+                            @foreach (var shape in BeliefShapes)
+                            {
+                                <option value="@shape.Name">@shape.Name — @shape.A → @shape.Z</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="fill-field">
+                        <span class="fill-label">A — Lie / Truth at start</span>
+                        <textarea rows="2" @bind="belief.A" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <label class="fill-field">
+                        <span class="fill-label">Z — Truth / worse Lie at end</span>
+                        <textarea rows="2" @bind="belief.Z" @bind:after="SaveSlate"></textarea>
+                    </label>
+
+                    <div class="rung-label">Rung 1 — Ghost</div>
+                    <p class="tool-note">What happened before the story that made A feel true?</p>
+                    <label class="fill-field">
+                        <span class="fill-label">Ghost</span>
+                        <textarea rows="2" @bind="belief.Ghost" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="stress-row">
+                        <label class="burst-toggle">Size it, 1–10 <input type="number" class="burst-seconds" min="1" max="10" @bind="belief.GhostSize" @bind:after="SaveSlate" /></label>
+                        <span class="fill-hint">Commensurate with the Lie?</span>
+                        <AliveFlat Left="y" Right="n" @bind-Value="belief.GhostCommensurate" @bind-Value:after="SaveSlate" />
+                    </div>
+                    <label class="fill-field">
+                        <span class="fill-label">If no — the Ghost is too small or too big for what it's supposedly justifying</span>
+                        <textarea rows="2" @bind="belief.GhostMismatch" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="stop-callout">Run this rung once per story, not once per session. After this, every plot turn you fix — in A→Z→Split, or a scene as you draft it — inherits a belief question for free; you don't repeat the Ghost.</div>
+
+                    <div class="rung-label">Rung 2 — the 50% cut (midpoint belief)</div>
+                    <p class="tool-note">What does she believe right now — matched to the plot midpoint if you have one — and what's changed since the Ghost.</p>
+                    <label class="fill-field">
+                        <span class="fill-label">Belief at 50%</span>
+                        @if (PlotMatch(50) is { } match50) { <span class="fill-hint">Matched plot turn — midpoint: @match50</span> }
+                        <textarea rows="2" @bind="belief.Cut(50).Text" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <label class="fill-field">
+                        <span class="fill-label">What changed to get here</span>
+                        <textarea rows="2" @bind="belief.Cut50Change" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="stress-row">
+                        <span class="fill-hint">Stress it: does this feel like a real step from A, or a jump?</span>
+                        <AliveFlat @bind-Value="belief.Cut(50).Alive" @bind-Value:after="SaveSlate" />
+                    </div>
+                    <div class="stop-callout">Stop here and you've got A, Ghost, and the midpoint belief — real, usable, enough to carry forward.</div>
+                    @if (_beliefRung < 3 && !belief.HasRung3 && !belief.HasRung4)
+                    {
+                        <button class="btn" @onclick="() => _beliefRung = 3">Keep going — rung 3</button>
+                    }
+                    else
+                    {
+                        <div class="rung-label">Rung 3 — the 25% and 75% cuts</div>
+                        <p class="tool-note">Matched to PP1 and Crisis/PP2 if you have them.</p>
+                        <label class="fill-field">
+                            <span class="fill-label">Belief at 25%</span>
+                            @if (PlotMatch(25) is { } match25) { <span class="fill-hint">Matched plot turn — PP1: @match25</span> }
+                            <textarea rows="2" @bind="belief.Cut(25).Text" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <div class="stress-row"><AliveFlat @bind-Value="belief.Cut(25).Alive" @bind-Value:after="SaveSlate" /></div>
+                        <label class="fill-field">
+                            <span class="fill-label">Belief at 75%</span>
+                            @if (PlotMatch(75) is { } match75) { <span class="fill-hint">Matched plot turn — Crisis/PP2: @match75</span> }
+                            <textarea rows="2" @bind="belief.Cut(75).Text" @bind:after="SaveSlate"></textarea>
+                        </label>
+                        <div class="stress-row"><AliveFlat @bind-Value="belief.Cut(75).Alive" @bind-Value:after="SaveSlate" /></div>
+                        @if (_beliefRung < 4 && !belief.HasRung4)
+                        {
+                            <button class="btn" @onclick="() => _beliefRung = 4">Keep going — rung 4</button>
+                        }
+                        else
+                        {
+                            <div class="rung-label">Rung 4 — the 12% and 88% cuts</div>
+                            <p class="tool-note">Matched to the inciting incident and the last obstacle.</p>
+                            <label class="fill-field">
+                                <span class="fill-label">Belief at 12%</span>
+                                @if (PlotMatch(12) is { } match12) { <span class="fill-hint">Matched plot turn — inciting incident: @match12</span> }
+                                <textarea rows="2" @bind="belief.Cut(12).Text" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            <div class="stress-row"><AliveFlat @bind-Value="belief.Cut(12).Alive" @bind-Value:after="SaveSlate" /></div>
+                            <label class="fill-field">
+                                <span class="fill-label">Belief at 88%</span>
+                                @if (PlotMatch(88) is { } match88) { <span class="fill-hint">Matched plot turn — last obstacle: @match88</span> }
+                                <textarea rows="2" @bind="belief.Cut(88).Text" @bind:after="SaveSlate"></textarea>
+                            </label>
+                            <div class="stress-row"><AliveFlat @bind-Value="belief.Cut(88).Alive" @bind-Value:after="SaveSlate" /></div>
+                            <div class="stop-callout">Belief Split only defines these five named cuts — the two pinches take the lighter third-rail question instead, not a sixth or seventh named cut. Manufacturing more precision than that isn't the point.</div>
+                        }
+                    }
+                    <div class="rung-label">Close, at whichever rung you stop</div>
+                    <p class="tool-note">Scan the cuts you've got against their matched plot turns, if any. Mark each alive or flat — don't fix flat ones now, just flag them.</p>
+                }
+                else if (_workshopView == WorkshopView.Extend)
+                {
+                    var extend = _slate.Extend;
+                    <div class="workshop-nav">
+                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseGenerate">←</button>
+                        <span class="sidebar-heading">EXTEND BACKWARD</span>
+                    </div>
+                    @if (_fileName.Length == 0)
+                    {
+                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+                    }
+                    <p class="tool-note">For when you have an ending — yours, or one you're stealing to reverse-engineer — and nothing that leads to it yet.</p>
+                    <label class="fill-field">
+                        <span class="fill-label">Z — the one thing you already have: a final image, a last line, an ending</span>
+                        <textarea rows="2" @bind="extend.Z" @bind:after="SaveSlate"></textarea>
+                    </label>
+
+                    <div class="rung-label">Work backward, one link at a time</div>
+                    <p class="tool-note"><em>What had to be true right before this, for this to happen?</em> Answer, then ask the same question of your own answer. No jumping ahead to fill the middle from the front — only the most recent link you wrote is allowed to generate the next one.</p>
+                    @for (var i = 0; i < extend.Links.Count; i++)
+                    {
+                        var index = i;
+                        var link = extend.Links[index];
+                        var isOpen = index == extend.Links.Count - 1;
+                        <label class="fill-field">
+                            <span class="fill-label">Link @(index + 1) — right before @(index == 0 ? "Z" : $"link {index}")</span>
+                            @if (isOpen)
+                            {
+                                <span class="fill-hint">@(link.Mystery
+                                    ? "Mystery lens: treat it as a crime scene — what would a detective need to find to explain it, rather than what caused it?"
+                                    : "What had to be true right before this, for this to happen?")</span>
+                            }
+                            <textarea rows="2" @bind="link.Text" @bind:after="() => LinkChanged(link)"></textarea>
+                        </label>
+                        @if (isOpen)
+                        {
+                            <label class="burst-toggle"><input type="checkbox" @bind="link.Mystery" @bind:after="SaveSlate" /> Mystery lens on this link</label>
+                        }
+                    }
+                    <div class="fill-meta">Keep going until the chain reaches something that can plausibly be a beginning, or until you're done for now. Either is a valid place to stop.</div>
+
+                    <div class="rung-label">Stopping, any link</div>
+                    <p class="tool-note">Read the chain forward, start to Z. Does each link earn the next, or did one get invented to patch a gap?</p>
+                    @if (extend.Links.Any(link => !string.IsNullOrWhiteSpace(link.Text)))
+                    {
+                        <ol class="chain-forward">
+                            @foreach (var link in Enumerable.Reverse(extend.Links).Where(link => !string.IsNullOrWhiteSpace(link.Text)))
+                            {
+                                <li>@link.Text</li>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(extend.Z))
+                            {
+                                <li class="chain-z">@extend.Z</li>
+                            }
+                        </ol>
+                    }
+                    <div class="stress-row">
+                        <AliveFlat @bind-Value="extend.ChainAlive" @bind-Value:after="SaveSlate" />
+                    </div>
+                    <label class="fill-field">
+                        <span class="fill-label">If flat, name the weakest link</span>
+                        <textarea rows="2" @bind="extend.WeakestLink" @bind:after="SaveSlate"></textarea>
+                    </label>
+                    <div class="stop-callout">Stuck partway? Try the mystery lens on the next link only: treat Z as a crime scene — what would a detective need to find to explain it, rather than what caused it. Different question, sometimes unsticks the same chain.</div>
+                }
             </div>
         </aside>
     </div>
@@ -673,6 +1008,10 @@ Open a .fountain file to see formatted pages.</div>
         <span>@_caretElementLabel</span>
         <span>~@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s")</span>
         <span>@_analysis.WordCount.ToString("N0") words</span>
+        @if (ShapeLine.Derive(_analysis.BoardLanes) is { } shapeLine)
+        {
+            <span class="shape-line" title="@ShapeLine.Legend">@shapeLine</span>
+        }
         <span class="spacer"></span>
         <button class="icon-btn" title="Undo (Ctrl+Z)" @onclick="UndoAsync">↶</button>
         <button class="icon-btn" title="Redo (Ctrl+Y)" @onclick="RedoAsync">↷</button>
@@ -905,6 +1244,18 @@ Open a .fountain file to see formatted pages.</div>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_scrollWorkshopToTop)
+        {
+            _scrollWorkshopToTop = false;
+            try
+            {
+                await JS.InvokeVoidAsync("passage.scrollToTop", ".workshop-body");
+            }
+            catch (JSException)
+            {
+            }
+        }
+
         if (_focusTitlePage)
         {
             _focusTitlePage = false;
@@ -2331,7 +2682,7 @@ Open a .fountain file to see formatted pages.</div>
         await PersistSessionAsync();
     }
 
-    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain }
+    private enum WorkshopView { Tools, Brackets, Fill, Chains, Chain, Split, Belief, Extend }
 
     private WorkshopView _workshopView;
     private SlateDocument _slate = new();
@@ -2365,6 +2716,13 @@ Open a .fountain file to see formatted pages.</div>
         if (_workshopView == WorkshopView.Chain)
         {
             _workshopView = WorkshopView.Chains;
+        }
+
+        // The Split family is one run per script, so a different script means
+        // a different run; back to the list rather than showing the wrong one.
+        if (_workshopView is WorkshopView.Split or WorkshopView.Belief or WorkshopView.Extend)
+        {
+            _workshopView = WorkshopView.Tools;
         }
 
         if (_burstRunning)
@@ -2614,17 +2972,14 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     // The dock body is one scroll container, so a runner opened from the
-    // bottom of the tool list would otherwise open at its own bottom.
-    private async Task ScrollWorkshopToTopAsync()
+    // bottom of the tool list would otherwise open at its own bottom. The
+    // scroll happens after the render that shows the new view.
+    private bool _scrollWorkshopToTop;
+
+    private Task ScrollWorkshopToTopAsync()
     {
-        await InvokeAsync(StateHasChanged);
-        try
-        {
-            await JS.InvokeVoidAsync("passage.scrollIntoView", ".workshop-nav");
-        }
-        catch (JSException)
-        {
-        }
+        _scrollWorkshopToTop = true;
+        return Task.CompletedTask;
     }
 
     private async Task OpenChainAsync(ChainRun chain)
@@ -2798,6 +3153,230 @@ Open a .fountain file to see formatted pages.</div>
         _statusMessage = heading is null
             ? $"Added a synopsis at line {insertAt + 1}"
             : $"Added a synopsis under {heading} (line {insertAt + 1})";
+    }
+
+    // ---- The Split family: A→Z→Split, Belief Split, Extend Backward (Phase 3) ----
+    //
+    // One run of each per script — the worksheet runs them once per story —
+    // and the five belief cuts are one record shared between Split's optional
+    // layer and Belief Split. The stop-callouts are UI text, and the rung
+    // below each is behind a button until the writer chooses it or it has
+    // text: that is the anti-Woodshed mechanism, not decoration.
+
+    // Rungs the writer has opened past what has content. Session only: a
+    // reopened run shows what it holds, nothing about how far it got.
+    private int _splitRung;
+    private int _beliefRung;
+
+    private static readonly (string Name, string A, string Z)[] BeliefShapes =
+    {
+        ("Positive Change", "Lie", "Truth"),
+        ("Flat", "Truth held", "used to overcome world's Lie"),
+        ("Disillusionment", "Lie", "Truth (tragic)"),
+        ("Fall", "Lie", "clings, then worse Lie"),
+        ("Corruption", "sees Truth", "rejects it, embraces Lie")
+    };
+
+    private async Task OpenGenerateAsync(WorkshopView view)
+    {
+        _splitRung = 0;
+        _beliefRung = 0;
+        while (_slate.Split.Candidates.Count < 3)
+        {
+            _slate.Split.Candidates.Add(string.Empty);
+        }
+
+        if (_slate.Extend.Links.Count == 0)
+        {
+            _slate.Extend.Links.Add(new ExtendLink());
+        }
+
+        _workshopView = view;
+        await ScrollWorkshopToTopAsync();
+    }
+
+    private void CloseGenerate()
+    {
+        _workshopView = WorkshopView.Tools;
+        SaveSlate();
+    }
+
+    // The plot turn a belief cut is matched to, from the Split run, when it
+    // has one.
+    private string? PlotMatch(int ratio)
+    {
+        var split = _slate.Split;
+        var turn = ratio switch
+        {
+            12 => split.Inciting,
+            25 => split.PP1,
+            50 => split.Midpoint,
+            75 => split.Crisis,
+            88 => split.LastObstacle,
+            _ => string.Empty
+        };
+        return string.IsNullOrWhiteSpace(turn) ? null : turn.Trim();
+    }
+
+    // Only the most recent link opens the next field.
+    private void LinkChanged(ExtendLink link)
+    {
+        var links = _slate.Extend.Links;
+        if (link == links[^1] && !string.IsNullOrWhiteSpace(link.Text))
+        {
+            links.Add(new ExtendLink());
+        }
+
+        SaveSlate();
+    }
+
+    private IEnumerable<BoardCard> ScriptSequences =>
+        _analysis.BoardLanes.SelectMany(lane => lane.Groups).Where(group => group.SequenceCard is not null).Select(group => group.SequenceCard!);
+
+    private bool ScriptHasShape =>
+        ScriptSequences.Any(card => card.Description.Split('\n').Any(line => SplitScript.TryParse(line, out _, out _)));
+
+    // What the script holds for a slot, when it is real text — shown under
+    // the field so the runner and the script never silently disagree.
+    private string? ScriptTurnHint(int slotIndex)
+    {
+        var slot = SplitScript.Slots[slotIndex];
+        foreach (var card in ScriptSequences)
+        {
+            foreach (var line in card.Description.Split('\n'))
+            {
+                if (SplitScript.TryParse(line, out var label, out var value) && label == slot.Label)
+                {
+                    return SplitScript.IsKnown(value) ? value : null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Writing the shape: the first time, the whole structure goes in at the
+    // end by ranged insert. After that, only turns the script still holds as
+    // a bracket are filled in, matched by text; a turn with real text in the
+    // script is the script's now (decision B) and is named, not overwritten.
+    private async Task WriteShapeAsync()
+    {
+        var run = _slate.Split;
+        var values = SplitScript.Values(run);
+        if (!ScriptHasShape)
+        {
+            var shapeLines = SplitScript.BuildLines(run);
+            var empty = string.IsNullOrWhiteSpace(_content);
+            if (empty)
+            {
+                // Nothing to separate from: no leading blank line.
+                shapeLines.RemoveAt(0);
+            }
+
+            var text = string.Join('\n', shapeLines);
+            var insertAt = empty ? 0 : _analysis.LineCount;
+            bool inserted;
+            try
+            {
+                inserted = await JS.InvokeAsync<bool>("passage.insertLinesAt", insertAt, text);
+            }
+            catch (JSException)
+            {
+                inserted = false;
+            }
+
+            if (!inserted)
+            {
+                _statusMessage = "Could not write the shape — nothing changed";
+                return;
+            }
+
+            var mirrored = _content.Split('\n').ToList();
+            mirrored.Insert(Math.Min(insertAt, mirrored.Count), text);
+            _content = string.Join('\n', mirrored);
+            _isDirty = true;
+            RunAnalysis();
+            UpdateCaretElementLabel();
+            _statusMessage = $"Wrote four acts and eight sequences from line {insertAt + 1} — see BOARD";
+            return;
+        }
+
+        var lines = _content.Split('\n');
+        var updated = new List<string>();
+        var kept = new List<string>();
+        var missing = new List<string>();
+        for (var i = 0; i < SplitScript.Slots.Length; i++)
+        {
+            var slot = SplitScript.Slots[i];
+            if (string.IsNullOrWhiteSpace(values[i]))
+            {
+                continue;
+            }
+
+            var index = SplitScript.FindLine(lines, slot);
+            if (index < 0)
+            {
+                missing.Add(slot.Label);
+                continue;
+            }
+
+            SplitScript.TryParse(lines[index], out _, out var current);
+            if (SplitScript.IsKnown(current))
+            {
+                if (current != SplitScript.OneLine(values[i]))
+                {
+                    kept.Add(slot.Label);
+                }
+
+                continue;
+            }
+
+            var wanted = SplitScript.Line(slot, values[i]);
+            bool replaced;
+            try
+            {
+                replaced = await JS.InvokeAsync<bool>("passage.replaceInLine", index, lines[index], wanted);
+            }
+            catch (JSException)
+            {
+                replaced = false;
+            }
+
+            if (!replaced)
+            {
+                missing.Add(slot.Label);
+                continue;
+            }
+
+            lines[index] = wanted;
+            updated.Add(slot.Label);
+        }
+
+        if (updated.Count > 0)
+        {
+            _content = string.Join('\n', lines);
+            _isDirty = true;
+            RunAnalysis();
+            UpdateCaretElementLabel();
+        }
+
+        var parts = new List<string>();
+        if (updated.Count > 0)
+        {
+            parts.Add("Filled in " + string.Join(", ", updated));
+        }
+
+        if (kept.Count > 0)
+        {
+            parts.Add(string.Join(", ", kept) + " already " + (kept.Count == 1 ? "has" : "have") + " text in the script — edit there");
+        }
+
+        if (missing.Count > 0)
+        {
+            parts.Add("no line in the script for " + string.Join(", ", missing));
+        }
+
+        _statusMessage = parts.Count == 0 ? "The script already has all of this" : string.Join("; ", parts);
     }
 
     // Scripts can be deleted from the volume outside the app. A sidecar left
