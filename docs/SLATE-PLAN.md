@@ -237,7 +237,11 @@ Passage.Web.slnf` clean with `TreatWarningsAsErrors`.
   `workshopWidth`, owned by `passage.js` (`applyWorkshopWidth`,
   `initWorkshopResize`, ~125) via the `--workshop-width` CSS variable, so a
   drag costs no round-trips. Below 900px the dock covers the main area instead
-  of squeezing the editor. CSS under `/* ---- Slate workshop dock ---- */`.
+  of squeezing the editor, and the status bar wraps with the status message
+  on its own full-width row — the runners' messages are sentences, and the
+  one-row bar squeezed them a word wide and grew to a quarter of the screen
+  (found in the 2026-09-20 verification pass). CSS under
+  `/* ---- Slate workshop dock ---- */`.
   Tests in `Passage/Passage.Tests/Program.cs` (`TestSlateStore*`); the test
   project now references `Passage.Web` for them.
 - **Deviation — no Save As cascade.** The web app has no Save As command

@@ -5,8 +5,10 @@
 State of play for the Writer's Tools work in `Passage.Web` (internally "Slate",
 after the vault system it comes from), written for the next agent. Read this,
 then `CLAUDE.md`, `PROJECT_RULES.md`, and `docs/SLATE-PLAN.md` — in that
-order — before touching anything. Everything below is as of the Phase 6
-commit on branch `web-scope`, 2026-09-20, which is on GitHub as PR #13.
+order — before touching anything. Everything below is as of the
+verification-pass commit on branch `web-scope`, 2026-09-20. PR #13
+(web-scope → main) is merged; later commits go up on `web-scope` and need
+a new PR.
 
 ---
 
@@ -117,6 +119,30 @@ Copy these, don't reinvent them.
 
 ---
 
+## Verification pass, 2026-09-20
+
+Every tool was walked through the six-point checklist below (Fill, WOAC,
+Flaw, A→Z→Split, Belief Split, Extend Backward, Bridge, Position, Push/Pull
++ Lens, Ideation) at 375px and 1280px, in the agent browser against the
+alt server on the dev data. Build warning-free, 28/28 tests. Everything
+passed except one layout defect, fixed in the same session: at phone width
+the status bar was `flex; nowrap`, so a runner's sentence-long status
+("Filled in Plot point 1; Midpoint already has text in the script — edit
+there") wrapped a word wide and grew the bar to 190px, a quarter of the
+screen, taken from the dock. It now wraps with the message on its own row
+(`app.css`, the `max-width: 900px` block). Two things noticed and left for
+Adam to call:
+
+- **The burst clock scrolls out of view on a phone.** `[data-burst-display]`
+  sits in `.burst-row` at the top of the runner; once the burst focuses a
+  slot in round 3+ of a chain, the writer can't see "read… 5" or the count.
+  A sticky `.burst-row` inside `.workshop-body` while `_burstRunning` would
+  fix it. Not done unasked — it changes how the runner looks.
+- **Position keeps empty turns.** "Another turn" appends a turn; six empty
+  ones from a click-happy session stay in the record and render as six
+  empty forms. `SaveSlate` prunes empty *runs*; trailing empty turns could
+  be pruned the same way. The dev sidecar for `split-test` has exactly this.
+
 ## What's next
 
 Nothing is scheduled. In order of likelihood:
@@ -167,8 +193,8 @@ Nothing is scheduled. In order of likelihood:
   filesystem, not content. Commit with `git -c core.fileMode=false add
   <paths>` and `git -c core.fileMode=false commit`; never `git add -A`.
   Commits end with the `Co-Authored-By` line the session gives you. Push to
-  `origin web-scope`; PR #13 (web-scope → main) picks it up — update its
-  description with `gh pr edit 13 --body-file -` when a phase lands.
+  `origin web-scope`. PR #13 (web-scope → main) is merged; open a new PR
+  from `web-scope` when the next piece of work lands.
 
 ---
 
@@ -219,3 +245,17 @@ The minimum bar, all checked by hand in a browser:
   line break.
 - **Save As does not exist** in the web app; the dialog only names untitled
   buffers. Don't build a cascade for it.
+- **The agent browser's `ctrl+z` never reaches CodeMirror 5.** CM5 keys its
+  bindings off `keyCode`, and the synthetic key has none. To test undo, use
+  the status-bar Undo button, or dispatch a `KeyboardEvent('keydown', {key:
+  'z', ctrlKey: true})` with `keyCode`/`which` defined as 90 on the focused
+  editor textarea. `passage.editor` is the CM5 instance (`getLine`,
+  `getCursor`, `setCursor`, `replaceRange`).
+- **A 5-second burst timer expires between agent tool calls.** Each call
+  takes a few seconds; read-in + write at the dev sidecar's 5 s is 10 s, so
+  a slot "skips" between one call and the next. That is the clock advancing
+  as designed, not a double Enter. Set the seconds higher before testing
+  slot order, or check `document.activeElement` in the same batch.
+- **Scripted editor edits leave a recovery snapshot.** `replaceRange` then
+  undo returns the text but leaves the buffer dirty; the next reload asks
+  "Recover Document?" — Discard.

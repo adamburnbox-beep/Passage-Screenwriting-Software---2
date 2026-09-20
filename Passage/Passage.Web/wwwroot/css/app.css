@@ -1326,6 +1326,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     .main-area { position: relative; }
     .workshop { position: absolute; inset: 0; width: auto; min-width: 0; border-left: none; }
     .workshop-resize { display: none; }
+    /* A runner's status line can be a sentence. Squeezed into the one-row
+       bar it wraps a word wide and the bar swallows the dock's height. */
+    .statusbar { flex-wrap: wrap; gap: 4px 12px; }
+    .statusbar .status-message { flex-basis: 100%; }
 }
 
 /* ---- Go to Scene ---- */
