@@ -138,8 +138,17 @@ never calls them. Highest value per token in the project. Do these first.
 
 - **Linux:** VM 235–253 (`MaxRecentFiles`, `RecentFiles`, `AddRecentFile`),
   481–496 (`OpenRecent`); MW.axaml 253–263 (menu)
-- **Web:** `Editor.razor` 16–54 (script menu off the topbar file pill),
-  `RequestOpenFile`
+- **Web:** `Editor.razor` 16–60 (script menu off the topbar file pill),
+  `RequestOpenFile`, `ImportFileAsync`
+- **Open from this device:** the desktop File ▸ Open has no web equivalent
+  because the library *is* the disk. The script menu's "Open from this
+  device…" is the bridge: an `InputFile` (.fountain/.md/.txt, 5 MB cap)
+  copies the file into the library under its own name — `name-2.ext` if
+  that name is taken, never an overwrite — then opens it through the normal
+  `OpenFileAsync`, so RECENT and the session key pick it up. It waits behind
+  the unsaved-changes guard like New and Open do. Verified by injecting a
+  `File` into the input: fresh name, collision on a dirty editor (modal, then
+  `-2`), status line names both.
 - **Notes:** Per-browser, alongside 1.1. Small.
 - **Done:** A RECENT section at the top of the script list, above ALL SCRIPTS.
   The list used to be a FILES tab in the sidebar; it now drops down from the
@@ -381,8 +390,10 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   **Verified** by writing a block and reopening it: every field round-tripped
   through the parser, multi-line Contact included, and Delete left the body
   untouched.
-- **Entry point:** the Export dropdown became **Document ▾** and now leads with
-  "Title Page…". The web app has no File menu, and this is the closest thing.
+- **Entry point:** "Title Page…" sits at the foot of the script menu (the
+  topbar file pill), since it is metadata of the open script rather than an
+  export step. The export dropdown is back to **Export ▾** and holds only
+  exports.
 - **Known cost:** a whole-document rewrite, so it clears the undo stack — the
   same trade-off `EditTitlePage` makes by assigning `EditorContent` outright.
   Splicing only the header range would preserve it; worth doing if 3.1b's
