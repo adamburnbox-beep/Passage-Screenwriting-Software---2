@@ -213,6 +213,29 @@ html, body {
 .script-list .file-row .icon-btn { display: inline-flex; width: auto; padding: 2px 6px; color: var(--muted-text); }
 .script-list .file-row .icon-btn:hover { color: var(--control-foreground); }
 
+.menu-divider { height: 1px; background: var(--surface-border); margin: 6px 4px; }
+
+/* A menu row that is really a file picker: the label is the visible item and
+   the input stays in the DOM but out of sight so its change event still fires. */
+.menu-items .menu-file-item {
+    position: relative;
+    display: block;
+    color: var(--control-foreground);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.menu-items .menu-file-item:hover { background: var(--surface-muted); }
+.menu-file-item input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
 .dirty-dot { color: var(--syntax-synopsis); font-weight: 700; }
 
 .view-tabs {
