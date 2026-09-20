@@ -1,0 +1,23 @@
+@* The assist seam's one piece of UI (SLATE-PLAN Phase 7): a button that
+   asks the partner for three lines for the field above, and the lines it
+   offered as taps. With the null partner there is no partner to ask, and
+   this renders nothing at all. *@
+@using Passage.Core.Extensibility
+@inject IStoryPartner Partner
+
+@if (Partner is not NullStoryPartner)
+{
+    <div class="partner">
+        <button type="button" class="btn" title="Three lines from the partner — yours to reject, or take one" @onclick="OnAsk">Offer three</button>
+        @foreach (var line in Lines)
+        {
+            <button type="button" class="partner-line" title="Use this one" @onclick="() => OnUse.InvokeAsync(line)">@line</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<string> Lines { get; set; } = Array.Empty<string>();
+    [Parameter] public EventCallback OnAsk { get; set; }
+    [Parameter] public EventCallback<string> OnUse { get; set; }
+}

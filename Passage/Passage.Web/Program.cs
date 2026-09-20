@@ -1,3 +1,4 @@
+using Passage.Core.Extensibility;
 using Passage.Web.Components;
 using Passage.Web.Services;
 
@@ -10,6 +11,11 @@ builder.Services.AddSingleton<ScriptLibrary>();
 builder.Services.AddSingleton<ExportService>();
 builder.Services.AddSingleton<GoalSettingsStore>();
 builder.Services.AddSingleton<SlateStore>();
+// The assist seam (docs/SLATE-PLAN.md, Phase 7). Only the null partner
+// exists; it asks nothing and sends nothing anywhere. A real partner is
+// registered here in its place and nowhere else — the dock shows its
+// buttons only when the registered partner is not the null one.
+builder.Services.AddSingleton<IStoryPartner, NullStoryPartner>();
 
 var app = builder.Build();
 

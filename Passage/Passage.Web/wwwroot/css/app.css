@@ -1175,6 +1175,21 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .fill-actions { display: flex; gap: 8px; margin-top: 10px; }
 
+/* The assist seam's offers (SLATE-PLAN Phase 7): a button, then the lines
+   as taps. Nothing here renders with the null partner. */
+.partner { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; }
+.partner-line {
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: var(--control-foreground);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.partner-line:hover { border-color: var(--control-foreground); }
+
 /* Forward chain runner. A kept chain is listed by its seed line in the
    ordinary face, not the script face the bracket rows use. */
 .chain-seed { font-family: inherit; }

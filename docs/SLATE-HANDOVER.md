@@ -5,8 +5,8 @@
 State of play for the Writer's Tools work in `Passage.Web` (internally "Slate",
 after the vault system it comes from), written for the next agent. Read this,
 then `CLAUDE.md`, `PROJECT_RULES.md`, and `docs/SLATE-PLAN.md` — in that
-order — before touching anything. Everything below is as of the
-verification-pass commit on branch `web-scope`, 2026-09-20. PR #13
+order — before touching anything. Everything below is as of the Phase 7
+commit on branch `web-scope`, 2026-09-20. PR #13
 (web-scope → main) is merged; later commits go up on `web-scope` and need
 a new PR.
 
@@ -20,12 +20,14 @@ into the web app as a right-hand dock called **Writer's Tools**, plus one
 full-screen overlay. **All six tool phases are built and verified**: the
 foundations, Fill, the forward chain (WOAC and Character Flaw Brainstorm),
 the Split family (A→Z→Split, Belief Split, Extend Backward), Bridge and
-Position, Push/Pull and Lens, and Ideation burst. The only unbuilt row is
-Phase 7, the model-assist seam, which the plan deliberately puts last and
-argues against building until it is actually wanted. **There is no next tool
-to build.** What comes next is Adam using the tools for real and reporting
-back; the next agent's work is most likely fixes and copy changes from that,
-not new runners.
+Position, Push/Pull and Lens, and Ideation burst — and, since the
+verification pass, **Phase 7, the assist seam**, which Adam asked for once
+the pass was clean. Every row in the plan is `done`. With the default
+`NullStoryPartner` the seam is invisible; the first real partner is one
+class and one registration line. **There is no next tool to build.** What
+comes next is Adam using the tools for real and reporting back; the next
+agent's work is most likely fixes and copy changes from that, or the first
+real partner if he wants one.
 
 ---
 
@@ -40,6 +42,9 @@ not new runners.
 | Synopsis placement (chain promotion, "scene under the caret") | `Passage/Passage.Web/Services/SynopsisPlacement.cs` |
 | Split write-back and `= Turn: text` parsing | `Passage/Passage.Web/Services/SplitScript.cs` |
 | Shape line | `Passage/Passage.Web/Services/ShapeLine.cs` |
+| The assist seam: interface, request, null partner | `Passage/Passage.Core/Extensibility/IStoryPartner.cs`; registered in `Passage.Web/Program.cs` |
+| The asks, one builder per site | `Passage/Passage.Web/Services/Suggestions.cs` |
+| The seam's only UI | `Passage/Passage.Web/Components/PartnerLines.razor` (renders nothing with the null partner) |
 | Alive / flat and Y / N pills | `Passage/Passage.Web/Components/AliveFlat.razor` |
 | Dock markup and all handlers | `Passage/Passage.Web/Components/Pages/Editor.razor` — `<aside class="workshop">` ~389; tools view ~395; BRACKETS ~477; FILL ~510; chain list and runner ~548; Bridge / Position ~666; Revise ~876; Split / Belief / Extend ~1082; the ideation overlay `@if (_ideationOpen` ~1440; handlers from `// ---- Writer's tools dock` ~3200, then `// ---- Forward chain` ~3470, `// ---- The Split family` ~3700, `// ---- Bridge and Position` ~3930, `// ---- Push/Pull and Lens` ~4070, `// ---- Ideation burst` ~4190 |
 | Ideation's offline dealer | `Passage/Passage.Web/Services/IdeationDealer.cs` — `Deal(lane)` and the ten lanes' banks; called from `StartSitting`, `AddIdeationRound` and *Deal another* |
@@ -88,6 +93,13 @@ the map.
   script, skipped by the orphan sweep. Full-screen overlay: roll or pick a
   lane, locked for the sitting; rounds of Input + timed Output; *Done for
   this sitting* files the one kept line and drops the rounds.
+- **Phase 7 — the assist seam.** `IStoryPartner.SuggestAsync(request)` →
+  lines. A request is the worksheet so far as labelled lines plus the
+  field's own question. Six sites (Fill, Split midpoint, Bridge round, WOAC
+  next answer, Flaw next question, Extend open link) show "Offer three" and
+  the offered lines as taps — only when the registered partner is not the
+  null one. A tap writes into the first empty target; the writer can take
+  none. Handlers under `// ---- The assist seam (Phase 7)`.
 
 ## Patterns every tool follows
 
@@ -117,6 +129,12 @@ Copy these, don't reinvent them.
 - **Never a disabled button that reads a field just typed**: the change
   event and the tap travel together. Leave it enabled; put "nothing to do"
   in the status line.
+- **A partner site is one line of markup**: `<PartnerLines
+  Lines="PartnerLinesFor(key)" OnAsk="() => AskPartnerAsync(key)"
+  OnUse="UsePartnerLine" />`, a key property that names the exact target
+  (bracket, round, link), a builder in `Suggestions`, and a branch in
+  `BuildPartnerRequest` / `PlacePartnerLine`. To test the wiring, register
+  a throwaway partner that echoes the request, then delete it.
 
 ---
 
@@ -155,9 +173,11 @@ Nothing is scheduled. In order of likelihood:
 2. **The burst timer's default seconds.** 30 (the vault's number) versus
    Adam's "10 seconds for three ideas". Configurable in every runner that
    uses it; the default was never settled with him.
-3. **Phase 7 — the assist seam.** Only if Adam asks. The plan's own pushback
-   (rule 2, speculative abstraction) still stands; the records are already
-   the shape an assist would need.
+3. **The first real partner.** Only if Adam asks. It is one class
+   implementing `IStoryPartner` (in `Passage.Web`, with its key in
+   configuration) and swapping the registration line in `Program.cs`. Keep
+   the lines short and in the worksheet's register; the partner offers,
+   never writes.
 4. **The scope question** in `SLATE-PLAN.md` "The honest risk": whether the
    board should come across from Obsidian after all. That is Adam's call
    after using the tools, not something to build unasked.

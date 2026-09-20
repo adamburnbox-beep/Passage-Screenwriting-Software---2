@@ -608,7 +608,7 @@ Full-screen overlay, the one engine that isn't about your script.
   7's partner if it is ever built: same call, same one string back. Tested,
   `TestIdeationDealerDealsEveryLane`.
 
-### Phase 7 — The assist seam · `not started`
+### Phase 7 — The assist seam · `done`
 
 - `IStoryPartner` in `Passage.Core`, one method:
   `Task<IReadOnlyList<string>> SuggestAsync(SuggestionRequest, CancellationToken)`.
@@ -628,6 +628,37 @@ a structured record, and every assist is the same request/response. If the
 records are right — which Phases 1–6 have to get right anyway — the interface
 is an afternoon whenever you want it, and zero speculative code ships in the
 meantime.
+
+- **Done (2026-09-20, on the writer's say-so after the verification
+  pass):** `Passage/Passage.Core/Extensibility/IStoryPartner.cs` — the one
+  method, `SuggestionRequest(Tool, Ask, Context, Count)` where `Context` is the
+  worksheet's written lines as `(Label, Text)` pairs in reading order and
+  `Ask` is the field's own question in the worksheet's words, and
+  `NullStoryPartner`, which returns nothing. Registered in `Program.cs` as
+  the only implementation; it asks nothing and sends nothing anywhere. The
+  asks are built by `Passage/Passage.Web/Services/Suggestions.cs`, pure
+  functions from each run record (tested: `TestSuggestionsAskForTheNextField`,
+  `TestNullStoryPartnerOffersNothing`). Six sites in `Editor.razor`, each one
+  line of markup — `<PartnerLines>` (`Components/PartnerLines.razor`), which
+  renders nothing at all when the injected partner is the null one: Fill's
+  three candidates, A→Z→Split's three midpoint candidates, Bridge's current
+  round, WOAC's next empty answer (want in round 1, then obstacle → action →
+  consequence), Character Flaw's first unanswered question, Extend
+  Backward's open link (the mystery lens changes the ask). Handlers under
+  `// ---- The assist seam (Phase 7)`. The partner only ever *offers*: the
+  lines come back as taps under the field, a tap writes one into the first
+  empty target and the writer can take none; a three-candidate field keeps
+  the remaining offers, a one-answer field drops them with the answer, and
+  offers are keyed to the bracket / round / link they were for so they
+  never show under another. Status line for asking, nothing back, a partner
+  error, and a full field. Verified in the browser with a throwaway canned
+  partner (deleted before commit) at all six sites, and with the null
+  partner that every runner renders exactly as before.
+- **Deviation — no config key.** "Config-gated" was read as: the registration
+  line in `Program.cs` is the gate, and a real partner replaces the null one
+  there and nowhere else. A `StoryPartner:Enabled` setting with nothing
+  behind it would be a switch that switches nothing; add the key when the
+  first real partner needs one (an API key, say).
 
 ---
 

@@ -1,4 +1,5 @@
 @page "/"
+@using Passage.Core.Extensibility
 @using Passage.Core.Goals
 @using Passage.Export
 @using Passage.Parser
@@ -7,6 +8,7 @@
 @inject ExportService Exports
 @inject GoalSettingsStore GoalStore
 @inject SlateStore Slate
+@inject IStoryPartner Partner
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -530,6 +532,7 @@ Open a .fountain file to see formatted pages.</div>
                             <textarea rows="2" @bind="option.WhyWrong" @bind:after="SaveSlate"></textarea>
                         }
                     </div>
+                    <PartnerLines Lines="PartnerLinesFor(FillPartnerKey)" OnAsk="() => AskPartnerAsync(FillPartnerKey)" OnUse="UsePartnerLine" />
                     <label class="fill-field">
                         <span class="fill-label">What the wrongness points to</span>
                         <span class="fill-hint">Read your "why it's wrong" answers together. What do they agree the real event needs to do, or needs to avoid?</span>
@@ -655,6 +658,7 @@ Open a .fountain file to see formatted pages.</div>
                             <div class="fill-meta">You can stop after any question — a partial chain is still real material — but the eight are designed to land on a shape together, so if you're mid-flow, finishing the set in one sitting is worth more here than with WOAC's open-ended rounds.</div>
                         }
                     </div>
+                    <PartnerLines Lines="PartnerLinesFor(ChainPartnerKey)" OnAsk="() => AskPartnerAsync(ChainPartnerKey)" OnUse="UsePartnerLine" />
                     <label class="fill-field chain-readback">
                         <span class="fill-label">Read it back — what's the scene now, in one line?</span>
                         <textarea rows="2" @bind="_chain.ReadBack" @bind:after="SaveSlate"></textarea>
@@ -751,6 +755,7 @@ Open a .fountain file to see formatted pages.</div>
                             </div>
                         }
                     </div>
+                    <PartnerLines Lines="PartnerLinesFor(BridgePartnerKey)" OnAsk="() => AskPartnerAsync(BridgePartnerKey)" OnUse="UsePartnerLine" />
                     <button class="btn" @onclick="AddBridgeRound">Another round — the gap still needs more than one link</button>
                     <div class="fill-meta">No limit — but a gap that needs more than three or four links is probably a whole story's gap, not a scene-to-scene one.</div>
 
@@ -1115,6 +1120,7 @@ Open a .fountain file to see formatted pages.</div>
                             <textarea rows="2" @bind="split.Candidates[index]" @bind:after="SaveSlate"></textarea>
                         </label>
                     }
+                    <PartnerLines Lines="PartnerLinesFor(SplitPartnerKey)" OnAsk="() => AskPartnerAsync(SplitPartnerKey)" OnUse="UsePartnerLine" />
                     <label class="fill-field">
                         <span class="fill-label">Chosen midpoint</span>
                         @if (ScriptTurnHint(4) is { } hintMid) { <span class="fill-hint">In the script: @hintMid</span> }
@@ -1389,6 +1395,7 @@ Open a .fountain file to see formatted pages.</div>
                             <label class="burst-toggle"><input type="checkbox" @bind="link.Mystery" @bind:after="SaveSlate" /> Mystery lens on this link</label>
                         }
                     }
+                    <PartnerLines Lines="PartnerLinesFor(ExtendPartnerKey)" OnAsk="() => AskPartnerAsync(ExtendPartnerKey)" OnUse="UsePartnerLine" />
                     <div class="fill-meta">Keep going until the chain reaches something that can plausibly be a beginning, or until you're done for now. Either is a valid place to stop.</div>
 
                     <div class="rung-label">Stopping, any link</div>
@@ -4379,6 +4386,136 @@ Open a .fountain file to see formatted pages.</div>
         }
     }
 
+    // ---- The assist seam (Phase 7) ----
+    //
+    // One ask at a time, keyed by the field it was for, so lines offered
+    // for one bracket or round never show under another. The partner only
+    // ever offers; a tap on a line puts it in the first empty target, and
+    // the writer can take none. With the null partner none of this renders.
+
+    private string _partnerKey = string.Empty;
+    private List<string> _partnerLines = new();
+    private CancellationTokenSource? _partnerCts;
+
+    private string FillPartnerKey => $"fill:{_fillBracket?.Text}";
+    private const string SplitPartnerKey = "split";
+    private string BridgePartnerKey => $"bridge:{_bridge?.Rounds.Count}";
+    private string ChainPartnerKey => $"chain:{(_chain is null ? -1 : _slate.Chains.IndexOf(_chain))}";
+    private string ExtendPartnerKey => $"extend:{_slate.Extend.Links.Count}";
+
+    private IReadOnlyList<string> PartnerLinesFor(string key) => _partnerKey == key ? _partnerLines : Array.Empty<string>();
+
+    private SuggestionRequest? BuildPartnerRequest(string key)
+    {
+        if (key == FillPartnerKey && _fillRun is not null && _fillBracket is not null)
+        {
+            var lines = _content.Split('\n');
+            var scriptLine = _fillBracket.LineIndex < lines.Length ? lines[_fillBracket.LineIndex] : string.Empty;
+            return Suggestions.ForFill(_fillRun, scriptLine);
+        }
+        if (key == SplitPartnerKey) return Suggestions.ForSplitMidpoint(_slate.Split);
+        if (key == BridgePartnerKey && _bridge is not null) return Suggestions.ForBridgeRound(_bridge);
+        if (key == ChainPartnerKey && _chain is not null) return Suggestions.ForChain(_chain, FlawQuestions);
+        if (key == ExtendPartnerKey) return Suggestions.ForExtendLink(_slate.Extend);
+        return null;
+    }
+
+    private async Task AskPartnerAsync(string key)
+    {
+        var request = BuildPartnerRequest(key);
+        if (request is null)
+        {
+            _statusMessage = "Nothing left to ask for here — every answer is written";
+            return;
+        }
+
+        _partnerCts?.Cancel();
+        _partnerCts = new CancellationTokenSource();
+        var token = _partnerCts.Token;
+        _partnerKey = key;
+        _partnerLines = new List<string>();
+        _statusMessage = "Asking…";
+        try
+        {
+            var offered = await Partner.SuggestAsync(request, token);
+            if (token.IsCancellationRequested) return;
+            _partnerLines = offered.Where(line => !string.IsNullOrWhiteSpace(line)).Select(line => line.Trim()).Take(Suggestions.Count).ToList();
+            _statusMessage = _partnerLines.Count == 0 ? "Nothing came back" : "Offered — tap one to use it, or none";
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _partnerLines = new List<string>();
+            _statusMessage = $"The partner didn't answer: {ex.Message}";
+        }
+    }
+
+    private void UsePartnerLine(string line)
+    {
+        var key = _partnerKey;
+        // A chain or extend ask is for one answer; the other lines were for
+        // the same answer and go with it. The three-candidate fields keep theirs.
+        var oneAnswer = key == ChainPartnerKey || key == ExtendPartnerKey;
+        if (!PlacePartnerLine(key, line))
+        {
+            _statusMessage = "Every answer here is written — clear one to use this";
+            return;
+        }
+
+        if (oneAnswer) _partnerLines.Clear();
+        else _partnerLines.Remove(line);
+        SaveSlate();
+    }
+
+    // Writes the line into the first empty target of the field the ask was
+    // for. False when there is none — the writer filled them in the meantime.
+    private bool PlacePartnerLine(string key, string line)
+    {
+        if (key == FillPartnerKey && _fillRun is not null)
+        {
+            var option = _fillRun.Options.FirstOrDefault(option => string.IsNullOrWhiteSpace(option.Text));
+            if (option is null) return false;
+            option.Text = line;
+            return true;
+        }
+        if (key == SplitPartnerKey) return PlaceInFirstEmpty(_slate.Split.Candidates, line);
+        if (key == BridgePartnerKey && _bridge is not null) return PlaceInFirstEmpty(_bridge.Rounds[^1].Candidates, line);
+        if (key == ChainPartnerKey && _chain is not null)
+        {
+            if (_chain.Path != ChainPath.Woac) return PlaceInFirstEmpty(_chain.Answers, line);
+            var round = _chain.Rounds[^1];
+            if (_chain.Rounds.Count == 1 && string.IsNullOrWhiteSpace(round.Want)) round.Want = line;
+            else if (string.IsNullOrWhiteSpace(round.Obstacle)) round.Obstacle = line;
+            else if (string.IsNullOrWhiteSpace(round.Action)) round.Action = line;
+            else if (string.IsNullOrWhiteSpace(round.Consequence))
+            {
+                round.Consequence = line;
+                ConsequenceChanged(round);
+            }
+            else return false;
+            return true;
+        }
+        if (key == ExtendPartnerKey)
+        {
+            var link = _slate.Extend.Links[^1];
+            if (!string.IsNullOrWhiteSpace(link.Text)) return false;
+            link.Text = line;
+            LinkChanged(link);
+            return true;
+        }
+        return false;
+    }
+
+    private static bool PlaceInFirstEmpty(List<string> targets, string line)
+    {
+        var index = targets.FindIndex(string.IsNullOrWhiteSpace);
+        if (index < 0) return false;
+        targets[index] = line;
+        return true;
+    }
+
     // ---- Go to Line ----
 
     private bool _goToLineOpen;
@@ -4813,6 +4950,7 @@ Open a .fountain file to see formatted pages.</div>
     public void Dispose()
     {
         _autosaveCts?.Cancel();
+        _partnerCts?.Cancel();
         _timerTick?.Stop();
         _timerTick?.Dispose();
         _selfRef?.Dispose();
