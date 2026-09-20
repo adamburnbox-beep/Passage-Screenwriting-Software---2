@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Passage.Parser;
 using Passage.Core;
+using Passage.Core.Extensibility;
 using Passage.Web.Services;
 
 namespace Passage.Tests;
@@ -44,6 +45,9 @@ class Program
         failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
         failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
         failures += RunTest("Test SlateStore Ideation Is Kept Apart", TestSlateStoreIdeationIsKeptApart);
+        failures += RunTest("Test IdeationDealer Deals Every Lane", TestIdeationDealerDealsEveryLane);
+        failures += RunTest("Test Suggestions Ask For The Next Field", TestSuggestionsAskForTheNextField);
+        failures += RunTest("Test NullStoryPartner Offers Nothing", TestNullStoryPartnerOffersNothing);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -613,6 +617,76 @@ class Program
         Assert(ShapeLine.Derive(prose) == "▫·▫·▫·▫·▫·▫·▫·▫", "A sequence with no slot lines shows everything unknown, not dropped");
     }
 
+    static void TestSuggestionsAskForTheNextField()
+    {
+        // Fill: the worksheet so far, in order, empties skipped.
+        var fill = new FillRun { Bracket = "[SOMETHING forces her to stay]" };
+        fill.Options[0].Text = "Her sister calls";
+        fill.Options[0].WhyWrong = "Too convenient";
+        var fillAsk = Suggestions.ForFill(fill, "[SOMETHING forces her to stay] She sits.");
+        Assert(fillAsk.Tool == "Fill" && fillAsk.Count == 3, "Fill asks for three under its own name");
+        Assert(fillAsk.Context.Select(line => line.Label).SequenceEqual(new[] { "Bracket", "The line it's on", "Candidate 1", "Why candidate 1 is probably wrong" }),
+            "Fill's context is the bracket, its line, and only the written cells, in reading order");
+        Assert(fillAsk.Context[1].Text == "[SOMETHING forces her to stay] She sits.", "The script line rides along for the partner");
+
+        // WOAC: the next empty answer of the last round, in the chain's order; null when all written.
+        var chain = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants to leave" };
+        Assert(Suggestions.ForChain(chain, Array.Empty<string>())?.Ask.StartsWith("Want") == true, "Round 1 starts by asking the want");
+        chain.Rounds[0].Want = "to get out the door";
+        chain.Rounds[0].Obstacle = "the key is in his coat";
+        var woac = Suggestions.ForChain(chain, Array.Empty<string>());
+        Assert(woac?.Ask.StartsWith("Action") == true, "Then the first empty of obstacle, action, consequence");
+        Assert(woac!.Context.Select(line => line.Text).SequenceEqual(new[] { "MARA wants to leave", "to get out the door", "the key is in his coat" }),
+            "The chain so far is the context");
+        chain.Rounds[0].Action = "she goes through his pockets";
+        chain.Rounds[0].Consequence = "he stirs";
+        chain.Rounds.Add(new ChainRound());
+        var round2 = Suggestions.ForChain(chain, Array.Empty<string>());
+        Assert(round2?.Ask.StartsWith("Obstacle") == true, "Round 2 reads its want from the consequence above and asks the obstacle");
+        Assert(round2!.Context.Any(line => line.Label == "Round 2 — want" && line.Text == "he stirs"), "The carried want is in the context");
+        chain.Rounds[1].Obstacle = "o"; chain.Rounds[1].Action = "a"; chain.Rounds[1].Consequence = "c";
+        Assert(Suggestions.ForChain(chain, Array.Empty<string>()) is null, "Nothing to ask when every answer is written");
+
+        // Flaw: the first unanswered question, asked in the worksheet's words.
+        var questions = new[] { "Worst situation the flaw causes", "The character's first (wrong) response" };
+        var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA — never asks for help" };
+        flaw.Answers[0] = "She loses the flat";
+        var flawAsk = Suggestions.ForChain(flaw, questions);
+        Assert(flawAsk?.Ask == "2. The character's first (wrong) response", "Flaw asks the next question by its number and words");
+        Assert(flawAsk!.Context.Last().Label == "1. Worst situation the flaw causes", "Answered questions carry their question as the label");
+
+        // Extend: the open link, mystery lens changing the ask.
+        var extend = new ExtendRun { Z = "The lighthouse burns" };
+        extend.Links[0].Text = "Someone knocked over the lamp";
+        extend.Links.Add(new ExtendLink { Mystery = true });
+        var extendAsk = Suggestions.ForExtendLink(extend);
+        Assert(extendAsk.Ask.StartsWith("Mystery lens"), "The open link's mystery lens changes the question");
+        Assert(extendAsk.Context.Select(line => line.Text).SequenceEqual(new[] { "The lighthouse burns", "Someone knocked over the lamp" }), "Z and the links so far, in order");
+
+        // Bridge: the ends, earlier rounds' picks, this round's candidates.
+        var bridge = new BridgeRun { A = "The ring is planted", Z = "The ring turns up at the pawnshop" };
+        bridge.Rounds[0].Picked = "She finds it (half)";
+        bridge.Rounds.Add(new BridgeRound());
+        bridge.Rounds[1].Candidates[0] = "She pawns it herself";
+        var bridgeAsk = Suggestions.ForBridgeRound(bridge);
+        Assert(bridgeAsk.Context.Select(line => line.Label).SequenceEqual(new[] { "A — the point you're starting from", "Z — the point you're building to", "Round 1, picked / half-picked", "Round 2, candidate 1" }),
+            "Bridge's context is the ends, the picks so far and this round's candidates");
+
+        // Split: the ends and the candidates so far.
+        var split = new SplitRun { A = "A stowaway is found", Z = "The keeper rows away" };
+        split.Candidates[1] = "The supply boat comes early";
+        var splitAsk = Suggestions.ForSplitMidpoint(split);
+        Assert(splitAsk.Context.Count == 3 && splitAsk.Context[2].Label == "Candidate 2", "Split skips the empty candidate slot and keeps the written one's number");
+    }
+
+    static void TestNullStoryPartnerOffersNothing()
+    {
+        IStoryPartner partner = new NullStoryPartner();
+        var request = new SuggestionRequest("Fill", "Candidate", Array.Empty<SuggestionLine>(), 3);
+        var offered = partner.SuggestAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        Assert(offered.Count == 0, "The null partner offers nothing, so the dock has nothing to show");
+    }
+
     static void TestSlateStoreSplitFamilyRoundTrip()
     {
         var (_, store, root) = NewSlateFixture();
@@ -708,6 +782,26 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestIdeationDealerDealsEveryLane()
+    {
+        var rng = new Random(7);
+        for (var lane = 1; lane <= 10; lane++)
+        {
+            var dealt = Enumerable.Range(0, 12).Select(_ => IdeationDealer.Deal(lane, rng)).ToList();
+            Assert(dealt.All(d => !string.IsNullOrWhiteSpace(d)), $"Lane {lane} never deals an empty input");
+            Assert(dealt.Distinct().Count() > 1, $"Lane {lane} deals more than one thing");
+        }
+
+        // The colliding lanes never collide a thing with itself.
+        for (var i = 0; i < 200; i++)
+        {
+            var halves = IdeationDealer.Deal(4, rng).Split("  ×  ");
+            Assert(halves.Length == 2 && halves[0] != halves[1], "Situation collision deals two different fragments");
+        }
+
+        Assert(!string.IsNullOrWhiteSpace(IdeationDealer.Deal(99, rng)), "An out-of-range lane still deals something");
     }
 
     static void TestSlateStoreIdeationIsKeptApart()

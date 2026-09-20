@@ -138,9 +138,13 @@ never calls them. Highest value per token in the project. Do these first.
 
 - **Linux:** VM 235–253 (`MaxRecentFiles`, `RecentFiles`, `AddRecentFile`),
   481–496 (`OpenRecent`); MW.axaml 253–263 (menu)
-- **Web:** `Editor.razor` 53–74 (FILES panel), 491–507 (`RequestOpenFile`)
+- **Web:** `Editor.razor` 16–54 (script menu off the topbar file pill),
+  `RequestOpenFile`
 - **Notes:** Per-browser, alongside 1.1. Small.
-- **Done:** A RECENT section at the top of the FILES panel, above ALL SCRIPTS.
+- **Done:** A RECENT section at the top of the script list, above ALL SCRIPTS.
+  The list used to be a FILES tab in the sidebar; it now drops down from the
+  file pill in the topbar, so the sidebar is only about the open script and
+  the list is reachable at phone width, where the sidebar is hidden.
   Stored as `recentFiles` inside the existing `passage.session.v1` key, as row
   1.1 anticipated — not a second key. `AddRecentFile` mirrors the Linux
   remove/insert-at-0/trim, capped at `MaxRecentFiles = 8`.
@@ -291,12 +295,11 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   (`HasScratchpadItems`, `ScratchpadEmptyMessage`, `ScratchpadSearchText`),
   1136–1146 (`DeleteScratchpadCard`); MW.cs 389–396
   (`ScratchpadItem_DoubleTapped`)
-- **Web:** sidebar has FILES / OUTLINE / NOTES / GOALS —
-  `Editor.razor` 46–52 (tab strip), 53–92 (panel bodies)
+- **Web:** sidebar has OUTLINE / NOTES / GOALS —
+  `Editor.razor` 129–133 (tab strip), 134– (panel bodies). The script
+  library is a dropdown off the topbar file pill, not a sidebar tab.
 - **Notes:** Linux sidebar is Outline / Notes / Scratch / Goal. The web app
-  gained a FILES tab (server-side library) and lost Scratch. Adding it makes
-  five tabs — check the tab strip still fits at the sidebar width before
-  committing. The Scratchpad has its own search box, which
+  lost Scratch. Adding it makes four tabs, matching Linux. The Scratchpad has its own search box, which
   FUTURE_IMPROVEMENTS 9 suggests copying for outline filtering later.
 - **Audit (do not port as specified):** The Linux Scratchpad does not work.
   `ScratchpadElements` is declared at VM 129 and **never populated** — there is

@@ -170,7 +170,12 @@ html, body {
     color: var(--header-text);
 }
 
-.file-pill {
+/* The pill names the open script and is also the way to change it: it is
+   the summary of a details.menu whose items are the Recent / All Scripts
+   list. The list lives here rather than in the sidebar so the sidebar can
+   stay about the current script, and so it is still reachable at phone
+   width where the sidebar is hidden. */
+.script-menu summary.file-pill {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -180,10 +185,33 @@ html, body {
     color: var(--secondary-text);
     font-size: 12px;
     max-width: 320px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.script-menu summary.file-pill:hover,
+.script-menu[open] summary.file-pill { background: var(--surface-raised); }
+
+.file-pill-name {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
 }
+
+.file-pill-caret { font-size: 10px; color: var(--muted-text); }
+
+.script-menu .menu-items.script-list {
+    left: 0;
+    right: auto;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    max-height: min(60vh, 480px);
+    overflow-y: auto;
+}
+.script-list .sidebar-heading { padding: 0 10px; }
+.script-list .sidebar-empty { padding: 12px 10px; }
+/* The generic .menu-items button rule would restyle the row's delete cross. */
+.script-list .file-row .icon-btn { display: inline-flex; width: auto; padding: 2px 6px; color: var(--muted-text); }
+.script-list .file-row .icon-btn:hover { color: var(--control-foreground); }
 
 .dirty-dot { color: var(--syntax-synopsis); font-weight: 700; }
 
@@ -817,6 +845,16 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 @media (max-width: 900px) {
     .sidebar { display: none; }
+    /* The topbar scrolls sideways at this width, so a list anchored to the
+       pill would run off the right edge; pin it to the viewport instead. */
+    .script-menu .menu-items.script-list {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        top: 76px;
+        width: auto;
+        max-width: none;
+    }
     .editor-overlay, .editor-input { padding: 24px 20px; }
     .view-tabs button { padding: 6px 10px; }
 }
@@ -1137,6 +1175,21 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .fill-actions { display: flex; gap: 8px; margin-top: 10px; }
 
+/* The assist seam's offers (SLATE-PLAN Phase 7): a button, then the lines
+   as taps. Nothing here renders with the null partner. */
+.partner { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; }
+.partner-line {
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: var(--control-foreground);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.partner-line:hover { border-color: var(--control-foreground); }
+
 /* Forward chain runner. A kept chain is listed by its seed line in the
    ordinary face, not the script face the bracket rows use. */
 .chain-seed { font-family: inherit; }
@@ -1326,6 +1379,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     .main-area { position: relative; }
     .workshop { position: absolute; inset: 0; width: auto; min-width: 0; border-left: none; }
     .workshop-resize { display: none; }
+    /* A runner's status line can be a sentence. Squeezed into the one-row
+       bar it wraps a word wide and the bar swallows the dock's height. */
+    .statusbar { flex-wrap: wrap; gap: 4px 12px; }
+    .statusbar .status-message { flex-basis: 100%; }
 }
 
 /* ---- Go to Scene ---- */
