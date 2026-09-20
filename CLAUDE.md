@@ -76,3 +76,7 @@ prompt for each feature.
 `docs/WEB-PARITY.md` is the source of truth for remaining work. Keep it
 accurate in the same session as the change; a stale row costs the next session
 more than it saved this one.
+
+For the Writer's Tools work (the dock; internally "Slate"), the same scheme
+runs on `docs/SLATE-PLAN.md` and `docs/SLATE-SESSIONS.md`. Start at
+`docs/SLATE-HANDOVER.md`.

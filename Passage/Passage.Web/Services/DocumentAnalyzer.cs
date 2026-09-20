@@ -45,7 +45,10 @@ public sealed record DocumentAnalysis(
     // Per line: "scene", "character" or "". Which list (if any) autocomplete
     // should offer there. Decided here so the shared TextAnalysis helpers stay
     // the single implementation; the client only does the prefix matching.
-    string[] SuggestionKinds);
+    string[] SuggestionKinds,
+    // Slate placeholders, ranked. Derived on every parse and never stored
+    // (docs/SLATE-PLAN.md, decision B).
+    IReadOnlyList<Bracket> Brackets);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -97,7 +100,8 @@ public sealed class DocumentAnalyzer
             lineCount,
             sceneHeadings,
             characters,
-            BuildSuggestionKinds(parsed, text, lineCount));
+            BuildSuggestionKinds(parsed, text, lineCount),
+            BracketScanner.Scan(text));
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
@@ -161,7 +165,8 @@ public sealed class DocumentAnalyzer
             CountLines(text),
             Array.Empty<string>(),
             Array.Empty<string>(),
-            Array.Empty<string>());
+            Array.Empty<string>(),
+            BracketScanner.Scan(text));
     }
 
     private static string[] BuildLineClasses(ParsedScreenplay parsed, int lineCount)

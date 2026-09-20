@@ -1,0 +1,16 @@
+@* The worksheets' "Alive / flat (circle one)" — or any two-word mark, such as
+   y / n. Pressing the chosen one again clears it: a mark, not a required
+   field. The value stored is the label itself. *@
+<div class="alive-flat">
+    <button type="button" class="alive-btn @(Value == Left ? "on" : null)" @onclick="() => SetAsync(Left)">@Left</button>
+    <button type="button" class="alive-btn @(Value == Right ? "on" : null)" @onclick="() => SetAsync(Right)">@Right</button>
+</div>
+
+@code {
+    [Parameter] public string Left { get; set; } = "alive";
+    [Parameter] public string Right { get; set; } = "flat";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private Task SetAsync(string mark) => ValueChanged.InvokeAsync(Value == mark ? string.Empty : mark);
+}

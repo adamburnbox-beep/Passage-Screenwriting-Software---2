@@ -951,6 +951,383 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--control-pressed-foreground);
 }
 
+/* ---- Writer's tools dock (the Slate engines; docs/SLATE-PLAN.md) ---- */
+
+/* Width comes from --workshop-width, set by passage.js from the session key
+   and by the drag handle; the fallback only shows before the session loads. */
+.workshop {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--workshop-width, 340px);
+    min-width: 260px;
+    background: var(--surface-background);
+    border-left: 1px solid var(--surface-border);
+    display: flex;
+    flex-direction: column;
+}
+
+.workshop-resize {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -3px;
+    width: 6px;
+    cursor: col-resize;
+    touch-action: none;
+}
+
+.workshop-resize:hover { background: var(--control-accent); opacity: 0.5; }
+
+.workshop-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 0;
+}
+
+.workshop-head h2 {
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    color: var(--header-text);
+}
+
+.workshop-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.workshop-tool {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+    background: var(--control-background);
+    color: var(--control-foreground);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.workshop-tool:hover:not(:disabled) { border-color: var(--muted-text); }
+
+.workshop-tool:disabled { opacity: 0.55; cursor: default; }
+
+.tool-name { font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+.tool-desc { font-weight: 400; line-height: 1.5; color: var(--secondary-text); }
+
+.tool-soon {
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+}
+
+/* The dock's top level is the worksheets' own question — what have you
+   got — so each group is a "you have" line and the paths that answer it. */
+.tool-group { margin-bottom: 8px; }
+
+.tool-have {
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--header-text);
+    padding: 6px 2px;
+}
+
+.tool-paths { display: flex; flex-direction: column; gap: 4px; }
+
+.tool-note {
+    margin: 0 0 4px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--secondary-text);
+    padding: 0 2px;
+}
+
+.tool-note code { font-family: var(--mono); font-size: 11.5px; }
+
+.fill-hint {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--muted-text);
+}
+
+.workshop-count {
+    font-weight: 400;
+    color: var(--muted-text);
+    font-size: 11px;
+}
+
+.workshop-nav { display: flex; align-items: center; gap: 10px; }
+
+.workshop-nav .sidebar-heading { margin: 0; }
+
+.workshop-hand { padding: 10px 14px; font-size: 13px; }
+
+.bracket-row { display: flex; align-items: center; gap: 4px; }
+
+.bracket-row.ignored .bracket-text { opacity: 0.45; text-decoration: line-through; }
+
+/* The bracket as it reads: script face, wrapped, click to jump. */
+.bracket-text {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--secondary-text);
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.bracket-text:hover { background: var(--surface-raised); color: var(--control-foreground); }
+
+.fill-bracket { font-size: 13.5px; color: var(--control-foreground); }
+
+.fill-meta { color: var(--muted-text); font-size: 11px; padding: 0 8px; }
+
+.fill-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.fill-field { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+
+.fill-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+    line-height: 1.5;
+}
+
+.workshop textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+}
+
+.workshop textarea:focus { border-color: var(--control-accent); }
+
+.fill-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* Forward chain runner. A kept chain is listed by its seed line in the
+   ordinary face, not the script face the bracket rows use. */
+.chain-seed { font-family: inherit; }
+
+.chain-round {
+    border-top: 1px solid var(--surface-border);
+    margin-top: 10px;
+    padding-top: 6px;
+}
+
+.chain-round-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--header-text);
+    font-weight: 600;
+}
+
+/* The carried Want: the previous consequence, read live, so it is text
+   rather than a field. */
+.chain-carried {
+    padding: 8px 10px;
+    border: 1px dashed var(--control-border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--control-foreground);
+    white-space: pre-wrap;
+}
+
+.chain-carried.empty { color: var(--muted-text); font-style: italic; }
+
+.chain-readback { margin-top: 12px; }
+
+.burst-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+
+.burst-toggle { display: flex; align-items: center; gap: 6px; color: var(--secondary-text); cursor: pointer; }
+
+.workshop .burst-seconds {
+    width: 64px;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+/* The Split family. The stop-callouts are the worksheet's own words and the
+   only thing between one rung and the next. */
+.rung-label {
+    margin-top: 12px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--header-text);
+    font-weight: 600;
+}
+
+.stop-callout {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--control-accent);
+    background: var(--surface-raised);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--control-foreground);
+}
+
+.stress-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+
+.stress-row .fill-hint { flex: 1; min-width: 160px; }
+
+.alive-flat { display: inline-flex; gap: 4px; }
+
+.alive-btn {
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: 999px;
+    color: var(--secondary-text);
+    padding: 2px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.alive-btn.on {
+    background: var(--control-accent);
+    border-color: var(--control-accent);
+    color: var(--control-pressed-foreground);
+}
+
+.belief-cut { margin-left: 12px; padding-left: 8px; border-left: 1px dashed var(--control-border); }
+
+.workshop .workshop-select {
+    width: 100%;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 12.5px;
+}
+
+/* The chain read forward, start to Z. */
+.chain-forward {
+    margin: 6px 0 0;
+    padding-left: 22px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--control-foreground);
+}
+
+.chain-forward .chain-z { font-weight: 600; }
+
+/* The shape line: what is known, not how far along. */
+.statusbar .shape-line {
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    color: var(--secondary-text);
+    cursor: help;
+}
+
+/* Ideation burst: full screen, nothing else on it (SLATE-PLAN decision A).
+   The page is a single column the width of the dock's content. */
+.ideation-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: var(--surface-background);
+    overflow-y: auto;
+}
+
+.ideation-page {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 16px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ideation-page textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+}
+
+.ideation-page textarea:focus { border-color: var(--control-accent); }
+
+.ideation-page .burst-seconds {
+    width: 64px;
+    background: var(--control-background);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    color: var(--control-foreground);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.kept-line { cursor: default; }
+
+/* The countdown: a number, nothing else. Cleared when the run ends. */
+.burst-display {
+    min-width: 3em;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--secondary-text);
+}
+
+/* On a phone the dock takes the whole main area rather than squeezing the
+   editor: the engines are meant to be usable from there (SLATE-PLAN Phase 1). */
+@media (max-width: 900px) {
+    .main-area { position: relative; }
+    .workshop { position: absolute; inset: 0; width: auto; min-width: 0; border-left: none; }
+    .workshop-resize { display: none; }
+}
+
 /* ---- Go to Scene ---- */
 
 .modal.modal-tall { width: 440px; }

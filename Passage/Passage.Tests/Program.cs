@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Passage.Parser;
 using Passage.Core;
+using Passage.Web.Services;
 
 namespace Passage.Tests;
 
@@ -25,6 +29,21 @@ class Program
         failures += RunTest("Test BeatBoard Build And Splice Card Lines", TestBeatBoardBuildAndSpliceCardLines);
         failures += RunTest("Test BeatBoard Plan Move", TestBeatBoardPlanMove);
         failures += RunTest("Test BeatBoard Plan Move Rejections", TestBeatBoardPlanMoveRejections);
+        failures += RunTest("Test BracketScanner Finds And Ranks", TestBracketScannerFindsAndRanks);
+        failures += RunTest("Test BracketScanner Ignores Notes And Boneyard", TestBracketScannerIgnoresNotesAndBoneyard);
+        failures += RunTest("Test BracketScanner Malformed Input", TestBracketScannerMalformedInput);
+        failures += RunTest("Test SlateStore Round Trip", TestSlateStoreRoundTrip);
+        failures += RunTest("Test SlateStore Rejects Invalid Names", TestSlateStoreRejectsInvalidNames);
+        failures += RunTest("Test SlateStore Prunes Orphans", TestSlateStorePrunesOrphans);
+        failures += RunTest("Test SlateStore Corrupt Sidecar Fails Visibly", TestSlateStoreCorruptSidecarFailsVisibly);
+        failures += RunTest("Test SlateStore Chain Round Trip", TestSlateStoreChainRoundTrip);
+        failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
+        failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
+        failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
+        failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
+        failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
+        failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
+        failures += RunTest("Test SlateStore Ideation Is Kept Apart", TestSlateStoreIdeationIsKeptApart);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -281,6 +300,444 @@ class Program
             new BeatBoardText.LineRange(2, 99), new BeatBoardText.LineRange(0, 0),
             insertAfter: false, out _, out _),
             "A source range running past the document should be refused");
+    }
+
+    // ---- BracketScanner (Passage.Parser) ----
+
+    static void TestBracketScannerFindsAndRanks()
+    {
+        const string script =
+            "INT. KITCHEN - DAY\n" +                       // 0
+            "She reads the letter [sic] twice.\n" +        // 1
+            "\n" +                                         // 2
+            "[SOMETHING forces her to stay] She sits.\n" + // 3
+            "= [todo: name the neighbour] arrives\n" +     // 4
+            "He says [nothing] and [NOTHING].";             // 5
+
+        var brackets = BracketScanner.Scan(script);
+
+        Assert(brackets.Count == 5, $"Five brackets found, got {brackets.Count}");
+
+        // Rank 0 first, in document order; then rank 1 in document order.
+        Assert(brackets[0].Text == "[SOMETHING forces her to stay]" && brackets[0].LineIndex == 3 && brackets[0].Column == 0,
+            "Keyword bracket sorts first with its position");
+        Assert(brackets[1].Text == "[todo: name the neighbour]" && brackets[1].LineNumber == 5,
+            "Keyword match is case-insensitive and stops at punctuation");
+        Assert(brackets[2].Text == "[NOTHING]" && brackets[2].Rank == 0, "All-caps content ranks 0");
+        Assert(brackets[3].Text == "[sic]" && brackets[3].Rank == 1, "Prose bracket is listed, ranked 1");
+        Assert(brackets[4].Text == "[nothing]" && brackets[4].Column == 8, "Second prose bracket keeps its column");
+        Assert(brackets[1].Content == "todo: name the neighbour", "Content is the text inside the brackets");
+    }
+
+    static void TestBracketScannerIgnoresNotesAndBoneyard()
+    {
+        const string script =
+            "[[a note with [brackets] in it]]\n" +
+            "/* boneyard [HIDDEN]\n" +
+            "still boneyard [HIDDEN] */ [VISIBLE]\n" +
+            "Action [[note]] then [KEPT].";
+
+        var brackets = BracketScanner.Scan(script);
+
+        Assert(brackets.Count == 2, $"Only the two brackets outside omissions are found, got {brackets.Count}");
+        Assert(brackets[0].Text == "[VISIBLE]" && brackets[0].LineIndex == 2 && brackets[0].Column == 27,
+            "A bracket after a multi-line boneyard keeps its real line and column");
+        Assert(brackets[1].Text == "[KEPT]" && brackets[1].LineIndex == 3 && brackets[1].Column == 21,
+            "Masking a note on the same line does not shift later columns");
+    }
+
+    static void TestBracketScannerMalformedInput()
+    {
+        Assert(BracketScanner.Scan(null).Count == 0, "Null text scans to nothing");
+        Assert(BracketScanner.Scan("").Count == 0, "Empty text scans to nothing");
+        Assert(BracketScanner.Scan("No brackets here.").Count == 0, "Plain prose scans to nothing");
+        Assert(BracketScanner.Scan("Unclosed [bracket runs\nonto the next line]").Count == 0,
+            "A bracket does not span lines");
+        Assert(BracketScanner.Scan("Empty [] and blank [   ] spans").Count == 0, "Empty brackets are not placeholders");
+
+        var nested = BracketScanner.Scan("Outer [a [INNER] c] end");
+        Assert(nested.Count == 1 && nested[0].Text == "[INNER]", "Nested brackets yield the innermost span only");
+
+        var spaced = BracketScanner.Scan("[ SOMETHING padded ]");
+        Assert(spaced.Count == 1 && spaced[0].Text == "[ SOMETHING padded ]" && spaced[0].Rank == 0,
+            "Text keeps the padding as written so a replacement can match it; ranking uses the trimmed content");
+    }
+
+    // ---- SlateStore (Passage.Web) ----
+    //
+    // The sidecar store is pure file logic with no circuit behind it, so it is
+    // exercised here against a throwaway library root.
+
+    static (ScriptLibrary library, SlateStore store, string root) NewSlateFixture()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "passage-tests-" + Guid.NewGuid().ToString("N"));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Passage:DataDir"] = root })
+            .Build();
+        var library = new ScriptLibrary(configuration);
+        return (library, new SlateStore(library), root);
+    }
+
+    static void TestSlateStoreRoundTrip()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            Assert(store.Load("draft") is null, "A script with no sidecar loads as null");
+            Assert(!store.Exists("draft"), "Exists is false before the first save");
+
+            var document = new SlateDocument { SlateVersion = 0 };
+            document.IgnoredBrackets.Add("[sic]");
+            document.Fills.Add(new FillRun
+            {
+                Bracket = "[SOMETHING forces her to stay]",
+                Options = { [0] = new FillOption { Text = "the storm", WhyWrong = "weather is never a reason" } },
+                PointsTo = "she wants to be made to stay",
+                Answer = string.Empty
+            });
+            store.Save("draft", document);
+
+            var path = Path.Combine(root, ".slate", "draft.fountain.json");
+            Assert(File.Exists(path), "Sidecar lands in .slate under the validated script name");
+            Assert(store.Exists("draft.fountain"), "The bare and extended names resolve to the same sidecar");
+
+            var loaded = store.Load("draft");
+            Assert(loaded is not null, "Sidecar loads back");
+            Assert(loaded!.SlateVersion == SlateStore.CurrentVersion, "Save stamps the current schema version");
+            Assert(loaded.IgnoredBrackets.SequenceEqual(new[] { "[sic]" }), "Ignore list round-trips");
+            Assert(loaded.Fills.Count == 1 && loaded.Fills[0].Bracket == "[SOMETHING forces her to stay]", "Fill run round-trips by bracket text");
+            Assert(loaded.Fills[0].Options.Count == 3 && loaded.Fills[0].Options[0].WhyWrong == "weather is never a reason"
+                && loaded.Fills[0].Options[2].Text == string.Empty, "All three option rows round-trip, empty ones included");
+            Assert(loaded.Fills[0].PointsTo == "she wants to be made to stay", "Free-text fields round-trip");
+
+            Assert(library.List().Count == 0, "The .slate directory never appears in the script list");
+
+            store.Delete("draft");
+            Assert(!store.Exists("draft"), "Delete removes the sidecar");
+            store.Delete("draft"); // deleting twice is not an error
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreRejectsInvalidNames()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            foreach (var bad in new[] { "", "   ", "../escape", "sub/dir", ".hidden", "bad\0name" })
+            {
+                var threw = false;
+                try
+                {
+                    store.Save(bad, new SlateDocument());
+                }
+                catch (ArgumentException)
+                {
+                    threw = true;
+                }
+
+                Assert(threw, $"Save rejects '{bad}'");
+                Assert(!store.Exists(bad), $"Exists is false for '{bad}' rather than throwing");
+            }
+
+            Assert(!Directory.Exists(Path.Combine(root, ".slate")), "Nothing was written for a rejected name");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStorePrunesOrphans()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            Assert(store.PruneOrphans(new[] { "a.fountain" }).Count == 0, "Pruning with no .slate directory is a no-op");
+
+            library.Save("kept", "INT. ROOM - DAY");
+            store.Save("kept", new SlateDocument());
+            store.Save("gone", new SlateDocument());
+            store.Save("also-gone.md", new SlateDocument());
+
+            var pruned = store.PruneOrphans(library.List().Select(entry => entry.Name));
+
+            Assert(pruned.Count == 2, $"Two orphans reported, got {pruned.Count}");
+            Assert(pruned.Contains("gone.fountain") && pruned.Contains("also-gone.md"), "Pruned names are the script names, not file paths");
+            Assert(store.Exists("kept"), "A sidecar whose script exists survives");
+            Assert(!store.Exists("gone") && !store.Exists("also-gone.md"), "Orphaned sidecars are deleted");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreCorruptSidecarFailsVisibly()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var dir = Path.Combine(root, ".slate");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "broken.fountain.json"), "{ not json");
+
+            var threw = false;
+            try
+            {
+                store.Load("broken");
+            }
+            catch (JsonException)
+            {
+                threw = true;
+            }
+
+            Assert(threw, "A corrupt sidecar throws rather than being read as empty");
+            Assert(store.Exists("broken"), "The corrupt file is left in place for the user to recover");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreChainRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key" };
+            woac.Rounds[0].Want = "the key";
+            woac.Rounds[0].Consequence = "the door is open but the dog is loose";
+            woac.Rounds.Add(new ChainRound { Obstacle = "the dog" });
+            document.Chains.Add(woac);
+            var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA — never asks for help" };
+            flaw.Answers[2] = "she carries it alone and drops it";
+            document.Chains.Add(flaw);
+            document.Burst.Enabled = true;
+            document.Burst.Seconds = 10;
+            store.Save("draft", document);
+
+            var json = File.ReadAllText(Path.Combine(root, ".slate", "draft.fountain.json"));
+            Assert(json.Contains("\"Woac\"") && json.Contains("\"Flaw\""), "The path is stored by name, not by enum number");
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Chains.Count == 2, "Both chains round-trip");
+            Assert(loaded.Chains[0].Path == ChainPath.Woac && loaded.Chains[0].Rounds.Count == 2
+                && loaded.Chains[0].Rounds[1].Obstacle == "the dog", "WOAC rounds round-trip in order");
+            Assert(loaded.Chains[0].Rounds[1].Want == string.Empty, "A later round stores no Want: it is read from the consequence above");
+            Assert(loaded.Chains[1].Path == ChainPath.Flaw && loaded.Chains[1].Answers.Count == ChainRun.FlawQuestionCount
+                && loaded.Chains[1].Answers[2] == "she carries it alone and drops it", "All eight flaw answers round-trip, empty ones included");
+            Assert(loaded.Burst.Enabled && loaded.Burst.Seconds == 10, "Burst settings round-trip");
+
+            Assert(new ChainRun().IsEmpty, "A fresh chain is empty");
+            Assert(!new ChainRun { ReadBack = "x" }.IsEmpty, "A read-back line alone makes a chain worth keeping");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSynopsisPlacement()
+    {
+        // 0 "# Act 1", 1 "= old synopsis", 2 "", 3 "INT. KITCHEN", 4 "Action", 5 "## Seq", 6 "Action"
+        var classes = new[] { "sx-section", "sx-synopsis", "", "sx-scene", "", "sx-section", "" };
+
+        Assert(SynopsisPlacement.Find(classes, 4) == (4, 3), "Under the scene heading above the caret");
+        Assert(SynopsisPlacement.Find(classes, 2) == (2, 0), "After the synopsis lines already under the section");
+        Assert(SynopsisPlacement.Find(classes, 0) == (2, 0), "The caret on the heading itself counts as under it");
+        Assert(SynopsisPlacement.Find(classes, 6) == (6, 5), "The nearest heading wins, not the first");
+        Assert(SynopsisPlacement.Find(classes, 99) == (6, 5), "A caret past the end clamps to the last line");
+
+        var noHeading = new[] { "", "sx-character", "sx-dialogue" };
+        Assert(SynopsisPlacement.Find(noHeading, 2) == (2, -1), "No heading above: insert at the caret and say so");
+        Assert(SynopsisPlacement.Find(Array.Empty<string>(), 0) == (0, -1), "An empty document inserts at line 0");
+    }
+
+    static void TestSplitScriptLinesAndParse()
+    {
+        var run = new SplitRun { A = "She arrives at the lighthouse", Z = "She leaves it burning", Midpoint = "The keeper\nconfesses" };
+        var lines = SplitScript.BuildLines(run);
+        var text = string.Join("\n", lines);
+
+        Assert(lines.Count(line => line.StartsWith("# ")) == 4, "Four acts");
+        Assert(lines.Count(line => line.StartsWith("## ")) == 8, "Eight sequences");
+        Assert(lines.Count(line => line.StartsWith("= ")) == 9, "Nine slot lines: the two ends and seven turns");
+        Assert(text.Contains("= Starts: She arrives at the lighthouse"), "A goes on sequence 1");
+        Assert(text.Contains("= Midpoint: The keeper confesses"), "A multi-line value is written as one line");
+        Assert(text.Contains("= Plot point 1: [PLOT POINT 1]"), "An unknown turn is written as a bracket for Fill");
+        Assert(lines.IndexOf("= Midpoint: The keeper confesses") > lines.FindIndex(line => line.StartsWith("## Sequence 4")), "The midpoint sits on sequence 4");
+        Assert(lines.IndexOf("= Ends: She leaves it burning") > lines.FindIndex(line => line.StartsWith("## Sequence 8")), "Z sits on sequence 8");
+
+        // The Beat Board hands descriptions back without the "= ".
+        Assert(SplitScript.TryParse("Midpoint: The keeper confesses", out var label, out var value)
+            && label == "Midpoint" && value == "The keeper confesses", "A description line parses back to its slot");
+        Assert(SplitScript.TryParse("=   pinch 1 :  [PINCH 1]", out label, out value)
+            && label == "Pinch 1" && value == "[PINCH 1]", "Case and spacing do not matter");
+        Assert(!SplitScript.TryParse("= Some other synopsis: with a colon", out _, out _), "Only the nine labels parse");
+        Assert(!SplitScript.IsKnown("[PINCH 1]") && !SplitScript.IsKnown("") && SplitScript.IsKnown("the storm"), "Known means real text");
+        Assert(SplitScript.IsDropped("–") && !SplitScript.IsKnown("–"), "A dash drops the turn");
+
+        var scriptLines = text.Split('\n');
+        var midpointLine = SplitScript.FindLine(scriptLines, SplitScript.Slots[4]);
+        Assert(midpointLine >= 0 && scriptLines[midpointLine].StartsWith("= Midpoint:"), "FindLine locates a slot in the script");
+        Assert(SplitScript.FindLine(new[] { "INT. HOUSE", "Action." }, SplitScript.Slots[4]) == -1, "FindLine is -1 when absent");
+    }
+
+    static void TestShapeLineDerivesFromLanes()
+    {
+        Assert(ShapeLine.Derive(new List<BoardLane>()) is null, "No sequences: no shape line");
+
+        static BoardCard Sequence(string description) => new("Sequence", "Sequence", description, 1, new List<BoardCard>());
+        static BoardCard Scene() => new("INT. ROOM", "Scene", string.Empty, 1, new List<BoardCard>());
+
+        var lanes = new List<BoardLane>
+        {
+            new(null, new List<BoardGroup>
+            {
+                new(Sequence("Starts: she arrives\nInciting incident: the letter"), new List<BoardCard> { Scene() }),
+                new(Sequence("Plot point 1: [PLOT POINT 1]"), new List<BoardCard>()),
+                new(Sequence("Pinch 1: –"), new List<BoardCard>()),
+                new(Sequence("Midpoint: the keeper confesses"), new List<BoardCard>())
+            })
+        };
+
+        Assert(ShapeLine.Derive(lanes) == "▪●▫·▫–▫●▫·▫·▫·▫", "Known, unknown, dropped and missing sequences each get their glyph, in split order");
+
+        var prose = new List<BoardLane> { new(null, new List<BoardGroup> { new(Sequence("Just a synopsis"), new List<BoardCard>()) }) };
+        Assert(ShapeLine.Derive(prose) == "▫·▫·▫·▫·▫·▫·▫·▫", "A sequence with no slot lines shows everything unknown, not dropped");
+    }
+
+    static void TestSlateStoreSplitFamilyRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            document.Split.A = "arrives";
+            document.Split.Midpoint = "confesses";
+            document.Split.MidpointAlive = "alive";
+            document.Split.BeliefLayer = true;
+            document.Belief.Shape = "Fall";
+            document.Belief.Cut(50).Text = "she thinks she can leave";
+            document.Belief.Cut(50).Alive = "flat";
+            document.Extend.Z = "the lighthouse burns";
+            document.Extend.Links.Add(new ExtendLink { Text = "she lit it", Mystery = true });
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Split.Midpoint == "confesses" && loaded.Split.MidpointAlive == "alive" && loaded.Split.BeliefLayer, "Split run round-trips");
+            Assert(loaded.Split.Candidates.Count == 3, "Three candidate rows round-trip, empty included");
+            Assert(loaded.Belief.Shape == "Fall" && loaded.Belief.Cut(50).Text == "she thinks she can leave" && loaded.Belief.Cut(50).Alive == "flat", "Belief cuts round-trip by ratio");
+            Assert(loaded.Belief.Cuts.Count == 5, "All five named cuts, no more");
+            Assert(loaded.Extend.Links.Count == 2 && loaded.Extend.Links[1].Mystery, "Extend links round-trip with the mystery lens");
+            Assert(!loaded.Split.HasRung2 && !loaded.Belief.HasRung3, "Rung flags read the content, nothing stored");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreBridgeAndPositionRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var bridge = new BridgeRun { A = "the ring is planted", Z = "the ring is found" };
+            bridge.Rounds[0].Candidates[1] = "she pawns it";
+            bridge.Rounds[0].Picked = "she pawns it";
+            bridge.Rounds.Add(new BridgeRound());
+            document.Bridges.Add(bridge);
+            document.Bridges.Add(new BridgeRun());
+            var position = new PositionRun { Moment = "the dog on the roof" };
+            position.Turns[0].Slot = "Midpoint";
+            position.Turns[0].Alive = "alive";
+            position.Shortlist[0] = "midpoint";
+            document.Positions.Add(position);
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Bridges.Count == 2, "Bridges round-trip; pruning empties is the runner's job, not the store's");
+            Assert(loaded.Bridges[0].Rounds.Count == 2 && loaded.Bridges[0].Rounds[0].Picked == "she pawns it"
+                && loaded.Bridges[0].Rounds[0].Candidates.Count == 3, "Rounds, their three candidates and the picked line round-trip");
+            Assert(loaded.Bridges[1].IsEmpty && !loaded.Bridges[0].IsEmpty, "IsEmpty reads every field");
+            Assert(loaded.Positions.Count == 1 && loaded.Positions[0].Turns[0].Slot == "Midpoint"
+                && loaded.Positions[0].Turns[0].Alive == "alive" && loaded.Positions[0].Shortlist.Count == 2, "Position turns and shortlist round-trip");
+            Assert(new PositionRun().IsEmpty && !position.IsEmpty, "A fresh run is empty; one with a moment is not");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreReviseRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var revision = new ReviseRun { Scene = "INT. KITCHEN - DAY", Purpose = "she decides to leave" };
+            revision.Check("Polarity").Answer = "starts warm, ends warm";
+            revision.Check("Polarity").Flag = "Y";
+            revision.Check("Polarity").Lens = "Tone swap, minimum edit";
+            revision.Check("Polarity").Fragment = "line one\nline two";
+            revision.Check("Polarity").Moved = "Y";
+            document.Revisions.Add(revision);
+            document.Burst.LensMinutes = 3;
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Revisions.Count == 1 && loaded.Revisions[0].Scene == "INT. KITCHEN - DAY", "Revise run round-trips by scene");
+            Assert(loaded.Revisions[0].Checks.Count == ReviseRun.CheckNames.Length, "All six checks are stored, unanswered ones included");
+            var polarity = loaded.Revisions[0].Check("Polarity");
+            Assert(polarity.Flag == "Y" && polarity.Lens == "Tone swap, minimum edit" && polarity.Fragment == "line one\nline two" && polarity.Moved == "Y", "A flagged check keeps its Lens, multi-line fragment and verdict");
+            Assert(loaded.Revisions[0].Check("Linkage").IsEmpty, "An untouched check is empty");
+            Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
+            Assert(new ReviseRun().IsEmpty && !revision.IsEmpty && !revision.HasDiagnostic && !revision.HasReadBack, "Emptiness and the deeper sections read the content");
+            Assert(new ReviseRun().Check("Made up").Name == "Made up", "Check() adds a missing check rather than throwing");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreIdeationIsKeptApart()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            Assert(store.LoadIdeation() is null, "No ideation file loads as null");
+
+            var document = new IdeationDocument { RoundSeconds = 60, Current = new IdeationSitting { Lane = 4 } };
+            document.Current.Rounds[0].Input = "a kettle and a eulogy";
+            document.Current.Rounds[0].Output = "line one\nline two";
+            document.Current.KeptLine = "line two";
+            document.Kept.Add("an earlier sitting's line");
+            store.SaveIdeation(document);
+
+            Assert(File.Exists(Path.Combine(root, ".slate", SlateStore.IdeationFile)), "Ideation lives in its own file under .slate");
+
+            var loaded = store.LoadIdeation()!;
+            Assert(loaded.RoundSeconds == 60 && loaded.Current is { Lane: 4 } && loaded.Current.Rounds[0].Output == "line one\nline two"
+                && loaded.Current.KeptLine == "line two", "The sitting in progress round-trips");
+            Assert(loaded.Kept.SequenceEqual(new[] { "an earlier sitting's line" }), "Kept lines round-trip as plain lines");
+
+            var pruned = store.PruneOrphans(Array.Empty<string>());
+            Assert(pruned.Count == 0 && store.LoadIdeation() is not null, "The orphan sweep leaves the ideation file alone — it belongs to no script");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     static void Assert(bool condition, string message)

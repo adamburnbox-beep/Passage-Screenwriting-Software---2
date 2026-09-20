@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {} };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -28,6 +28,8 @@ window.passage = (function () {
     const RECOVERY_KEY = "passage.recovery.v1";
     const RECOVERY_INTERVAL_MS = 3000;
     const THEME_KEY = "passage.theme.v1";
+    const WORKSHOP_MIN_WIDTH = 260;
+    const WORKSHOP_MAX_WIDTH = 720;
     const LINE_CLASSES = [
         "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
         "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
@@ -100,18 +102,56 @@ window.passage = (function () {
             const stored = JSON.parse(raw);
             if (!stored || typeof stored !== "object") return null;
             session = Object.assign(session, stored);
+            applyWorkshopWidth();
             return session;
         } catch (e) {
             return null;
         }
     }
 
-    function setSessionDocument(fileName, editorFontPx, previewZoom, recentFiles) {
+    function setSessionDocument(fileName, editorFontPx, previewZoom, recentFiles, workshopOpen) {
         session.fileName = fileName || "";
         session.editorFontPx = editorFontPx;
         session.previewZoom = previewZoom;
         session.recentFiles = Array.isArray(recentFiles) ? recentFiles : [];
+        session.workshopOpen = !!workshopOpen;
         scheduleSessionSave();
+    }
+
+    // The Slate dock's width is a per-browser preference like the font size,
+    // but it never needs a server round-trip: the drag handle writes the CSS
+    // variable directly and the session key remembers it. Whether the dock is
+    // open is Blazor's, since it renders the dock; only the width lives here.
+    function applyWorkshopWidth() {
+        const width = Math.min(WORKSHOP_MAX_WIDTH, Math.max(WORKSHOP_MIN_WIDTH, Number(session.workshopWidth) || 340));
+        session.workshopWidth = width;
+        document.documentElement.style.setProperty("--workshop-width", width + "px");
+    }
+
+    function initWorkshopResize() {
+        const handle = document.getElementById("workshop-resize");
+        if (!handle) return;
+        applyWorkshopWidth();
+        handle.addEventListener("pointerdown", (down) => {
+            down.preventDefault();
+            const startX = down.clientX;
+            const startWidth = session.workshopWidth;
+            handle.setPointerCapture(down.pointerId);
+            const move = (e) => {
+                // The handle sits on the dock's left edge, so dragging left widens it.
+                session.workshopWidth = startWidth + (startX - e.clientX);
+                applyWorkshopWidth();
+            };
+            const up = () => {
+                handle.removeEventListener("pointermove", move);
+                handle.removeEventListener("pointerup", up);
+                handle.removeEventListener("pointercancel", up);
+                scheduleSessionSave();
+            };
+            handle.addEventListener("pointermove", move);
+            handle.addEventListener("pointerup", up);
+            handle.addEventListener("pointercancel", up);
+        });
     }
 
     // Crash recovery. Distinct from the file autosave in Editor.razor, which
@@ -204,6 +244,11 @@ window.passage = (function () {
         if (el) el.scrollIntoView({ block: "nearest" });
     }
 
+    function scrollToTop(selector) {
+        const el = document.querySelector(selector);
+        if (el) el.scrollTop = 0;
+    }
+
     function openFind() {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnFindShortcut", false);
     }
@@ -284,6 +329,8 @@ window.passage = (function () {
                 "F1": toggleSyntaxPanel
             }
         });
+
+        initWorkshopResize();
 
         cm.on("change", (_, changeObj) => {
             if (changeObj.origin !== "setValue") {
@@ -486,6 +533,24 @@ window.passage = (function () {
             text,
             { line: startLine, ch: 0 },
             { line: to, ch: cm.getLine(to).length });
+        scheduleInput();
+        return true;
+    }
+
+    // Replace one span inside a line, matched by its text rather than trusting
+    // a column: the server's copy of the document can be a debounce behind the
+    // editor, and a placeholder that has moved or gone must not clobber other
+    // text. Returns false when the span is not on that line any more. Ranged,
+    // so undo keeps working (docs/WEB-PARITY.md 1.6).
+    function replaceInLine(lineIndex, expected, replacement) {
+        if (!cm) return false;
+        if (lineIndex < 0 || lineIndex >= cm.lineCount()) return false;
+        const line = cm.getLine(lineIndex);
+        const ch = line.indexOf(expected);
+        if (ch < 0) return false;
+
+        cm.replaceRange(replacement, { line: lineIndex, ch }, { line: lineIndex, ch: ch + expected.length });
+        cm.setCursor({ line: lineIndex, ch: ch + replacement.length });
         scheduleInput();
         return true;
     }
@@ -848,14 +913,14 @@ window.passage = (function () {
         }
     }
 
-    function scrollToLine(line) {
+    function scrollToLine(line, focus = true) {
         if (!cm) return;
         const target = Math.max(0, Math.min(line - 1, cm.lineCount() - 1));
         cm.setCursor({ line: target, ch: 0 });
         const coords = cm.charCoords({ line: target, ch: 0 }, "local");
         const scroller = cm.getScrollInfo();
         cm.scrollTo(null, Math.max(0, coords.top - scroller.clientHeight / 3));
-        cm.focus();
+        if (focus) cm.focus();
         reportCaret();
     }
 
@@ -897,13 +962,174 @@ window.passage = (function () {
         if (cm) cm.focus();
     }
 
+    // ---- Burst timer for the Writer's Tools runners (SLATE-PLAN decision E) ----
+    //
+    // Ready → read-in → write → advance, entirely client-side so a circuit
+    // blip cannot stall it. The slots are the runner's textarea[data-slot]
+    // elements in DOM order. Enter commits an answer and moves on; so does the
+    // clock running out, and that is all expiry does — the answer stays
+    // editable, nothing is marked, nothing is counted. Blazor hears each
+    // answer through the ordinary change event the focus move fires, and is
+    // told once when the run ends.
+    let burst = null;
+
+    function startBurst(rootId, readInSeconds, writeSeconds) {
+        endBurst(false);
+        const root = document.getElementById(rootId);
+        if (!root) return false;
+
+        burst = {
+            root,
+            display: root.querySelector("[data-burst-display]") || document.querySelector("[data-burst-display]"),
+            readIn: readInSeconds,
+            write: writeSeconds,
+            slot: null,
+            phase: "",
+            timer: null,
+            waitTimer: null,
+            observer: null,
+            advancing: false
+        };
+        root.addEventListener("keydown", onBurstKeyDown);
+        root.addEventListener("input", onBurstInput);
+        root.addEventListener("focusout", onBurstFocusOut);
+
+        const slots = burstSlots();
+        const first = slots.find(slot => slot.value.trim() === "") || slots[0];
+        if (!first) {
+            endBurst(false);
+            return false;
+        }
+        beginBurstSlot(first);
+        return true;
+    }
+
+    function stopBurst() {
+        endBurst(true);
+    }
+
+    // notify: tell Blazor the run is over. Not when a new run replaces it,
+    // or the "ended" would land after the "started" and flip the button back.
+    function endBurst(notify) {
+        if (!burst) return;
+        clearInterval(burst.timer);
+        clearTimeout(burst.waitTimer);
+        if (burst.observer) burst.observer.disconnect();
+        burst.root.removeEventListener("keydown", onBurstKeyDown);
+        burst.root.removeEventListener("input", onBurstInput);
+        burst.root.removeEventListener("focusout", onBurstFocusOut);
+        showBurst("", 0);
+        burst = null;
+        if (notify && dotnetRef) dotnetRef.invokeMethodAsync("OnBurstEnded");
+    }
+
+    function burstSlots() {
+        return Array.from(burst.root.querySelectorAll("textarea[data-slot]"));
+    }
+
+    function burstSlotAfter(slot) {
+        const slots = burstSlots();
+        return slots[slots.indexOf(slot) + 1] || null;
+    }
+
+    // Ready: the caret is in the slot before anything counts. Then the
+    // read-in, which typing cuts short.
+    function beginBurstSlot(slot) {
+        burst.slot = slot;
+        burst.advancing = true;
+        slot.focus();
+        burst.advancing = false;
+        runBurstCountdown("read", burst.readIn, () => runBurstCountdown("write", burst.write, advanceBurst));
+    }
+
+    function runBurstCountdown(phase, seconds, done) {
+        clearInterval(burst.timer);
+        burst.phase = phase;
+        let left = seconds;
+        showBurst(phase, left);
+        burst.timer = setInterval(() => {
+            left--;
+            if (left <= 0) {
+                clearInterval(burst.timer);
+                burst.timer = null;
+                done();
+                return;
+            }
+            showBurst(phase, left);
+        }, 1000);
+    }
+
+    function showBurst(phase, left) {
+        if (!burst || !burst.display) return;
+        burst.display.textContent = phase === "read" ? "read\u2026 " + left : phase === "write" ? String(left) : "";
+    }
+
+    function onBurstInput(event) {
+        if (burst && burst.phase === "read" && event.target === burst.slot) {
+            runBurstCountdown("write", burst.write, advanceBurst);
+        }
+    }
+
+    // Enter commits a one-line slot. A slot marked multiline (a Lens rewrite,
+    // minutes long) keeps Enter as a line break; only the clock moves it on.
+    function onBurstKeyDown(event) {
+        if (!burst || event.target !== burst.slot || event.key !== "Enter" || event.shiftKey) return;
+        if ("slotMultiline" in event.target.dataset) return;
+        event.preventDefault();
+        advanceBurst();
+    }
+
+    // Focus leaving the slot other than by our own move: a tap on another
+    // slot re-targets the run there; anything else means the writer has
+    // stepped out, and the run ends quietly.
+    function onBurstFocusOut(event) {
+        if (!burst || burst.advancing) return;
+        const next = event.relatedTarget;
+        if (next && burst.root.contains(next) && next.matches("textarea[data-slot]")) {
+            beginBurstSlot(next);
+        } else {
+            stopBurst();
+        }
+    }
+
+    function advanceBurst() {
+        if (!burst) return;
+        clearInterval(burst.timer);
+        burst.timer = null;
+        burst.phase = "";
+        const current = burst.slot;
+        const next = burstSlotAfter(current);
+        if (next) {
+            beginBurstSlot(next);
+            return;
+        }
+
+        // No slot after this one yet. Committing the answer may make Blazor
+        // add a round (WOAC), so wait briefly for it to render; otherwise the
+        // chain is complete and the run is over.
+        burst.advancing = true;
+        current.blur();
+        burst.advancing = false;
+        showBurst("", 0);
+        burst.observer = new MutationObserver(() => {
+            const added = burstSlotAfter(current);
+            if (!added) return;
+            burst.observer.disconnect();
+            burst.observer = null;
+            clearTimeout(burst.waitTimer);
+            beginBurstSlot(added);
+        });
+        burst.observer.observe(burst.root, { childList: true, subtree: true });
+        burst.waitTimer = setTimeout(stopBurst, 2000);
+    }
+
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
         init, applyHighlights, setContent, setDirty, scrollToLine,
-        exportDocument, focusEditor,
+        exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, replaceLineRange, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         get editor() { return cm; }
