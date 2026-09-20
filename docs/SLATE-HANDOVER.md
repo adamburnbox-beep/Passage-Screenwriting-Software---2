@@ -85,8 +85,8 @@ the next step** — unless he names a different one first.
   `insertLinesAt`; `SynopsisPlacement.Find` decides where and the runner
   says so before the tap. Undo verified.
 - See the row's Done and Deviations notes in `SLATE-PLAN.md` for the rest,
-  including why the promote button is never disabled — and the same
-  two-taps problem in Fill's "Fill it" button, left alone as out of scope.
+  including why neither the promote button nor Fill's "Fill it" is ever
+  disabled.
 
 ### Decisions made in conversation that the plan now records
 

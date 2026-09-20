@@ -356,10 +356,9 @@ bracket from your phone, and the script is edited correctly with undo intact.
   want" / "Character + the flaw") is not a timed slot — it is the writer's
   own starting point, not a question the chain asks. The promote button is
   never disabled: the field's change event and the tap arrive together, and
-  a button that is disabled until the change lands swallows the tap (the
-  Fill runner's "Fill it" has this exact problem — two taps needed after
-  typing the answer straight into the field — and is left as is, out of
-  scope). A blank line gets a status message instead. The read-in length is
+  a button that is disabled until the change lands swallows the tap. A
+  blank line gets a status message instead. Fill's "Fill it" had the same
+  problem and got the same fix in this phase. The read-in length is
   a constant (`BurstReadInSeconds`), not a setting: one number to set is
   enough, and 5 s read fine in practice.
 

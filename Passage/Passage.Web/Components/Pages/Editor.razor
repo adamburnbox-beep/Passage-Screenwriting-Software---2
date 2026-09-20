@@ -540,7 +540,7 @@ Open a .fountain file to see formatted pages.</div>
                         <textarea rows="3" @bind="_fillRun.Answer" @bind:after="SaveSlate"></textarea>
                     </label>
                     <div class="fill-actions">
-                        <button class="btn primary" disabled="@string.IsNullOrWhiteSpace(_fillRun.Answer)" title="Swap the bracket in the script for this" @onclick="AcceptFillAsync">Fill it</button>
+                        <button class="btn primary" title="Swap the bracket in the script for this" @onclick="AcceptFillAsync">Fill it</button>
                         <button class="btn" title="Prose, not a placeholder — leave it out" @onclick="() => IgnoreBracketAsync(_fillBracket)">Not a bracket</button>
                     </div>
                     <div class="fill-meta">Filled it? The next bracket comes straight away. There's no built-in stopping point — the stop is yours to call.</div>
@@ -2496,8 +2496,17 @@ Open a .fountain file to see formatted pages.</div>
 
     private async Task AcceptFillAsync()
     {
-        if (_fillBracket is null || _fillRun is null || string.IsNullOrWhiteSpace(_fillRun.Answer))
+        if (_fillBracket is null || _fillRun is null)
         {
+            return;
+        }
+
+        // Not a disabled button: the answer's change event and the tap arrive
+        // together, and a button disabled until the change lands swallows
+        // the tap (see the chain runner's promote button).
+        if (string.IsNullOrWhiteSpace(_fillRun.Answer))
+        {
+            _statusMessage = "Nothing to fill it with yet — write the real answer first";
             return;
         }
 
