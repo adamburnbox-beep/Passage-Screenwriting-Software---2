@@ -1,0 +1,34 @@
+# Runs on every pull request into main and on main itself. A PR shows a red
+# check when any step fails, so nothing lands without building.
+#
+# Three steps, deliberately: the web target (TreatWarningsAsErrors is on, so
+# a warning fails it), the test runner (exits non-zero on a failure), and
+# the container image — CLAUDE.md trap 1: the Dockerfile builds on sdk:9.0,
+# so a change that passes `dotnet build` locally can still break the deploy.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build, test, container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build the web target
+        run: dotnet build Passage.Web.slnf --configuration Release
+
+      - name: Run the tests
+        run: dotnet run --project Passage/Passage.Tests/Passage.Tests.csproj --configuration Release
+
+      - name: Build the container image
+        run: docker build -t passage-web .

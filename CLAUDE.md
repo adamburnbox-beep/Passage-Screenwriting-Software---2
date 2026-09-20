@@ -73,6 +73,19 @@ relevant row of `docs/WEB-PARITY.md` — nothing else — then implement, build,
 update that row's status, and commit. `docs/WEB-SESSIONS.md` holds the
 prompt for each feature.
 
+### Branches
+
+`main` is the only long-lived branch and is never committed to directly.
+Each change goes on a short-lived branch off `main`, opens a pull request,
+and is merged once the CI check is green and the change has been tried in
+the running app. Delete the branch after the merge. Before starting a
+feature, `git checkout main && git pull` — a branch cut from a stale `main`
+is how branches drift.
+
+CI (`.github/workflows/ci.yml`) builds `Passage.Web.slnf`, runs the tests,
+and builds the Docker image. A local `dotnet build` passing is not the bar
+for merging; the green check is.
+
 `docs/WEB-PARITY.md` is the source of truth for remaining work. Keep it
 accurate in the same session as the change; a stale row costs the next session
 more than it saved this one.
