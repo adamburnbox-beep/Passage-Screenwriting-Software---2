@@ -28,6 +28,7 @@ window.passage = (function () {
     const RECOVERY_KEY = "passage.recovery.v1";
     const RECOVERY_INTERVAL_MS = 3000;
     const THEME_KEY = "passage.theme.v1";
+    const SYNTAX_SCHEME_KEY = "passage.syntaxScheme.v1";
     const WORKSHOP_MIN_WIDTH = 260;
     const WORKSHOP_MAX_WIDTH = 720;
     const LINE_CLASSES = [
@@ -204,9 +205,44 @@ window.passage = (function () {
             window.localStorage.setItem(THEME_KEY, next);
         } catch (e) {
         }
+        applySyntaxColours(syntaxColours);
         // CodeMirror caches measurements against the old colours.
         if (cm) cm.refresh();
         return next;
+    }
+
+    // Syntax colour scheme. The server owns the presets and resolves the state
+    // to one palette per theme; this side only remembers the state blob and
+    // paints whichever palette matches the theme that is showing. Inline
+    // --syntax-* properties on <html> override both theme rules in app.css,
+    // which is why setTheme re-applies them.
+    let syntaxColours = null;
+
+    function getSyntaxScheme() {
+        try {
+            return window.localStorage.getItem(SYNTAX_SCHEME_KEY);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setSyntaxScheme(json) {
+        try {
+            window.localStorage.setItem(SYNTAX_SCHEME_KEY, json);
+        } catch (e) {
+        }
+    }
+
+    function applySyntaxColours(colours) {
+        syntaxColours = colours;
+        if (!colours) return;
+        const palette = colours[getTheme()];
+        if (!palette) return;
+        const style = document.documentElement.style;
+        for (const token of Object.keys(palette)) {
+            style.setProperty("--syntax-" + token, palette[token]);
+        }
+        if (cm) cm.refresh();
     }
 
     function clearRecoverySnapshot() {
@@ -1132,6 +1168,7 @@ window.passage = (function () {
         refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
+        getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
         get editor() { return cm; }
     };
 })();
