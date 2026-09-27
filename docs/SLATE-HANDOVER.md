@@ -16,16 +16,17 @@ PR #14 (web-scope → main; PR #13 before it is merged).
 The writer (Adam) has a set of writing-block exercises in his Obsidian vault
 ("the Slate"). We brought the *tools* — not the board, not the practice —
 into the web app as a right-hand dock called **Writer's Tools**, plus one
-full-screen overlay. **The plan is finished: every row in `SLATE-PLAN.md`
-is `done` and every tool has been through the verification checklist
-below.** Phases 0–6 are the tools themselves — foundations, Fill, the
+full-screen overlay. **Phases 0–7 are `done` and every tool in them has
+been through the verification checklist below; Phase 8 is open.** Phases 0–6 are the tools themselves — foundations, Fill, the
 forward chain (WOAC and Character Flaw Brainstorm), the Split family
 (A→Z→Split, Belief Split, Extend Backward), Bridge and Position, Push/Pull
 and Lens, Ideation burst. Phase 7 is the assist seam: an interface a model
-can be plugged into later, invisible until one is. **There is nothing left
-to build from the plan.** What comes next is Adam using the tools for real
-and reporting back; the next agent's work is fixes and copy from that, or
-the first real partner if he asks for one. Rule 0 in the plan (no required
+can be plugged into later, invisible until one is. **Phase 8 is next:** the
+vault worksheets changed on 2026-09-26 and the plan's Phase 8 row lists
+what the dock is missing, one item per session (prompt in
+`SLATE-SESSIONS.md`). After that, what comes next is Adam using the tools
+for real and reporting back — fixes and copy from that, or the first real
+partner if he asks for one. Rule 0 in the plan (no required
 fields, no progress, no history) outranks anything anyone asks for.
 
 ---
@@ -170,7 +171,9 @@ because each changes how a runner looks or what a record keeps:
 
 ## What's next
 
-Nothing is scheduled. In order of likelihood:
+**Scheduled: Phase 8, the worksheet refresh.** Work the `todo` items in
+the plan's Phase 8 row top to bottom, one per session, using the Phase 8
+prompt in `SLATE-SESSIONS.md`. Then, in order of likelihood:
 
 1. **Fixes and copy from real use.** Adam has not yet used any of this from
    a phone for a real session. Expect wording changes, field sizes, and the
