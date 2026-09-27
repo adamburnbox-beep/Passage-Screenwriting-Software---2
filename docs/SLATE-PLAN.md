@@ -505,7 +505,7 @@ own row.
   the worksheet's "going deeper" note says a stretch is checked as a whole,
   not scene by scene.
 - A flagged check offers **the Lens** on the flagged thing only, not the
-  whole scene: the seven lenses as a pick-one list, each with its "what you
+  whole scene: the eight lenses as a pick-one list, each with its "what you
   actually do" line, timed 3–5 minutes (decision E). Output is a fragment in
   the sidecar, never inserted. Close: "did it move the flagged problem? Y/N —
   one line why".
@@ -661,6 +661,38 @@ meantime.
   first real partner needs one (an API key, say).
 
 ---
+
+### Phase 8 — Worksheet refresh (vault edits of 2026-09-26) · `todo`
+
+Four worksheets and `engines.md` changed in the vault on 2026-09-26. A
+side-by-side check on 2026-09-27 found these missing from the dock. The
+Two-Camera lens is already in (the eighth lens). Everything else is still
+to build, in the worksheets' own words (decision A):
+
+- **Revise, check 0 — GSU.** Goal / stakes / urgency, one row per
+  character in the scene, before checks 1–6. A flag on GSU does *not*
+  open a Lens; it points at a Scene Dial instead. `SlateStore.CheckNames`
+  and the Revise run need a per-character table.
+- **Fill, optional — Stage it (Scene Dials).** After the real answer: one
+  "wants out of this scene" line per character, then a d6 roll across six
+  dials (opposed wants · pre-agitator · agitator · hidden thing · wrong
+  room · collision ahead) and a fragment slot. Source: *Place or Build —
+  Position or Fill*, Path B; `engines.md` § Scene Dials.
+- **Position, fallback — Time-Skip Ladder.** "At it / One year later / One
+  minute later", then *Still structural? Y/N*. Offered when turns come up
+  flat.
+- **Read-back, two more questions.** *Plumbing aside: which scene would you
+  skip?* and the eavesdropper test (would a stranger keep listening; cover
+  the names, can you tell who's talking).
+- **Split, Path A — optional checks on the ends** (the two ten-second
+  checks after Rung 0) and **Mirror Z** (write the opposite ending in full).
+- **Belief, Path B — Cast card** for the opponent and main supporting
+  characters, once per story, with the opponent's two extra questions
+  (the strawman test).
+- **Extend Backward — Obituary Z**, the second way to fix Z.
+
+Read the worksheet section for each before building it; the labels above
+are summaries, not copy.
 
 ## Not going in
 
