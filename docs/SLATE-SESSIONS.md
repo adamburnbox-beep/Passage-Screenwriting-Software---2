@@ -170,3 +170,25 @@ No egress in the default build.
 Success: every runner behaves identically to before with the null partner.
 Build clean, tests pass. Set Phase 7 to `done` and commit.
 ```
+
+## Phase 8 — Worksheet refresh
+
+One item per session. Paste this as-is; it picks the next item itself.
+
+```
+Read CLAUDE.md, PROJECT_RULES.md, docs/SLATE-HANDOVER.md, and in
+docs/SLATE-PLAN.md the Phase 8 row. Take the first item still marked
+`todo` — only that one.
+
+Read that item's section of the vault worksheet it names, in
+/home/arosa/Sync/Obsidian Vault/Story/Slate/Worksheets/ (and engines.md
+where the row points to it). The worksheet is the spec: labels,
+stop-callouts and helper text near-verbatim (decision A). Rule 0 holds —
+optional, no required fields, no progress, no history. Anything stored goes
+in the sidecar (SlateStore), with a round-trip test for any new record.
+
+Success: the new piece renders in the dock, saves and reloads, and nothing
+existing changes. Build clean, tests pass, tried in the running app. Flip
+the item to `done` in SLATE-PLAN.md (Phase 8 itself to `done` when it's the
+last), then branch, commit, and open a PR.
+```
