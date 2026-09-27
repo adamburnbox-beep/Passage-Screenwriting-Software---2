@@ -1337,6 +1337,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .belief-cut { margin-left: 12px; padding-left: 8px; border-left: 1px dashed var(--control-border); }
+.gsu-row + .gsu-row { margin-top: 14px; }
 
 .workshop .workshop-select {
     width: 100%;

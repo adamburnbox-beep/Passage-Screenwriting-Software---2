@@ -934,6 +934,48 @@ Open a .fountain file to see formatted pages.</div>
 
                     <div class="rung-label">Checks, in priority order</div>
                     <p class="tool-note">Run them one at a time, top to bottom, or skip straight to whichever you already suspect is the problem. Stop after any single check — a clean or flagged check is a complete session. Clean checks don't get punished with more work; only a flagged one owes you a Lens.</p>
+                    <div class="chain-round">
+                        <div class="chain-round-label">0. GSU — goal, stakes, urgency</div>
+                        <div class="fill-hint">Checks 1–6 test whether the scene <em>works</em>. This one tests whether it <em>plays</em>. One line per character in the scene, not just the protagonist:</div>
+                        @foreach (var row in _revision.Gsu)
+                        {
+                            <div class="belief-cut gsu-row">
+                                <label class="fill-field">
+                                    <span class="fill-label">Character</span>
+                                    <textarea rows="1" @bind="row.Character" @bind:after="SaveSlate"></textarea>
+                                </label>
+                                <label class="fill-field">
+                                    <span class="fill-label">Goal — what they want out of this scene, right now</span>
+                                    <textarea rows="2" @bind="row.Goal" @bind:after="SaveSlate"></textarea>
+                                </label>
+                                <label class="fill-field">
+                                    <span class="fill-label">Stakes — what happens if they don't get it</span>
+                                    <textarea rows="2" @bind="row.Stakes" @bind:after="SaveSlate"></textarea>
+                                </label>
+                                <label class="fill-field">
+                                    <span class="fill-label">Urgency — why it has to be now</span>
+                                    <textarea rows="2" @bind="row.Urgency" @bind:after="SaveSlate"></textarea>
+                                </label>
+                            </div>
+                        }
+                        <div class="fill-actions">
+                            <button class="btn" @onclick="AddGsuRow">Another character</button>
+                        </div>
+                        <div class="fill-hint">Flag it if anyone in the room wants nothing, or nothing happens if they fail, or it could just as easily happen next week.</div>
+                        <div class="stress-row">
+                            <span class="fill-hint">Flag</span>
+                            <AliveFlat Left="Y" Right="N" @bind-Value="_revision.GsuFlag" @bind-Value:after="SaveSlate" />
+                        </div>
+                        @if (_revision.GsuFlag == "Y")
+                        {
+                            <div class="stop-callout">If this one flags, don't reach for a Lens. Roll a Scene Dial instead (opposed wants · pre-agitator · agitator · hidden thing · wrong room · collision ahead).</div>
+                            <div class="rung-label">What each one means</div>
+                            @foreach (var dial in SceneDials)
+                            {
+                                <div class="fill-hint"><strong>@dial.Name</strong> — @dial.Do</div>
+                            }
+                        }
+                    </div>
                     @for (var c = 0; c < ReviseRun.CheckNames.Length; c++)
                     {
                         var checkIndex = c;
@@ -4235,7 +4277,8 @@ Open a .fountain file to see formatted pages.</div>
 
     // ---- Push/Pull and Lens (Phase 5) ----
     //
-    // The only independent check in the system. Six checks as their own
+    // The only independent check in the system. Check 0 (GSU) is a table,
+    // one row per character, and its flag points at a Scene Dial. Six checks as their own
     // questions; a flagged one — and only a flagged one — opens a Lens on
     // that thing. Kept per script by the scene or stretch checked.
 
@@ -4265,6 +4308,18 @@ Open a .fountain file to see formatted pages.</div>
         ("Metaphorical-relationship overlay", "Impose a behavioural template on the scene without the characters noticing — play it as noir, or play the roommates like a bickering married couple."),
         ("Expectation inversion", "Name what the genre expects here, on the nose — then do the opposite on purpose."),
         ("Two-Camera", "Write it twice — tight interior close-up (only what's in her head), then a locked-off master (no interiority at all). Compare what each version had to invent to compensate.")
+    };
+
+    // Scene Dials ("Place or Build — Position or Fill", Path B, "Stage it").
+    // Check 0 points here when it flags.
+    private static readonly (string Name, string Do)[] SceneDials =
+    {
+        ("Opposed wants", "Two people want different things out of this scene."),
+        ("Pre-agitator", "The conflict starts before the scene does. They walk in mid-argument, or one has just had news the other doesn't know."),
+        ("Agitator", "Something drops into the middle and makes the goal harder: a kid who won't stop talking, a phone that keeps ringing, rain."),
+        ("Hidden thing", "One character is hiding something from the other and can't mention it. The subtext writes itself."),
+        ("Wrong room", "Move it to the last place they'd want to have this conversation, or somewhere they can't talk freely: a funeral, a lift, a church pew."),
+        ("Collision ahead", "Show us something coming that they can't see: a car on its way, someone walking up the drive. Everything before it now plays twice.")
     };
 
     private static string? LensDo(string name) =>
@@ -4304,6 +4359,11 @@ Open a .fountain file to see formatted pages.</div>
         _revision = null;
         _workshopView = WorkshopView.Revisions;
         SaveSlate();
+    }
+
+    private void AddGsuRow()
+    {
+        _revision?.Gsu.Add(new GsuRow());
     }
 
     private void RemoveRevision(ReviseRun revision)

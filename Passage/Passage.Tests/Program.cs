@@ -766,6 +766,10 @@ class Program
             revision.Check("Polarity").Lens = "Tone swap, minimum edit";
             revision.Check("Polarity").Fragment = "line one\nline two";
             revision.Check("Polarity").Moved = "Y";
+            revision.Gsu[0].Character = "MARA";
+            revision.Gsu[0].Goal = "get the keys back";
+            revision.Gsu.Add(new GsuRow { Character = "TOM", Urgency = "the bus leaves at six" });
+            revision.GsuFlag = "Y";
             document.Revisions.Add(revision);
             document.Burst.LensMinutes = 3;
             store.Save("draft", document);
@@ -777,6 +781,11 @@ class Program
             Assert(polarity.Flag == "Y" && polarity.Lens == "Tone swap, minimum edit" && polarity.Fragment == "line one\nline two" && polarity.Moved == "Y", "A flagged check keeps its Lens, multi-line fragment and verdict");
             Assert(loaded.Revisions[0].Check("Linkage").IsEmpty, "An untouched check is empty");
             Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
+            var gsu = loaded.Revisions[0].Gsu;
+            Assert(gsu.Count == 3 && gsu[0].Character == "MARA" && gsu[0].Goal == "get the keys back" && gsu[1].IsEmpty && gsu[2].Urgency == "the bus leaves at six", "GSU rows round-trip in order, an empty row included");
+            Assert(loaded.Revisions[0].GsuFlag == "Y", "The GSU flag round-trips");
+            Assert(new ReviseRun().Gsu.Count == 2, "A new run starts with two GSU rows");
+            Assert(!new ReviseRun { GsuFlag = "N" }.IsEmpty && !new ReviseRun { Gsu = { new GsuRow { Stakes = "x" } } }.IsEmpty, "GSU content makes a run non-empty");
             Assert(new ReviseRun().IsEmpty && !revision.IsEmpty && !revision.HasDiagnostic && !revision.HasReadBack, "Emptiness and the deeper sections read the content");
             Assert(new ReviseRun().Check("Made up").Name == "Made up", "Check() adds a missing check rather than throwing");
         }
