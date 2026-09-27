@@ -43,15 +43,21 @@ public sealed class SlateDocument
     public List<ReviseRun> Revisions { get; set; } = new();
 }
 
-/// <summary>Push/Pull and Lens ("Revise — Push-Pull and Lens"): six checks
-/// on one scene or stretch, a Lens where a check is flagged, and the
-/// optional diagnostic belief layer and read-back beneath.</summary>
+/// <summary>Push/Pull and Lens ("Revise — Push-Pull and Lens"): check 0
+/// (GSU) and six checks on one scene or stretch, a Lens where a check is
+/// flagged, and the optional diagnostic belief layer and read-back beneath.</summary>
 public sealed class ReviseRun
 {
     public static readonly string[] CheckNames = { "Polarity", "Linkage", "Third rail", "Migration", "Escalation", "Two-test" };
 
     public string Scene { get; set; } = string.Empty;
     public string Purpose { get; set; } = string.Empty;
+
+    // Check 0 — GSU. Not one of CheckNames: a flag here points at a Scene
+    // Dial, never a Lens. Two rows to start, as the worksheet prints them.
+    public List<GsuRow> Gsu { get; set; } = new() { new GsuRow(), new GsuRow() };
+    public string GsuFlag { get; set; } = string.Empty;
+
     public List<ReviseCheck> Checks { get; set; } = CheckNames.Select(name => new ReviseCheck { Name = name }).ToList();
 
     // Going deeper still — Belief Split, diagnostic.
@@ -90,7 +96,21 @@ public sealed class ReviseRun
 
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(Scene) && string.IsNullOrWhiteSpace(Purpose)
+        && Gsu.All(row => row.IsEmpty) && string.IsNullOrWhiteSpace(GsuFlag)
         && Checks.All(check => check.IsEmpty) && !HasDiagnostic && !HasReadBack;
+}
+
+/// <summary>One character's line in check 0: goal, stakes, urgency.</summary>
+public sealed class GsuRow
+{
+    public string Character { get; set; } = string.Empty;
+    public string Goal { get; set; } = string.Empty;
+    public string Stakes { get; set; } = string.Empty;
+    public string Urgency { get; set; } = string.Empty;
+
+    public bool IsEmpty =>
+        string.IsNullOrWhiteSpace(Character) && string.IsNullOrWhiteSpace(Goal)
+        && string.IsNullOrWhiteSpace(Stakes) && string.IsNullOrWhiteSpace(Urgency);
 }
 
 /// <summary>One check: its answer and Y/N flag, and — only where flagged —

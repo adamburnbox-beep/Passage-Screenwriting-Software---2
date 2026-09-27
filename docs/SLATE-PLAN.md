@@ -669,10 +669,17 @@ side-by-side check on 2026-09-27 found these missing from the dock. The
 Two-Camera lens is already in (the eighth lens). Everything else is still
 to build, in the worksheets' own words (decision A):
 
-- `todo` **Revise, check 0 — GSU.** Goal / stakes / urgency, one row per
+- `done` **Revise, check 0 — GSU.** Goal / stakes / urgency, one row per
   character in the scene, before checks 1–6. A flag on GSU does *not*
-  open a Lens; it points at a Scene Dial instead. `SlateStore.CheckNames`
-  and the Revise run need a per-character table.
+  open a Lens; it points at a Scene Dial instead.
+  *Done (2026-09-27):* `ReviseRun.Gsu` (`List<GsuRow>`: Character, Goal,
+  Stakes, Urgency; two rows to start, as printed) and `ReviseRun.GsuFlag`,
+  both counted by `IsEmpty`. "Another character" appends a row. A **Y**
+  shows the worksheet's callout and the six dials with their meanings
+  from `SceneDials` in `Editor.razor` — the array Stage it should reuse.
+  Older sidecars load with two empty rows. *Deviation:* GSU is not in
+  `CheckNames` — it has no answer, Lens or fragment, so it is its own
+  table rather than a seventh `ReviseCheck`.
 - `todo` **Fill, optional — Stage it (Scene Dials).** After the real answer: one
   "wants out of this scene" line per character, then a d6 roll across six
   dials (opposed wants · pre-agitator · agitator · hidden thing · wrong
