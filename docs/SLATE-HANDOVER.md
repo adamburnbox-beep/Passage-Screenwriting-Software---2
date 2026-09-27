@@ -88,7 +88,7 @@ the map.
   turns is the ceiling.
 - **Phase 5 — Push/Pull and Lens.** `Revisions` by scene; *Use the scene
   under the caret*; six checks with Y/N; a **Y** opens that check's own Lens
-  (seven lenses, `LensMinutes` clock on the fragment alone, multiline slot);
+  (eight lenses, `LensMinutes` clock on the fragment alone, multiline slot);
   diagnostic Belief Split and read-back behind buttons.
 - **Phase 6 — Ideation burst.** `.slate/ideation.json`, belongs to no
   script, skipped by the orphan sweep. Full-screen overlay: roll or pick a
