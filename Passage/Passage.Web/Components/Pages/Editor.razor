@@ -58,6 +58,8 @@ Click New to start one — files are stored on the server volume.</div>
                     <InputFile @key="_importKey" OnChange="ImportFileAsync" accept=".fountain,.md,.txt" />
                 </label>
                 <button @onclick="OpenTitlePage">Title Page…</button>
+                <button @onclick="AddSceneNumbersAsync">Add Scene Numbers</button>
+                <button @onclick="RemoveSceneNumbersAsync">Remove Scene Numbers</button>
             </div>
         </details>
 
@@ -383,7 +385,8 @@ Open a .fountain file to see formatted pages.</div>
                                 <div class="preview-body">
                                     @foreach (var line in page.Lines)
                                     {
-                                        <div class="pl @StyleClass(line.Style)" style="@IndentStyle(line)">@(line.Text.Length == 0 ? " " : line.Text)</div>
+                                        <div class="pl @StyleClass(line.Style)" style="@IndentStyle(line)">@(line.Text.Length == 0 ? " " : line.Text)@if (line.SceneNumber is { } sceneNumber)
+                                        {<span class="scene-no scene-no-left">@sceneNumber</span><span class="scene-no scene-no-right">@sceneNumber</span>}</div>
                                     }
                                 </div>
                             </div>
@@ -3237,6 +3240,51 @@ Open a .fountain file to see formatted pages.</div>
         {
             CloseFind();
         }
+    }
+
+    // ---- Scene numbers (HIGHLAND-PLAN H1.3) ----
+
+    private sealed record LinesOutcome(int Applied, int Skipped);
+
+    private Task AddSceneNumbersAsync() => ApplySceneNumberEditsAsync(SceneNumbers.Add(_content), "Numbered", "every scene already has a number");
+
+    private Task RemoveSceneNumbersAsync() => ApplySceneNumberEditsAsync(SceneNumbers.Remove(_content), "Removed numbers from", "no scene numbers to remove");
+
+    private async Task ApplySceneNumberEditsAsync(IReadOnlyList<SceneNumbers.LineEdit> edits, string verb, string nothingToDo)
+    {
+        if (edits.Count == 0)
+        {
+            _statusMessage = char.ToUpperInvariant(nothingToDo[0]) + nothingToDo[1..];
+            return;
+        }
+
+        LinesOutcome outcome;
+        try
+        {
+            outcome = await JS.InvokeAsync<LinesOutcome>("passage.replaceLines", edits);
+        }
+        catch (JSException)
+        {
+            _statusMessage = "Scene numbers were not changed: the editor did not respond";
+            return;
+        }
+
+        if (outcome.Applied > 0)
+        {
+            var lines = _content.Split('\n');
+            foreach (var edit in edits.Where(e => lines[e.LineIndex] == e.Expected))
+            {
+                lines[edit.LineIndex] = edit.Replacement;
+            }
+
+            _content = string.Join('\n', lines);
+            _isDirty = true;
+            RunAnalysis();
+            UpdateCaretElementLabel();
+        }
+
+        _statusMessage = $"{verb} {outcome.Applied} scene{(outcome.Applied == 1 ? "" : "s")}"
+            + (outcome.Skipped > 0 ? $"; skipped {outcome.Skipped} that changed while numbering — try again" : string.Empty);
     }
 
     // ---- Go to Scene ----

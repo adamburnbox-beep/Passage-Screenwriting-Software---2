@@ -1,0 +1,17 @@
+SceneHeading|2||INT. HOUSE - DAY|INT. HOUSE - DAY
+Action|4||Plain action.|Plain action.
+SceneHeading|6||EXT. MEADOW - NIGHT|EXT. MEADOW - NIGHT
+SceneHeading|8||INT./EXT. CAR - MOVING|INT./EXT. CAR - MOVING
+SceneHeading|10||I/E. TRAIN - CONTINUOUS|I/E. TRAIN - CONTINUOUS
+SceneHeading|12||EST. CITY SKYLINE|EST. CITY SKYLINE
+SceneHeading|14|forced|FLASHBACK|.FLASHBACK
+SceneHeading|16|forced|FORCED WITH SPACE|. FORCED WITH SPACE
+SceneHeading|18||INT. ROOM #2 - DAY|INT. ROOM #2 - DAY
+SceneHeading|20||INT. HOUSE - DAY #|INT. HOUSE - DAY #
+SceneHeading|22||INT. HOUSE - DAY|INT. HOUSE - DAY [[id:11111111-2222-3333-4444-555555555555]]
+SceneHeading|24|forced|FORCED ID|.FORCED ID [[id:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee]]
+SceneHeading|26||int. lowercase kitchen - day|int. lowercase kitchen - day
+SceneHeading|28||INT. HALL - NIGHT [[note]]|INT. HALL - NIGHT [[note]]
+Character|30||JOHN|JOHN
+Dialogue|31||Hello.|Hello.
+SceneHeading|33||INT. LAST - DAY|INT. LAST - DAY

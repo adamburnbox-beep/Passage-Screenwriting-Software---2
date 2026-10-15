@@ -19,6 +19,11 @@ public sealed class FountainParser
         @"^=\s*(.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Fountain scene number: #…# at the very end of a scene heading (letters, digits, '.', '-').
+    private static readonly Regex SceneNumberRegex = new(
+        @"\s*#([A-Za-z0-9.\-]+)#$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly string[] SceneHeadingPrefixes =
     [
         "INT",
@@ -385,7 +390,8 @@ public sealed class FountainParser
                     return false;
                 }
 
-                element = new SceneHeadingElement(trimmed, line.Text, line.Index, true);
+                var overrideText = ExtractSceneNumber(trimmed, out var overrideNumber);
+                element = new SceneHeadingElement(overrideText, line.Text, line.Index, true, overrideNumber);
                 return true;
             case ScreenplayElementType.Character:
                 if (insideDialogueBlock)
@@ -541,8 +547,8 @@ public sealed class FountainParser
             var rawForcedText = trimmed[1..].TrimStart();
             if (rawForcedText.Length > 0)
             {
-                var forcedText = ExtractId(rawForcedText, out var forcedId);
-                sceneHeadingElement = new SceneHeadingElement(forcedText, line.Text, line.Index, true);
+                var forcedText = ExtractSceneNumber(ExtractId(rawForcedText, out var forcedId), out var forcedNumber);
+                sceneHeadingElement = new SceneHeadingElement(forcedText, line.Text, line.Index, true, forcedNumber);
                 if (forcedId != Guid.Empty) sceneHeadingElement.Id = forcedId;
                 return true;
             }
@@ -555,8 +561,8 @@ public sealed class FountainParser
             return false;
         }
 
-        var text = ExtractId(trimmed, out var id);
-        sceneHeadingElement = new SceneHeadingElement(text, line.Text, line.Index, false);
+        var text = ExtractSceneNumber(ExtractId(trimmed, out var id), out var sceneNumber);
+        sceneHeadingElement = new SceneHeadingElement(text, line.Text, line.Index, false, sceneNumber);
         if (id != Guid.Empty) sceneHeadingElement.Id = id;
         return true;
     }
@@ -889,6 +895,19 @@ public sealed class FountainParser
     }
 
     private static readonly Regex IdCommentRegex = new(@"\s*\[\[id:([a-f\d\-]+)\]\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static string ExtractSceneNumber(string text, out string? sceneNumber)
+    {
+        var match = SceneNumberRegex.Match(text);
+        if (!match.Success)
+        {
+            sceneNumber = null;
+            return text;
+        }
+
+        sceneNumber = match.Groups[1].Value;
+        return text[..match.Index];
+    }
 
     private static string ExtractId(string text, out Guid id)
     {

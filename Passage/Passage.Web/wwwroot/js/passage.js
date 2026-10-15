@@ -591,6 +591,24 @@ window.passage = (function () {
         return true;
     }
 
+    // Rewrite whole lines as one undo step (one cm.operation is one history
+    // event). Each edit names the text it expects; a line that no longer reads
+    // that (the server copy lags the editor by a debounce) is skipped and
+    // counted, never clobbered.
+    function replaceLines(edits) {
+        if (!cm) return { applied: 0, skipped: edits.length };
+        let applied = 0;
+        cm.operation(function () {
+            for (const edit of edits) {
+                if (edit.lineIndex >= cm.lineCount() || cm.getLine(edit.lineIndex) !== edit.expected) continue;
+                cm.replaceRange(edit.replacement, { line: edit.lineIndex, ch: 0 }, { line: edit.lineIndex, ch: edit.expected.length });
+                applied++;
+            }
+        });
+        if (applied > 0) scheduleInput();
+        return { applied: applied, skipped: edits.length - applied };
+    }
+
     // Insert lines before lineIndex, or at the end of the document when the
     // index is past the last line. Ranged like replaceLineRange, so it keeps
     // the undo history.
@@ -1165,7 +1183,7 @@ window.passage = (function () {
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,

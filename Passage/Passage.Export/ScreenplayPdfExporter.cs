@@ -117,6 +117,11 @@ public sealed class ScreenplayPdfExporter : IExporter
             }
 
             AppendTextRun(builder, line.Text, line.Style, line.X, y);
+            if (line.SceneNumber is { } sceneNumber)
+            {
+                AppendTextRun(builder, sceneNumber, line.Style, ScreenplayLayoutBuilder.LeftSceneNumberX(sceneNumber), y);
+                AppendTextRun(builder, sceneNumber, line.Style, ScreenplayLayoutBuilder.RightSceneNumberX, y);
+            }
 
             y -= ScreenplayLayoutBuilder.LineHeight;
         }

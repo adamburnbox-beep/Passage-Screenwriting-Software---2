@@ -578,6 +578,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .preview-body .pl.st-bold { font-weight: 700; }
+.preview-body .pl:has(.scene-no) { position: relative; }
+.preview-body .scene-no { position: absolute; top: 0; }
+.preview-body .scene-no-left { right: 100%; margin-right: 3ch; }
+.preview-body .scene-no-right { left: 100%; margin-left: 3ch; }
 .preview-body .pl.st-center { text-align: center; }
 .preview-body .pl.st-right { text-align: right; }
 

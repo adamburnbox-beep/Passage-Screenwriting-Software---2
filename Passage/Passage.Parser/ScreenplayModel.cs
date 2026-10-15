@@ -396,13 +396,17 @@ public sealed class LyricsElement : ScreenplayElement
 
 public sealed class SceneHeadingElement : ScreenplayElement
 {
-    public SceneHeadingElement(string text, string rawText, int lineIndex, bool isForced)
+    public SceneHeadingElement(string text, string rawText, int lineIndex, bool isForced, string? sceneNumber = null)
         : base(ScreenplayElementType.SceneHeading, text, rawText, lineIndex, lineIndex, 2)
     {
         IsForced = isForced;
+        SceneNumber = sceneNumber;
     }
 
     public bool IsForced { get; }
+
+    /// <summary>The trailing <c>#…#</c> scene number, without the hashes; null when unnumbered.</summary>
+    public string? SceneNumber { get; }
 }
 
 public sealed class ActionElement : ScreenplayElement

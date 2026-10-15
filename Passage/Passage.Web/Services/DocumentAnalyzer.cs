@@ -8,7 +8,7 @@ public sealed record OutlineNode(string Label, string Kind, int LineNumber, List
 
 public sealed record NoteEntry(string Text, int LineNumber);
 
-public sealed record PreviewLine(string Text, LayoutTextStyle Style, double IndentChars);
+public sealed record PreviewLine(string Text, LayoutTextStyle Style, double IndentChars, string? SceneNumber = null);
 
 public sealed record PreviewPage(IReadOnlyList<PreviewLine> Lines, int PageNumber, bool IsTitlePage);
 
@@ -286,7 +286,8 @@ public sealed class DocumentAnalyzer
                 .Select(line => new PreviewLine(
                     line.Text,
                     line.Style,
-                    Math.Max(0, (line.X - ScreenplayLayoutBuilder.MarginLeft) / ScreenplayLayoutBuilder.CharWidth)))
+                    Math.Max(0, (line.X - ScreenplayLayoutBuilder.MarginLeft) / ScreenplayLayoutBuilder.CharWidth),
+                    line.SceneNumber))
                 .ToList();
             pages.Add(new PreviewPage(lines, page.PageNumber, page.IsTitlePage));
         }

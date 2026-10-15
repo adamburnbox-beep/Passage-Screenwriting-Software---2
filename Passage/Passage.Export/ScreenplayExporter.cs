@@ -64,7 +64,9 @@ public sealed class ScreenplayExporter : IExporter
         switch (element)
         {
             case SceneHeadingElement sceneHeading:
-                AppendBlock(builder, sceneHeading.Text.ToUpperInvariant());
+                AppendBlock(builder, sceneHeading.SceneNumber is { } number
+                    ? $"{number}  {sceneHeading.Text.ToUpperInvariant()}  {number}"
+                    : sceneHeading.Text.ToUpperInvariant());
                 break;
             case ActionElement action:
                 AppendBlock(builder, action.Text);
