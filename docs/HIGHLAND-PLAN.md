@@ -178,7 +178,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   export opens in Highland (Adam to verify on a Mac, or mark `done` not
   `verified`).
 
-### H2.2 FDX (Final Draft) export — `todo`
+### H2.2 FDX (Final Draft) export — `done`
 
 - **Reference:** teardown Part 1 §5 (export list)
 - **Passage:** new exporter class; wire via `ExportService` only (Standing
@@ -189,6 +189,17 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   from H1.3 as `Number` attribute if present.
 - **Success:** output validates as XML and opens in Final Draft / Fade In /
   WriterSolo with correct element types.
+- **Landed:** `Passage.Export/FdxExporter.cs`, appended to
+  `ExportService.Exporters` only (not `ExporterCatalog`); Export menu entry
+  "Final Draft (.fdx)". Centered text → `Action` + `Alignment="Center"`;
+  lyrics → `General`; notes, boneyard, sections and synopses are left out, as
+  in the PDF. Dialogue-block line order is rebuilt from the dialogue element's
+  source lines (the parser emits parentheticals separately); one `Paragraph`
+  per source line; `*`/`**`/`***`/`_` become `Text Style` runs. Title page:
+  Title/Episode/Credit/Author/Source centred, the rest left. **Not mapped:**
+  `Shot` — the parser has no Shot element, so nothing produces it. Opening in
+  Final Draft / Fade In / WriterSolo is unverified (none available here).
+  Test: `Fixtures/H2Fdx.fountain`.
 
 ---
 
