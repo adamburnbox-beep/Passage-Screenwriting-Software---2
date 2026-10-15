@@ -14,8 +14,10 @@ public sealed class ExportService
     private readonly FountainParser _parser = new();
 
     // The catalog's PDF exporter is shared with the desktop apps; swap in one that uses web pagination.
+    // FDX is web-only, so it is appended here rather than added to the shared catalog.
     public IReadOnlyList<IExporter> Exporters { get; } = ExporterCatalog.GetDefaultExporters()
         .Select(exporter => exporter is ScreenplayPdfExporter ? new ScreenplayPdfExporter(WebPagination.Options) : exporter)
+        .Append(new FdxExporter())
         .ToList();
 
     public ExportResult? Export(string content, string format, string? documentName)
@@ -50,6 +52,7 @@ public sealed class ExportService
             {
                 ".pdf" => "application/pdf",
                 ".txt" => "text/plain",
+                ".fdx" => "application/xml",
                 _ => "application/octet-stream"
             };
 

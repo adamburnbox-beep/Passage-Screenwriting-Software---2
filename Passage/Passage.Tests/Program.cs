@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.Extensions.Configuration;
 using Passage.Parser;
 using Passage.Core;
@@ -67,6 +68,7 @@ class Program
         failures += RunTest("Test Highland Export Import Round Trip", TestHighlandExportImportRoundTrip);
         failures += RunTest("Test Highland Hand Built Bundle Imports", TestHighlandHandBuiltBundleImports);
         failures += RunTest("Test Highland Without Text Fails Visibly", TestHighlandWithoutTextFailsVisibly);
+        failures += RunTest("Test FDX Export Paragraph Types", TestFdxExportParagraphTypes);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -891,6 +893,66 @@ class Program
         Assert(imported.Text == text, "round-tripped text should be identical");
         Assert(!imported.IsMarkdown, "exported bundle is Fountain");
         Assert(imported.Skipped.Count == 3, $"the three sidecars are reported, got {imported.Skipped.Count}");
+    }
+
+    static void TestFdxExportParagraphTypes()
+    {
+        var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "H2Fdx.fountain"));
+        var result = new ExportService().Export(text, "fdx", "Test.fountain");
+        Assert(result is not null, "fdx export should be recognised");
+        Assert(result!.Value.FileName == "Test.fdx", $"file name, got {result.Value.FileName}");
+        Assert(result.Value.ContentType == "application/xml", "content type");
+
+        // XDocument.Parse throws on malformed XML.
+        var document = XDocument.Parse(Encoding.UTF8.GetString(result.Value.Bytes));
+        var root = document.Root!;
+        Assert(root.Name == "FinalDraft" && (string?)root.Attribute("DocumentType") == "Script", "FinalDraft Script root");
+
+        static string Describe(XElement paragraph) =>
+            $"{(string?)paragraph.Attribute("Type")}|{string.Concat(paragraph.Elements("Text").Select(run => run.Value))}";
+
+        var body = root.Element("Content")!.Elements("Paragraph").ToList();
+        var actual = body.Select(paragraph => paragraph.Element("DualDialogue") is null ? Describe(paragraph) : "DualDialogue").ToArray();
+        var expected = new[]
+        {
+            "Scene Heading|INT. HOUSE - DAY",
+            "Action|Jo enters with great care and speed.",
+            "Action|A second line of action.",
+            "Character|JO",
+            "Parenthetical|(quietly)",
+            "Dialogue|Hi.",
+            "Parenthetical|(beat)",
+            "Dialogue|Bye.",
+            "DualDialogue",
+            "Transition|CUT TO:",
+            "Scene Heading|EXT. GARDEN - NIGHT",
+            "Action|THE END",
+            "General|Sing a song",
+            "Scene Heading|FORCED SCENE"
+        };
+        Assert(actual.SequenceEqual(expected), $"body paragraphs, got:\n{string.Join("\n", actual)}");
+
+        Assert((string?)body[0].Attribute("Number") == "1", "scene number carried as Number");
+        Assert(body[10].Attribute("Number") is null, "unnumbered heading has no Number");
+        Assert((string?)body[11].Attribute("Alignment") == "Center", "centered text is centre-aligned Action");
+
+        var dual = body[8].Element("DualDialogue")!.Elements("Paragraph").Select(Describe).ToArray();
+        Assert(dual.SequenceEqual(new[] { "Character|BRAD", "Dialogue|Me first.", "Character|MAX", "Dialogue|Me too." }),
+            $"dual dialogue pair, got {string.Join(", ", dual)}");
+
+        var styles = body[1].Elements("Text").Select(run => $"{run.Value}={(string?)run.Attribute("Style")}").ToArray();
+        Assert(styles.SequenceEqual(new[] { "Jo enters with =", "great =Italic", "care=Bold", " and =", "speed=Underline", ".=" }),
+            $"emphasis runs, got {string.Join(", ", styles)}");
+
+        var title = root.Element("TitlePage")!.Element("Content")!.Elements("Paragraph").ToList();
+        var titleLines = title.Select(paragraph => $"{(string?)paragraph.Attribute("Alignment")}|{Describe(paragraph)}").ToArray();
+        var expectedTitle = new[]
+        {
+            "Center|General|THE FDX TEST", "Center|General|written by", "Center|General|Jo Writer",
+            "Left|General|1 May 2026", "Left|General|jo@example.com", "Left|General|555 0100"
+        };
+        Assert(titleLines.SequenceEqual(expectedTitle), $"title page, got:\n{string.Join("\n", titleLines)}");
+        Assert((string?)title[0].Element("Text")!.Attribute("Style") == "Bold+Underline", "title keeps its emphasis");
     }
 
     static void TestHighlandHandBuiltBundleImports()
