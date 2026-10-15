@@ -75,7 +75,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   `BuildRenderableBlocks` before layout, so that rule has nothing to act on.
   Tests: `Passage.Tests/Fixtures/H1Pagination.*` (golden captured before the change).
 
-### H1.2 (MORE) / (CONT'D) dialogue splitting — `todo` · depends on H1.1
+### H1.2 (MORE) / (CONT'D) dialogue splitting — `done`
 
 - **Reference:** teardown §12 ("Splitting dialogue"), §13
 - **Passage:** same `Layout` ranges; options object from H1.1
@@ -88,6 +88,14 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   Dual dialogue is never split; it moves whole.
 - **Success:** fixture with a 70-line speech produces the MORE/CONT'D pair at
   a sentence end; preview and PDF show identical breaks.
+- **Landed:** `PaginationOptions.MoreAndContinued` (default on), `MoreText`,
+  `ContinuedText`; `ScreenplayLayoutBuilder.PaginateKeepTogether` glues each
+  speech whole and `TrySplitSpeech` picks the break. A dialogue block may also
+  break at its end when more of the speech follows. Preview and PDF share
+  `BuildPages`, so they agree by construction; the test also checks the PDF
+  streams. The parser hoists mid-speech parentheticals above the dialogue
+  (and keeps the line in the dialogue text), so a speech has one dialogue
+  block in practice. Tests: `Passage.Tests/Fixtures/H1MoreContd.fountain`.
 
 ### H1.3 Scene numbers — `todo`
 

@@ -56,6 +56,8 @@ class Program
         failures += RunTest("Test Pagination Null Options Matches Golden", TestPaginationNullOptionsMatchesGolden);
         failures += RunTest("Test Pagination Keep Together", TestPaginationKeepTogether);
         failures += RunTest("Test Pagination Overflow Tolerance", TestPaginationOverflowTolerance);
+        failures += RunTest("Test Pagination More And Continued", TestPaginationMoreAndContinued);
+        failures += RunTest("Test Pagination More Falls Back To Line Ends", TestPaginationMoreFallsBackToLineEnds);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -1100,5 +1102,101 @@ class Program
         var strict = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions(OverflowLines: 0)).bodyPages;
         Assert(strict[0].Lines.Count == 54 && strict[1].Lines[0].Text == "close enough to touch with one hand.",
             "With no tolerance the orphan should move to page 2");
+    }
+
+    // ---- (MORE)/(CONT'D) dialogue splitting (HIGHLAND-PLAN H1.2) ----
+    //
+    // Fixtures/H1MoreContd.fountain holds a 70-plus-line speech that starts mid-page, so it must
+    // split twice, then a dual-dialogue pair placed across a page break.
+
+    const double DialogueX = ScreenplayLayoutBuilder.MarginLeft + 72.0;
+
+    static bool EndsSentence(string text) => text.TrimEnd('"', '\'', ')').EndsWith('.') || text.EndsWith('!') || text.EndsWith('?');
+
+    static List<LayoutLine> Content(LayoutPage page) => page.Lines.Where(line => !line.IsBlank).ToList();
+
+    static void TestPaginationMoreAndContinued()
+    {
+        var parsed = ParseFixture("H1MoreContd.fountain");
+        var speech = parsed.Elements.OfType<DialogueElement>().First();
+        var fixedPages = ScreenplayLayoutBuilder.BuildPages(parsed).bodyPages;
+        Assert(fixedPages.SelectMany(page => page.Lines).Count(line => line.X == DialogueX) >= 70 + 2,
+            "Fixture should hold a speech of at least 70 lines");
+        Assert(fixedPages.All(page => page.Lines.All(line => line.Text != "(MORE)")), "Null options must never add (MORE)");
+
+        var pages = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions()).bodyPages;
+        var splits = 0;
+        for (var index = 0; index < pages.Count - 1; index++)
+        {
+            var content = Content(pages[index]);
+            if (content[^1].Text != "(MORE)") continue;
+            splits++;
+            Assert(content[^1].X == CueX, $"(MORE) on page {pages[index].PageNumber} should sit at the cue indent");
+            Assert(content[^2].X == DialogueX && EndsSentence(content[^2].Text),
+                $"Page {pages[index].PageNumber} should break the speech at a sentence end, not '{content[^2].Text}'");
+            var next = pages[index + 1].Lines[0];
+            Assert(next.Text == "BOB (CONT'D)" && next.X == CueX, $"Page {pages[index + 1].PageNumber} should open with BOB (CONT'D), not '{next.Text}'");
+        }
+        Assert(splits == 2, $"The speech should split across three pages, split {splits} times");
+        Assert(pages.All(page => page.Lines.Count <= 55), "No page may run more than one line past the bottom margin");
+
+        var spoken = pages.SelectMany(page => page.Lines).TakeWhile(line => line.Text != "MARY").Where(line => line.X == DialogueX).SelectMany(line => line.Text.Split(' '));
+        Assert(spoken.SequenceEqual(speech.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries)), "Splitting must not drop or reorder any dialogue");
+        Assert(pages.SelectMany(page => page.Lines).Count(line => line.Text == "(quietly)") == 1, "The parenthetical is not repeated after (CONT'D)");
+
+        var dual = pages.Single(page => page.Lines.Any(line => line.Text == "MARY"));
+        Assert(dual.Lines.Count(line => line.Text is "MARY" or "BOB") == 2 && dual.Lines.Count(line => line.Text == "Then we row.") == 2,
+            "The dual-dialogue pair should stay on one page");
+
+        var plain = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions(MoreAndContinued: false)).bodyPages;
+        Assert(plain.All(page => page.Lines.All(line => line.Text != "(MORE)" && !line.Text.Contains("(CONT'D)"))), "MoreAndContinued: false must not split speeches");
+
+        var custom = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions(MoreText: "(more)", ContinuedText: "(CONT\u2019D)")).bodyPages;
+        Assert(custom.Count(page => Content(page)[^1].Text == "(more)") == 2 && custom[1].Lines[0].Text == "BOB (CONT\u2019D)", "Custom MORE/CONT'D strings should be used");
+
+        // The PDF draws the same pages: each page's stream holds its lines, in order.
+        var pdfPath = Path.Combine(Path.GetTempPath(), $"passage-h1-2-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            new ScreenplayPdfExporter(new PaginationOptions()).Export(parsed, pdfPath);
+            var streams = File.ReadAllText(pdfPath, Encoding.Latin1).Split("endstream")[..^1]
+                .Select(segment => segment[(segment.LastIndexOf("stream", StringComparison.Ordinal) + 6)..]).ToList();
+            var titleCount = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions()).titlePages.Count;
+            Assert(streams.Count == titleCount + pages.Count, $"PDF should have {titleCount + pages.Count} pages, has {streams.Count}");
+            for (var index = 0; index < pages.Count; index++)
+            {
+                var stream = streams[titleCount + index];
+                var at = 0;
+                foreach (var line in Content(pages[index]))
+                {
+                    var drawn = "(" + line.Text.Replace("(", "\\(").Replace(")", "\\)") + ")";
+                    var found = stream.IndexOf(drawn, at, StringComparison.Ordinal);
+                    Assert(found >= 0, $"PDF page {pages[index].PageNumber} is missing or misorders '{line.Text}'");
+                    at = found + drawn.Length;
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(pdfPath);
+        }
+    }
+
+    static void TestPaginationMoreFallsBackToLineEnds()
+    {
+        // Heading on line 3, 20 one-line actions ending on line 43, then a speech that is one
+        // sentence of about 20 lines: no sentence ends in the space, so it breaks at a line end.
+        var script = new StringBuilder("INT. ROOM - DAY\n\n");
+        for (var index = 0; index < 20; index++) script.Append($"Short action {index}.\n\n");
+        script.Append("ANNA\n");
+        for (var index = 0; index < 60; index++) script.Append($"and then word{index} ");
+        script.Append("and done.\n");
+        var pages = ScreenplayLayoutBuilder.BuildPages(new FountainParser().Parse(script.ToString()), new PaginationOptions()).bodyPages;
+
+        var first = Content(pages[0]);
+        Assert(first[^1].Text == "(MORE)" && first[^2].X == DialogueX && !EndsSentence(first[^2].Text),
+            "A sentence longer than the space should break at a line end with (MORE)");
+        Assert(pages[0].Lines.Count == 54, "The line-end break should fill the page exactly");
+        Assert(pages[1].Lines[0].Text == "ANNA (CONT'D)", "The next page should open with ANNA (CONT'D)");
     }
 }
