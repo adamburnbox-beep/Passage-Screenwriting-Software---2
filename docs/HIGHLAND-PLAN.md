@@ -23,8 +23,12 @@ only). `passage.js` = `Passage/Passage.Web/wwwroot/js/passage.js`.
 
 ## Standing decision — shared-library changes (read before any H1 row)
 
-`ScreenplayLayoutBuilder.BuildPages` is called by the web app (Analyzer ~280)
-**and** by both desktop apps (Linux VM ~1301, WPF MainWindow ~2530).
+`ScreenplayLayoutBuilder.BuildPages` is called by the web app (Analyzer ~280),
+by both desktop apps (Linux VM ~1301, WPF MainWindow ~2530) **and** by
+`ScreenplayPdfExporter.Export` (`Passage/Passage.Export/ScreenplayPdfExporter.cs`
+~21), which every frontend reaches through `ExporterCatalog` (the web via
+`ExportService`). Web PDF output therefore only gets new pagination if the web
+passes options into a PDF export path the desktop catalog instance does not use.
 CLAUDE.md forbids changing desktop behaviour from shared code. Therefore:
 
 - New pagination behaviour is **opt-in**: add an optional
@@ -44,15 +48,15 @@ is a separate, explicit decision. Do not make it implicitly.
 
 ## Tier H1 — Pagination that matches industry output
 
-The biggest real gap. Today `Layout.Paginate` (267–285) cuts every 54 lines
+The biggest real gap. Today `Layout.Paginate` (267–284) cuts every 54 lines
 regardless of content: scene headings can be orphaned at page bottoms,
 dialogue splits mid-sentence with no (MORE)/(CONT'D).
 
-### H1.1 Keep-together grouping — `todo`
+### H1.1 Keep-together grouping — `done`
 
 - **Reference:** teardown §11 (grouping), §12 (algorithm)
-- **Passage:** `Layout` 147–174 (`BuildBodyLines`), 184–258
-  (`BuildRenderableBlocks`, `TryCreateRenderableBlock`), 267–285 (`Paginate`)
+- **Passage:** `Layout` 147–173 (`BuildBodyLines`), 184–257
+  (`BuildRenderableBlocks`, `TryCreateRenderableBlock`), 267–284 (`Paginate`)
 - **Do:** Build groups before paginating, then fit groups, not lines:
   scene heading stays with the next element's first two lines; character cue +
   parenthetical stay with at least two dialogue lines; a transition stays with
@@ -62,6 +66,14 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
 - **Success:** the H1 test script (create `Passage.Tests` fixtures) never ends a
   page on a scene heading or a bare character cue; `null` options output is
   unchanged (Standing decision test).
+- **Landed:** `PaginationOptions` (`Passage.Export/PaginationOptions.cs`) and
+  `ScreenplayLayoutBuilder.PaginateKeepTogether`; `ScreenplayPdfExporter` takes
+  optional options. The web passes `WebPagination.Options` from
+  `DocumentAnalyzer` (preview) and from `ExportService`, which swaps in its own
+  PDF exporter instead of the shared catalog instance. A parenthetical is glued
+  to the next element too. Section/synopsis/notes are dropped by
+  `BuildRenderableBlocks` before layout, so that rule has nothing to act on.
+  Tests: `Passage.Tests/Fixtures/H1Pagination.*` (golden captured before the change).
 
 ### H1.2 (MORE) / (CONT'D) dialogue splitting — `todo` · depends on H1.1
 

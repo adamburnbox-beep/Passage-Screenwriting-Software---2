@@ -12,4 +12,8 @@
     <ProjectReference Include="..\Passage.Parser\Passage.Parser.csproj" />
     <ProjectReference Include="..\Passage.Web\Passage.Web.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

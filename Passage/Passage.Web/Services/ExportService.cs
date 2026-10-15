@@ -13,7 +13,10 @@ public sealed class ExportService
 {
     private readonly FountainParser _parser = new();
 
-    public IReadOnlyList<IExporter> Exporters { get; } = ExporterCatalog.GetDefaultExporters();
+    // The catalog's PDF exporter is shared with the desktop apps; swap in one that uses web pagination.
+    public IReadOnlyList<IExporter> Exporters { get; } = ExporterCatalog.GetDefaultExporters()
+        .Select(exporter => exporter is ScreenplayPdfExporter ? new ScreenplayPdfExporter(WebPagination.Options) : exporter)
+        .ToList();
 
     public ExportResult? Export(string content, string format, string? documentName)
     {

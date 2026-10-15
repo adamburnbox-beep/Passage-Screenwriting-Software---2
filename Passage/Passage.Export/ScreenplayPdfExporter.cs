@@ -8,6 +8,12 @@ namespace Passage.Export;
 public sealed class ScreenplayPdfExporter : IExporter
 {
     private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
+    private readonly PaginationOptions? _paginationOptions;
+
+    public ScreenplayPdfExporter(PaginationOptions? paginationOptions = null)
+    {
+        _paginationOptions = paginationOptions;
+    }
 
     public string DisplayName => "PDF";
 
@@ -18,7 +24,7 @@ public sealed class ScreenplayPdfExporter : IExporter
         ArgumentNullException.ThrowIfNull(screenplay);
         ArgumentNullException.ThrowIfNull(filePath);
 
-        var (titlePages, bodyPages) = ScreenplayLayoutBuilder.BuildPages(screenplay);
+        var (titlePages, bodyPages) = ScreenplayLayoutBuilder.BuildPages(screenplay, _paginationOptions);
         WritePdf(titlePages, bodyPages, filePath);
     }
 
