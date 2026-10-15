@@ -57,7 +57,7 @@ public static class ScreenplayLayoutBuilder
 
         int bodyPageNum = 1;
         var paginatedBody = options is { KeepTogether: true }
-            ? PaginateKeepTogether(screenplay.Elements, MaxLinesPerBodyPage, Math.Max(0, options.OverflowLines))
+            ? PaginateKeepTogether(screenplay.Elements, MaxLinesPerBodyPage, options)
             : Paginate(BuildBodyLines(screenplay.Elements), MaxLinesPerBodyPage).ToList();
         
         if (paginatedBody.Count == 0)
@@ -253,7 +253,7 @@ public static class ScreenplayLayoutBuilder
 
         if (string.IsNullOrWhiteSpace(text)) return false;
 
-        block = new RenderBlock(element.Type, text, style, x, maxChars);
+        block = new RenderBlock(element.Type, text, style, x, maxChars, element is CharacterElement { IsDualDialogue: true });
         return true;
     }
 
@@ -287,8 +287,9 @@ public static class ScreenplayLayoutBuilder
     // Keep-together pagination (PaginationOptions.KeepTogether). Lines are laid out exactly as
     // BuildBodyLines does; what changes is where a page may end. canBreakBefore[i] marks the
     // lines a new page may start at, and the glue rules below clear it.
-    private static List<List<LayoutLine>> PaginateKeepTogether(IReadOnlyList<ScreenplayElement> elements, int maxLinesPerPage, int overflowLines)
+    private static List<List<LayoutLine>> PaginateKeepTogether(IReadOnlyList<ScreenplayElement> elements, int maxLinesPerPage, PaginationOptions options)
     {
+        var overflowLines = Math.Max(0, options.OverflowLines);
         var pages = new List<List<LayoutLine>>();
         var renderableBlocks = BuildRenderableBlocks(elements);
         if (renderableBlocks.Count == 0)
@@ -299,6 +300,7 @@ public static class ScreenplayLayoutBuilder
         var lines = new List<LayoutLine>();
         var canBreakBefore = new List<bool>();
         var endsBlock = new List<bool>();
+        var blockOf = new List<int>();
         var leadStarts = new int[renderableBlocks.Count];
         var contentStarts = new int[renderableBlocks.Count];
         var contentCounts = new int[renderableBlocks.Count];
@@ -322,6 +324,7 @@ public static class ScreenplayLayoutBuilder
             {
                 canBreakBefore.Add(index == leadStarts[blockIndex] || index > contentStarts[blockIndex]);
                 endsBlock.Add(index == lines.Count - 1);
+                blockOf.Add(blockIndex);
             }
         }
 
@@ -359,6 +362,45 @@ public static class ScreenplayLayoutBuilder
                         Glue(Math.Max(previousEnd - 1, contentStarts[blockIndex - 1] + 1), previousEnd);
                     }
                     break;
+            }
+        }
+
+        // (MORE)/(CONT'D): a speech is a cue and the parentheticals and dialogue under it. Each
+        // speech is glued whole and split explicitly by TrySplitSpeech when it overflows. A
+        // dual-dialogue cue joins its speech to the one before it; that pair never splits.
+        var speechCue = new int[renderableBlocks.Count];
+        var splittable = new bool[renderableBlocks.Count];
+        var blockText = renderableBlocks.Select(block => block.Text).ToArray();
+        Array.Fill(speechCue, -1);
+        if (options.MoreAndContinued)
+        {
+            var previousCue = -1;
+            for (var blockIndex = 0; blockIndex < renderableBlocks.Count; blockIndex++)
+            {
+                var type = renderableBlocks[blockIndex].Type;
+                if (type != ScreenplayElementType.Character) continue;
+
+                var last = blockIndex;
+                while (last + 1 < renderableBlocks.Count && renderableBlocks[last + 1].Type is ScreenplayElementType.Dialogue or ScreenplayElementType.Parenthetical)
+                {
+                    last++;
+                }
+
+                var isDual = renderableBlocks[blockIndex].IsDualCue && previousCue >= 0 && speechCue[blockIndex - 1] == previousCue;
+                var glueFrom = isDual ? previousCue : blockIndex;
+                Glue(contentStarts[glueFrom] + 1, contentStarts[last] + contentCounts[last]);
+                for (var member = blockIndex; member <= last; member++)
+                {
+                    speechCue[member] = blockIndex;
+                    splittable[member] = !isDual;
+                }
+                if (isDual)
+                {
+                    for (var member = previousCue; member < blockIndex; member++) splittable[member] = false;
+                }
+
+                previousCue = blockIndex;
+                blockIndex = last;
             }
         }
 
@@ -403,6 +445,37 @@ public static class ScreenplayLayoutBuilder
                 continue;
             }
 
+            if (options.MoreAndContinued && TrySplitSpeech(unitStart, end, maxLinesPerPage - current.Count, out var split))
+            {
+                // The page takes the head of the speech and (MORE); the lines from start through
+                // the split are replaced by the repeated cue and the rest, which open the next page.
+                current.AddRange(lines.Skip(unitStart).Take(split.ContentStart - unitStart));
+                current.AddRange(split.Head);
+                current.Add(new LayoutLine(options.MoreText, LayoutTextStyle.Left, MarginLeft + CharacterIndent));
+                pages.Add(current);
+                current = new List<LayoutLine>();
+
+                var cue = renderableBlocks[speechCue[split.Block]];
+                var cueText = cue.Text.EndsWith(options.ContinuedText, StringComparison.OrdinalIgnoreCase)
+                    ? cue.Text
+                    : $"{cue.Text} {options.ContinuedText}";
+                var cueLines = new List<LayoutLine>();
+                AddWrappedBlock(cueLines, cueText, cue.Style, cue.X, cue.MaxChars);
+                if (split.TailText is not null) blockText[split.Block] = split.TailText;
+
+                var removed = split.ResumeAt - start;
+                lines.RemoveRange(start, removed);
+                canBreakBefore.RemoveRange(start, removed);
+                endsBlock.RemoveRange(start, removed);
+                blockOf.RemoveRange(start, removed);
+                var inserted = cueLines.Concat(split.Tail).ToList();
+                lines.InsertRange(start, inserted);
+                canBreakBefore.InsertRange(start, inserted.Select((_, index) => index == 0));
+                endsBlock.InsertRange(start, inserted.Select((_, index) => index == cueLines.Count - 1 || (split.Tail.Count > 0 && index == inserted.Count - 1)));
+                blockOf.InsertRange(start, inserted.Select((_, index) => index < cueLines.Count ? speechCue[split.Block] : split.Block));
+                continue;
+            }
+
             if (current.Count == 0)
             {
                 // Taller than a page: nothing to keep it with, so cut it like the fixed paginator.
@@ -422,7 +495,101 @@ public static class ScreenplayLayoutBuilder
         }
 
         return pages;
+
+        // Picks where a speech in lines[unitStart, unitEnd) breaks so the head and (MORE) fit in
+        // space lines: the most text that ends on a sentence end (or at the end of a dialogue
+        // block followed by more of the speech), else on a line end. Only dialogue breaks, and at
+        // least two of its lines, or all of them, stay on the page.
+        bool TrySplitSpeech(int unitStart, int unitEnd, int space, out SpeechSplit best)
+        {
+            best = default;
+            SpeechSplit? sentenceSplit = null;
+            SpeechSplit? lineSplit = null;
+
+            var lastBlock = -1;
+            for (var index = unitStart; index < unitEnd; index++)
+            {
+                var blockIndex = blockOf[index];
+                if (lines[index].IsBlank || blockIndex == lastBlock) continue;
+                lastBlock = blockIndex;
+                if (!splittable[blockIndex] || renderableBlocks[blockIndex].Type != ScreenplayElementType.Dialogue) continue;
+
+                var contentStart = index;
+                var contentEnd = contentStart;
+                while (contentEnd < unitEnd && blockOf[contentEnd] == blockIndex) contentEnd++;
+                var count = contentEnd - contentStart;
+                var room = space - (contentStart - unitStart) - 1;
+                var minimum = Math.Min(2, count);
+                if (room < minimum) continue;
+
+                var block = renderableBlocks[blockIndex];
+                var text = blockText[blockIndex];
+                foreach (var offset in SentenceEnds(text))
+                {
+                    var head = new List<LayoutLine>();
+                    var tail = new List<LayoutLine>();
+                    AddWrappedBlock(head, text[..offset], block.Style, block.X, block.MaxChars);
+                    AddWrappedBlock(tail, text[offset..], block.Style, block.X, block.MaxChars);
+                    if (head.Count > room) break;
+                    if (head.Count < minimum) continue;
+                    sentenceSplit = new SpeechSplit(blockIndex, contentStart, head, tail, text[offset..].Trim(), contentEnd);
+                }
+
+                // The end of a dialogue block with more of the speech after it.
+                if (contentEnd < unitEnd && count <= room && blockOf[contentEnd] != blockIndex && speechCue[blockOf[contentEnd]] == speechCue[blockIndex])
+                {
+                    var next = contentEnd;
+                    while (lines[next].IsBlank) next++;
+                    sentenceSplit = new SpeechSplit(blockIndex, contentStart, lines.GetRange(contentStart, count), [], null, next);
+                }
+
+                if (sentenceSplit is null && count > minimum)
+                {
+                    var take = Math.Min(room, count - 1);
+                    if (take >= minimum)
+                    {
+                        var tail = lines.GetRange(contentStart + take, count - take);
+                        lineSplit = new SpeechSplit(blockIndex, contentStart, lines.GetRange(contentStart, take), tail,
+                            string.Join('\n', tail.Select(line => line.Text)), contentEnd);
+                    }
+                }
+            }
+
+            best = sentenceSplit ?? lineSplit ?? default;
+            return sentenceSplit is not null || lineSplit is not null;
+        }
     }
+
+    // Character offsets just past each sentence end in text that more text follows: '.', '!' or
+    // '?' (with any closing quotes or brackets) before whitespace and a word that does not start
+    // lowercase. "Mr." and similar titles are not sentence ends.
+    private static IEnumerable<int> SentenceEnds(string text)
+    {
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] is not ('.' or '!' or '?')) continue;
+
+            var end = index + 1;
+            while (end < text.Length && text[end] is '.' or '!' or '?' or '"' or '\'' or ')' or '\u2019' or '\u201D') end++;
+            var next = end;
+            while (next < text.Length && char.IsWhiteSpace(text[next])) next++;
+            var isEnd = next > end && next < text.Length && !char.IsLower(text[next]) && !IsTitleAbbreviation(text, index);
+            index = end - 1;
+            if (isEnd) yield return end;
+        }
+    }
+
+    private static bool IsTitleAbbreviation(string text, int periodIndex)
+    {
+        var wordStart = periodIndex;
+        while (wordStart > 0 && char.IsLetter(text[wordStart - 1])) wordStart--;
+        return text[periodIndex] == '.' && text[wordStart..periodIndex] is "Mr" or "Mrs" or "Ms" or "Dr" or "St" or "Jr" or "Sr" or "MR" or "MRS" or "MS" or "DR" or "ST" or "JR" or "SR";
+    }
+
+    // Head: the dialogue lines that end the page. Tail: what follows the repeated cue, ending at
+    // ResumeAt (exclusive) in the original lines; TailText replaces the block's text when the
+    // block itself was cut, so a later split re-wraps from it.
+    private readonly record struct SpeechSplit(int Block, int ContentStart, List<LayoutLine> Head, List<LayoutLine> Tail, string? TailText, int ResumeAt);
 
     private static List<string> WrapText(string text, int maxChars)
     {
@@ -494,5 +661,5 @@ public static class ScreenplayLayoutBuilder
         return ScreenplayFormatting.GetGapBlankLines(ToSpacingType(previousType), ToSpacingType(currentType));
     }
 
-    private readonly record struct RenderBlock(ScreenplayElementType Type, string Text, LayoutTextStyle Style, double X, int MaxChars);
+    private readonly record struct RenderBlock(ScreenplayElementType Type, string Text, LayoutTextStyle Style, double X, int MaxChars, bool IsDualCue);
 }
