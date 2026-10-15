@@ -93,3 +93,9 @@ more than it saved this one.
 For the Writer's Tools work (the dock; internally "Slate"), the same scheme
 runs on `docs/SLATE-PLAN.md` and `docs/SLATE-SESSIONS.md`. Start at
 `docs/SLATE-HANDOVER.md`.
+
+For the Highland-informed upgrades (pagination, interop, character tools), the
+same scheme runs on `docs/HIGHLAND-PLAN.md` and `docs/HIGHLAND-SESSIONS.md`.
+`docs/reference/HIGHLAND2_TEARDOWN.md` is a behaviour reference: read only the
+section a row names, never the whole file, and never copy Highland code,
+assets or branding.
