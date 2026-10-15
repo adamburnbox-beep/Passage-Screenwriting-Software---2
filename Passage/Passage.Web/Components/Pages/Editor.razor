@@ -81,6 +81,9 @@ Click New to start one — files are stored on the server volume.</div>
             <label class="toggle" title="Save automatically shortly after you stop typing">
                 <input type="checkbox" @bind="_autosaveEnabled" /> AUTOSAVE
             </label>
+            <label class="toggle" title="Offer (CONT'D) when the same character speaks again after action">
+                <input type="checkbox" @bind="_autoContdEnabled" @bind:after="ApplyAutoContdAsync" /> CONT'D
+            </label>
             <button class="btn" @onclick="RequestNewFile">New</button>
             <button class="btn primary" @onclick="SaveAsync">Save</button>
             <details class="menu">
@@ -1899,6 +1902,7 @@ Open a .fountain file to see formatted pages.</div>
             await JS.InvokeVoidAsync("passage.init", _selfRef);
             await SyncThemeAsync();
             await LoadSyntaxSchemeAsync();
+            await LoadAutoContdAsync();
             await SyncPageRulesAsync();
             PruneSlateOrphans();
             await RestoreSessionAsync();
@@ -3414,6 +3418,33 @@ Open a .fountain file to see formatted pages.</div>
     private void ToggleSyntaxPanel() => _syntaxPanelOpen = !_syntaxPanelOpen;
 
     private void CloseSyntaxPanel() => _syntaxPanelOpen = false;
+
+    // Auto-(CONT'D) runs entirely in passage.js; the server only mirrors the
+    // toggle, which the browser keeps in localStorage beside the theme.
+    private bool _autoContdEnabled = true;
+
+    private async Task LoadAutoContdAsync()
+    {
+        try
+        {
+            _autoContdEnabled = await JS.InvokeAsync<bool>("passage.getAutoContd");
+            StateHasChanged();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task ApplyAutoContdAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setAutoContd", _autoContdEnabled);
+        }
+        catch (JSException)
+        {
+        }
+    }
 
     // Syntax colour scheme. Presets and resolution live in SyntaxSchemes; the
     // chosen state is per-browser in localStorage (passage.js), like the

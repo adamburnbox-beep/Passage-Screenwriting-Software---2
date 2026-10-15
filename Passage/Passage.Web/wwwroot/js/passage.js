@@ -29,6 +29,7 @@ window.passage = (function () {
     const RECOVERY_INTERVAL_MS = 3000;
     const THEME_KEY = "passage.theme.v1";
     const SYNTAX_SCHEME_KEY = "passage.syntaxScheme.v1";
+    const AUTO_CONTD_KEY = "passage.autoContd.v1";
     const WORKSHOP_MIN_WIDTH = 260;
     const WORKSHOP_MAX_WIDTH = 720;
     const LINE_CLASSES = [
@@ -774,6 +775,7 @@ window.passage = (function () {
         sceneHeadingSuggestions = Array.isArray(sceneHeadings) ? sceneHeadings : [];
         characterSuggestions = Array.isArray(characters) ? characters : [];
         suggestionKinds = Array.isArray(kinds) ? kinds : [];
+        offerContdAfterParse();
     }
 
     function looksLikeSceneHeading(prefix) {
@@ -810,6 +812,14 @@ window.passage = (function () {
             .sort()
             .slice(0, MAX_SUGGESTIONS);
 
+        if (source === characterSuggestions) {
+            const contd = contdOffer(editor, cursor.line, normalized);
+            if (contd) {
+                matches.unshift(contd);
+                if (matches.length > MAX_SUGGESTIONS) matches.pop();
+            }
+        }
+
         if (matches.length === 0) return null;
 
         // Replace the whole line, as ApplyAutoCompleteSuggestion does.
@@ -818,6 +828,97 @@ window.passage = (function () {
             from: { line: cursor.line, ch: 0 },
             to: { line: cursor.line, ch: editor.getLine(cursor.line).length }
         };
+    }
+
+    // ---- Auto-(CONT'D) (teardown section 13) ----
+    //
+    // Client-side only (trap 4). Reads the element types the last parse already
+    // painted onto the lines above, so no call is made per keystroke.
+    const CONTD = "(CONT'D)";
+    let autoContdEnabled = readAutoContd();
+
+    function readAutoContd() {
+        try {
+            return window.localStorage.getItem(AUTO_CONTD_KEY) !== "off";
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function getAutoContd() {
+        return autoContdEnabled;
+    }
+
+    function setAutoContd(enabled) {
+        autoContdEnabled = !!enabled;
+        try {
+            window.localStorage.setItem(AUTO_CONTD_KEY, autoContdEnabled ? "on" : "off");
+        } catch (e) {
+        }
+    }
+
+    // The bare speaker: forced-character @, dual-dialogue ^ and the
+    // (V.O.)/(O.S.)/(CONT'D) extensions removed, as Highland compares them.
+    function bareCueName(text) {
+        return text.toUpperCase()
+            .replace(/\((V\.O\.|O\.S\.|CONT['\u2019]D)\)/g, "")
+            .replace(/^\s*@/, "")
+            .replace(/\^\s*$/, "")
+            .trim();
+    }
+
+    function sxClass(lineIndex) {
+        const textClass = cm.getLineHandle(lineIndex).textClass || "";
+        return textClass.split(/\s+/).find(name => name.startsWith("sx-")) || "";
+    }
+
+    // The previous speaker in this scene, if only action lies between their
+    // speech and the line being typed. Anything else between — a scene
+    // heading, a transition, another speech with no action — returns null.
+    function previousSpeakerAfterAction(editor, lineIndex) {
+        let sawAction = false;
+        for (let i = lineIndex - 1; i >= 0; i--) {
+            const text = editor.getLine(i);
+            if (text.trim().length === 0) continue;
+            const kind = sxClass(i);
+            if (kind === "") {
+                sawAction = true;
+            } else if (kind === "sx-character") {
+                return sawAction ? bareCueName(text) : null;
+            } else if (kind === "sx-dialogue" || kind === "sx-paren") {
+                if (!sawAction) return null;
+            } else if (kind !== "sx-note" && kind !== "sx-synopsis" && kind !== "sx-boneyard") {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    // A completed cue repeating the previous speaker is offered " (CONT'D)";
+    // a trailing "(CONT" on any cue completes to "(CONT'D)".
+    function contdOffer(editor, lineIndex, typed) {
+        if (!autoContdEnabled) return null;
+
+        const partial = typed.match(/\(CONT(['\u2019]D?)?$/);
+        if (partial) return typed.slice(0, partial.index) + CONTD;
+
+        // A dual-dialogue cue (trailing ^) is a simultaneous speech, not a continuation.
+        if (/\(CONT['\u2019]D\)/.test(typed) || /\^\s*$/.test(typed)) return null;
+        const name = bareCueName(typed);
+        if (name.length === 0 || name !== previousSpeakerAfterAction(editor, lineIndex)) return null;
+        return typed + " " + CONTD;
+    }
+
+    // A new line only becomes a cue once the parse classifies it, which is
+    // usually after the name has been typed in one burst. So when the parse
+    // lands, offer (CONT'D) on the caret line without waiting for a keystroke.
+    function offerContdAfterParse() {
+        if (!cm || !cm.hasFocus() || cm.somethingSelected() || cm.state.completionActive) return;
+        const cursor = cm.getCursor();
+        const line = cm.getLine(cursor.line);
+        if (cursor.ch !== line.length || suggestionKinds[cursor.line] !== "character") return;
+        if (!contdOffer(cm, cursor.line, line.trim().toUpperCase())) return;
+        maybeHint();
     }
 
     function maybeHint() {
@@ -1187,6 +1288,7 @@ window.passage = (function () {
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
+        getAutoContd, setAutoContd,
         get editor() { return cm; }
     };
 })();
