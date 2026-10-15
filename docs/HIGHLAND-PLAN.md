@@ -124,7 +124,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   exporters), but the Avalonia on-screen preview ignores `SceneNumber`. Tests: `Fixtures/H1SceneHeadings.*` (golden captured before
   the change) plus parse, layout/PDF and Add/Remove tests.
 
-### H1.4 Auto-(CONT'D) in the editor — `todo`
+### H1.4 Auto-(CONT'D) in the editor — `done`
 
 - **Reference:** teardown §13
 - **Passage:** `passage.js` (autocomplete/hint layer from WEB-PARITY 3.4);
@@ -136,6 +136,28 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   settings; default on.
 - **Success:** no Blazor round-trip per keystroke (check the WebSocket frames);
   offer appears only for the same-speaker case.
+- **Landed:** all in `passage.js` beside the 3.4 hint code (`contdOffer`,
+  `previousSpeakerAfterAction`). On a line the parse calls `character`, a cue
+  whose bare name (`@`, `^`, `(V.O.)`, `(O.S.)`, `(CONT'D)` stripped) matches
+  the previous speaker is offered `<cue as typed> (CONT'D)` as the first hint.
+  "Previous speaker" walks up the `sx-*` line classes the last parse painted:
+  blank lines, notes, synopses and boneyard are skipped; at least one action
+  line must sit between; a scene heading, transition, section or a speech with
+  no action in between stops it. Dual-dialogue cues (trailing `^`) are not
+  offered. A trailing `(CONT` / `(CONT'` on any cue completes to `(CONT'D)`.
+  Because a new line only becomes `character` once its parse lands, the offer
+  is also re-checked when `setSuggestions` arrives (caret at line end, editor
+  focused) — no extra call. Toggle: `CONT'D` in the top bar, default on, kept
+  in `localStorage` (`passage.autoContd.v1`) like the theme.
+- **Verified:** in the running app, typing `MARGARET` after `MARGARET` /
+  action offered `MARGARET (CONT'D)`; after `BOB`'s speech, after a new scene
+  heading, and directly after her own speech (no action) offered nothing;
+  `MARGARET (CONT` completed to `(CONT'D)`; toggle off offered nothing.
+  `WebSocket.send` counted 0 frames during each 8-keystroke burst (the parse
+  that follows is the existing debounced one).
+- **Known limit:** classification comes from the last parse, so a speech
+  typed and followed by a cue faster than the parse debounce reads its
+  unparsed lines as action.
 
 ---
 
