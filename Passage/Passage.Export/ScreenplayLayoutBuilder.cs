@@ -14,7 +14,8 @@ public enum LayoutTextStyle
     RightWithinBody
 }
 
-public readonly record struct LayoutLine(string Text, LayoutTextStyle Style, double X)
+// SceneNumber is set on the first line of a numbered scene heading; renderers draw it in both margins.
+public readonly record struct LayoutLine(string Text, LayoutTextStyle Style, double X, string? SceneNumber = null)
 {
     public bool IsBlank => Text.Length == 0;
     public static LayoutLine Blank() => new(string.Empty, LayoutTextStyle.Left, 0.0);
@@ -34,6 +35,11 @@ public static class ScreenplayLayoutBuilder
     public const double LineHeight = FontSize; // Standard screenplay is 6 lines per inch (12pt lines)
     public const double PageNumberTopMargin = 36.0;
     public const double CharWidth = FontSize * 0.6;
+    private const double SceneNumberGap = 3 * CharWidth;
+    // Scene numbers sit in the margins: the left one ends a gap before the heading, the right
+    // one starts the same gap after the body's right edge.
+    public const double RightSceneNumberX = PageWidth - MarginRight + SceneNumberGap;
+    public static double LeftSceneNumberX(string sceneNumber) => MarginLeft - SceneNumberGap - sceneNumber.Length * CharWidth;
     private const double DialogueIndent = 72.0;
     private const double CharacterIndent = 144.0;
     private const double ParentheticalIndent = 108.0;
@@ -165,7 +171,7 @@ public static class ScreenplayLayoutBuilder
                 AddBlankLines(lines, GetGapBlankLines(previous.Value.Type, block.Type));
             }
 
-            AddWrappedBlock(lines, block.Text, block.Style, block.X, block.MaxChars);
+            AddWrappedBlock(lines, block.Text, block.Style, block.X, block.MaxChars, block.SceneNumber);
             previous = block;
         }
 
@@ -173,12 +179,13 @@ public static class ScreenplayLayoutBuilder
         return lines;
     }
 
-    private static void AddWrappedBlock(ICollection<LayoutLine> lines, string text, LayoutTextStyle style, double x, int maxChars)
+    private static void AddWrappedBlock(ICollection<LayoutLine> lines, string text, LayoutTextStyle style, double x, int maxChars, string? sceneNumber = null)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         foreach (var wrappedLine in WrapText(text, maxChars))
         {
-            lines.Add(new LayoutLine(wrappedLine, style, x));
+            lines.Add(new LayoutLine(wrappedLine, style, x, sceneNumber));
+            sceneNumber = null;
         }
     }
 
@@ -253,7 +260,7 @@ public static class ScreenplayLayoutBuilder
 
         if (string.IsNullOrWhiteSpace(text)) return false;
 
-        block = new RenderBlock(element.Type, text, style, x, maxChars, element is CharacterElement { IsDualDialogue: true });
+        block = new RenderBlock(element.Type, text, style, x, maxChars, element is CharacterElement { IsDualDialogue: true }, (element as SceneHeadingElement)?.SceneNumber);
         return true;
     }
 
@@ -315,7 +322,7 @@ public static class ScreenplayLayoutBuilder
             leadStarts[blockIndex] = lines.Count;
             AddBlankLines(lines, lead);
             contentStarts[blockIndex] = lines.Count;
-            AddWrappedBlock(lines, block.Text, block.Style, block.X, block.MaxChars);
+            AddWrappedBlock(lines, block.Text, block.Style, block.X, block.MaxChars, block.SceneNumber);
             contentCounts[blockIndex] = lines.Count - contentStarts[blockIndex];
 
             // A page may start before a block's leading gap or between its lines, never
@@ -661,5 +668,5 @@ public static class ScreenplayLayoutBuilder
         return ScreenplayFormatting.GetGapBlankLines(ToSpacingType(previousType), ToSpacingType(currentType));
     }
 
-    private readonly record struct RenderBlock(ScreenplayElementType Type, string Text, LayoutTextStyle Style, double X, int MaxChars, bool IsDualCue);
+    private readonly record struct RenderBlock(ScreenplayElementType Type, string Text, LayoutTextStyle Style, double X, int MaxChars, bool IsDualCue, string? SceneNumber = null);
 }

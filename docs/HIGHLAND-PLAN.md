@@ -97,7 +97,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   (and keeps the line in the dialogue text), so a speech has one dialogue
   block in practice. Tests: `Passage.Tests/Fixtures/H1MoreContd.fountain`.
 
-### H1.3 Scene numbers — `todo`
+### H1.3 Scene numbers — `done`
 
 - **Reference:** teardown §3 (scene number row), Part 1 §5 Tools menu
 - **Passage:** `Passage/Passage.Parser/FountainParser.cs` (scene heading
@@ -109,6 +109,20 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
 - **Shared-code note:** parser change lands in desktop too. Acceptable only if
   headings *without* `#…#` parse exactly as before — add that test.
 - **Success:** `INT. HOUSE - DAY #12#` previews as `12  INT. HOUSE - DAY  12`.
+- **Landed:** `SceneHeadingElement.SceneNumber` (parser strips a trailing
+  `#[A-Za-z0-9.-]+#` after the `[[id:…]]` comment, on plain, forced and
+  overridden headings; a `#` mid-heading is left alone).
+  `LayoutLine.SceneNumber` is set on the heading's first line; the PDF draws
+  it at `LeftSceneNumberX` / `RightSceneNumberX`, the preview as absolutely
+  placed spans, plain-text export as `12  HEADING  12`. Commands in the script
+  menu: `SceneNumbers.Add` / `Remove` (`Passage.Web/Services/SceneNumbers.cs`)
+  return line edits that `passage.replaceLines` applies as one undo step,
+  skipping (and reporting) any line that changed since. Add never moves an
+  existing number: a gap continues on (13 → 14), a scene between 5 and 6
+  becomes 5A, then 5B. Desktop: headings with `#…#` no longer show the hashes
+  in their text; desktop PDF and text export gain the margin numbers (shared
+  exporters), but the Avalonia on-screen preview ignores `SceneNumber`. Tests: `Fixtures/H1SceneHeadings.*` (golden captured before
+  the change) plus parse, layout/PDF and Add/Remove tests.
 
 ### H1.4 Auto-(CONT'D) in the editor — `todo`
 

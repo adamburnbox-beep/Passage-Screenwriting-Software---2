@@ -26,6 +26,10 @@ class Program
         failures += RunTest("Test Parse Parenthetical", TestParseParenthetical);
         failures += RunTest("Test Parse Explicit Line Overrides", TestParseExplicitLineOverrides);
         failures += RunTest("Test Parse Headings Without Scene Numbers Match Golden", TestParseHeadingsWithoutSceneNumbersMatchGolden);
+        failures += RunTest("Test Parse Scene Numbers", TestParseSceneNumbers);
+        failures += RunTest("Test Layout Carries Scene Numbers", TestLayoutCarriesSceneNumbers);
+        failures += RunTest("Test SceneNumbers Remove", TestSceneNumbersRemove);
+        failures += RunTest("Test SceneNumbers Add Keeps Existing", TestSceneNumbersAddKeepsExisting);
         failures += RunTest("Test TextAnalysis Helper Methods", TestTextAnalysisHelperMethods);
         failures += RunTest("Test BeatBoard Card Own Line Range", TestBeatBoardCardOwnLineRange);
         failures += RunTest("Test BeatBoard Nested Section Block", TestBeatBoardNestedSectionBlock);
@@ -953,6 +957,92 @@ class Program
         var parsed = ParseFixture("H1SceneHeadings.fountain");
         var actual = SerializeElements(parsed);
         Assert(actual == golden, $"Headings without scene numbers must parse as before H1.3. Got:\n{actual}");
+    }
+
+    static SceneHeadingElement OnlyHeading(string text) =>
+        new FountainParser().Parse(text).Elements.OfType<SceneHeadingElement>().Single();
+
+    static void TestParseSceneNumbers()
+    {
+        var plain = OnlyHeading("INT. HOUSE - DAY #12#");
+        Assert(plain.Text == "INT. HOUSE - DAY", $"Number must be stripped from the text, got '{plain.Text}'");
+        Assert(plain.SceneNumber == "12", $"Expected scene number 12, got '{plain.SceneNumber}'");
+        Assert(plain.RawText == "INT. HOUSE - DAY #12#", "RawText keeps the number");
+
+        var forced = OnlyHeading(".FLASHBACK #4A#");
+        Assert(forced.IsForced && forced.Text == "FLASHBACK" && forced.SceneNumber == "4A", $"Forced heading: '{forced.Text}' #{forced.SceneNumber}#");
+
+        var withId = OnlyHeading("EXT. MEADOW - NIGHT #3.1# [[id:11111111-2222-3333-4444-555555555555]]");
+        Assert(withId.Text == "EXT. MEADOW - NIGHT" && withId.SceneNumber == "3.1", $"With id: '{withId.Text}' #{withId.SceneNumber}#");
+        Assert(withId.Id == Guid.Parse("11111111-2222-3333-4444-555555555555"), "Id still parsed alongside the number");
+
+        var overridden = new FountainParser().Parse("JOHN #7#\nHello.", new Dictionary<int, ScreenplayElementType> { { 1, ScreenplayElementType.SceneHeading } })
+            .Elements.OfType<SceneHeadingElement>().Single();
+        Assert(overridden.Text == "JOHN" && overridden.SceneNumber == "7", $"Override: '{overridden.Text}' #{overridden.SceneNumber}#");
+
+        Assert(OnlyHeading("INT. ROOM #2 - DAY").SceneNumber is null, "A # inside the heading is not a scene number");
+        Assert(OnlyHeading("INT. HOUSE - DAY").SceneNumber is null, "Unnumbered heading has no number");
+    }
+
+    static void TestLayoutCarriesSceneNumbers()
+    {
+        var parsed = new FountainParser().Parse("INT. HOUSE - DAY #12#\n\nAction.\n\nEXT. YARD - DAY\n\nMore.");
+        var lines = ScreenplayLayoutBuilder.BuildPages(parsed).bodyPages.SelectMany(p => p.Lines).Where(l => !l.IsBlank).ToList();
+        Assert(lines[0].Text == "INT. HOUSE - DAY" && lines[0].SceneNumber == "12", $"Heading line: '{lines[0].Text}' #{lines[0].SceneNumber}#");
+        Assert(lines.Skip(1).All(l => l.SceneNumber is null), "Only the numbered heading carries a number");
+
+        var text = new ScreenplayExporter().GetExportText(parsed);
+        Assert(text.Contains("12  INT. HOUSE - DAY  12"), $"Plain text keeps the number in both margins, got:\n{text}");
+
+        var pdfPath = Path.Combine(Path.GetTempPath(), $"passage-h13-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            new ScreenplayPdfExporter().Export(parsed, pdfPath);
+            var pdf = Encoding.Latin1.GetString(File.ReadAllBytes(pdfPath));
+            var left = $"1 0 0 1 {ScreenplayLayoutBuilder.LeftSceneNumberX("12").ToString("0.###", CultureInfo.InvariantCulture)} ";
+            var right = $"1 0 0 1 {ScreenplayLayoutBuilder.RightSceneNumberX.ToString("0.###", CultureInfo.InvariantCulture)} ";
+            Assert(pdf.Contains(left) && pdf.Contains(right), "PDF draws the scene number in both margins");
+            Assert(pdf.Split("(12) Tj").Length - 1 == 2, "PDF draws the number exactly twice");
+        }
+        finally
+        {
+            File.Delete(pdfPath);
+        }
+    }
+
+    static string ApplyEdits(string content, IReadOnlyList<SceneNumbers.LineEdit> edits)
+    {
+        var lines = content.Split('\n');
+        foreach (var edit in edits)
+        {
+            Assert(lines[edit.LineIndex] == edit.Expected, $"Edit expects '{edit.Expected}' on line {edit.LineIndex}, found '{lines[edit.LineIndex]}'");
+            lines[edit.LineIndex] = edit.Replacement;
+        }
+        return string.Join('\n', lines);
+    }
+
+    static void TestSceneNumbersRemove()
+    {
+        var content = "INT. HOUSE - DAY #12#\n\nAction #1# stays.\n\n.FLASHBACK #4A# [[id:11111111-2222-3333-4444-555555555555]]\n\nINT. ROOM #2 - DAY";
+        var result = ApplyEdits(content, SceneNumbers.Remove(content));
+        Assert(result == "INT. HOUSE - DAY\n\nAction #1# stays.\n\n.FLASHBACK [[id:11111111-2222-3333-4444-555555555555]]\n\nINT. ROOM #2 - DAY",
+            $"Remove strips heading numbers only, got:\n{result}");
+        Assert(SceneNumbers.Remove(result).Count == 0, "Remove on an unnumbered script is a no-op");
+    }
+
+    static void TestSceneNumbersAddKeepsExisting()
+    {
+        var fresh = "INT. A - DAY\n\nEXT. B - DAY\n\nINT. C - DAY [[id:11111111-2222-3333-4444-555555555555]]";
+        Assert(ApplyEdits(fresh, SceneNumbers.Add(fresh)) == "INT. A - DAY #1#\n\nEXT. B - DAY #2#\n\nINT. C - DAY #3# [[id:11111111-2222-3333-4444-555555555555]]",
+            $"Fresh script numbers 1..3, got:\n{ApplyEdits(fresh, SceneNumbers.Add(fresh))}");
+
+        // A new scene between 5 and 6 becomes 5A; one between 5A and 6 becomes 5B;
+        // a gap after the last number continues on; existing numbers never move.
+        var locked = "INT. A - DAY #5#\n\nINT. NEW1 - DAY\n\nINT. NEW2 - DAY\n\nINT. B - DAY #6#\n\nINT. NEW3 - DAY";
+        var result = ApplyEdits(locked, SceneNumbers.Add(locked));
+        Assert(result == "INT. A - DAY #5#\n\nINT. NEW1 - DAY #5A#\n\nINT. NEW2 - DAY #5B#\n\nINT. B - DAY #6#\n\nINT. NEW3 - DAY #7#",
+            $"Locked numbering, got:\n{result}");
+        Assert(SceneNumbers.Add(result).Count == 0, "Add on a fully numbered script is a no-op");
     }
 
     static void TestSyntaxSchemesPresetsAreComplete()
