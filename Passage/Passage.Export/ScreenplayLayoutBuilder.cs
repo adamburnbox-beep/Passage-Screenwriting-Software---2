@@ -40,7 +40,7 @@ public static class ScreenplayLayoutBuilder
     private static readonly int MaxLinesPerBodyPage = (int)Math.Floor((PageHeight - MarginTop - MarginBottom) / LineHeight);
     private static readonly int MaxLinesPerTitlePage = MaxLinesPerBodyPage;
 
-    public static (List<LayoutPage> titlePages, List<LayoutPage> bodyPages) BuildPages(ParsedScreenplay screenplay)
+    public static (List<LayoutPage> titlePages, List<LayoutPage> bodyPages) BuildPages(ParsedScreenplay screenplay, PaginationOptions? options = null)
     {
         var titlePages = new List<LayoutPage>();
         var bodyPages = new List<LayoutPage>();
@@ -55,9 +55,10 @@ public static class ScreenplayLayoutBuilder
             }
         }
 
-        var bodyLines = BuildBodyLines(screenplay.Elements);
         int bodyPageNum = 1;
-        var paginatedBody = Paginate(bodyLines, MaxLinesPerBodyPage).ToList();
+        var paginatedBody = options is { KeepTogether: true }
+            ? PaginateKeepTogether(screenplay.Elements, MaxLinesPerBodyPage, Math.Max(0, options.OverflowLines))
+            : Paginate(BuildBodyLines(screenplay.Elements), MaxLinesPerBodyPage).ToList();
         
         if (paginatedBody.Count == 0)
         {
@@ -281,6 +282,146 @@ public static class ScreenplayLayoutBuilder
             }
             yield return pageLines;
         }
+    }
+
+    // Keep-together pagination (PaginationOptions.KeepTogether). Lines are laid out exactly as
+    // BuildBodyLines does; what changes is where a page may end. canBreakBefore[i] marks the
+    // lines a new page may start at, and the glue rules below clear it.
+    private static List<List<LayoutLine>> PaginateKeepTogether(IReadOnlyList<ScreenplayElement> elements, int maxLinesPerPage, int overflowLines)
+    {
+        var pages = new List<List<LayoutLine>>();
+        var renderableBlocks = BuildRenderableBlocks(elements);
+        if (renderableBlocks.Count == 0)
+        {
+            return pages;
+        }
+
+        var lines = new List<LayoutLine>();
+        var canBreakBefore = new List<bool>();
+        var endsBlock = new List<bool>();
+        var leadStarts = new int[renderableBlocks.Count];
+        var contentStarts = new int[renderableBlocks.Count];
+        var contentCounts = new int[renderableBlocks.Count];
+
+        for (var blockIndex = 0; blockIndex < renderableBlocks.Count; blockIndex++)
+        {
+            var block = renderableBlocks[blockIndex];
+            var lead = blockIndex == 0
+                ? GetBlankLinesBefore(block.Type)
+                : GetGapBlankLines(renderableBlocks[blockIndex - 1].Type, block.Type);
+
+            leadStarts[blockIndex] = lines.Count;
+            AddBlankLines(lines, lead);
+            contentStarts[blockIndex] = lines.Count;
+            AddWrappedBlock(lines, block.Text, block.Style, block.X, block.MaxChars);
+            contentCounts[blockIndex] = lines.Count - contentStarts[blockIndex];
+
+            // A page may start before a block's leading gap or between its lines, never
+            // inside the gap or between the gap and the block.
+            for (var index = canBreakBefore.Count; index < lines.Count; index++)
+            {
+                canBreakBefore.Add(index == leadStarts[blockIndex] || index > contentStarts[blockIndex]);
+                endsBlock.Add(index == lines.Count - 1);
+            }
+        }
+
+        void Glue(int fromIndex, int toIndexExclusive)
+        {
+            for (var index = Math.Max(fromIndex, 0); index < Math.Min(toIndexExclusive, lines.Count); index++)
+            {
+                canBreakBefore[index] = false;
+            }
+        }
+
+        for (var blockIndex = 0; blockIndex < renderableBlocks.Count; blockIndex++)
+        {
+            var type = renderableBlocks[blockIndex].Type;
+            var contentEnd = contentStarts[blockIndex] + contentCounts[blockIndex];
+            switch (type)
+            {
+                case ScreenplayElementType.SceneHeading:
+                case ScreenplayElementType.Character:
+                case ScreenplayElementType.Parenthetical:
+                    // Unbreakable itself, and holds the next element's first two lines.
+                    Glue(contentStarts[blockIndex] + 1, contentEnd);
+                    if (blockIndex + 1 < renderableBlocks.Count)
+                    {
+                        Glue(leadStarts[blockIndex + 1], contentStarts[blockIndex + 1] + Math.Min(2, contentCounts[blockIndex + 1]));
+                    }
+                    break;
+                case ScreenplayElementType.Transition:
+                    // Unbreakable itself, and held by the previous element's last two lines.
+                    Glue(contentStarts[blockIndex] + 1, contentEnd);
+                    Glue(leadStarts[blockIndex], contentStarts[blockIndex] + 1);
+                    if (blockIndex > 0)
+                    {
+                        var previousEnd = contentStarts[blockIndex - 1] + contentCounts[blockIndex - 1];
+                        Glue(Math.Max(previousEnd - 1, contentStarts[blockIndex - 1] + 1), previousEnd);
+                    }
+                    break;
+            }
+        }
+
+        var current = new List<LayoutLine>();
+        var start = 0;
+        while (start < lines.Count)
+        {
+            var end = start + 1;
+            while (end < lines.Count && !canBreakBefore[end]) end++;
+
+            // Blank lines never open a page after the first.
+            var unitStart = start;
+            if (current.Count == 0 && pages.Count > 0)
+            {
+                while (unitStart < end && lines[unitStart].IsBlank) unitStart++;
+            }
+
+            var height = end - unitStart;
+            if (height == 0 || current.Count + height <= maxLinesPerPage)
+            {
+                current.AddRange(lines.Skip(unitStart).Take(height));
+                start = end;
+                continue;
+            }
+
+            var contentLines = 0;
+            for (var index = unitStart; index < end; index++)
+            {
+                if (!lines[index].IsBlank) contentLines++;
+            }
+
+            // A glued group, or the last line of a block already broken on this page, may hang
+            // past the bottom margin rather than leave a one-line orphan.
+            var isGlued = contentLines > 1;
+            var isOrphanTail = contentLines == 1 && end - start == 1 && endsBlock[start] && !lines[start - 1].IsBlank && current.Count > 0;
+            if ((isGlued || isOrphanTail) && current.Count + height <= maxLinesPerPage + overflowLines)
+            {
+                current.AddRange(lines.Skip(unitStart).Take(height));
+                pages.Add(current);
+                current = new List<LayoutLine>();
+                start = end;
+                continue;
+            }
+
+            if (current.Count == 0)
+            {
+                // Taller than a page: nothing to keep it with, so cut it like the fixed paginator.
+                current.AddRange(lines.Skip(unitStart).Take(maxLinesPerPage));
+                start = unitStart + maxLinesPerPage;
+            }
+
+            pages.Add(current);
+            current = new List<LayoutLine>();
+        }
+
+        var trailing = Math.Min(GetBlankLinesAfter(renderableBlocks[^1].Type), maxLinesPerPage - current.Count);
+        if (current.Count > 0)
+        {
+            AddBlankLines(current, Math.Max(0, trailing));
+            pages.Add(current);
+        }
+
+        return pages;
     }
 
     private static List<string> WrapText(string text, int maxChars)

@@ -1,0 +1,283 @@
+== PAGE 1
+Left|0|
+Left|0|
+LeftBold|108|INT. LIGHTHOUSE - NIGHT
+Left|0|
+Left|108|The lamp turns. Beat 1 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 2 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 3 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 4 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 5 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 6 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 7 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 8 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 9 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 10 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 11 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 12 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 13 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 14 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 15 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 16 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 17 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 18 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 19 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 20 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 21 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 22 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 23 of the long watch.
+Left|0|
+Left|108|The lamp turns. Beat 24 of the long watch.
+Left|0|
+Left|0|
+LeftBold|108|EXT. HARBOUR WALL - CONTINUOUS
+== PAGE 2
+Left|0|
+Left|108|Waves climb the wall. Count 1.
+Left|0|
+Left|108|Waves climb the wall. Count 2.
+Left|0|
+Left|108|Waves climb the wall. Count 3.
+Left|0|
+Left|108|Waves climb the wall. Count 4.
+Left|0|
+Left|108|Waves climb the wall. Count 5.
+Left|0|
+Left|108|Waves climb the wall. Count 6.
+Left|0|
+Left|108|Waves climb the wall. Count 7.
+Left|0|
+Left|108|Waves climb the wall. Count 8.
+Left|0|
+Left|108|Waves climb the wall. Count 9.
+Left|0|
+Left|108|Waves climb the wall. Count 10.
+Left|0|
+Left|108|Waves climb the wall. Count 11.
+Left|0|
+Left|108|Waves climb the wall. Count 12.
+Left|0|
+Left|108|Waves climb the wall. Count 13.
+Left|0|
+Left|108|Waves climb the wall. Count 14.
+Left|0|
+Left|108|Waves climb the wall. Count 15.
+Left|0|
+Left|108|Waves climb the wall. Count 16.
+Left|0|
+Left|108|Waves climb the wall. Count 17.
+Left|0|
+Left|108|Waves climb the wall. Count 18.
+Left|0|
+Left|108|Waves climb the wall. Count 19.
+Left|0|
+Left|108|Waves climb the wall. Count 20.
+Left|0|
+Left|108|Waves climb the wall. Count 21.
+Left|0|
+Left|108|Waves climb the wall. Count 22.
+Left|0|
+Left|108|Waves climb the wall. Count 23.
+Left|0|
+Left|108|Waves climb the wall. Count 24.
+Left|0|
+Left|108|Waves climb the wall. Count 25.
+Left|0|
+Left|108|Waves climb the wall. Count 26.
+Left|0|
+Left|252|MARA
+== PAGE 3
+Left|180|We should have left at dusk.
+Left|0|
+Left|252|TOBIAS
+Left|180|The boat was never coming.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 1.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 2.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 3.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 4.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 5.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 6.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 7.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 8.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 9.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 10.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 11.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 12.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 13.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 14.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 15.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 16.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 17.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 18.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 19.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 20.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 21.
+Left|0|
+Left|108|Spray hangs in the lamp beam. Moment 22.
+Left|0|
+Left|108|Somewhere below them a bell buoy knocks against its chain,
+Left|108|slow and patient, the only answer.
+Left|0|
+Left|252|MARA
+Left|216|(quietly)
+== PAGE 4
+Left|180|Then why are we still waiting?
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 1.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 2.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 3.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 4.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 5.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 6.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 7.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 8.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 9.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 10.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 11.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 12.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 13.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 14.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 15.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 16.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 17.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 18.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 19.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 20.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 21.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 22.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 23.
+Left|0|
+Left|108|Tobias says nothing. The light sweeps on. Turn 24.
+Left|0|
+Left|252|TOBIAS
+Left|216|(turning to her)
+Left|180|Because if I stop waiting, I have to
+Left|180|admit what the sea took. I have to
+== PAGE 5
+Left|180|say his name out loud, here, where
+Left|180|he learned to swim, where he laughed
+Left|180|at the cold, where he promised me he
+Left|180|would always come back before the
+Left|180|lamp was lit. And he always did,
+Left|180|Mara. Every single night until the
+Left|180|one night he did not.
+Left|0|
+Left|108|Mara takes his hand.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 1.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 2.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 3.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 4.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 5.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 6.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 7.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 8.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 9.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 10.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 11.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 12.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 13.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 14.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 15.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 16.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 17.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 18.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 19.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 20.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 21.
+Left|0|
+Left|108|They stand together while the tide turns. Minute 22.
+Left|0|
+== PAGE 6
+RightWithinBody|0|CUT TO:
+Left|0|
+Left|0|
+LeftBold|108|EXT. BEACH - DAWN
+Left|0|
+Left|108|Grey light. The boat lies on its side in the sand, empty.
+Left|0|

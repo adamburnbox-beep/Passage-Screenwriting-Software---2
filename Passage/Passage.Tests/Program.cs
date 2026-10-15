@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Passage.Parser;
 using Passage.Core;
 using Passage.Core.Extensibility;
+using Passage.Export;
 using Passage.Web.Services;
 
 namespace Passage.Tests;
@@ -50,6 +53,9 @@ class Program
         failures += RunTest("Test NullStoryPartner Offers Nothing", TestNullStoryPartnerOffersNothing);
         failures += RunTest("Test SyntaxSchemes Presets Are Complete", TestSyntaxSchemesPresetsAreComplete);
         failures += RunTest("Test SyntaxSchemes Custom Falls Back And Round Trips", TestSyntaxSchemesCustomFallsBackAndRoundTrips);
+        failures += RunTest("Test Pagination Null Options Matches Golden", TestPaginationNullOptionsMatchesGolden);
+        failures += RunTest("Test Pagination Keep Together", TestPaginationKeepTogether);
+        failures += RunTest("Test Pagination Overflow Tolerance", TestPaginationOverflowTolerance);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -994,5 +1000,105 @@ class Program
 
         var mixedcaseName = "Mary";
         Assert(!TextAnalysis.IsUppercaseLike(mixedcaseName), "Mary should not be uppercase like");
+    }
+
+    // ---- ScreenplayLayoutBuilder pagination (Passage.Export, HIGHLAND-PLAN H1.1) ----
+    //
+    // Fixtures/H1Pagination.fountain is tuned so the fixed 54-line cut ends pages on a scene
+    // heading, a bare character cue and a cue + parenthetical, and opens one with a transition.
+    // The golden file was written from the fixed paginator before keep-together existed.
+
+    const double CueX = ScreenplayLayoutBuilder.MarginLeft + 144.0;
+    const double ParentheticalX = ScreenplayLayoutBuilder.MarginLeft + 108.0;
+
+    static ParsedScreenplay ParseFixture(string name) =>
+        new FountainParser().Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name)));
+
+    static string SerializePages(IReadOnlyList<LayoutPage> pages)
+    {
+        var builder = new StringBuilder();
+        foreach (var page in pages)
+        {
+            builder.Append("== PAGE ").Append(page.PageNumber.ToString(CultureInfo.InvariantCulture)).Append('\n');
+            foreach (var line in page.Lines)
+            {
+                builder.Append(line.Style).Append('|').Append(line.X.ToString("R", CultureInfo.InvariantCulture)).Append('|').Append(line.Text).Append('\n');
+            }
+        }
+        return builder.ToString();
+    }
+
+    // Why a page's bottom is wrong, or null when it is fine.
+    static string? BadPageEnd(LayoutPage page)
+    {
+        var index = page.Lines.Count - 1;
+        while (index >= 0 && page.Lines[index].IsBlank) index--;
+        if (index < 0) return null;
+        if (page.Lines[index].Style == LayoutTextStyle.LeftBold) return $"scene heading '{page.Lines[index].Text}'";
+        while (index >= 0 && page.Lines[index].X == ParentheticalX) index--;
+        if (index >= 0 && page.Lines[index].X == CueX) return $"bare character cue '{page.Lines[index].Text}'";
+        return null;
+    }
+
+    static List<string> ContentLines(IEnumerable<LayoutPage> pages) =>
+        pages.SelectMany(page => page.Lines).Where(line => !line.IsBlank).Select(line => line.Text).ToList();
+
+    static void TestPaginationNullOptionsMatchesGolden()
+    {
+        var golden = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "H1Pagination.null-options.golden.txt"));
+        var parsed = ParseFixture("H1Pagination.fountain");
+
+        Assert(SerializePages(ScreenplayLayoutBuilder.BuildPages(parsed).bodyPages) == golden,
+            "BuildPages with default options must reproduce the pre-H1.1 output byte-for-byte");
+        Assert(SerializePages(ScreenplayLayoutBuilder.BuildPages(parsed, null).bodyPages) == golden,
+            "BuildPages with explicit null options must reproduce the pre-H1.1 output byte-for-byte");
+    }
+
+    static void TestPaginationKeepTogether()
+    {
+        var parsed = ParseFixture("H1Pagination.fountain");
+        var fixedPages = ScreenplayLayoutBuilder.BuildPages(parsed).bodyPages;
+        var keptPages = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions()).bodyPages;
+
+        // The fixture must actually exercise the rules, or the checks below prove nothing.
+        var fixedFaults = fixedPages.Take(fixedPages.Count - 1).Select(BadPageEnd).OfType<string>().ToList();
+        Assert(fixedFaults.Any(fault => fault.StartsWith("scene heading")), "Fixture should end a fixed page on a scene heading");
+        Assert(fixedFaults.Any(fault => fault.StartsWith("bare character cue")), "Fixture should end a fixed page on a bare character cue");
+        Assert(fixedPages.Skip(1).Any(page => page.Lines.Count > 0 && page.Lines[0].Style == LayoutTextStyle.RightWithinBody),
+            "Fixture should open a fixed page with a transition");
+
+        for (var index = 0; index < keptPages.Count - 1; index++)
+        {
+            var fault = BadPageEnd(keptPages[index]);
+            Assert(fault is null, $"Page {keptPages[index].PageNumber} ends on a {fault}");
+        }
+
+        foreach (var page in keptPages.Skip(1))
+        {
+            Assert(page.Lines.Count > 0 && !page.Lines[0].IsBlank, $"Page {page.PageNumber} should not open with a blank line");
+            Assert(page.Lines[0].Style != LayoutTextStyle.RightWithinBody, $"Page {page.PageNumber} should not open with a transition");
+        }
+
+        Assert(keptPages.All(page => page.Lines.Count <= 55), "No page may run more than one line past the bottom margin");
+        Assert(ContentLines(keptPages).SequenceEqual(ContentLines(fixedPages)), "Keep-together must not drop or reorder any text");
+        Assert(keptPages.Select(page => page.PageNumber).SequenceEqual(Enumerable.Range(1, keptPages.Count)), "Pages should number from 1");
+    }
+
+    static void TestPaginationOverflowTolerance()
+    {
+        // Heading on line 3, 24 one-line actions ending on line 51, then a three-line action
+        // on lines 53-55: its last line is a one-line orphan unless it may hang.
+        var script = new StringBuilder("INT. ROOM - DAY\n\n");
+        for (var index = 0; index < 24; index++) script.Append($"Short action {index}.\n\n");
+        script.Append("She crosses the room slowly, counting every board that creaks beneath her feet, and stops only when the window is close enough to touch with one hand.\n");
+        var parsed = new FountainParser().Parse(script.ToString());
+
+        var hanging = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions(OverflowLines: 1)).bodyPages;
+        Assert(hanging[0].Lines.Count == 55 && hanging[0].Lines[54].Text == "close enough to touch with one hand.",
+            "With one line of tolerance the orphan should hang on page 1");
+
+        var strict = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions(OverflowLines: 0)).bodyPages;
+        Assert(strict[0].Lines.Count == 54 && strict[1].Lines[0].Text == "close enough to touch with one hand.",
+            "With no tolerance the orphan should move to page 2");
     }
 }

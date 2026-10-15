@@ -277,7 +277,7 @@ public sealed class DocumentAnalyzer
 
     private static List<PreviewPage> BuildPreviewPages(ParsedScreenplay parsed)
     {
-        var (titlePages, bodyPages) = ScreenplayLayoutBuilder.BuildPages(parsed);
+        var (titlePages, bodyPages) = ScreenplayLayoutBuilder.BuildPages(parsed, WebPagination.Options);
         var pages = new List<PreviewPage>(titlePages.Count + bodyPages.Count);
 
         foreach (var page in titlePages.Concat(bodyPages))
