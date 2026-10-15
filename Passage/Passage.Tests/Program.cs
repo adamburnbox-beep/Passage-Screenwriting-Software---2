@@ -1043,6 +1043,15 @@ class Program
         Assert(result == "INT. A - DAY #5#\n\nINT. NEW1 - DAY #5A#\n\nINT. NEW2 - DAY #5B#\n\nINT. B - DAY #6#\n\nINT. NEW3 - DAY #7#",
             $"Locked numbering, got:\n{result}");
         Assert(SceneNumbers.Add(result).Count == 0, "Add on a fully numbered script is a no-op");
+
+        // New scenes before scene 1 take prefix letters: A1, B1.
+        var opening = "INT. NEW1 - DAY\n\nINT. NEW2 - DAY\n\nINT. A - DAY #1#";
+        var prefixed = ApplyEdits(opening, SceneNumbers.Add(opening));
+        Assert(prefixed == "INT. NEW1 - DAY #A1#\n\nINT. NEW2 - DAY #B1#\n\nINT. A - DAY #1#", $"Before scene 1, got:\n{prefixed}");
+
+        // Room below the first number is still used plainly: new, then 3 → 1, 3.
+        var room = "INT. NEW - DAY\n\nINT. A - DAY #3#";
+        Assert(ApplyEdits(room, SceneNumbers.Add(room)) == "INT. NEW - DAY #1#\n\nINT. A - DAY #3#", "Room before the first number takes 1");
     }
 
     static void TestSyntaxSchemesPresetsAreComplete()

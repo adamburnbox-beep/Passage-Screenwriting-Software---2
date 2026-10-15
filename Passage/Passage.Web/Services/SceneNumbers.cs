@@ -91,6 +91,16 @@ public static class SceneNumbers
         var fitsBeforeNext = next is null || LeadingValue(next) > previousValue + 1 || LeadingValue(next) < 0;
         if (previousValue >= 0 && fitsBeforeNext && !used.Contains(candidate)) return candidate;
 
+        // Before the first numbered scene, with no room below it: prefix letters (1 → A1, B1).
+        if (next is not null && (previous is null || IsPrefixed(previous, next)))
+        {
+            for (var prefix = previous is null ? 'A' : (char)(char.ToUpperInvariant(previous[0]) + 1); prefix <= 'Z'; prefix++)
+            {
+                var prefixed = prefix + next;
+                if (!used.Contains(prefixed)) return prefixed;
+            }
+        }
+
         // Letter after the previous number: 5 → 5A, 5A → 5B.
         var stem = previous ?? "0";
         var last = stem[^1];
@@ -120,6 +130,10 @@ public static class SceneNumbers
             if (!used.Contains(fallback)) return fallback;
         }
     }
+
+    // "A1" is a prefixed form of "1": one letter, then the number.
+    private static bool IsPrefixed(string number, string of) =>
+        number.Length == of.Length + 1 && char.IsAsciiLetter(number[0]) && number.EndsWith(of, StringComparison.OrdinalIgnoreCase);
 
     // The leading integer of a scene number ("12A" → 12); -1 when it has none.
     private static int LeadingValue(string number)

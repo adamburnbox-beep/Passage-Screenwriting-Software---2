@@ -119,7 +119,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   return line edits that `passage.replaceLines` applies as one undo step,
   skipping (and reporting) any line that changed since. Add never moves an
   existing number: a gap continues on (13 → 14), a scene between 5 and 6
-  becomes 5A, then 5B. Desktop: headings with `#…#` no longer show the hashes
+  becomes 5A, then 5B; before scene 1, A1 then B1. Desktop: headings with `#…#` no longer show the hashes
   in their text; desktop PDF and text export gain the margin numbers (shared
   exporters), but the Avalonia on-screen preview ignores `SceneNumber`. Tests: `Fixtures/H1SceneHeadings.*` (golden captured before
   the change) plus parse, layout/PDF and Add/Remove tests.
