@@ -25,6 +25,7 @@ class Program
         failures += RunTest("Test Parse Character and Dialogue", TestParseCharacterAndDialogue);
         failures += RunTest("Test Parse Parenthetical", TestParseParenthetical);
         failures += RunTest("Test Parse Explicit Line Overrides", TestParseExplicitLineOverrides);
+        failures += RunTest("Test Parse Headings Without Scene Numbers Match Golden", TestParseHeadingsWithoutSceneNumbersMatchGolden);
         failures += RunTest("Test TextAnalysis Helper Methods", TestTextAnalysisHelperMethods);
         failures += RunTest("Test BeatBoard Card Own Line Range", TestBeatBoardCardOwnLineRange);
         failures += RunTest("Test BeatBoard Nested Section Block", TestBeatBoardNestedSectionBlock);
@@ -928,6 +929,30 @@ class Program
         Assert(screenplay.Elements[0] is SceneHeadingElement, "First element should be overridden to SceneHeadingElement");
         var heading = (SceneHeadingElement)screenplay.Elements[0];
         Assert(heading.Text == "JOHN", $"Expected overridden heading text 'JOHN', got '{heading.Text}'");
+    }
+
+    static string SerializeElements(ParsedScreenplay screenplay)
+    {
+        var builder = new StringBuilder();
+        foreach (var element in screenplay.Elements)
+        {
+            builder.Append(element.Type).Append('|')
+                .Append(element.LineIndex.ToString(CultureInfo.InvariantCulture)).Append('|')
+                .Append(element is SceneHeadingElement { IsForced: true } ? "forced|" : "|")
+                .Append(element.Text).Append('|')
+                .Append(element.RawText).Append('\n');
+        }
+        return builder.ToString();
+    }
+
+    static void TestParseHeadingsWithoutSceneNumbersMatchGolden()
+    {
+        // H1.3 shared-code guard: headings without #…# must parse exactly as before the
+        // scene-number change. The golden was captured from the pre-H1.3 parser.
+        var golden = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "H1SceneHeadings.golden.txt"));
+        var parsed = ParseFixture("H1SceneHeadings.fountain");
+        var actual = SerializeElements(parsed);
+        Assert(actual == golden, $"Headings without scene numbers must parse as before H1.3. Got:\n{actual}");
     }
 
     static void TestSyntaxSchemesPresetsAreComplete()
