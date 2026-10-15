@@ -21,6 +21,17 @@ public sealed class ExportService
     public ExportResult? Export(string content, string format, string? documentName)
     {
         var extension = format.StartsWith('.') ? format : "." + format;
+        var baseName = string.IsNullOrWhiteSpace(documentName)
+            ? "Untitled"
+            : Path.GetFileNameWithoutExtension(documentName.Trim());
+
+        // .highland is a zip of the source text, not a rendering of the parse,
+        // so it stays out of the shared exporter catalog.
+        if (extension.Equals(HighlandBundle.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ExportResult(HighlandBundle.Write(content, baseName), "application/zip", baseName + HighlandBundle.Extension);
+        }
+
         var exporter = Exporters.FirstOrDefault(candidate =>
             candidate.DefaultExtension.Equals(extension, StringComparison.OrdinalIgnoreCase));
         if (exporter is null)
@@ -34,9 +45,6 @@ public sealed class ExportService
         {
             exporter.Export(parsed, tempPath);
             var bytes = File.ReadAllBytes(tempPath);
-            var baseName = string.IsNullOrWhiteSpace(documentName)
-                ? "Untitled"
-                : Path.GetFileNameWithoutExtension(documentName.Trim());
 
             var contentType = exporter.DefaultExtension.ToLowerInvariant() switch
             {

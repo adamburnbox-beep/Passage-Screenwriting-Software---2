@@ -53,9 +53,9 @@ Click New to start one — files are stored on the server volume.</div>
                     </div>
                 }
                 <div class="menu-divider"></div>
-                <label class="menu-file-item" title="Copy a .fountain, .md or .txt file from this device into the library and open it">
+                <label class="menu-file-item" title="Copy a .fountain, .md, .txt or .highland file from this device into the library and open it">
                     Open from this device…
-                    <InputFile @key="_importKey" OnChange="ImportFileAsync" accept=".fountain,.md,.txt" />
+                    <InputFile @key="_importKey" OnChange="ImportFileAsync" accept=".fountain,.md,.txt,.highland" />
                 </label>
                 <button @onclick="OpenTitlePage">Title Page…</button>
                 <button @onclick="AddSceneNumbersAsync">Add Scene Numbers</button>
@@ -92,6 +92,7 @@ Click New to start one — files are stored on the server volume.</div>
                     <button @onclick='() => ExportAsync("pdf")'>PDF (.pdf)</button>
                     <button @onclick='() => ExportAsync("txt")'>Plain text (.txt)</button>
                     <button @onclick='() => ExportAsync("fountain")'>Fountain source (.fountain)</button>
+                    <button @onclick='() => ExportAsync("highland")'>Highland 2 (.highland)</button>
                 </div>
             </details>
         </div>
@@ -2317,11 +2318,13 @@ Open a .fountain file to see formatted pages.</div>
     // into the library under its own name, then opened like any other script.
     // The library is the web app's disk, so this is what "open" means here;
     // nothing is written until the unsaved-changes guard has been passed.
+    // A .highland file lands as the .fountain (or .md) text it carries; the
+    // status line names every entry in the bundle that was left behind.
     private const long MaxImportBytes = 5 * 1024 * 1024;
-    private static readonly string[] ImportExtensions = [".fountain", ".md", ".txt"];
+    private static readonly string[] ImportExtensions = [".fountain", ".md", ".txt", HighlandBundle.Extension];
 
     private int _importKey;
-    private (string OriginalName, string Content) _pendingImport;
+    private (string OriginalName, string Content, string Note) _pendingImport;
 
     private async Task ImportFileAsync(InputFileChangeEventArgs args)
     {
@@ -2331,11 +2334,13 @@ Open a .fountain file to see formatted pages.</div>
 
         if (!ImportExtensions.Contains(Path.GetExtension(file.Name), StringComparer.OrdinalIgnoreCase))
         {
-            _statusMessage = $"Could not open {file.Name}: only .fountain, .md and .txt files can be opened.";
+            _statusMessage = $"Could not open {file.Name}: only .fountain, .md, .txt and .highland files can be opened.";
             return;
         }
 
-        if (!ScriptLibrary.TryValidateName(file.Name, out _))
+        var isHighland = Path.GetExtension(file.Name).Equals(HighlandBundle.Extension, StringComparison.OrdinalIgnoreCase);
+        var scriptName = isHighland ? Path.GetFileNameWithoutExtension(file.Name) + ".fountain" : file.Name;
+        if (!ScriptLibrary.TryValidateName(scriptName, out _))
         {
             _statusMessage = $"Could not open {file.Name}: not a usable script name.";
             return;
@@ -2348,13 +2353,34 @@ Open a .fountain file to see formatted pages.</div>
         }
 
         string content;
+        var note = string.Empty;
         try
         {
             using var stream = file.OpenReadStream(MaxImportBytes);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-            content = await reader.ReadToEndAsync();
+            if (isHighland)
+            {
+                // ZipArchive needs a seekable stream; the browser upload is not one.
+                using var buffer = new MemoryStream();
+                await stream.CopyToAsync(buffer);
+                buffer.Position = 0;
+                var bundle = HighlandBundle.Read(buffer);
+                content = bundle.Text;
+                if (bundle.IsMarkdown)
+                {
+                    scriptName = Path.ChangeExtension(scriptName, ".md");
+                }
+
+                note = bundle.Skipped.Count == 0
+                    ? $" (from {file.Name})"
+                    : $" (from {file.Name}; skipped {bundle.Skipped.Count} bundle entries Passage does not read: {string.Join(", ", bundle.Skipped)})";
+            }
+            else
+            {
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                content = await reader.ReadToEndAsync();
+            }
         }
-        catch (Exception exception) when (exception is IOException or OperationCanceledException)
+        catch (Exception exception) when (exception is IOException or OperationCanceledException or InvalidDataException)
         {
             _statusMessage = $"Could not read {file.Name}: {exception.Message}";
             return;
@@ -2363,14 +2389,14 @@ Open a .fountain file to see formatted pages.</div>
         if (_isDirty)
         {
             _pendingAction = PendingAction.ImportFile;
-            _pendingImport = (file.Name, content);
+            _pendingImport = (scriptName, content, note);
             return;
         }
 
-        await FinishImportAsync(file.Name, content);
+        await FinishImportAsync(scriptName, content, note);
     }
 
-    private async Task FinishImportAsync(string originalName, string content)
+    private async Task FinishImportAsync(string originalName, string content, string note)
     {
         ScriptLibrary.TryValidateName(originalName, out var name);
         name = UniqueLibraryName(name);
@@ -2387,9 +2413,9 @@ Open a .fountain file to see formatted pages.</div>
 
         _files = Library.List();
         await OpenFileAsync(name);
-        _statusMessage = name == originalName
+        _statusMessage = (name == originalName
             ? $"Opened {name}"
-            : $"Opened {originalName} as {name} — a script with that name was already in the library";
+            : $"Opened {originalName} as {name} — a script with that name was already in the library") + note;
     }
 
     // Never overwrite a script that is already in the library: "draft.fountain"
@@ -2430,7 +2456,7 @@ Open a .fountain file to see formatted pages.</div>
         }
         else if (action == PendingAction.ImportFile)
         {
-            await FinishImportAsync(import.OriginalName, import.Content);
+            await FinishImportAsync(import.OriginalName, import.Content, import.Note);
         }
     }
 
