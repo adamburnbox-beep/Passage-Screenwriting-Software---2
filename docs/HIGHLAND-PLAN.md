@@ -163,7 +163,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
 
 ## Tier H2 — Interop
 
-### H2.1 `.highland` import and export — `todo`
+### H2.1 `.highland` import and export — `done`
 
 - **Reference:** teardown Part 1 §2
 - **Passage:** `Passage/Passage.Web/Services/ScriptLibrary.cs` (open/save),

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
@@ -63,6 +64,9 @@ class Program
         failures += RunTest("Test Pagination Overflow Tolerance", TestPaginationOverflowTolerance);
         failures += RunTest("Test Pagination More And Continued", TestPaginationMoreAndContinued);
         failures += RunTest("Test Pagination More Falls Back To Line Ends", TestPaginationMoreFallsBackToLineEnds);
+        failures += RunTest("Test Highland Export Import Round Trip", TestHighlandExportImportRoundTrip);
+        failures += RunTest("Test Highland Hand Built Bundle Imports", TestHighlandHandBuiltBundleImports);
+        failures += RunTest("Test Highland Without Text Fails Visibly", TestHighlandWithoutTextFailsVisibly);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -855,6 +859,113 @@ class Program
         finally
         {
             Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestHighlandExportImportRoundTrip()
+    {
+        // CRLF, a trailing newline, non-ASCII and a leading blank line must all survive.
+        var text = "\r\nTitle: Café Noir\n\nINT. CAFÉ - NIGHT\r\n\nJOSÉ\n(quietly)\nÇa va?\n\n> FADE OUT.\n";
+        var result = new ExportService().Export(text, "highland", "Noir.fountain");
+        Assert(result is not null, "highland export should be recognised");
+        Assert(result!.Value.FileName == "Noir.highland", $"file name, got {result.Value.FileName}");
+        Assert(result.Value.ContentType == "application/zip", "content type");
+
+        using (var zip = new ZipArchive(new MemoryStream(result.Value.Bytes)))
+        {
+            var names = zip.Entries.Select(entry => entry.FullName).OrderBy(name => name).ToArray();
+            var expected = new[]
+            {
+                "Noir.textbundle/characters.json", "Noir.textbundle/info.json",
+                "Noir.textbundle/sprints.json", "Noir.textbundle/text.fountain"
+            };
+            Assert(names.SequenceEqual(expected), $"bundle layout, got {string.Join(", ", names)}");
+
+            using var info = JsonDocument.Parse(zip.GetEntry("Noir.textbundle/info.json")!.Open());
+            Assert(info.RootElement.GetProperty("version").GetInt32() == 2, "info.json version");
+            Assert(info.RootElement.GetProperty("type").GetString() == "com.quoteunquoteapps.fountain", "info.json type");
+            Assert(info.RootElement.TryGetProperty("app.passage", out _), "info.json namespaces Passage state");
+        }
+
+        var imported = HighlandBundle.Read(new MemoryStream(result.Value.Bytes));
+        Assert(imported.Text == text, "round-tripped text should be identical");
+        Assert(!imported.IsMarkdown, "exported bundle is Fountain");
+        Assert(imported.Skipped.Count == 3, $"the three sidecars are reported, got {imported.Skipped.Count}");
+    }
+
+    static void TestHighlandHandBuiltBundleImports()
+    {
+        // Shaped like a real Highland 2 save: BOM-less UTF-8, Highland's own
+        // info.json keys, extra sidecars, an assets directory and a Finder
+        // directory entry for the bundle itself.
+        var text = "INT. HOUSE - DAY\n\nMARY\nHello.\n";
+        using var buffer = new MemoryStream();
+        using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void Add(string path, string content)
+            {
+                using var writer = new StreamWriter(zip.CreateEntry(path).Open(), new UTF8Encoding(false));
+                writer.Write(content);
+            }
+
+            zip.CreateEntry("Draft.textbundle/");
+            Add("Draft.textbundle/info.json",
+                "{\"com.quoteunquoteapps.highland2\":{\"templateName\":\"Screenplay\"},\"transient\":false,\"type\":\"com.quoteunquoteapps.fountain\",\"version\":2}");
+            Add("Draft.textbundle/text.fountain", text);
+            Add("Draft.textbundle/characters.json", "{\"MARY\":{\"gender\":\"female\"}}");
+            Add("Draft.textbundle/navigatorFilters.json", "{\"notes\":true}");
+            zip.CreateEntry("Draft.textbundle/assets/");
+            Add("Draft.textbundle/assets/still.png", "not really a png");
+        }
+
+        buffer.Position = 0;
+        var imported = HighlandBundle.Read(buffer);
+        Assert(imported.Text == text, "text should be read verbatim");
+        Assert(!imported.IsMarkdown, "text.fountain is Fountain");
+        var expectedSkipped = new[]
+        {
+            "Draft.textbundle/info.json", "Draft.textbundle/characters.json",
+            "Draft.textbundle/navigatorFilters.json", "Draft.textbundle/assets/still.png"
+        };
+        Assert(imported.Skipped.SequenceEqual(expectedSkipped),
+            $"every non-text file is reported, got {string.Join(", ", imported.Skipped)}");
+
+        // A Markdown bundle zipped from its parent folder.
+        using var markdown = new MemoryStream();
+        using (var zip = new ZipArchive(markdown, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using var writer = new StreamWriter(zip.CreateEntry("Notes/Notes.textbundle/text.md").Open());
+            writer.Write("# Notes\n");
+        }
+
+        markdown.Position = 0;
+        var notes = HighlandBundle.Read(markdown);
+        Assert(notes.IsMarkdown && notes.Text == "# Notes\n", "text.md imports as Markdown");
+        Assert(notes.Skipped.Count == 0, "nothing else to skip");
+    }
+
+    static void TestHighlandWithoutTextFailsVisibly()
+    {
+        using var buffer = new MemoryStream();
+        using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using var writer = new StreamWriter(zip.CreateEntry("Draft.textbundle/info.json").Open());
+            writer.Write("{}");
+        }
+
+        foreach (var bytes in new[] { buffer.ToArray(), Encoding.UTF8.GetBytes("not a zip") })
+        {
+            var threw = false;
+            try
+            {
+                HighlandBundle.Read(new MemoryStream(bytes));
+            }
+            catch (InvalidDataException)
+            {
+                threw = true;
+            }
+
+            Assert(threw, "a bundle with no script text must throw, not return empty text");
         }
     }
 
