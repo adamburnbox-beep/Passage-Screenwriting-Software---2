@@ -85,8 +85,7 @@ line (or the previous one at EOF). Blank lines and lines that do not print
   diff — the marks are right the next time the script opens.
 - **Races:** baselines change only on explicit commands, so last-write-wins on
   the sidecar only matters if two tabs press *Start*/*Clear* at once.
-- **Moves** show as delete + insert, so a moved scene is marked revised. That
-  matches production practice.
+- **Moves** show as delete + insert: a moved scene is marked, as in production.
 - **Known cost:** a whitespace-only reformat marks every reformatted line.
   Trailing whitespace is normalised before diffing; nothing else is.
 
