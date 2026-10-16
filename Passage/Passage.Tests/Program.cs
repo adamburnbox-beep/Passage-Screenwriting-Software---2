@@ -36,6 +36,7 @@ class Program
         failures += RunTest("Test Characters Stats And Speakers", TestCharactersStatsAndSpeakers);
         failures += RunTest("Test Characters Rename Cues Only", TestCharactersRenameCuesOnly);
         failures += RunTest("Test Characters Settings Round Trip", TestCharactersSettingsRoundTrip);
+        failures += RunTest("Test Gender Report Reconciles", TestGenderReportReconciles);
         failures += RunTest("Test TextAnalysis Helper Methods", TestTextAnalysisHelperMethods);
         failures += RunTest("Test BeatBoard Card Own Line Range", TestBeatBoardCardOwnLineRange);
         failures += RunTest("Test BeatBoard Nested Section Block", TestBeatBoardNestedSectionBlock);
@@ -1242,16 +1243,56 @@ class Program
         try
         {
             var document = new SlateDocument();
-            document.Characters.Add(new CharacterSettings { Name = "SARAH", Colour = Characters.Palette[0] });
+            document.Characters.Add(new CharacterSettings { Name = "SARAH", Colour = Characters.Palette[0], Gender = "Female" });
             store.Save("draft", document);
             var loaded = store.Load("draft")!;
             Assert(loaded.Characters.Count == 1 && loaded.Characters[0].Name == "SARAH" && loaded.Characters[0].Colour == Characters.Palette[0],
                 "Character colour survives a save and load");
+            Assert(loaded.Characters[0].Gender == "Female", "Gender tag survives a save and load");
         }
         finally
         {
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
+    }
+
+    // ---- Dialogue balance report (H3.2) ----
+
+    static void TestGenderReportReconciles()
+    {
+        var content = "INT. ROOM - DAY\n\nSARAH\nHello there.\n\nBOB (V.O.)\nHi.\n\nCLERK\nNext.\n\n"
+            + "EXT. STREET - NIGHT\n\nSARAH\nThree more words.\n\nANNE\nOne two three four.\n\n"
+            + "INT. CAR - NIGHT\n\nBOB\nAlone again.";
+        var analysis = new DocumentAnalyzer().Analyze(content);
+        // "Other" is not a tag and reads as Unspecified; CLERK has no entry.
+        var genders = new Dictionary<string, string> { ["SARAH"] = "Female", ["ANNE"] = "Female", ["BOB"] = "Male", ["CLERK"] = "Other" };
+        var report = Characters.Report(analysis.Elements, analysis.Characters, genders);
+
+        Assert(report.Rows.Count == analysis.Characters.Count, "One row per character in the panel");
+        foreach (var total in report.Totals)
+        {
+            var rows = report.Rows.Where(row => row.Tag == total.Tag).ToList();
+            Assert(total.Characters == rows.Count, $"{total.Tag}: character count {total.Characters} vs {rows.Count} rows");
+            Assert(total.Lines == rows.Sum(row => row.Lines), $"{total.Tag}: lines {total.Lines} vs rows {rows.Sum(row => row.Lines)}");
+            Assert(total.Words == rows.Sum(row => row.Words), $"{total.Tag}: words {total.Words} vs rows {rows.Sum(row => row.Words)}");
+        }
+
+        Assert(report.Totals.Sum(t => t.Lines) == report.Rows.Sum(r => r.Lines) && report.Totals.Sum(t => t.Words) == report.Rows.Sum(r => r.Words),
+            "Grand totals match the table");
+        var female = report.Totals.Single(t => t.Tag == "Female");
+        var male = report.Totals.Single(t => t.Tag == "Male");
+        var other = report.Totals.Single(t => t.Tag == "Unspecified");
+        Assert(female.Characters == 2 && female.Lines == 3 && female.Words == 9, $"Female 2/3/9, got {female.Characters}/{female.Lines}/{female.Words}");
+        Assert(male.Characters == 1 && male.Lines == 2 && male.Words == 3, $"Male 1/2/3, got {male.Characters}/{male.Lines}/{male.Words}");
+        Assert(other.Characters == 1 && other.Lines == 1 && other.Words == 1, $"Unspecified 1/1/1, got {other.Characters}/{other.Lines}/{other.Words}");
+
+        // Scene 1: SARAH+BOB (F/M), SARAH+CLERK (F/U), BOB+CLERK (M/U).
+        // Scene 2: SARAH+ANNE (F/F). Scene 3: BOB alone, no pair.
+        int Pair(string a, string b) => report.Pairs.Single(p => p.First == a && p.Second == b).Scenes;
+        Assert(report.Pairs.Count == 6, "Every tag pair is listed once");
+        Assert(Pair("Female", "Female") == 1 && Pair("Female", "Male") == 1 && Pair("Female", "Unspecified") == 1
+            && Pair("Male", "Unspecified") == 1 && Pair("Male", "Male") == 0 && Pair("Unspecified", "Unspecified") == 0,
+            $"Pair counts, got {string.Join(", ", report.Pairs.Select(p => $"{p.First}/{p.Second}={p.Scenes}"))}");
     }
 
     static void TestSceneNumbersRemove()

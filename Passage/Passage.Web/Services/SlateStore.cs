@@ -48,11 +48,13 @@ public sealed class SlateDocument
 }
 
 /// <summary>Per-character settings for one script. Colour is a palette hex,
-/// or empty for no highlight.</summary>
+/// or empty for no highlight. Gender is a <see cref="Characters.Tags"/> entry
+/// (H3.2), or empty for Unspecified.</summary>
 public sealed class CharacterSettings
 {
     public string Name { get; set; } = string.Empty;
     public string Colour { get; set; } = string.Empty;
+    public string Gender { get; set; } = string.Empty;
 }
 
 /// <summary>Push/Pull and Lens ("Revise — Push-Pull and Lens"): check 0

@@ -181,6 +181,64 @@ Click New to start one — files are stored on the server volume.</div>
                     }
                     else
                     {
+                        <div class="character-view-toggle">
+                            <button class="@(_showGenderReport ? null : "active")" @onclick="() => _showGenderReport = false">LIST</button>
+                            <button class="@(_showGenderReport ? "active" : null)" @onclick="() => _showGenderReport = true">BALANCE</button>
+                        </div>
+                    }
+                    @if (_showGenderReport && _analysis.Characters.Count > 0)
+                    {
+                        var report = Characters.Report(_analysis.Elements, _analysis.Characters, CharacterGenders());
+                        <div class="goal-panel">
+                            @foreach (var (title, value) in GenderMetrics)
+                            {
+                                var total = report.Totals.Sum(value);
+                                <div class="goal-card">
+                                    <div class="goal-card-title">@title</div>
+                                    <div class="gender-bar">
+                                        @foreach (var tagTotal in report.Totals.Where(t => value(t) > 0))
+                                        {
+                                            <span class="gender-@tagTotal.Tag.ToLowerInvariant()" style="flex-grow:@value(tagTotal)"></span>
+                                        }
+                                    </div>
+                                    @foreach (var tagTotal in report.Totals)
+                                    {
+                                        <div class="gender-line">
+                                            <span class="gender-dot gender-@tagTotal.Tag.ToLowerInvariant()"></span>
+                                            <span>@tagTotal.Tag</span>
+                                            <span class="character-count">@value(tagTotal)</span>
+                                            <span class="character-count">@(total == 0 ? "–" : $"{Math.Round(100.0 * value(tagTotal) / total)}%")</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <div class="goal-card">
+                                <div class="goal-card-title">SCENES SHARED</div>
+                                @foreach (var pair in report.Pairs)
+                                {
+                                    <div class="gender-line gender-pair">
+                                        <span><span class="gender-dot gender-@pair.First.ToLowerInvariant()"></span><span class="gender-dot gender-@pair.Second.ToLowerInvariant()"></span></span>
+                                        <span>@pair.First + @pair.Second</span>
+                                        <span class="character-count">@pair.Scenes</span>
+                                    </div>
+                                }
+                            </div>
+                            <div class="goal-card">
+                                <div class="goal-card-title">BY CHARACTER</div>
+                                @foreach (var row in report.Rows)
+                                {
+                                    <div class="gender-line">
+                                        <span class="gender-dot gender-@row.Tag.ToLowerInvariant()" title="@row.Tag"></span>
+                                        <span class="character-name">@row.Name</span>
+                                        <span class="character-count">@row.Lines</span>
+                                        <span class="character-count">@row.Words</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (_analysis.Characters.Count > 0)
+                    {
                         <div class="character-row character-head">
                             <span class="character-name">NAME</span>
                             <span class="character-count">LINES</span>
@@ -188,14 +246,17 @@ Click New to start one — files are stored on the server volume.</div>
                             <span class="character-actions"></span>
                         </div>
                     }
-                    @foreach (var character in _analysis.Characters)
+                    @foreach (var character in _showGenderReport ? Array.Empty<CharacterStat>() : _analysis.Characters)
                     {
                         var colour = CharacterColour(character.Name);
+                        var gender = Characters.Tag(CharacterSetting(character.Name)?.Gender);
                         <div class="character-row">
                             <button class="character-swatch @(colour.Length == 0 ? "none" : null)"
                                     style="@(colour.Length > 0 ? $"background:{colour}" : null)"
                                     title="Highlight colour"
                                     @onclick="() => ToggleColourPicker(character.Name)"></button>
+                            <button class="character-gender gender-text-@gender.ToLowerInvariant()" title="@gender — click to change"
+                                    @onclick="() => CycleGender(character.Name)">@(gender == "Unspecified" ? "–" : gender[..1])</button>
                             @if (_renamingCharacter == character.Name)
                             {
                                 <input class="character-rename" @ref="_renameInput" @bind="_renameText" @bind:event="oninput"
@@ -3385,24 +3446,62 @@ Open a .fountain file to see formatted pages.</div>
     private ElementReference _renameInput;
     private bool _focusRename;
 
-    private string CharacterColour(string name) =>
-        _slate.Characters.FirstOrDefault(entry => entry.Name == name)?.Colour ?? string.Empty;
+    private bool _showGenderReport;
+
+    private static readonly (string Title, Func<GenderTotal, int> Value)[] GenderMetrics =
+    {
+        ("CHARACTERS", total => total.Characters),
+        ("LINES SPOKEN", total => total.Lines),
+        ("WORDS SPOKEN", total => total.Words),
+    };
+
+    private CharacterSettings? CharacterSetting(string name) =>
+        _slate.Characters.FirstOrDefault(entry => entry.Name == name);
+
+    private string CharacterColour(string name) => CharacterSetting(name)?.Colour ?? string.Empty;
+
+    private Dictionary<string, string> CharacterGenders() => _slate.Characters
+        .GroupBy(entry => entry.Name)
+        .ToDictionary(group => group.Key, group => group.First().Gender);
 
     private void ToggleColourPicker(string name) =>
         _colourPickerFor = _colourPickerFor == name ? null : name;
 
-    private async Task SetCharacterColourAsync(string name, string colour)
+    // Gets or adds the character's settings, applies the change, and drops
+    // the entry again once it holds nothing.
+    private void UpdateCharacterSetting(string name, Action<CharacterSettings> change)
     {
-        _slate.Characters.RemoveAll(entry => entry.Name == name);
-        if (Characters.Palette.Contains(colour))
+        var settings = CharacterSetting(name);
+        if (settings is null)
         {
-            _slate.Characters.Add(new CharacterSettings { Name = name, Colour = colour });
+            settings = new CharacterSettings { Name = name };
+            _slate.Characters.Add(settings);
         }
 
-        _colourPickerFor = null;
+        change(settings);
+        if (settings.Colour.Length == 0 && settings.Gender.Length == 0)
+        {
+            _slate.Characters.Remove(settings);
+        }
+
         SaveSlate();
+    }
+
+    private async Task SetCharacterColourAsync(string name, string colour)
+    {
+        UpdateCharacterSetting(name, settings => settings.Colour = Characters.Palette.Contains(colour) ? colour : string.Empty);
+        _colourPickerFor = null;
         await PushCharacterHighlightsAsync();
     }
+
+    // Unspecified → Female → Male → Unspecified.
+    private void CycleGender(string name) => UpdateCharacterSetting(name, settings =>
+        settings.Gender = Characters.Tag(settings.Gender) switch
+        {
+            "Unspecified" => "Female",
+            "Female" => "Male",
+            _ => string.Empty,
+        });
 
     private void StartRename(string name)
     {
@@ -3469,12 +3568,12 @@ Open a .fountain file to see formatted pages.</div>
             return;
         }
 
-        // The colour is copied to the new name, not moved, so undoing the
-        // rename brings the old highlight back. A merge keeps the target's.
+        // The colour and gender are copied to the new name, not moved, so
+        // undoing the rename brings them back. A merge keeps the target's.
         var settings = _slate.Characters.FirstOrDefault(entry => entry.Name == oldName);
         if (outcome.Applied > 0 && settings is not null && _slate.Characters.All(entry => entry.Name != newKey))
         {
-            _slate.Characters.Add(new CharacterSettings { Name = newKey, Colour = settings.Colour });
+            _slate.Characters.Add(new CharacterSettings { Name = newKey, Colour = settings.Colour, Gender = settings.Gender });
             SaveSlate();
         }
 

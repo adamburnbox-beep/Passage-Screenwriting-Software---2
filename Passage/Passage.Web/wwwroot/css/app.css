@@ -1696,7 +1696,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 /* Character panel (HIGHLAND-PLAN H3.1) */
 .character-row {
     display: grid;
-    grid-template-columns: 16px 1fr 40px 48px 22px;
+    grid-template-columns: 16px 18px 1fr 40px 48px 22px;
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
@@ -1706,10 +1706,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 .character-row:not(.character-head):hover { background: var(--surface-raised); }
 .character-head { font-size: 9.5px; letter-spacing: 0.14em; color: var(--muted-text); }
-.character-head .character-name { grid-column: 2; }
+.character-head .character-name { grid-column: 3; }
 .character-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .character-count { text-align: right; font-variant-numeric: tabular-nums; }
-.character-rename { grid-column: 2 / -1; min-width: 0; font: inherit; padding: 2px 6px; background: var(--control-background); color: var(--control-foreground); border: 1px solid var(--control-border); border-radius: 6px; }
+.character-rename { grid-column: 3 / -1; min-width: 0; font: inherit; padding: 2px 6px; background: var(--control-background); color: var(--control-foreground); border: 1px solid var(--control-border); border-radius: 6px; }
 .character-row .icon-btn { background: transparent; border: none; color: var(--muted-text); cursor: pointer; padding: 0; }
 .character-row .icon-btn:hover { color: var(--control-foreground); }
 .character-swatch { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1px solid var(--control-border); cursor: pointer; }
@@ -1718,3 +1718,20 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .character-palette { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px 30px; }
 /* Translucent so dialogue stays readable on dark and light editor themes. */
 .character-highlight { background: color-mix(in srgb, var(--character-colour) 35%, transparent); }
+
+/* Dialogue balance (HIGHLAND-PLAN H3.2). Tag colours reuse syntax tokens. */
+.gender-female { --gender-colour: var(--syntax-character); }
+.gender-male { --gender-colour: var(--syntax-scene); }
+.gender-unspecified { --gender-colour: var(--muted-text); }
+.gender-text-female { color: var(--syntax-character) !important; }
+.gender-text-male { color: var(--syntax-scene) !important; }
+.character-gender { background: transparent; border: none; padding: 0; font: inherit; font-size: 11px; font-weight: 700; color: var(--muted-text); cursor: pointer; }
+.character-view-toggle { display: flex; gap: 4px; margin-bottom: 10px; }
+.character-view-toggle button { flex: 1; background: transparent; border: 1px solid var(--control-border); border-radius: 6px; color: var(--muted-text); font-size: 9.5px; letter-spacing: 0.14em; padding: 4px; cursor: pointer; }
+.character-view-toggle button.active { background: var(--control-pressed-background); color: var(--control-pressed-foreground); border-color: var(--control-pressed-background); }
+.gender-bar { display: flex; height: 6px; border-radius: 999px; overflow: hidden; background: var(--surface-border); margin-bottom: 8px; }
+.gender-bar span { flex-basis: 0; background: var(--gender-colour); }
+.gender-line { display: grid; grid-template-columns: 10px 1fr 40px 44px; align-items: center; gap: 6px; padding: 2px 0; font-size: 12px; color: var(--secondary-text); }
+.gender-pair { grid-template-columns: 20px 1fr 28px; }
+.gender-pair > span:first-child { display: flex; gap: 3px; }
+.gender-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gender-colour); }
