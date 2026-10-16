@@ -113,6 +113,20 @@ public static class TextAnalysis
         return CountWords(value, int.MaxValue);
     }
 
+    public const int DefaultWordsPerMinute = 230;
+
+    // Prose reading time, rounded up so any text reads as at least a minute.
+    // Screenplays use the page estimate instead (one page ≈ one minute).
+    public static int EstimateReadingMinutes(int wordCount, int wordsPerMinute = DefaultWordsPerMinute)
+    {
+        if (wordCount <= 0 || wordsPerMinute <= 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Ceiling(wordCount / (double)wordsPerMinute);
+    }
+
     public static bool LooksLikeSceneHeadingStart(ReadOnlySpan<char> value, bool allowPartialPrefixMatch = false)
     {
         var trimmed = value.TrimStart();
