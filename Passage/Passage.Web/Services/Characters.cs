@@ -8,6 +8,21 @@ namespace Passage.Web.Services;
 /// cue — and words are spoken words, parentheticals excluded.</summary>
 public sealed record CharacterStat(string Name, int Lines, int Words);
 
+/// <summary>Dialogue balance by gender tag (HIGHLAND-PLAN H3.2). Totals and
+/// pairs follow <see cref="Characters.Tags"/> order; rows follow the panel.</summary>
+public sealed record GenderReport(
+    IReadOnlyList<GenderTotal> Totals,
+    IReadOnlyList<GenderPair> Pairs,
+    IReadOnlyList<GenderRow> Rows);
+
+public sealed record GenderTotal(string Tag, int Characters, int Lines, int Words);
+
+/// <summary>Scenes adds one for every two different speakers who both speak
+/// in the same scene, filed under their two tags.</summary>
+public sealed record GenderPair(string First, string Second, int Scenes);
+
+public sealed record GenderRow(string Name, string Tag, int Lines, int Words);
+
 /// <summary>
 /// The character panel (HIGHLAND-PLAN H3.1). Pure: stats and per-line
 /// speakers come from the parsed elements, and rename returns line edits the
@@ -22,6 +37,13 @@ public static class Characters
         "#9ec5f0", "#f2c46d", "#a8d08d", "#d3a6dc", "#f0a0a0",
         "#8fd6cf", "#f5b38a", "#c9c9a0", "#a9b4f2", "#e8a3c4",
     };
+
+    /// <summary>The gender tags, in report order. Anything stored that is
+    /// not Female or Male reads as Unspecified.</summary>
+    public static readonly string[] Tags = { "Female", "Male", "Unspecified" };
+
+    public static string Tag(string? stored) =>
+        stored is "Female" or "Male" ? stored : "Unspecified";
 
     // A cue line: indent, optional forcing @, the name, then any trailing
     // extensions — (V.O.), (CONT'D), (ON PHONE)… — and the dual-dialogue ^.
@@ -114,5 +136,67 @@ public static class Characters
         }
 
         return edits;
+    }
+
+    /// <summary>
+    /// The dialogue balance report. Totals are summed from the same rows the
+    /// table shows, so the two always reconcile. A scene starts at each
+    /// heading; dialogue before the first heading is a scene of its own.
+    /// </summary>
+    public static GenderReport Report(
+        IReadOnlyList<ScreenplayElement> elements,
+        IReadOnlyList<CharacterStat> stats,
+        IReadOnlyDictionary<string, string> genders)
+    {
+        var rows = stats
+            .Select(stat => new GenderRow(stat.Name, Tag(genders.GetValueOrDefault(stat.Name)), stat.Lines, stat.Words))
+            .ToList();
+        var totals = Tags
+            .Select(tag =>
+            {
+                var tagged = rows.Where(row => row.Tag == tag).ToList();
+                return new GenderTotal(tag, tagged.Count, tagged.Sum(row => row.Lines), tagged.Sum(row => row.Words));
+            })
+            .ToList();
+
+        var scenes = new List<HashSet<string>> { new(StringComparer.Ordinal) };
+        foreach (var element in elements)
+        {
+            if (element is SceneHeadingElement)
+            {
+                scenes.Add(new HashSet<string>(StringComparer.Ordinal));
+            }
+            else if (element is DialogueElement dialogue && BareName(dialogue.CharacterName) is { Length: > 0 } name)
+            {
+                scenes[^1].Add(name);
+            }
+        }
+
+        var tagOf = rows.ToDictionary(row => row.Name, row => row.Tag, StringComparer.Ordinal);
+        var pairCounts = new int[Tags.Length, Tags.Length];
+        foreach (var scene in scenes)
+        {
+            var speakers = scene.Order(StringComparer.Ordinal).ToList();
+            for (var i = 0; i < speakers.Count; i++)
+            {
+                for (var j = i + 1; j < speakers.Count; j++)
+                {
+                    var a = Array.IndexOf(Tags, tagOf.GetValueOrDefault(speakers[i], "Unspecified"));
+                    var b = Array.IndexOf(Tags, tagOf.GetValueOrDefault(speakers[j], "Unspecified"));
+                    pairCounts[Math.Min(a, b), Math.Max(a, b)]++;
+                }
+            }
+        }
+
+        var pairs = new List<GenderPair>();
+        for (var a = 0; a < Tags.Length; a++)
+        {
+            for (var b = a; b < Tags.Length; b++)
+            {
+                pairs.Add(new GenderPair(Tags[a], Tags[b], pairCounts[a, b]));
+            }
+        }
+
+        return new GenderReport(totals, pairs, rows);
     }
 }

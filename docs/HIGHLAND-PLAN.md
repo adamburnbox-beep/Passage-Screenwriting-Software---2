@@ -231,7 +231,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   `markText` runs laid by `passage.setCharacterHighlights` after each parse,
   tinted 35% via `color-mix`. H3.2's gender tag belongs on `CharacterSettings`.
 
-### H3.2 Dialogue balance report (gender analysis) — `todo` · depends on H3.1
+### H3.2 Dialogue balance report (gender analysis) — `done`
 
 - **Reference:** teardown §15 (Gender report)
 - **Do:** In the character panel, tag each character Male / Female /
@@ -240,6 +240,14 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   per-character table (name, lines, words). On-screen first; PDF optional.
   Use theme tokens for colours (do not invent palette — Design Principles).
 - **Success:** totals reconcile with the per-character table.
+- **Shipped:** `CharacterSettings.Gender` ("Female" / "Male", empty =
+  Unspecified; anything else reads as Unspecified). The CAST row's tag button
+  cycles Unspecified → F → M; rename copies the tag with the colour. A
+  LIST / BALANCE toggle shows `Characters.Report` on screen; totals are summed
+  from the per-character rows. Scenes shared: per scene (each heading starts
+  one; dialogue before the first heading is its own), every two different
+  speakers add one to their tag pair. Colours: Female `--syntax-character`,
+  Male `--syntax-scene`, Unspecified `--muted-text`. No PDF.
 
 ### H3.3 Typewriter scrolling and focus line — `todo`
 
