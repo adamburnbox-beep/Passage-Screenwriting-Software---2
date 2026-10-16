@@ -19,9 +19,13 @@ public readonly record struct LayoutLine(string Text, LayoutTextStyle Style, dou
 {
     public bool IsBlank => Text.Length == 0;
     public static LayoutLine Blank() => new(string.Empty, LayoutTextStyle.Left, 0.0);
+
+    // Header/footer directives that take effect on the page this line lands on (opt-in pagination only).
+    internal IReadOnlyList<PageDirectives.Directive>? Directives { get; init; }
 }
 
-public readonly record struct LayoutPage(IReadOnlyList<LayoutLine> Lines, int PageNumber, bool IsTitlePage);
+// Header null means the default page number; Footer null means none. Set only by opt-in pagination.
+public readonly record struct LayoutPage(IReadOnlyList<LayoutLine> Lines, int PageNumber, bool IsTitlePage, PageSlots? Header = null, PageSlots? Footer = null);
 
 public static class ScreenplayLayoutBuilder
 {
@@ -71,9 +75,23 @@ public static class ScreenplayLayoutBuilder
             paginatedBody.Add(new List<LayoutLine>());
         }
 
+        PageSlots? header = null;
+        PageSlots? footer = null;
         foreach (var pageLines in paginatedBody)
         {
-            bodyPages.Add(new LayoutPage(pageLines, bodyPageNum++, false));
+            if (options is { KeepTogether: true, Directives: true })
+            {
+                foreach (var directive in pageLines.Where(line => line.Directives is not null).SelectMany(line => line.Directives!))
+                {
+                    if (directive.IsFooter) footer = directive.Slots;
+                    else header = directive.Slots;
+                }
+            }
+
+            var pageNumber = bodyPageNum++;
+            bodyPages.Add(new LayoutPage(pageLines, pageNumber, false,
+                header?.Resolve(pageNumber, paginatedBody.Count),
+                footer?.Resolve(pageNumber, paginatedBody.Count)));
         }
 
         return (titlePages, bodyPages);
@@ -189,22 +207,64 @@ public static class ScreenplayLayoutBuilder
         }
     }
 
-    private static List<RenderBlock> BuildRenderableBlocks(IReadOnlyList<ScreenplayElement> elements)
+    private static List<RenderBlock> BuildRenderableBlocks(IReadOnlyList<ScreenplayElement> elements, bool directives = false)
     {
         var blocks = new List<RenderBlock>(elements.Count);
+        List<PageDirectives.Directive>? pending = null;
         foreach (var element in elements)
         {
             if (element is NoteElement or BoneyardElement or SectionElement or SynopsisElement) continue;
 
-            if (TryCreateRenderableBlock(element, out var block))
+            // Directive lines never print: they ride on the next block that does, so they take
+            // effect from the page that block starts on.
+            string? textOverride = null;
+            if (directives && TakeDirectiveLines(element.Text, ref pending, out var remaining))
             {
-                blocks.Add(block);
+                if (element is not ActionElement || remaining.Length == 0) continue;
+                textOverride = remaining;
             }
+
+            if (TryCreateRenderableBlock(element, out var block, textOverride))
+            {
+                blocks.Add(pending is null ? block : block with { Directives = pending });
+                pending = null;
+            }
+        }
+
+        // Directives after the last printed element apply from the page that element starts on.
+        if (pending is not null && blocks.Count > 0)
+        {
+            blocks[^1] = blocks[^1] with { Directives = [.. blocks[^1].Directives ?? [], .. pending] };
         }
         return blocks;
     }
 
-    private static bool TryCreateRenderableBlock(ScreenplayElement element, out RenderBlock block)
+    // Moves the whole-line directives out of text; remaining is what is left to print.
+    private static bool TakeDirectiveLines(string text, ref List<PageDirectives.Directive>? into, out string remaining)
+    {
+        remaining = text;
+        if (!text.Contains("{{", StringComparison.Ordinal)) return false;
+
+        var kept = new List<string>();
+        var found = false;
+        foreach (var line in text.ReplaceLineEndings("\n").Split('\n'))
+        {
+            if (PageDirectives.TryParse(line, out var directive))
+            {
+                (into ??= []).Add(directive);
+                found = true;
+            }
+            else
+            {
+                kept.Add(line);
+            }
+        }
+
+        remaining = string.Join('\n', kept).Trim('\n');
+        return found;
+    }
+
+    private static bool TryCreateRenderableBlock(ScreenplayElement element, out RenderBlock block, string? textOverride = null)
     {
         block = default;
         string text;
@@ -221,7 +281,7 @@ public static class ScreenplayLayoutBuilder
                 maxChars = ScreenplayFormatting.ActionWrapChars;
                 break;
             case ActionElement action:
-                text = FountainMarkup.StripOmissions(action.Text);
+                text = FountainMarkup.StripOmissions(textOverride ?? action.Text);
                 style = LayoutTextStyle.Left;
                 x = MarginLeft;
                 maxChars = ScreenplayFormatting.ActionWrapChars;
@@ -298,7 +358,7 @@ public static class ScreenplayLayoutBuilder
     {
         var overflowLines = Math.Max(0, options.OverflowLines);
         var pages = new List<List<LayoutLine>>();
-        var renderableBlocks = BuildRenderableBlocks(elements);
+        var renderableBlocks = BuildRenderableBlocks(elements, options.Directives);
         if (renderableBlocks.Count == 0)
         {
             return pages;
@@ -324,6 +384,10 @@ public static class ScreenplayLayoutBuilder
             contentStarts[blockIndex] = lines.Count;
             AddWrappedBlock(lines, block.Text, block.Style, block.X, block.MaxChars, block.SceneNumber);
             contentCounts[blockIndex] = lines.Count - contentStarts[blockIndex];
+            if (block.Directives is not null)
+            {
+                lines[contentStarts[blockIndex]] = lines[contentStarts[blockIndex]] with { Directives = block.Directives };
+            }
 
             // A page may start before a block's leading gap or between its lines, never
             // inside the gap or between the gap and the block.
@@ -668,5 +732,5 @@ public static class ScreenplayLayoutBuilder
         return ScreenplayFormatting.GetGapBlankLines(ToSpacingType(previousType), ToSpacingType(currentType));
     }
 
-    private readonly record struct RenderBlock(ScreenplayElementType Type, string Text, LayoutTextStyle Style, double X, int MaxChars, bool IsDualCue, string? SceneNumber = null);
+    private readonly record struct RenderBlock(ScreenplayElementType Type, string Text, LayoutTextStyle Style, double X, int MaxChars, bool IsDualCue, string? SceneNumber = null, IReadOnlyList<PageDirectives.Directive>? Directives = null);
 }

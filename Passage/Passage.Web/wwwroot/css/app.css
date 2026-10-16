@@ -572,6 +572,23 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--page-foreground);
 }
 
+/* {{HEADER}} / {{FOOTER}} slots: left, centre, right across the body width. */
+.preview-slots {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1ch;
+    white-space: pre;
+}
+.preview-slots > :first-child { text-align: left; }
+.preview-slots > :last-child { text-align: right; }
+.preview-footer {
+    position: absolute;
+    left: 15ch;
+    right: 10ch;
+    bottom: 2em;
+    line-height: 1;
+}
+
 .preview-body { min-height: 54em; }
 .preview-body .pl {
     min-height: 1em;

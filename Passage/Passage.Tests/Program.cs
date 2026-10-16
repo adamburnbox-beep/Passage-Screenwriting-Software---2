@@ -74,6 +74,8 @@ class Program
         failures += RunTest("Test Highland Hand Built Bundle Imports", TestHighlandHandBuiltBundleImports);
         failures += RunTest("Test Highland Without Text Fails Visibly", TestHighlandWithoutTextFailsVisibly);
         failures += RunTest("Test FDX Export Paragraph Types", TestFdxExportParagraphTypes);
+        failures += RunTest("Test Page Directives Parse", TestPageDirectivesParse);
+        failures += RunTest("Test Layout Header Footer Directives", TestLayoutHeaderFooterDirectives);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -1603,5 +1605,61 @@ class Program
             "A sentence longer than the space should break at a line end with (MORE)");
         Assert(pages[0].Lines.Count == 54, "The line-end break should fill the page exactly");
         Assert(pages[1].Lines[0].Text == "ANNA (CONT'D)", "The next page should open with ANNA (CONT'D)");
+    }
+
+    // ---- Header / footer directives (H4.1) ----
+
+    static void TestPageDirectivesParse()
+    {
+        Assert(PageDirectives.TryParse("{{HEADER: DRAFT}}", out var header) && !header.IsFooter
+            && header.Slots == new PageSlots("", "", "DRAFT"), "One header slot goes right");
+        Assert(PageDirectives.TryParse("  {{footer: Confidential }}", out var footer) && footer.IsFooter
+            && footer.Slots == new PageSlots("", "Confidential", ""), "One footer slot goes centre; case-insensitive");
+        Assert(PageDirectives.TryParse("{{HEADER: Title | %p.}}", out var two) && two.Slots == new PageSlots("Title", "", "%p."), "Two slots are left and right");
+        Assert(PageDirectives.TryParse("{{HEADER: a | b | c}}", out var three) && three.Slots == new PageSlots("a", "b", "c"), "Three slots");
+        Assert(PageDirectives.TryParse("{{HEADER: %none}}", out var off) && off.Slots.IsEmpty, "%none turns it off");
+        Assert(!PageDirectives.TryParse("Before {{HEADER: x}}", out _), "Only whole lines are directives");
+        Assert(!PageDirectives.TryParse("{{%m: Midpoint}}", out _), "Markers are not header/footer directives");
+        Assert(new PageSlots("%p of %pp", "", "").Resolve(3, 12).Left == "3 of 12", "%p and %pp resolve");
+    }
+
+    static void TestLayoutHeaderFooterDirectives()
+    {
+        var script = new StringBuilder("INT. HOUSE - DAY\n\n{{HEADER: Title | DRAFT | %p of %pp}}\n\n{{FOOTER: CONFIDENTIAL}}\n\n");
+        for (var i = 0; i < 60; i++) script.Append($"Action paragraph {i} goes on for a while.\n\n");
+        script.Append("Last words.\n{{HEADER: %none}}\n");
+        var parsed = new FountainParser().Parse(script.ToString());
+
+        var legacy = ScreenplayLayoutBuilder.BuildPages(parsed).bodyPages;
+        Assert(legacy.SelectMany(p => p.Lines).Count(l => l.Text.Contains("{{")) == 3, "Without options the directive lines still print (desktop unchanged)");
+        Assert(legacy.All(p => p.Header is null && p.Footer is null), "Without options pages carry no header/footer");
+
+        var pages = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions()).bodyPages;
+        Assert(pages.Count >= 3, $"Fixture should run to at least 3 pages, got {pages.Count}");
+        Assert(pages.SelectMany(p => p.Lines).All(l => !l.Text.Contains("{{")), "Directive lines never print");
+        Assert(pages.SelectMany(p => p.Lines).Any(l => l.Text == "Last words."), "Text sharing a paragraph with a directive still prints");
+        Assert(pages[0].Header == new PageSlots("Title", "DRAFT", $"1 of {pages.Count}"), $"Page 1 header: {pages[0].Header}");
+        Assert(pages[1].Header == new PageSlots("Title", "DRAFT", $"2 of {pages.Count}"), $"Page 2 header: {pages[1].Header}");
+        Assert(pages.All(p => p.Footer == new PageSlots("", "CONFIDENTIAL", "")), "Footer is centred on every page");
+        Assert(pages[^1].Header is { IsEmpty: true }, "%none turns the header off from its page");
+
+        var unset = ScreenplayLayoutBuilder.BuildPages(new FountainParser().Parse("INT. HOUSE - DAY\n\nAction."), new PaginationOptions()).bodyPages;
+        Assert(unset[0].Header is null && unset[0].Footer is null, "No directive keeps the default page number");
+
+        var pdfPath = Path.Combine(Path.GetTempPath(), $"passage-h41-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            new ScreenplayPdfExporter(new PaginationOptions()).Export(parsed, pdfPath);
+            var pdf = Encoding.Latin1.GetString(File.ReadAllBytes(pdfPath));
+            Assert(pdf.Split("(DRAFT) Tj").Length - 1 == pages.Count - 1, "PDF draws the header on every page until %none");
+            Assert(pdf.Split("(CONFIDENTIAL) Tj").Length - 1 == pages.Count, "PDF draws the footer on every page");
+            Assert(pdf.Contains($"(1 of {pages.Count}) Tj"), "PDF resolves %p of %pp");
+            Assert(!pdf.Contains("(2.) Tj"), "A header replaces the default page number");
+            Assert(!pdf.Contains("{{"), "PDF never prints a directive");
+        }
+        finally
+        {
+            File.Delete(pdfPath);
+        }
     }
 }

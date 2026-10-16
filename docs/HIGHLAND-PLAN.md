@@ -276,13 +276,27 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
 
 ## Tier H4 — Power features
 
-### H4.1 Header / footer directives in PDF — `todo`
+### H4.1 Header / footer directives in PDF — `done`
 
 - **Reference:** Part 1 §4 (Directives table)
 - **Do:** Parse `{{HEADER: a | b | c}}` / `{{FOOTER: …}}` (left/centre/right
   slots; header default right, footer default centre), tokens `%p`, `%pp`,
   `%none`. Takes effect from the page it appears on. Directive lines never
   print. Web pagination path only (Standing decision).
+- **Landed:** `Passage.Export/PageDirectives.cs` (`PageSlots`, `TryParse`) and
+  `PaginationOptions.Directives` (default on; only the web passes options). The
+  parser is unchanged and still reads the line as action; `BuildRenderableBlocks`
+  lifts whole-line directives out of action text (a directive sharing a
+  paragraph with text leaves the text) and tags the next printed block's first
+  line, so the directive takes effect from the page that block lands on (after
+  the last element: that element's page). `LayoutPage.Header` / `Footer`
+  (null = today's page number / no footer) carry resolved `%p` / `%pp`. A set
+  header replaces the page number, page 1 included (write `%p.` to keep it);
+  `%none` shows nothing. PDF draws slots at the page-number line and 36pt from
+  the bottom; the preview draws them in a three-column row. Null options print
+  directive lines as before (test). **Not covered:** `.txt` and FDX export
+  still print directive lines; `%#` section tokens, odd/even alternation.
+  Test: `TestLayoutHeaderFooterDirectives`.
 
 ### H4.2 Named markers + Jump to — `todo`
 

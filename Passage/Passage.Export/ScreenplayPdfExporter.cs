@@ -33,12 +33,12 @@ public sealed class ScreenplayPdfExporter : IExporter
         var contentStreams = new List<string>();
         foreach (var titlePage in titlePages)
         {
-            contentStreams.Add(BuildContentStream(titlePage.Lines, null));
+            contentStreams.Add(BuildContentStream(titlePage.Lines, null, null, null));
         }
 
         for (var i = 0; i < bodyPages.Count; i++)
         {
-            contentStreams.Add(BuildContentStream(bodyPages[i].Lines, bodyPages[i].PageNumber));
+            contentStreams.Add(BuildContentStream(bodyPages[i].Lines, bodyPages[i].PageNumber, bodyPages[i].Header, bodyPages[i].Footer));
         }
 
         var totalPages = titlePages.Count + bodyPages.Count;
@@ -98,14 +98,24 @@ public sealed class ScreenplayPdfExporter : IExporter
         writer.Flush();
     }
 
-    private static string BuildContentStream(IReadOnlyList<LayoutLine> lines, int? pageNumber)
+    private static string BuildContentStream(IReadOnlyList<LayoutLine> lines, int? pageNumber, PageSlots? header, PageSlots? footer)
     {
         var builder = new StringBuilder();
         var y = ScreenplayLayoutBuilder.PageHeight - ScreenplayLayoutBuilder.MarginTop;
 
-        if (pageNumber.HasValue && pageNumber.Value > 1)
+        // A {{HEADER}} directive replaces the page number; a footer mirrors the header's margin.
+        if (header is not null)
+        {
+            AppendSlots(builder, header, ScreenplayLayoutBuilder.PageHeight - ScreenplayLayoutBuilder.PageNumberTopMargin);
+        }
+        else if (pageNumber.HasValue && pageNumber.Value > 1)
         {
             AppendTextRun(builder, $"{pageNumber.Value}.", LayoutTextStyle.RightWithinBody, 0.0, ScreenplayLayoutBuilder.PageHeight - ScreenplayLayoutBuilder.PageNumberTopMargin);
+        }
+
+        if (footer is not null)
+        {
+            AppendSlots(builder, footer, ScreenplayLayoutBuilder.PageNumberTopMargin);
         }
 
         foreach (var line in lines)
@@ -128,6 +138,13 @@ public sealed class ScreenplayPdfExporter : IExporter
 
         var data = Encoding.Latin1.GetBytes(builder.ToString());
         return $"<< /Length {data.Length} >>\nstream\n{builder}endstream";
+    }
+
+    private static void AppendSlots(StringBuilder builder, PageSlots slots, double y)
+    {
+        AppendTextRun(builder, slots.Left, LayoutTextStyle.Left, ScreenplayLayoutBuilder.MarginLeft, y);
+        AppendTextRun(builder, slots.Center, LayoutTextStyle.CenterWithinBody, 0.0, y);
+        AppendTextRun(builder, slots.Right, LayoutTextStyle.RightWithinBody, 0.0, y);
     }
 
     private static string BuildStreamObject(string contentStream)

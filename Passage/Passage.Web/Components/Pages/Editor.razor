@@ -500,12 +500,21 @@ Open a .fountain file to see formatted pages.</div>
                         @foreach (var page in _analysis.PreviewPages)
                         {
                             <div class="preview-page" style="font-size:@(PreviewFontPx)px">
-                                <div class="preview-page-number">
-                                    @if (!page.IsTitlePage && page.PageNumber > 1)
-                                    {
-                                        <span>@(page.PageNumber).</span>
-                                    }
-                                </div>
+                                @if (page.Header is { } header)
+                                {
+                                    <div class="preview-page-number preview-slots">
+                                        <span>@header.Left</span><span>@header.Center</span><span>@header.Right</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="preview-page-number">
+                                        @if (!page.IsTitlePage && page.PageNumber > 1)
+                                        {
+                                            <span>@(page.PageNumber).</span>
+                                        }
+                                    </div>
+                                }
                                 <div class="preview-body">
                                     @foreach (var line in page.Lines)
                                     {
@@ -513,6 +522,12 @@ Open a .fountain file to see formatted pages.</div>
                                         {<span class="scene-no scene-no-left">@sceneNumber</span><span class="scene-no scene-no-right">@sceneNumber</span>}</div>
                                     }
                                 </div>
+                                @if (page.Footer is { } footer)
+                                {
+                                    <div class="preview-footer preview-slots">
+                                        <span>@footer.Left</span><span>@footer.Center</span><span>@footer.Right</span>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
