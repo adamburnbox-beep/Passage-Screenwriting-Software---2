@@ -78,6 +78,7 @@ class Program
         failures += RunTest("Test Layout Header Footer Directives", TestLayoutHeaderFooterDirectives);
         failures += RunTest("Test Layout Strips Markers", TestLayoutStripsMarkers);
         failures += RunTest("Test Outline Lists Named Markers", TestOutlineListsNamedMarkers);
+        failures += RunTest("Test Outline Filters", TestOutlineFilters);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -1693,5 +1694,37 @@ class Program
         Assert(outline[2].Children.Count == 1 && outline[2].Children[0].Label == "Inline", "An inline named marker is listed");
         var cards = analysis.BoardLanes.SelectMany(l => l.Groups).SelectMany(g => g.Cards).ToList();
         Assert(cards.Count == 2 && cards.All(c => c.Kind == "Scene"), "Markers never become board cards");
+    }
+
+    // ---- Outline filters (H4.3) ----
+
+    static void TestOutlineFilters()
+    {
+        var text = "# Act One\n\n## Setup\n\nINT. HOUSE - DAY\n\n= She arrives.\n\n[[Check the timeline]]\n\n{{%m: Midpoint}}\n\nEXT. YARD - NIGHT";
+        var analysis = new DocumentAnalyzer().Analyze(text);
+
+        static List<string> Flatten(IEnumerable<OutlineNode> nodes, int depth = 0) =>
+            nodes.SelectMany(n => new[] { $"{depth}:{n.Kind}:{n.Label}" }.Concat(Flatten(n.Children, depth + 1))).ToList();
+
+        var all = Flatten(new OutlineFilters { Notes = true }.Apply(analysis.Outline));
+        Assert(all.Any(n => n.EndsWith(":Note:Check the timeline")), "Notes are in the outline: " + string.Join(", ", all));
+
+        var defaults = Flatten(new OutlineFilters().Apply(analysis.Outline));
+        Assert(!defaults.Any(n => n.Contains(":Note:")), "Notes are hidden by default");
+        Assert(defaults.Count == all.Count - 1, "Defaults hide only the note");
+
+        var noSections = Flatten(new OutlineFilters { Sections = false }.Apply(analysis.Outline));
+        Assert(noSections.Contains("0:Scene:INT. HOUSE - DAY") && noSections.Contains("1:Synopsis:She arrives."),
+            "Hiding sections promotes their scenes to the root, keeping scene children: " + string.Join(", ", noSections));
+        Assert(!noSections.Any(n => n.Contains(":Act:") || n.Contains(":Sequence:")), "No sections remain");
+
+        var noScenes = Flatten(new OutlineFilters { Scenes = false, Synopses = false, Markers = false }.Apply(analysis.Outline));
+        Assert(noScenes.SequenceEqual(new[] { "0:Act:Act One", "1:Sequence:Setup" }), "Only sections remain: " + string.Join(", ", noScenes));
+
+        var cards = analysis.BoardLanes.SelectMany(l => l.Groups).SelectMany(g => g.Cards).ToList();
+        Assert(cards.All(c => c.Kind == "Scene"), "Notes never become board cards");
+
+        var restored = JsonSerializer.Deserialize<OutlineFilters>("{\"scenes\":false}", new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        Assert(!restored.Scenes && restored.Sections && !restored.Notes && restored.Markers, "Missing keys in the stored session fall back to defaults");
     }
 }

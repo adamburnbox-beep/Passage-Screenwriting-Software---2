@@ -988,6 +988,12 @@ window.passage = (function () {
         scheduleSessionSave();
     }
 
+    // OUTLINE panel filters (H4.3); Blazor owns the shape and the defaults.
+    function setOutlineFilters(filters) {
+        session.outlineFilters = filters;
+        scheduleSessionSave();
+    }
+
     // Markdown reading speed for the status bar's reading time; Blazor clamps it.
     function setWordsPerMinute(wordsPerMinute) {
         session.wordsPerMinute = wordsPerMinute;
@@ -1495,7 +1501,7 @@ window.passage = (function () {
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
         getAutoContd, setAutoContd,
-        setTypewriterScrolling, setFocusLine, setWordsPerMinute,
+        setTypewriterScrolling, setFocusLine, setWordsPerMinute, setOutlineFilters,
         get editor() { return cm; }
     };
 })();
