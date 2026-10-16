@@ -298,11 +298,23 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   still print directive lines; `%#` section tokens, odd/even alternation.
   Test: `TestLayoutHeaderFooterDirectives`.
 
-### H4.2 Named markers + Jump to — `todo`
+### H4.2 Named markers + Jump to — `done`
 
 - **Reference:** Part 1 §4 (`{{%m: name}}`), §5 Tools menu
 - **Do:** Treat `{{%m}}` / `{{%m: name}}` as non-printing markers; list named
   markers in the outline; Ctrl+J jump palette (client-side filter).
+- **Landed:** with `PaginationOptions.Directives`, marker-only lines drop out
+  and inline markers are removed with the space before them
+  (`PageDirectives.StripMarkers`); null options still print them (test).
+  `DocumentAnalyzer` scans raw lines for `{{%m: name}}` (boneyard skipped) and
+  adds `Marker` outline nodes under the preceding section/scene; unnamed
+  markers are not listed; the beat board skips `Marker`. Ctrl/Cmd+J (editor
+  focused) opens a palette in `passage.js` over scenes, sections and markers
+  pushed by `setJumpTargets` after each parse; filtering is local, only the
+  chosen jump calls `OnJumpTarget`. Go To Scene (Shift+Ctrl+G) is unchanged.
+  **Verified:** 0 WebSocket frames while typing the filter; Enter landed on the
+  marker line; preview printed `More here.` for `More {{%m: …}} here.`
+  **Not done:** Insert Marker / Next Marker / Remove Markers commands.
 
 ### H4.3 Outline filters — `todo`
 

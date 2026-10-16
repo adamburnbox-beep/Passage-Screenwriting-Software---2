@@ -452,6 +452,7 @@ html, body {
 .outline-kind.k-scene { color: var(--syntax-scene); }
 .outline-kind.k-synopsis { color: var(--syntax-synopsis); }
 .outline-kind.k-note { color: var(--syntax-note); }
+.outline-kind.k-marker { color: var(--control-accent); }
 
 /* ---- Editor ---- */
 
@@ -1498,6 +1499,15 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .scene-row:hover { background: var(--surface-muted); }
+.scene-row .jump-kind {
+    display: inline-block;
+    min-width: 9ch;
+    margin-right: 8px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
 
 .scene-row.active {
     background: var(--control-accent);

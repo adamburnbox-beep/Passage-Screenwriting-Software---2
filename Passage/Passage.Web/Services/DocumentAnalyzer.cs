@@ -80,7 +80,7 @@ public sealed class DocumentAnalyzer
         SuppressCardSynopses(parsed.Elements);
 
         var lineClasses = BuildLineClasses(parsed, lineCount);
-        var outline = BuildOutline(parsed.Elements);
+        var outline = BuildOutline(parsed.Elements, FindNamedMarkers(text, lineClasses));
         var notes = parsed.Elements
             .OfType<NoteElement>()
             .Select(note => new NoteEntry(note.Description, note.LineNumber))
@@ -228,7 +228,23 @@ public sealed class DocumentAnalyzer
         return classes;
     }
 
-    private static List<OutlineNode> BuildOutline(IReadOnlyList<ScreenplayElement> elements)
+    // {{%m: name}} markers (H4.2), outside the boneyard, as (1-based line, name) in document order.
+    private static List<(int LineNumber, string Name)> FindNamedMarkers(string text, string[] lineClasses)
+    {
+        var markers = new List<(int, string)>();
+        var lines = SplitLines(text);
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (index < lineClasses.Length && lineClasses[index].Contains("sx-boneyard", StringComparison.Ordinal)) continue;
+            foreach (var name in PageDirectives.MarkerNames(lines[index]))
+            {
+                markers.Add((index + 1, name));
+            }
+        }
+        return markers;
+    }
+
+    private static List<OutlineNode> BuildOutline(IReadOnlyList<ScreenplayElement> elements, IReadOnlyList<(int LineNumber, string Name)> markers)
     {
         const int SceneStackLevel = 99;
         var roots = new List<OutlineNode>();
@@ -254,8 +270,23 @@ public sealed class DocumentAnalyzer
             }
         }
 
+        // Markers sit under whatever section or scene precedes them.
+        var nextMarker = 0;
+        void AttachMarkersBefore(int lineNumber)
+        {
+            for (; nextMarker < markers.Count && markers[nextMarker].LineNumber < lineNumber; nextMarker++)
+            {
+                Attach(new OutlineNode(markers[nextMarker].Name, "Marker", markers[nextMarker].LineNumber, new List<OutlineNode>()));
+            }
+        }
+
         foreach (var element in elements)
         {
+            if (element is SectionElement or SceneHeadingElement or SynopsisElement)
+            {
+                AttachMarkersBefore(element.LineNumber);
+            }
+
             switch (element)
             {
                 case SectionElement section:
@@ -282,6 +313,7 @@ public sealed class DocumentAnalyzer
             }
         }
 
+        AttachMarkersBefore(int.MaxValue);
         return roots;
     }
 
@@ -513,7 +545,7 @@ public sealed class DocumentAnalyzer
     {
         foreach (var node in nodes)
         {
-            if (node.Kind == "Synopsis")
+            if (node.Kind is "Synopsis" or "Marker")
             {
                 continue;
             }
