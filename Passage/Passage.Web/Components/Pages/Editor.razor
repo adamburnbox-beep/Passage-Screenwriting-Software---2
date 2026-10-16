@@ -145,6 +145,7 @@ Click New to start one — files are stored on the server volume.</div>
                 <button class="@(_sidebarTab == 0 ? "active" : null)" @onclick="() => _sidebarTab = 0">OUTLINE</button>
                 <button class="@(_sidebarTab == 1 ? "active" : null)" @onclick="() => _sidebarTab = 1">NOTES</button>
                 <button class="@(_sidebarTab == 2 ? "active" : null)" @onclick="() => _sidebarTab = 2">GOALS</button>
+                <button class="@(_sidebarTab == 3 ? "active" : null)" @onclick="() => _sidebarTab = 3">CAST</button>
             </div>
             <div class="sidebar-body">
                 @if (_sidebarTab == 0)
@@ -170,6 +171,57 @@ Click New to start one — files are stored on the server volume.</div>
                             <span class="outline-kind k-note">Note</span>
                             <span>@note.Text</span>
                         </div>
+                    }
+                }
+                else if (_sidebarTab == 3)
+                {
+                    @if (_analysis.Characters.Count == 0)
+                    {
+                        <div class="sidebar-empty">No characters in this script yet.</div>
+                    }
+                    else
+                    {
+                        <div class="character-row character-head">
+                            <span class="character-name">NAME</span>
+                            <span class="character-count">LINES</span>
+                            <span class="character-count">WORDS</span>
+                            <span class="character-actions"></span>
+                        </div>
+                    }
+                    @foreach (var character in _analysis.Characters)
+                    {
+                        var colour = CharacterColour(character.Name);
+                        <div class="character-row">
+                            <button class="character-swatch @(colour.Length == 0 ? "none" : null)"
+                                    style="@(colour.Length > 0 ? $"background:{colour}" : null)"
+                                    title="Highlight colour"
+                                    @onclick="() => ToggleColourPicker(character.Name)"></button>
+                            @if (_renamingCharacter == character.Name)
+                            {
+                                <input class="character-rename" @ref="_renameInput" @bind="_renameText" @bind:event="oninput"
+                                       @onkeydown="OnRenameKeyDown" />
+                            }
+                            else
+                            {
+                                <span class="character-name">@character.Name</span>
+                                <span class="character-count">@character.Lines</span>
+                                <span class="character-count">@character.Words</span>
+                                <button class="icon-btn character-actions" title="Rename everywhere"
+                                        @onclick="() => StartRename(character.Name)">✎</button>
+                            }
+                        </div>
+                        @if (_colourPickerFor == character.Name)
+                        {
+                            <div class="character-palette">
+                                @foreach (var swatch in Characters.Palette)
+                                {
+                                    <button class="character-swatch @(swatch == colour ? "picked" : null)" style="background:@swatch"
+                                            title="@swatch" @onclick="() => SetCharacterColourAsync(character.Name, swatch)"></button>
+                                }
+                                <button class="character-swatch none @(colour.Length == 0 ? "picked" : null)" title="No highlight"
+                                        @onclick="() => SetCharacterColourAsync(character.Name, string.Empty)"></button>
+                            </div>
+                        }
                     }
                 }
                 else
@@ -1792,7 +1844,7 @@ Open a .fountain file to see formatted pages.</div>
         Array.Empty<string>(), Array.Empty<OutlineNode>(), Array.Empty<NoteEntry>(),
         Array.Empty<PreviewPage>(), Array.Empty<BoardLane>(), 0, 0, Array.Empty<TitlePageEntry>(), 0,
         Array.Empty<ScreenplayElement>(), 0, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(),
-        Array.Empty<Bracket>());
+        Array.Empty<Bracket>(), Array.Empty<CharacterStat>(), Array.Empty<string>());
 
     private IReadOnlyList<ScriptFileEntry> _files = Array.Empty<ScriptFileEntry>();
     private string _fileName = string.Empty;
@@ -1868,6 +1920,18 @@ Open a .fountain file to see formatted pages.</div>
             try
             {
                 await _findInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        if (_focusRename)
+        {
+            _focusRename = false;
+            try
+            {
+                await _renameInput.FocusAsync();
             }
             catch (JSException)
             {
@@ -2182,6 +2246,7 @@ Open a .fountain file to see formatted pages.</div>
         UpdateCaretElementLabel();
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
         await PushSuggestionsAsync();
+        await PushCharacterHighlightsAsync();
         ScheduleAutosave();
         StateHasChanged();
     }
@@ -2257,6 +2322,7 @@ Open a .fountain file to see formatted pages.</div>
         RunAnalysis();
         UpdateCaretElementLabel();
         await JS.InvokeVoidAsync("passage.refreshHighlights", _analysis.LineClasses);
+        await PushCharacterHighlightsAsync();
     }
 
     private static string OverwriteWarning(string name) =>
@@ -2505,6 +2571,7 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
         await SyncPageRulesAsync();
         await PushSuggestionsAsync();
+        await PushCharacterHighlightsAsync();
         StateHasChanged();
     }
 
@@ -2659,6 +2726,7 @@ Open a .fountain file to see formatted pages.</div>
     {
         var version = await JS.InvokeAsync<int>("passage.setContent", _content);
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
+        await PushCharacterHighlightsAsync();
     }
 
     private void UpdateCaretElementLabel()
@@ -3277,18 +3345,10 @@ Open a .fountain file to see formatted pages.</div>
 
     private sealed record LinesOutcome(int Applied, int Skipped);
 
-    private Task AddSceneNumbersAsync() => ApplySceneNumberEditsAsync(SceneNumbers.Add(_content), "Numbered", "every scene already has a number");
-
-    private Task RemoveSceneNumbersAsync() => ApplySceneNumberEditsAsync(SceneNumbers.Remove(_content), "Removed numbers from", "no scene numbers to remove");
-
-    private async Task ApplySceneNumberEditsAsync(IReadOnlyList<SceneNumbers.LineEdit> edits, string verb, string nothingToDo)
+    // Applies line edits in the editor as one undo step and mirrors the ones
+    // that landed into _content. Null when the editor did not respond.
+    private async Task<LinesOutcome?> ApplyLineEditsAsync(IReadOnlyList<SceneNumbers.LineEdit> edits)
     {
-        if (edits.Count == 0)
-        {
-            _statusMessage = char.ToUpperInvariant(nothingToDo[0]) + nothingToDo[1..];
-            return;
-        }
-
         LinesOutcome outcome;
         try
         {
@@ -3296,8 +3356,7 @@ Open a .fountain file to see formatted pages.</div>
         }
         catch (JSException)
         {
-            _statusMessage = "Scene numbers were not changed: the editor did not respond";
-            return;
+            return null;
         }
 
         if (outcome.Applied > 0)
@@ -3312,6 +3371,152 @@ Open a .fountain file to see formatted pages.</div>
             _isDirty = true;
             RunAnalysis();
             UpdateCaretElementLabel();
+        }
+
+        return outcome;
+    }
+
+    // ---- Character panel (HIGHLAND-PLAN H3.1) ----
+
+    private string? _renamingCharacter;
+    private string _renameText = string.Empty;
+    private string? _mergeTarget;
+    private string? _colourPickerFor;
+    private ElementReference _renameInput;
+    private bool _focusRename;
+
+    private string CharacterColour(string name) =>
+        _slate.Characters.FirstOrDefault(entry => entry.Name == name)?.Colour ?? string.Empty;
+
+    private void ToggleColourPicker(string name) =>
+        _colourPickerFor = _colourPickerFor == name ? null : name;
+
+    private async Task SetCharacterColourAsync(string name, string colour)
+    {
+        _slate.Characters.RemoveAll(entry => entry.Name == name);
+        if (Characters.Palette.Contains(colour))
+        {
+            _slate.Characters.Add(new CharacterSettings { Name = name, Colour = colour });
+        }
+
+        _colourPickerFor = null;
+        SaveSlate();
+        await PushCharacterHighlightsAsync();
+    }
+
+    private void StartRename(string name)
+    {
+        _renamingCharacter = name;
+        _renameText = name;
+        _focusRename = true;
+        _mergeTarget = null;
+        _colourPickerFor = null;
+    }
+
+    private void CancelRename()
+    {
+        _renamingCharacter = null;
+        _mergeTarget = null;
+    }
+
+    private async Task OnRenameKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await RenameCharacterAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelRename();
+        }
+    }
+
+    private async Task RenameCharacterAsync()
+    {
+        if (_renamingCharacter is not { } oldName)
+        {
+            return;
+        }
+
+        var newName = _renameText.Trim();
+        var newKey = Characters.BareName(newName);
+        if (newKey.Length == 0)
+        {
+            _statusMessage = "A character needs a name";
+            return;
+        }
+
+        // Renaming onto someone already in the script merges the two, so it
+        // takes a second Enter, as Save As does before overwriting.
+        if (newKey != oldName && _analysis.Characters.Any(stat => stat.Name == newKey) && _mergeTarget != newKey)
+        {
+            _mergeTarget = newKey;
+            _statusMessage = $"{newKey} is already in the script — press Enter again to merge {oldName} into them";
+            return;
+        }
+
+        var edits = Characters.Rename(_content, _analysis.Elements, oldName, newName);
+        if (edits.Count == 0)
+        {
+            CancelRename();
+            return;
+        }
+
+        var outcome = await ApplyLineEditsAsync(edits);
+        if (outcome is null)
+        {
+            _statusMessage = $"{oldName} was not renamed: the editor did not respond";
+            return;
+        }
+
+        // The colour is copied to the new name, not moved, so undoing the
+        // rename brings the old highlight back. A merge keeps the target's.
+        var settings = _slate.Characters.FirstOrDefault(entry => entry.Name == oldName);
+        if (outcome.Applied > 0 && settings is not null && _slate.Characters.All(entry => entry.Name != newKey))
+        {
+            _slate.Characters.Add(new CharacterSettings { Name = newKey, Colour = settings.Colour });
+            SaveSlate();
+        }
+
+        CancelRename();
+        await PushCharacterHighlightsAsync();
+        _statusMessage = $"Renamed {oldName} to {newKey} on {outcome.Applied} cue{(outcome.Applied == 1 ? "" : "s")}"
+            + (outcome.Skipped > 0 ? $"; skipped {outcome.Skipped} that changed while renaming — try again" : string.Empty);
+    }
+
+    // Pushed once per parse; the client lays the marks (trap 4).
+    private async Task PushCharacterHighlightsAsync()
+    {
+        var colours = _slate.Characters
+            .Where(entry => Characters.Palette.Contains(entry.Colour))
+            .GroupBy(entry => entry.Name)
+            .ToDictionary(group => group.Key, group => group.First().Colour);
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setCharacterHighlights", _analysis.LineSpeakers, colours);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private Task AddSceneNumbersAsync() => ApplySceneNumberEditsAsync(SceneNumbers.Add(_content), "Numbered", "every scene already has a number");
+
+    private Task RemoveSceneNumbersAsync() => ApplySceneNumberEditsAsync(SceneNumbers.Remove(_content), "Removed numbers from", "no scene numbers to remove");
+
+    private async Task ApplySceneNumberEditsAsync(IReadOnlyList<SceneNumbers.LineEdit> edits, string verb, string nothingToDo)
+    {
+        if (edits.Count == 0)
+        {
+            _statusMessage = char.ToUpperInvariant(nothingToDo[0]) + nothingToDo[1..];
+            return;
+        }
+
+        var outcome = await ApplyLineEditsAsync(edits);
+        if (outcome is null)
+        {
+            _statusMessage = "Scene numbers were not changed: the editor did not respond";
+            return;
         }
 
         _statusMessage = $"{verb} {outcome.Applied} scene{(outcome.Applied == 1 ? "" : "s")}"
@@ -3540,6 +3745,8 @@ Open a .fountain file to see formatted pages.</div>
     {
         _slate = new SlateDocument();
         _slateLoadError = null;
+        _renamingCharacter = null;
+        _colourPickerFor = null;
         _handCursor = 0;
         _fillBracket = null;
         _fillRun = null;

@@ -778,6 +778,34 @@ window.passage = (function () {
         offerContdAfterParse();
     }
 
+    // Character highlighting (HIGHLAND-PLAN H3.1). speakers is per line, from
+    // the last parse; colours maps a speaker to a palette hex. Each run of
+    // lines under one coloured speaker becomes one mark, so typing inside a
+    // speech keeps its tint until the next parse re-lays them.
+    let characterMarks = [];
+
+    function setCharacterHighlights(speakers, colours) {
+        if (!cm) return;
+        const lineSpeakers = Array.isArray(speakers) ? speakers : [];
+        const lineColours = colours || {};
+        cm.operation(() => {
+            characterMarks.forEach((mark) => mark.clear());
+            characterMarks = [];
+            const last = Math.min(lineSpeakers.length, cm.lineCount()) - 1;
+            for (let start = 0; start <= last; start++) {
+                const colour = lineColours[lineSpeakers[start]];
+                if (!colour) continue;
+                let end = start;
+                while (end < last && lineSpeakers[end + 1] === lineSpeakers[start]) end++;
+                characterMarks.push(cm.markText(
+                    { line: start, ch: 0 },
+                    { line: end, ch: cm.getLine(end).length },
+                    { className: "character-highlight", css: "--character-colour: " + colour }));
+                start = end;
+            }
+        });
+    }
+
     function looksLikeSceneHeading(prefix) {
         const upper = prefix.toUpperCase();
         return upper.startsWith(".") || upper.startsWith("INT.") ||
@@ -1284,7 +1312,7 @@ window.passage = (function () {
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setCharacterHighlights, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,

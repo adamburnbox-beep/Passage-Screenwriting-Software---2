@@ -41,6 +41,18 @@ public sealed class SlateDocument
 
     // Push/Pull and Lens runs, kept by the scene or stretch they check.
     public List<ReviseRun> Revisions { get; set; } = new();
+
+    // Character panel settings (HIGHLAND-PLAN H3.1), keyed by bare cue name.
+    // Only characters given something are kept.
+    public List<CharacterSettings> Characters { get; set; } = new();
+}
+
+/// <summary>Per-character settings for one script. Colour is a palette hex,
+/// or empty for no highlight.</summary>
+public sealed class CharacterSettings
+{
+    public string Name { get; set; } = string.Empty;
+    public string Colour { get; set; } = string.Empty;
 }
 
 /// <summary>Push/Pull and Lens ("Revise — Push-Pull and Lens"): check 0

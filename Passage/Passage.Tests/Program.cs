@@ -32,6 +32,10 @@ class Program
         failures += RunTest("Test Layout Carries Scene Numbers", TestLayoutCarriesSceneNumbers);
         failures += RunTest("Test SceneNumbers Remove", TestSceneNumbersRemove);
         failures += RunTest("Test SceneNumbers Add Keeps Existing", TestSceneNumbersAddKeepsExisting);
+        failures += RunTest("Test Characters Bare Name", TestCharactersBareName);
+        failures += RunTest("Test Characters Stats And Speakers", TestCharactersStatsAndSpeakers);
+        failures += RunTest("Test Characters Rename Cues Only", TestCharactersRenameCuesOnly);
+        failures += RunTest("Test Characters Settings Round Trip", TestCharactersSettingsRoundTrip);
         failures += RunTest("Test TextAnalysis Helper Methods", TestTextAnalysisHelperMethods);
         failures += RunTest("Test BeatBoard Card Own Line Range", TestBeatBoardCardOwnLineRange);
         failures += RunTest("Test BeatBoard Nested Section Block", TestBeatBoardNestedSectionBlock);
@@ -1192,6 +1196,62 @@ class Program
             lines[edit.LineIndex] = edit.Replacement;
         }
         return string.Join('\n', lines);
+    }
+
+    // ---- Character panel (H3.1) ----
+
+    static void TestCharactersBareName()
+    {
+        Assert(Characters.BareName("SARAH (V.O.)") == "SARAH", "Extension stripped");
+        Assert(Characters.BareName("@McClane (CONT'D)") == "MCCLANE", "@ stripped, uppercased");
+        Assert(Characters.BareName("  BOB (O.S.) (CONT'D) ^") == "BOB", "Stacked extensions and ^ stripped");
+        Assert(Characters.BareName("MAN (OLD) TWO") == "MAN (OLD) TWO", "A mid-name parenthesis is part of the name");
+    }
+
+    static void TestCharactersStatsAndSpeakers()
+    {
+        var content = "INT. ROOM - DAY\n\nSARAH\nHello there.\n\nBOB (V.O.)\n(quietly)\nHi.\n\nSARAH (CONT'D)\nThree more words.\n\nSarah waves.";
+        var analysis = new DocumentAnalyzer().Analyze(content);
+        var sarah = analysis.Characters.Single(stat => stat.Name == "SARAH");
+        var bob = analysis.Characters.Single(stat => stat.Name == "BOB");
+        Assert(analysis.Characters.Count == 2, $"Extensions do not make new characters, got {string.Join(", ", analysis.Characters.Select(c => c.Name))}");
+        Assert(sarah.Lines == 2 && sarah.Words == 5, $"SARAH: 2 speeches, 5 words; got {sarah.Lines}/{sarah.Words}");
+        Assert(bob.Lines == 1 && bob.Words == 1, $"BOB: parenthetical not counted; got {bob.Lines}/{bob.Words}");
+        Assert(analysis.Characters[0].Name == "SARAH", "Most speeches first");
+
+        var speakers = analysis.LineSpeakers;
+        Assert(speakers[2] == "SARAH" && speakers[3] == "SARAH", "Cue and dialogue lines belong to the speaker");
+        Assert(speakers[5] == "BOB" && speakers[6] == "BOB" && speakers[7] == "BOB", "Parenthetical is inside the block");
+        Assert(speakers[0] == "" && speakers[4] == "" && speakers[12] == "", "Heading, blank and action lines have no speaker");
+    }
+
+    static void TestCharactersRenameCuesOnly()
+    {
+        var content = "SARAH\nBob, wait.\n\nBOB (V.O.)\nSARAH is here.\n\n@BOB (CONT'D) ^\nStill me.\n\nBob leaves.";
+        var analysis = new DocumentAnalyzer().Analyze(content);
+        var result = ApplyEdits(content, Characters.Rename(content, analysis.Elements, "BOB", "Robert"));
+        Assert(result == "SARAH\nBob, wait.\n\nROBERT (V.O.)\nSARAH is here.\n\n@ROBERT (CONT'D) ^\nStill me.\n\nBob leaves.",
+            $"Rename rewrites cues only and keeps @, extensions and ^, got:\n{result}");
+        Assert(Characters.Rename(content, analysis.Elements, "NOBODY", "X").Count == 0, "Unknown name renames nothing");
+        Assert(Characters.Rename(content, analysis.Elements, "BOB", "  ").Count == 0, "Blank name renames nothing");
+    }
+
+    static void TestCharactersSettingsRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            document.Characters.Add(new CharacterSettings { Name = "SARAH", Colour = Characters.Palette[0] });
+            store.Save("draft", document);
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Characters.Count == 1 && loaded.Characters[0].Name == "SARAH" && loaded.Characters[0].Colour == Characters.Palette[0],
+                "Character colour survives a save and load");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
     }
 
     static void TestSceneNumbersRemove()
