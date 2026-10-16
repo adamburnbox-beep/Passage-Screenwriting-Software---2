@@ -76,6 +76,8 @@ class Program
         failures += RunTest("Test FDX Export Paragraph Types", TestFdxExportParagraphTypes);
         failures += RunTest("Test Page Directives Parse", TestPageDirectivesParse);
         failures += RunTest("Test Layout Header Footer Directives", TestLayoutHeaderFooterDirectives);
+        failures += RunTest("Test Layout Strips Markers", TestLayoutStripsMarkers);
+        failures += RunTest("Test Outline Lists Named Markers", TestOutlineListsNamedMarkers);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -1661,5 +1663,35 @@ class Program
         {
             File.Delete(pdfPath);
         }
+    }
+
+    // ---- Markers (H4.2) ----
+
+    static void TestLayoutStripsMarkers()
+    {
+        var parsed = new FountainParser().Parse("INT. HOUSE - DAY\n\n{{%m: Midpoint}}\n\nShe waits {{%m}} by the door.\n{{%m}}\nThen leaves.\n\n{{%m}} Last.");
+        var legacy = ScreenplayLayoutBuilder.BuildPages(parsed).bodyPages.SelectMany(p => p.Lines).ToList();
+        Assert(legacy.Any(l => l.Text.Contains("{{%m")), "Without options markers still print (desktop unchanged)");
+
+        var lines = ScreenplayLayoutBuilder.BuildPages(parsed, new PaginationOptions()).bodyPages
+            .SelectMany(p => p.Lines).Where(l => !l.IsBlank).Select(l => l.Text).ToList();
+        Assert(lines.All(l => !l.Contains("{{")), "Markers never print: " + string.Join(" | ", lines));
+        Assert(lines.SequenceEqual(new[] { "INT. HOUSE - DAY", "She waits by the door.", "Then leaves.", "Last." }),
+            "Marker-only lines vanish and inline markers leave no gap: " + string.Join(" | ", lines));
+        Assert(PageDirectives.MarkerNames("a {{%m: One}} b {{%m}} {{ %m : Two }}").SequenceEqual(new[] { "One", "Two" }), "Named markers only");
+    }
+
+    static void TestOutlineListsNamedMarkers()
+    {
+        var text = "{{%m: Cold open}}\n\nINT. HOUSE - DAY\n\nAction.\n\n{{%m: Midpoint}}\n\n{{%m}}\n\n/*\n{{%m: Cut}}\n*/\n\nEXT. YARD - DAY\n\nMore. {{%m: Inline}}";
+        var analysis = new DocumentAnalyzer().Analyze(text);
+        var outline = analysis.Outline;
+        Assert(outline.Count == 3, $"Expected marker + 2 scenes at the root, got {outline.Count}");
+        Assert(outline[0] is { Kind: "Marker", Label: "Cold open", LineNumber: 1 }, $"First root: {outline[0]}");
+        Assert(outline[1].Children.Count == 1 && outline[1].Children[0] is { Kind: "Marker", Label: "Midpoint", LineNumber: 7 },
+            "Midpoint sits under the first scene; the unnamed and boneyard markers are not listed");
+        Assert(outline[2].Children.Count == 1 && outline[2].Children[0].Label == "Inline", "An inline named marker is listed");
+        var cards = analysis.BoardLanes.SelectMany(l => l.Groups).SelectMany(g => g.Cards).ToList();
+        Assert(cards.Count == 2 && cards.All(c => c.Kind == "Scene"), "Markers never become board cards");
     }
 }

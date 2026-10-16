@@ -224,7 +224,7 @@ public static class ScreenplayLayoutBuilder
                 textOverride = remaining;
             }
 
-            if (TryCreateRenderableBlock(element, out var block, textOverride))
+            if (TryCreateRenderableBlock(element, out var block, textOverride, stripMarkers: directives))
             {
                 blocks.Add(pending is null ? block : block with { Directives = pending });
                 pending = null;
@@ -239,7 +239,7 @@ public static class ScreenplayLayoutBuilder
         return blocks;
     }
 
-    // Moves the whole-line directives out of text; remaining is what is left to print.
+    // Moves the whole-line directives (and marker-only lines) out of text; remaining is what is left to print.
     private static bool TakeDirectiveLines(string text, ref List<PageDirectives.Directive>? into, out string remaining)
     {
         remaining = text;
@@ -254,6 +254,10 @@ public static class ScreenplayLayoutBuilder
                 (into ??= []).Add(directive);
                 found = true;
             }
+            else if (PageDirectives.IsMarkerLine(line))
+            {
+                found = true;
+            }
             else
             {
                 kept.Add(line);
@@ -264,7 +268,7 @@ public static class ScreenplayLayoutBuilder
         return found;
     }
 
-    private static bool TryCreateRenderableBlock(ScreenplayElement element, out RenderBlock block, string? textOverride = null)
+    private static bool TryCreateRenderableBlock(ScreenplayElement element, out RenderBlock block, string? textOverride = null, bool stripMarkers = false)
     {
         block = default;
         string text;
@@ -318,6 +322,7 @@ public static class ScreenplayLayoutBuilder
                 break;
         }
 
+        if (stripMarkers) text = PageDirectives.StripMarkers(text);
         if (string.IsNullOrWhiteSpace(text)) return false;
 
         block = new RenderBlock(element.Type, text, style, x, maxChars, element is CharacterElement { IsDualDialogue: true }, (element as SceneHeadingElement)?.SceneNumber);

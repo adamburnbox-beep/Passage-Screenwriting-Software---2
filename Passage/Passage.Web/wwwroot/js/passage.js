@@ -277,6 +277,109 @@ window.passage = (function () {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnGoToSceneShortcut");
     }
 
+    // Jump to (HIGHLAND-PLAN H4.2): scenes, sections and named markers from the
+    // last parse, filtered here so typing never round-trips (trap 4). Only the
+    // chosen jump goes to the server, which also switches back to the script.
+    let jumpTargets = [];
+    let jumpPalette = null;
+
+    function setJumpTargets(targets) {
+        jumpTargets = Array.isArray(targets) ? targets : [];
+    }
+
+    function openJumpPalette() {
+        if (jumpPalette) return;
+        const backdrop = document.createElement("div");
+        backdrop.className = "modal-backdrop";
+        backdrop.innerHTML =
+            '<div class="modal modal-tall jump-palette" role="dialog" aria-label="Jump to">' +
+            "<h3>Jump To</h3>" +
+            '<input type="text" placeholder="Filter scenes, sections, markers..." />' +
+            '<div class="scene-list"></div>' +
+            "</div>";
+        const input = backdrop.querySelector("input");
+        const list = backdrop.querySelector(".scene-list");
+        let matches = [];
+        let selected = 0;
+
+        function render() {
+            const query = input.value.trim().toLowerCase();
+            matches = query.length === 0
+                ? jumpTargets
+                : jumpTargets.filter((target) => target.label.toLowerCase().includes(query));
+            selected = Math.max(0, Math.min(selected, matches.length - 1));
+            list.replaceChildren();
+            if (matches.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "sidebar-empty";
+                empty.textContent = jumpTargets.length === 0
+                    ? "No scenes, sections or named markers in this script."
+                    : "Nothing matches that filter.";
+                list.appendChild(empty);
+                return;
+            }
+            matches.forEach((target, index) => {
+                const row = document.createElement("div");
+                row.className = "scene-row" + (index === selected ? " active" : "");
+                const kind = document.createElement("span");
+                kind.className = "jump-kind";
+                kind.textContent = target.kind;
+                row.append(kind, document.createTextNode(target.label));
+                row.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    choose(index);
+                });
+                list.appendChild(row);
+            });
+            const active = list.children[selected];
+            if (active) active.scrollIntoView({ block: "nearest" });
+        }
+
+        function close() {
+            backdrop.remove();
+            jumpPalette = null;
+        }
+
+        function choose(index) {
+            const target = matches[index];
+            close();
+            if (!target) {
+                if (cm) cm.focus();
+                return;
+            }
+            if (dotnetRef) dotnetRef.invokeMethodAsync("OnJumpTarget", target.line);
+            else scrollToLine(target.line);
+        }
+
+        input.addEventListener("input", () => {
+            selected = 0;
+            render();
+        });
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowDown") selected = Math.min(selected + 1, matches.length - 1);
+            else if (event.key === "ArrowUp") selected = Math.max(selected - 1, 0);
+            else if (event.key === "Enter") choose(selected);
+            else if (event.key === "Escape") {
+                close();
+                if (cm) cm.focus();
+            }
+            else return;
+            event.preventDefault();
+            if (jumpPalette) render();
+        });
+        backdrop.addEventListener("mousedown", (event) => {
+            if (event.target === backdrop) {
+                close();
+                if (cm) cm.focus();
+            }
+        });
+
+        document.body.appendChild(backdrop);
+        jumpPalette = backdrop;
+        render();
+        input.focus();
+    }
+
     function scrollIntoView(selector) {
         const el = document.querySelector(selector);
         if (el) el.scrollIntoView({ block: "nearest" });
@@ -360,6 +463,8 @@ window.passage = (function () {
                 "Cmd-G": goToLine,
                 "Shift-Ctrl-G": goToScene,
                 "Shift-Cmd-G": goToScene,
+                "Ctrl-J": openJumpPalette,
+                "Cmd-J": openJumpPalette,
                 "Ctrl-F": openFind,
                 "Cmd-F": openFind,
                 "Ctrl-H": openReplace,
@@ -1385,7 +1490,7 @@ window.passage = (function () {
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setCharacterHighlights, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setJumpTargets, openJumpPalette, setCharacterHighlights, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,

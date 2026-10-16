@@ -24,7 +24,7 @@ namespace Passage.Export;
 /// <param name="Directives">
 /// With <paramref name="KeepTogether"/>, whole-line <c>{{HEADER: …}}</c> / <c>{{FOOTER: …}}</c>
 /// directives print nothing and set <see cref="LayoutPage.Header"/> / <see cref="LayoutPage.Footer"/>
-/// from the page they land on (<see cref="PageDirectives"/>).
+/// from the page they land on (<see cref="PageDirectives"/>); <c>{{%m}}</c> markers print nothing.
 /// </param>
 public sealed record PaginationOptions(
     bool KeepTogether = true,

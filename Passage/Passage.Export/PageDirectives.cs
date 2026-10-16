@@ -21,7 +21,7 @@ public sealed record PageSlots(string Left, string Center, string Right)
 }
 
 /// <summary>
-/// <c>{{HEADER: a | b | c}}</c> / <c>{{FOOTER: …}}</c> lines. Used only by the opt-in
+/// <c>{{HEADER: a | b | c}}</c> / <c>{{FOOTER: …}}</c> lines and <c>{{%m}}</c> markers. Used only by the opt-in
 /// pagination path (<see cref="PaginationOptions.Directives"/>); without options they print
 /// as the action lines the parser reads them as.
 /// </summary>
@@ -31,6 +31,28 @@ public static partial class PageDirectives
 
     [GeneratedRegex(@"^\s*\{\{\s*(HEADER|FOOTER)\s*:(.*)\}\}\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex DirectivePattern();
+
+    // {{%m}} or {{%m: name}}, with the spaces before it (after it at a line start), so
+    // "a {{%m}} b" prints "a b" and "{{%m}} b" prints "b".
+    [GeneratedRegex(@"^[ \t]*\{\{\s*%m\s*(?::[^}]*)?\}\}[ \t]*|[ \t]*\{\{\s*%m\s*(?::[^}]*)?\}\}", RegexOptions.Multiline)]
+    private static partial Regex MarkerPattern();
+
+    [GeneratedRegex(@"\{\{\s*%m\s*:\s*([^}]*?)\s*\}\}")]
+    private static partial Regex NamedMarkerPattern();
+
+    /// <summary>The names of the named markers in a line; <c>{{%m}}</c> has none.</summary>
+    public static IEnumerable<string> MarkerNames(string line) => line.Contains("{{", StringComparison.Ordinal)
+        ? NamedMarkerPattern().Matches(line).Select(match => match.Groups[1].Value).Where(name => name.Length > 0)
+        : [];
+
+    /// <summary>A line holding nothing but markers.</summary>
+    public static bool IsMarkerLine(string line) => line.Contains("{{", StringComparison.Ordinal)
+        && MarkerPattern().IsMatch(line) && MarkerPattern().Replace(line, string.Empty).Trim().Length == 0;
+
+    /// <summary>Removes markers, which never print, from text.</summary>
+    public static string StripMarkers(string text) => text.Contains("{{", StringComparison.Ordinal)
+        ? MarkerPattern().Replace(text, string.Empty)
+        : text;
 
     /// <summary>
     /// Parses a whole line. One slot goes right in a header and centre in a footer; two slots

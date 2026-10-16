@@ -2345,6 +2345,7 @@ Open a .fountain file to see formatted pages.</div>
         UpdateCaretElementLabel();
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
         await PushSuggestionsAsync();
+        await PushJumpTargetsAsync();
         await PushCharacterHighlightsAsync();
         ScheduleAutosave();
         StateHasChanged();
@@ -2670,6 +2671,7 @@ Open a .fountain file to see formatted pages.</div>
         await JS.InvokeVoidAsync("passage.applyHighlights", version, _analysis.LineClasses);
         await SyncPageRulesAsync();
         await PushSuggestionsAsync();
+        await PushJumpTargetsAsync();
         await PushCharacterHighlightsAsync();
         StateHasChanged();
     }
@@ -2690,6 +2692,40 @@ Open a .fountain file to see formatted pages.</div>
         catch (JSException)
         {
         }
+    }
+
+    // The Jump to palette (Ctrl+J, H4.2) filters in passage.js, so the outline's
+    // scenes, sections and named markers go to the client once per parse.
+    private async Task PushJumpTargetsAsync()
+    {
+        var targets = new List<object>();
+        void Collect(IEnumerable<OutlineNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.Kind is not ("Synopsis" or "Note"))
+                {
+                    targets.Add(new { label = node.Label, kind = node.Kind, line = node.LineNumber });
+                }
+                Collect(node.Children);
+            }
+        }
+        Collect(_analysis.Outline);
+
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setJumpTargets", targets);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnJumpTarget(int lineNumber)
+    {
+        await JumpToLineAsync(lineNumber);
+        StateHasChanged();
     }
 
     private async Task SyncPageRulesAsync()
@@ -5343,6 +5379,7 @@ Open a .fountain file to see formatted pages.</div>
         "Scene" => "k-scene",
         "Synopsis" => "k-synopsis",
         "Note" => "k-note",
+        "Marker" => "k-marker",
         _ => "k-act"
     };
 
