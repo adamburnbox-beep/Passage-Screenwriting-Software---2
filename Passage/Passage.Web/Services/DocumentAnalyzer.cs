@@ -282,7 +282,7 @@ public sealed class DocumentAnalyzer
 
         foreach (var element in elements)
         {
-            if (element is SectionElement or SceneHeadingElement or SynopsisElement)
+            if (element is SectionElement or SceneHeadingElement or SynopsisElement or NoteElement)
             {
                 AttachMarkersBefore(element.LineNumber);
             }
@@ -308,6 +308,12 @@ public sealed class DocumentAnalyzer
                 case SynopsisElement synopsis:
                 {
                     Attach(new OutlineNode(synopsis.Description, "Synopsis", synopsis.LineNumber, new List<OutlineNode>()));
+                    break;
+                }
+                case NoteElement note:
+                {
+                    // Hidden by default; the OUTLINE filters (H4.3) can show them.
+                    Attach(new OutlineNode(note.Description, "Note", note.LineNumber, new List<OutlineNode>()));
                     break;
                 }
             }
@@ -545,7 +551,7 @@ public sealed class DocumentAnalyzer
     {
         foreach (var node in nodes)
         {
-            if (node.Kind is "Synopsis" or "Marker")
+            if (node.Kind is "Synopsis" or "Marker" or "Note")
             {
                 continue;
             }

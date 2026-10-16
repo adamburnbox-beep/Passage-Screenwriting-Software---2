@@ -156,11 +156,23 @@ Click New to start one — files are stored on the server volume.</div>
             <div class="sidebar-body">
                 @if (_sidebarTab == 0)
                 {
+                    var visibleOutline = _outlineFilters.Apply(_analysis.Outline);
+                    <div class="outline-filters">
+                        <label><input type="checkbox" checked="@_outlineFilters.Sections" @onchange="e => SetOutlineFiltersAsync(_outlineFilters with { Sections = IsChecked(e) })" /> Sections</label>
+                        <label><input type="checkbox" checked="@_outlineFilters.Scenes" @onchange="e => SetOutlineFiltersAsync(_outlineFilters with { Scenes = IsChecked(e) })" /> Scenes</label>
+                        <label><input type="checkbox" checked="@_outlineFilters.Synopses" @onchange="e => SetOutlineFiltersAsync(_outlineFilters with { Synopses = IsChecked(e) })" /> Synopses</label>
+                        <label><input type="checkbox" checked="@_outlineFilters.Notes" @onchange="e => SetOutlineFiltersAsync(_outlineFilters with { Notes = IsChecked(e) })" /> Notes</label>
+                        <label><input type="checkbox" checked="@_outlineFilters.Markers" @onchange="e => SetOutlineFiltersAsync(_outlineFilters with { Markers = IsChecked(e) })" /> Markers</label>
+                    </div>
                     @if (_analysis.Outline.Count == 0)
                     {
                         <div class="sidebar-empty">@OutlineEmptyMessage</div>
                     }
-                    @foreach (var node in _analysis.Outline)
+                    else if (visibleOutline.Count == 0)
+                    {
+                        <div class="sidebar-empty">Everything in the outline is filtered out.</div>
+                    }
+                    @foreach (var node in visibleOutline)
                     {
                         @RenderOutlineNode(node)
                     }
@@ -2212,6 +2224,8 @@ Open a .fountain file to see formatted pages.</div>
 
         public int WordsPerMinute { get; init; } = Passage.Core.TextAnalysis.DefaultWordsPerMinute;
 
+        public OutlineFilters? OutlineFilters { get; init; }
+
         // "Classify As" overrides ride in the session key, per row 3.2's note
         // that they are session state rather than file content.
         public Dictionary<string, string>? LineOverrides { get; init; }
@@ -2281,6 +2295,7 @@ Open a .fountain file to see formatted pages.</div>
         _typewriterScrolling = snapshot.TypewriterScrolling;
         _focusLine = snapshot.FocusLine;
         _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
+        _outlineFilters = snapshot.OutlineFilters ?? new OutlineFilters();
 
         // Prune entries the server no longer has rather than erroring on click.
         _recentFiles.Clear();
@@ -3873,6 +3888,23 @@ Open a .fountain file to see formatted pages.</div>
         try
         {
             await JS.InvokeVoidAsync("passage.setFocusLine", _focusLine);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    // OUTLINE filters (H4.3): per browser, in the session key like the view toggles.
+    private OutlineFilters _outlineFilters = new();
+
+    private static bool IsChecked(ChangeEventArgs args) => args.Value is true;
+
+    private async Task SetOutlineFiltersAsync(OutlineFilters filters)
+    {
+        _outlineFilters = filters;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setOutlineFilters", filters);
         }
         catch (JSException)
         {

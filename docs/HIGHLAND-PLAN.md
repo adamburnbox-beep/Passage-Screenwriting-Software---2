@@ -316,11 +316,20 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   marker line; preview printed `More here.` for `More {{%m: …}} here.`
   **Not done:** Insert Marker / Next Marker / Remove Markers commands.
 
-### H4.3 Outline filters — `todo`
+### H4.3 Outline filters — `done`
 
 - **Reference:** Part 1 §6 (Navigator), §15 (filter list)
 - **Do:** Toggle visibility of sections, scenes, synopses, notes, markers in
   the outline; persist per browser.
+- **Landed:** five checkboxes at the top of the OUTLINE tab.
+  `Services/OutlineFilters.cs` decides visibility (any kind that is not a scene,
+  synopsis, note or marker counts as a section, including Markdown headings);
+  a hidden node's visible children take its place, so hiding sections still
+  lists scenes. Notes (`[[…]]`) are now `Note` outline nodes, hidden by
+  default so the default outline is unchanged; the beat board and Jump To skip
+  them. Stored as `outlineFilters` in `passage.session.v1`; missing keys fall
+  back to the defaults. **Verified:** toggling Sections off / Notes on in the
+  running app reshaped the outline and survived a reload.
 
 ### H4.4 Revision mode — `todo` · needs a design decision first
 
