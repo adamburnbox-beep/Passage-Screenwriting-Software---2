@@ -105,7 +105,7 @@ offers the next colour in sequence; the user may pick another.
 
 On screen, paper tints (Buff, Goldenrod, Pink) are illegible as text colour,
 so marks render as a **left-gutter bar plus right-margin `*`** in an
-accessible tint per colour, light and dark tokens in `app.css`; the colour
+accessible tint per colour, light and dark tokens in `wwwroot/css/app.css`; the colour
 name shows on hover. Text colour is never changed.
 
 ## PDF stars
