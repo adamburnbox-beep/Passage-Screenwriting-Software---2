@@ -205,7 +205,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
 
 ## Tier H3 — Writer tools
 
-### H3.1 Character panel: list, rename, highlight — `todo`
+### H3.1 Character panel: list, rename, highlight — `done`
 
 - **Reference:** teardown Part 1 §6 (Character panel, Character Highlighting)
 - **Passage:** Analyzer (unique character names already collected for 3.4);
@@ -216,6 +216,20 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   CodeMirror mark on that character's dialogue blocks (client-side). Persist
   colours per document using the existing per-document store pattern.
 - **Success:** rename is a single undo step; highlights survive reload.
+- **Landed:** sidebar tab **CAST** (CHARACTERS clipped at sidebar width).
+  `Services/Characters.cs`: `Build` gives per-speaker stats and per-line
+  speakers to `DocumentAnalysis` (`Characters`, `LineSpeakers`); names are
+  compared bare (`@`, `^`, any trailing `(…)` stripped, uppercased). Lines =
+  speeches (one per cue); words exclude parentheticals. `Rename` returns
+  `SceneNumbers.LineEdit`s for cue lines only, applied through `replaceLines`
+  (one `cm.operation`, one undo); the new name is uppercased, since the shared
+  parser only reads all-caps cues — `@Mixed` case cues are not cues today.
+  Renaming onto an existing character merges after a second Enter. Colours:
+  10-swatch pastel palette, stored as `SlateDocument.Characters` (name +
+  colour) in the per-script sidecar; a rename copies the colour rather than
+  moving it, so undo keeps the old highlight. Highlights are CodeMirror
+  `markText` runs laid by `passage.setCharacterHighlights` after each parse,
+  tinted 35% via `color-mix`. H3.2's gender tag belongs on `CharacterSettings`.
 
 ### H3.2 Dialogue balance report (gender analysis) — `todo` · depends on H3.1
 

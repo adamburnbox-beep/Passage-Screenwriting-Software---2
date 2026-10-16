@@ -1692,3 +1692,29 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--muted-text);
     padding: 4px 10px 6px;
 }
+
+/* Character panel (HIGHLAND-PLAN H3.1) */
+.character-row {
+    display: grid;
+    grid-template-columns: 16px 1fr 40px 48px 22px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--secondary-text);
+}
+.character-row:not(.character-head):hover { background: var(--surface-raised); }
+.character-head { font-size: 9.5px; letter-spacing: 0.14em; color: var(--muted-text); }
+.character-head .character-name { grid-column: 2; }
+.character-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-count { text-align: right; font-variant-numeric: tabular-nums; }
+.character-rename { grid-column: 2 / -1; min-width: 0; font: inherit; padding: 2px 6px; background: var(--control-background); color: var(--control-foreground); border: 1px solid var(--control-border); border-radius: 6px; }
+.character-row .icon-btn { background: transparent; border: none; color: var(--muted-text); cursor: pointer; padding: 0; }
+.character-row .icon-btn:hover { color: var(--control-foreground); }
+.character-swatch { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1px solid var(--control-border); cursor: pointer; }
+.character-swatch.none { background: transparent; }
+.character-swatch.picked { outline: 2px solid var(--control-accent); outline-offset: 1px; }
+.character-palette { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px 30px; }
+/* Translucent so dialogue stays readable on dark and light editor themes. */
+.character-highlight { background: color-mix(in srgb, var(--character-colour) 35%, transparent); }

@@ -48,7 +48,11 @@ public sealed record DocumentAnalysis(
     string[] SuggestionKinds,
     // Slate placeholders, ranked. Derived on every parse and never stored
     // (docs/SLATE-PLAN.md, decision B).
-    IReadOnlyList<Bracket> Brackets);
+    IReadOnlyList<Bracket> Brackets,
+    // The character panel (H3.1): speakers by speeches, and per line the
+    // speaker whose block covers it, for the client-side highlight marks.
+    IReadOnlyList<CharacterStat> Characters,
+    string[] LineSpeakers);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -85,6 +89,7 @@ public sealed class DocumentAnalyzer
         CollectSuggestions(parsed.Elements, out var sceneHeadings, out var characters);
         var wordCount = TextAnalysis.CountWords(text);
         var pageCount = previewPages.Count(page => !page.IsTitlePage);
+        var (characterStats, lineSpeakers) = Characters.Build(parsed.Elements, lineCount);
 
         return new DocumentAnalysis(
             lineClasses,
@@ -101,7 +106,9 @@ public sealed class DocumentAnalyzer
             sceneHeadings,
             characters,
             BuildSuggestionKinds(parsed, text, lineCount),
-            BracketScanner.Scan(text));
+            BracketScanner.Scan(text),
+            characterStats,
+            lineSpeakers);
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
@@ -166,7 +173,9 @@ public sealed class DocumentAnalyzer
             Array.Empty<string>(),
             Array.Empty<string>(),
             Array.Empty<string>(),
-            BracketScanner.Scan(text));
+            BracketScanner.Scan(text),
+            Array.Empty<CharacterStat>(),
+            Array.Empty<string>());
     }
 
     private static string[] BuildLineClasses(ParsedScreenplay parsed, int lineCount)
