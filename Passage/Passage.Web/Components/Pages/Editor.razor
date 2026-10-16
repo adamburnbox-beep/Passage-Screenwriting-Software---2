@@ -3840,11 +3840,9 @@ Open a .fountain file to see formatted pages.</div>
         ? _analysis.PageCount
         : Passage.Core.TextAnalysis.EstimateReadingMinutes(_analysis.WordCount, _wordsPerMinute);
 
-    private string ReadingTimeDisplay => ReadingMinutes switch
-    {
-        < 60 and var minutes => $"~{minutes} min read",
-        var minutes => $"~{minutes / 60} h {minutes % 60} min read"
-    };
+    private string ReadingTimeDisplay => ReadingMinutes >= 60
+        ? $"~{ReadingMinutes / 60} h {ReadingMinutes % 60} min read"
+        : $"~{ReadingMinutes} min read";
 
     private string ReadingTimeTitle => IsScreenplayMode
         ? "Screen time: about one minute per page"
