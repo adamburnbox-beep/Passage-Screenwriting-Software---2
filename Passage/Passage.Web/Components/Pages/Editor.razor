@@ -1608,6 +1608,14 @@ Open a .fountain file to see formatted pages.</div>
         <span>@_caretElementLabel</span>
         <span>~@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s")</span>
         <span>@_analysis.WordCount.ToString("N0") words</span>
+        <span title="@ReadingTimeTitle">@ReadingTimeDisplay</span>
+        @if (!IsScreenplayMode)
+        {
+            <label class="status-wpm" title="Reading speed, words per minute">
+                <input type="number" min="@MinWordsPerMinute" max="@MaxWordsPerMinute" step="10"
+                       @bind="_wordsPerMinute" @bind:after="ApplyWordsPerMinuteAsync" /> wpm
+            </label>
+        }
         @if (ShapeLine.Derive(_analysis.BoardLanes) is { } shapeLine)
         {
             <span class="shape-line" title="@ShapeLine.Legend">@shapeLine</span>
@@ -2187,6 +2195,8 @@ Open a .fountain file to see formatted pages.</div>
 
         public bool FocusLine { get; init; }
 
+        public int WordsPerMinute { get; init; } = Passage.Core.TextAnalysis.DefaultWordsPerMinute;
+
         // "Classify As" overrides ride in the session key, per row 3.2's note
         // that they are session state rather than file content.
         public Dictionary<string, string>? LineOverrides { get; init; }
@@ -2255,6 +2265,7 @@ Open a .fountain file to see formatted pages.</div>
         _workshopOpen = snapshot.WorkshopOpen;
         _typewriterScrolling = snapshot.TypewriterScrolling;
         _focusLine = snapshot.FocusLine;
+        _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
 
         // Prune entries the server no longer has rather than erroring on click.
         _recentFiles.Clear();
@@ -3811,6 +3822,40 @@ Open a .fountain file to see formatted pages.</div>
         try
         {
             await JS.InvokeVoidAsync("passage.setFocusLine", _focusLine);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    // Reading time (H3.4). Screenplays read at one page a minute off the page
+    // estimate; Markdown divides words by a per-browser reading speed.
+    private const int MinWordsPerMinute = 50;
+
+    private const int MaxWordsPerMinute = 1000;
+
+    private int _wordsPerMinute = Passage.Core.TextAnalysis.DefaultWordsPerMinute;
+
+    private int ReadingMinutes => IsScreenplayMode
+        ? _analysis.PageCount
+        : Passage.Core.TextAnalysis.EstimateReadingMinutes(_analysis.WordCount, _wordsPerMinute);
+
+    private string ReadingTimeDisplay => ReadingMinutes switch
+    {
+        < 60 and var minutes => $"~{minutes} min read",
+        var minutes => $"~{minutes / 60} h {minutes % 60} min read"
+    };
+
+    private string ReadingTimeTitle => IsScreenplayMode
+        ? "Screen time: about one minute per page"
+        : $"Reading time at {_wordsPerMinute} words per minute";
+
+    private async Task ApplyWordsPerMinuteAsync()
+    {
+        _wordsPerMinute = Math.Clamp(_wordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setWordsPerMinute", _wordsPerMinute);
         }
         catch (JSException)
         {

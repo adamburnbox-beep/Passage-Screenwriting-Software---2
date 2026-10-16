@@ -815,6 +815,15 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .statusbar .spacer { flex: 1; }
 .statusbar .status-message { color: var(--secondary-text); }
+.statusbar .status-wpm input {
+    width: 4.5em;
+    padding: 0 2px;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--surface-border);
+    border-radius: 3px;
+}
 
 /* ---- Modals ---- */
 

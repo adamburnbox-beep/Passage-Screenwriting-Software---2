@@ -258,7 +258,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   persisted in the `passage.session.v1` localStorage key (WEB-PARITY 1.1).
 - **Success:** no layout jank on long documents; toggles survive reload.
 
-### H3.4 Reading time — `todo`
+### H3.4 Reading time — `done`
 
 - **Reference:** Part 1 §6 (Statistics pane)
 - **Passage:** `Passage/Passage.Core/TextAnalysis.cs`, stats display in
@@ -267,6 +267,10 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   1 minute (use the existing page estimate); Markdown: words ÷ a configurable
   words-per-minute (default 230). Web-only display; do not change
   `TextAnalysis` outputs used by desktop (add a new method).
+- **Shipped:** `TextAnalysis.EstimateReadingMinutes` (new; existing methods
+  untouched) rounds words ÷ wpm up. The status bar shows `~N min read` after
+  the word count; screenplays use the page estimate. In Markdown mode a `wpm`
+  field beside it sets the speed (50–1000), kept per browser in the session key.
 
 ---
 

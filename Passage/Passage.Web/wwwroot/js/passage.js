@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, typewriterScrolling: false, focusLine: false };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -883,6 +883,12 @@ window.passage = (function () {
         scheduleSessionSave();
     }
 
+    // Markdown reading speed for the status bar's reading time; Blazor clamps it.
+    function setWordsPerMinute(wordsPerMinute) {
+        session.wordsPerMinute = wordsPerMinute;
+        scheduleSessionSave();
+    }
+
     function applyViewToggles() {
         if (!cm) return;
         const wrapper = cm.getWrapperElement();
@@ -1384,7 +1390,7 @@ window.passage = (function () {
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
         getAutoContd, setAutoContd,
-        setTypewriterScrolling, setFocusLine,
+        setTypewriterScrolling, setFocusLine, setWordsPerMinute,
         get editor() { return cm; }
     };
 })();

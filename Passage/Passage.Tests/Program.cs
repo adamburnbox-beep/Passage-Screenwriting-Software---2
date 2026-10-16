@@ -1400,6 +1400,13 @@ class Program
 
         var mixedcaseName = "Mary";
         Assert(!TextAnalysis.IsUppercaseLike(mixedcaseName), "Mary should not be uppercase like");
+
+        Assert(TextAnalysis.EstimateReadingMinutes(0) == 0, "No words should take no time");
+        Assert(TextAnalysis.EstimateReadingMinutes(1) == 1, "Any words should round up to a minute");
+        Assert(TextAnalysis.EstimateReadingMinutes(230) == 1, "230 words at the default 230 wpm is one minute");
+        Assert(TextAnalysis.EstimateReadingMinutes(231) == 2, "231 words at 230 wpm rounds up to two minutes");
+        Assert(TextAnalysis.EstimateReadingMinutes(1000, 100) == 10, "1000 words at 100 wpm is ten minutes");
+        Assert(TextAnalysis.EstimateReadingMinutes(500, 0) == 0, "A non-positive rate should not divide by zero");
     }
 
     // ---- ScreenplayLayoutBuilder pagination (Passage.Export, HIGHLAND-PLAN H1.1) ----
