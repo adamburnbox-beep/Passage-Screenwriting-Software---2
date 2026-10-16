@@ -84,6 +84,12 @@ Click New to start one — files are stored on the server volume.</div>
             <label class="toggle" title="Offer (CONT'D) when the same character speaks again after action">
                 <input type="checkbox" @bind="_autoContdEnabled" @bind:after="ApplyAutoContdAsync" /> CONT'D
             </label>
+            <label class="toggle" title="Keep the line you are typing on centred in the editor">
+                <input type="checkbox" @bind="_typewriterScrolling" @bind:after="ApplyTypewriterScrollingAsync" /> TYPEWRITER
+            </label>
+            <label class="toggle" title="Highlight the line the caret is on">
+                <input type="checkbox" @bind="_focusLine" @bind:after="ApplyFocusLineAsync" /> FOCUS
+            </label>
             <button class="btn" @onclick="RequestNewFile">New</button>
             <button class="btn primary" @onclick="SaveAsync">Save</button>
             <details class="menu">
@@ -2177,6 +2183,10 @@ Open a .fountain file to see formatted pages.</div>
 
         public bool WorkshopOpen { get; init; }
 
+        public bool TypewriterScrolling { get; init; }
+
+        public bool FocusLine { get; init; }
+
         // "Classify As" overrides ride in the session key, per row 3.2's note
         // that they are session state rather than file content.
         public Dictionary<string, string>? LineOverrides { get; init; }
@@ -2243,6 +2253,8 @@ Open a .fountain file to see formatted pages.</div>
         _editorFontPx = Math.Clamp(snapshot.EditorFontPx, MinEditorFontPx, MaxEditorFontPx);
         _previewZoom = Math.Clamp(snapshot.PreviewZoom, MinPreviewZoom, MaxPreviewZoom);
         _workshopOpen = snapshot.WorkshopOpen;
+        _typewriterScrolling = snapshot.TypewriterScrolling;
+        _focusLine = snapshot.FocusLine;
 
         // Prune entries the server no longer has rather than erroring on click.
         _recentFiles.Clear();
@@ -3771,6 +3783,34 @@ Open a .fountain file to see formatted pages.</div>
         try
         {
             await JS.InvokeVoidAsync("passage.setAutoContd", _autoContdEnabled);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    // Typewriter scrolling and the focus line run entirely in passage.js, which
+    // keeps both in the session key; the server only mirrors the checkboxes.
+    private bool _typewriterScrolling;
+
+    private bool _focusLine;
+
+    private async Task ApplyTypewriterScrollingAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setTypewriterScrolling", _typewriterScrolling);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task ApplyFocusLineAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setFocusLine", _focusLine);
         }
         catch (JSException)
         {

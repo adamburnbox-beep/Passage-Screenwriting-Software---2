@@ -506,6 +506,9 @@ html, body {
 }
 
 .CodeMirror-lines { padding: 40px 0; }
+/* Typewriter scrolling: room below the last line so it can sit centred. */
+.CodeMirror.typewriter .CodeMirror-lines { padding-bottom: 50vh; }
+.CodeMirror .focus-line { background: var(--surface-muted); }
 
 .CodeMirror pre.CodeMirror-line,
 .CodeMirror pre.CodeMirror-line-like {
