@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340 };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, typewriterScrolling: false, focusLine: false };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -105,6 +105,7 @@ window.passage = (function () {
             if (!stored || typeof stored !== "object") return null;
             session = Object.assign(session, stored);
             applyWorkshopWidth();
+            applyViewToggles();
             return session;
         } catch (e) {
             return null;
@@ -379,6 +380,9 @@ window.passage = (function () {
             reportCaret();
         });
         cm.on("cursorActivity", reportCaret);
+        cm.on("cursorActivity", onViewCursorActivity);
+        cm.getWrapperElement().addEventListener("mousedown", () => { lastInputWasPointer = true; }, true);
+        cm.getWrapperElement().addEventListener("keydown", () => { lastInputWasPointer = false; }, true);
         cm.on("changes", updatePageRules);
         cm.on("refresh", updatePageRules);
 
@@ -858,6 +862,69 @@ window.passage = (function () {
         };
     }
 
+    // ---- Typewriter scrolling and focus line (teardown section 15) ----
+    //
+    // Client-side only (trap 4): both run on cursorActivity, which CodeMirror
+    // fires once per operation, so a keystroke costs one scroll and one line
+    // class move however long the script is. The toggles live in the session
+    // key; Blazor reads them back from the loadSession snapshot.
+    let lastInputWasPointer = false;
+    let focusLineHandle = null;
+
+    function setTypewriterScrolling(enabled) {
+        session.typewriterScrolling = !!enabled;
+        applyViewToggles();
+        scheduleSessionSave();
+    }
+
+    function setFocusLine(enabled) {
+        session.focusLine = !!enabled;
+        applyViewToggles();
+        scheduleSessionSave();
+    }
+
+    function applyViewToggles() {
+        if (!cm) return;
+        const wrapper = cm.getWrapperElement();
+        const typewriter = !!session.typewriterScrolling;
+        if (wrapper.classList.contains("typewriter") !== typewriter) {
+            // The bottom padding changes the document height, which
+            // CodeMirror only measures on refresh.
+            wrapper.classList.toggle("typewriter", typewriter);
+            cm.refresh();
+        }
+        lastInputWasPointer = false;
+        onViewCursorActivity();
+    }
+
+    function onViewCursorActivity() {
+        updateFocusLine();
+        // A click places the caret where the writer is looking; re-centring
+        // would yank that text out from under the pointer. Typing or
+        // keyboard movement after the click centres again.
+        if (session.typewriterScrolling && !lastInputWasPointer) centreCaret();
+    }
+
+    function centreCaret() {
+        const caret = cm.cursorCoords(null, "window");
+        const scroller = cm.getScrollerElement().getBoundingClientRect();
+        const delta = (caret.top + caret.bottom) / 2 - (scroller.top + scroller.height / 2);
+        if (Math.abs(delta) < 1) return;
+        cm.scrollTo(null, cm.getScrollInfo().top + delta);
+    }
+
+    // Hidden while text is selected: the line background would paint over the
+    // selection on that line, and a selection already marks where you are.
+    function updateFocusLine() {
+        const handle = session.focusLine && !cm.somethingSelected()
+            ? cm.getLineHandle(cm.getCursor().line)
+            : null;
+        if (handle === focusLineHandle) return;
+        if (focusLineHandle) cm.removeLineClass(focusLineHandle, "background", "focus-line");
+        if (handle) cm.addLineClass(handle, "background", "focus-line");
+        focusLineHandle = handle;
+    }
+
     // ---- Auto-(CONT'D) (teardown section 13) ----
     //
     // Client-side only (trap 4). Reads the element types the last parse already
@@ -1317,6 +1384,7 @@ window.passage = (function () {
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
         getAutoContd, setAutoContd,
+        setTypewriterScrolling, setFocusLine,
         get editor() { return cm; }
     };
 })();

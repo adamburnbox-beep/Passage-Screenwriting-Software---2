@@ -249,7 +249,7 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
   speakers add one to their tag pair. Colours: Female `--syntax-character`,
   Male `--syntax-scene`, Unspecified `--muted-text`. No PDF.
 
-### H3.3 Typewriter scrolling and focus line — `todo`
+### H3.3 Typewriter scrolling and focus line — `done`
 
 - **Reference:** teardown §15 (editor view settings)
 - **Passage:** `passage.js`
