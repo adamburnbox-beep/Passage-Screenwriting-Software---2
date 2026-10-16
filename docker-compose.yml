@@ -2,6 +2,8 @@ services:
   passage:
     build: .
     image: passage-web:latest
+    # Always build on the host; the image is never published to a registry.
+    pull_policy: build
     container_name: passage
     ports:
       # Host port 8095 to stay clear of common NAS services (e.g. Nginx Proxy
