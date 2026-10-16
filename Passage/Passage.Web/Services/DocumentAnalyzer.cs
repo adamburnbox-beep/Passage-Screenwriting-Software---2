@@ -10,7 +10,8 @@ public sealed record NoteEntry(string Text, int LineNumber);
 
 public sealed record PreviewLine(string Text, LayoutTextStyle Style, double IndentChars, string? SceneNumber = null);
 
-public sealed record PreviewPage(IReadOnlyList<PreviewLine> Lines, int PageNumber, bool IsTitlePage);
+// Header null = the default page number; Footer null = none ({{HEADER}} / {{FOOTER}} directives, H4.1).
+public sealed record PreviewPage(IReadOnlyList<PreviewLine> Lines, int PageNumber, bool IsTitlePage, PageSlots? Header = null, PageSlots? Footer = null);
 
 public sealed record BoardCard(string Heading, string Kind, string Description, int LineNumber, List<BoardCard> Children, Guid Id = default);
 
@@ -298,7 +299,7 @@ public sealed class DocumentAnalyzer
                     Math.Max(0, (line.X - ScreenplayLayoutBuilder.MarginLeft) / ScreenplayLayoutBuilder.CharWidth),
                     line.SceneNumber))
                 .ToList();
-            pages.Add(new PreviewPage(lines, page.PageNumber, page.IsTitlePage));
+            pages.Add(new PreviewPage(lines, page.PageNumber, page.IsTitlePage, page.Header, page.Footer));
         }
 
         return pages;

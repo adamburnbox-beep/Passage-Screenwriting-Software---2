@@ -21,9 +21,15 @@ namespace Passage.Export;
 /// </param>
 /// <param name="MoreText">Written at the cue indent at the bottom of the page.</param>
 /// <param name="ContinuedText">Appended, after a space, to the cue repeated on the next page.</param>
+/// <param name="Directives">
+/// With <paramref name="KeepTogether"/>, whole-line <c>{{HEADER: …}}</c> / <c>{{FOOTER: …}}</c>
+/// directives print nothing and set <see cref="LayoutPage.Header"/> / <see cref="LayoutPage.Footer"/>
+/// from the page they land on (<see cref="PageDirectives"/>).
+/// </param>
 public sealed record PaginationOptions(
     bool KeepTogether = true,
     int OverflowLines = 1,
     bool MoreAndContinued = true,
     string MoreText = "(MORE)",
-    string ContinuedText = "(CONT'D)");
+    string ContinuedText = "(CONT'D)",
+    bool Directives = true);
