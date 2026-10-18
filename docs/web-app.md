@@ -20,6 +20,10 @@ PDF/text export behave identically.
 - **Outline sidebar** — Acts / Sequences / Scenes / Synopses, click to jump.
 - **Notes sidebar** — every `[[note]]` with jump-to-line.
 - **Beat Board** — read-only index cards mirroring the script structure.
+- **Beat Sheet** — plan beats on a page grid (target length, default 110
+  pages): double-click to add, drag to move or resize, park ideas in the
+  unassigned tray. A read-only script track shows where each scene actually
+  lands. Beats live in the per-script Slate sidecar, never the `.fountain`.
 - **Page preview** — paginated US-Letter pages rendered from the same layout
   engine the PDF exporter uses, with zoom.
 - **Exports** — PDF, plain text, and raw `.fountain` downloads.

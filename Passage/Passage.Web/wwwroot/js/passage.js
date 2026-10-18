@@ -501,6 +501,7 @@ window.passage = (function () {
         });
 
         document.addEventListener("dragover", trackDropSide, true);
+        document.addEventListener("pointerdown", startBeatGesture);
 
         cm.getWrapperElement().addEventListener("contextmenu", (event) => {
             event.preventDefault();
@@ -783,6 +784,197 @@ window.passage = (function () {
 
     function dropIsAfter() {
         return dropAfter;
+    }
+
+    // ---- Beat Sheet: drag-move and resize ----
+    //
+    // Both gestures run entirely here and send one result to the server when
+    // the pointer is released: OnBeatMoved(id, page) with page 0 meaning the
+    // tray, or OnBeatResized(id, span). Nothing round-trips while dragging.
+    // The clamps mirror BeatSheet.ClampMove / BeatSheet.Clamp; the server's
+    // are the truth.
+    const BEAT_DRAG_THRESHOLD = 4;
+    const BEAT_EDGE_SCROLL = 48;
+
+    function beatColumnAt(grid, clientX) {
+        const first = grid.querySelector(".beat-column");
+        const width = first ? first.getBoundingClientRect().width : 0;
+        if (width <= 0) return 1;
+        return Math.floor((clientX - grid.getBoundingClientRect().left) / width) + 1;
+    }
+
+    function pointIn(element, event) {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        return event.clientX >= rect.left && event.clientX <= rect.right
+            && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    }
+
+    // A click follows the pointerup that ends a drag; swallow it so the
+    // dropped beat does not also open its editor.
+    function swallowNextClick() {
+        const swallow = (event) => { event.stopPropagation(); event.preventDefault(); };
+        window.addEventListener("click", swallow, { capture: true, once: true });
+        setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
+    }
+
+    // Scrolls the grid while the pointer is held near its left or right
+    // edge, re-running the gesture's move so the target follows the scroll.
+    // Returns a function that stops it.
+    function startEdgeScroll(surface, onScroll) {
+        let last = null;
+        let frame = 0;
+        const tick = () => {
+            frame = requestAnimationFrame(tick);
+            if (!surface || !last) return;
+            const rect = surface.getBoundingClientRect();
+            const before = surface.scrollLeft;
+            if (last.clientX < rect.left + BEAT_EDGE_SCROLL) surface.scrollLeft -= 16;
+            else if (last.clientX > rect.right - BEAT_EDGE_SCROLL) surface.scrollLeft += 16;
+            if (surface.scrollLeft !== before) onScroll(last);
+        };
+        frame = requestAnimationFrame(tick);
+        return {
+            track(event) { last = event; },
+            stop() { cancelAnimationFrame(frame); }
+        };
+    }
+
+    // Capture can fail if the pointer is already gone; the gesture still
+    // works from the card's own events, just less tightly.
+    function capturePointer(card, down) {
+        try { card.setPointerCapture(down.pointerId); } catch { }
+    }
+
+    function startBeatGesture(down) {
+        if (down.button !== 0 || !dotnetRef || !down.target.closest) return;
+        const card = down.target.closest(".beat-card");
+        const grid = document.querySelector(".beats-grid");
+        if (!card || !grid) return;
+
+        const id = card.dataset.beatId;
+        const columns = Number(grid.dataset.columns) || 1;
+        const page = Number(card.dataset.page) || 0;
+        const span = Math.max(1, Number(card.dataset.span) || 1);
+
+        if (down.target.closest(".beat-resize") && page > 0) {
+            down.preventDefault();
+            resizeBeat(down, card, grid, id, columns, page, span);
+            return;
+        }
+
+        moveBeat(down, card, grid, id, columns, page, span);
+    }
+
+    function resizeBeat(down, card, grid, id, columns, page, span) {
+        const original = card.style.gridColumn;
+        const surface = document.querySelector(".beats-surface");
+        let next = span;
+        capturePointer(card, down);
+        card.classList.add("resizing");
+
+        const update = (event) => {
+            next = Math.min(Math.max(1, beatColumnAt(grid, event.clientX) - page + 1), columns - page + 1);
+            card.style.gridColumn = page + " / span " + next;
+        };
+        const scroller = startEdgeScroll(surface, update);
+        const move = (event) => { scroller.track(event); update(event); };
+        const up = (event) => {
+            scroller.stop();
+            card.removeEventListener("pointermove", move);
+            card.removeEventListener("pointerup", up);
+            card.removeEventListener("pointercancel", up);
+            card.classList.remove("resizing");
+            swallowNextClick();
+            if (event.type === "pointercancel" || next === span) {
+                card.style.gridColumn = original;
+                return;
+            }
+            dotnetRef.invokeMethodAsync("OnBeatResized", id, next);
+        };
+        card.addEventListener("pointermove", move);
+        card.addEventListener("pointerup", up);
+        card.addEventListener("pointercancel", up);
+    }
+
+    function moveBeat(down, card, grid, id, columns, page, span) {
+        const tray = document.querySelector(".beats-tray");
+        const surface = document.querySelector(".beats-surface");
+        // Grabbing a long beat by its third page keeps that page under the pointer.
+        const grabOffset = page > 0 ? beatColumnAt(grid, down.clientX) - page : 0;
+        const fit = Math.min(span, columns);
+        let ghost = null;
+        let hint = null;
+        let target = null;
+
+        let scroller = null;
+
+        const clear = () => {
+            if (scroller) scroller.stop();
+            if (ghost) ghost.remove();
+            if (hint) hint.remove();
+            card.classList.remove("dragging");
+            if (tray) tray.classList.remove("drop-target");
+        };
+
+        const move = (event) => {
+            if (!ghost) {
+                if (Math.abs(event.clientX - down.clientX) < BEAT_DRAG_THRESHOLD
+                    && Math.abs(event.clientY - down.clientY) < BEAT_DRAG_THRESHOLD) return;
+                const rect = card.getBoundingClientRect();
+                ghost = card.cloneNode(true);
+                ghost.classList.add("beat-ghost");
+                ghost.style.width = rect.width + "px";
+                ghost.dataset.dx = String(down.clientX - rect.left);
+                ghost.dataset.dy = String(down.clientY - rect.top);
+                document.body.appendChild(ghost);
+                hint = document.createElement("div");
+                hint.className = "beat-drop-hint";
+                card.classList.add("dragging");
+                scroller = startEdgeScroll(surface, place);
+            }
+
+            ghost.style.left = (event.clientX - Number(ghost.dataset.dx)) + "px";
+            ghost.style.top = (event.clientY - Number(ghost.dataset.dy)) + "px";
+            scroller.track(event);
+            place(event);
+        };
+
+        const place = (event) => {
+            if (pointIn(tray, event)) {
+                target = 0;
+                tray.classList.add("drop-target");
+                hint.remove();
+            } else if (pointIn(surface, event)) {
+                const start = Math.min(Math.max(1, beatColumnAt(grid, event.clientX) - grabOffset), columns - fit + 1);
+                target = start;
+                if (tray) tray.classList.remove("drop-target");
+                hint.style.gridColumn = start + " / span " + fit;
+                if (!hint.parentNode) grid.appendChild(hint);
+            } else {
+                target = null;
+                if (tray) tray.classList.remove("drop-target");
+                hint.remove();
+            }
+        };
+
+        const up = (event) => {
+            card.removeEventListener("pointermove", move);
+            card.removeEventListener("pointerup", up);
+            card.removeEventListener("pointercancel", up);
+            const dragged = !!ghost;
+            clear();
+            if (!dragged) return;
+            swallowNextClick();
+            if (event.type === "pointercancel" || target === null) return;
+            if (target === page || (target === 0 && page === 0)) return;
+            dotnetRef.invokeMethodAsync("OnBeatMoved", id, target);
+        };
+
+        capturePointer(card, down);
+        card.addEventListener("pointermove", move);
+        card.addEventListener("pointerup", up);
+        card.addEventListener("pointercancel", up);
     }
 
     // ---- Page-break rules ----
