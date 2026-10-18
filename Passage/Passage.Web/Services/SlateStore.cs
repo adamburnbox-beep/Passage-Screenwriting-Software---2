@@ -45,6 +45,24 @@ public sealed class SlateDocument
     // Character panel settings (HIGHLAND-PLAN H3.1), keyed by bare cue name.
     // Only characters given something are kept.
     public List<CharacterSettings> Characters { get; set; } = new();
+
+    // The Beat Sheet view. Planning only: beats never touch the script, and
+    // list order is the tray order and the tie-break when beats stack.
+    public List<Beat> Beats { get; set; } = new();
+    public int BeatSheetPages { get; set; } = BeatSheet.DefaultTargetPages;
+}
+
+/// <summary>One beat on the Beat Sheet. Page 0 means unassigned (the tray);
+/// otherwise the beat covers Page through Page + Span - 1. Colour is a
+/// <see cref="Characters.Palette"/> hex, or empty.</summary>
+public sealed class Beat
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title { get; set; } = string.Empty;
+    public string Colour { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int Page { get; set; }
+    public int Span { get; set; } = 1;
 }
 
 /// <summary>Per-character settings for one script. Colour is a palette hex,

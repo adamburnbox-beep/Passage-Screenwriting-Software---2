@@ -66,7 +66,8 @@ Click New to start one — files are stored on the server volume.</div>
         <nav class="view-tabs">
             <button class="@(_mainViewIndex == 0 ? "active" : null)" @onclick="() => SetMainView(0)">SCRIPT</button>
             <button class="@(_mainViewIndex == 1 ? "active" : null)" @onclick="() => SetMainView(1)">BOARD</button>
-            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">PREVIEW</button>
+            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">BEATS</button>
+            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">PREVIEW</button>
         </nav>
 
         <div class="topbar-actions">
@@ -494,6 +495,84 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                 }
             }
             else if (_mainViewIndex == 2)
+            {
+                @if (!IsScreenplayMode)
+                {
+                    <div class="board-empty">The Beat Sheet works in Screenplay mode.
+Open a .fountain file to plan beats against its pages.</div>
+                }
+                else
+                {
+                    var beatColumns = BeatColumns;
+                    var beatStack = BeatSheet.Stack(_slate.Beats);
+                    var beatRows = beatStack.Select(item => item.Row + 1).DefaultIfEmpty(0).Max() + 1;
+                    var scenes = BeatScenes;
+                    var actPages = _beatActs.ToLookup(act => act.Page);
+                    var unplacedScenes = scenes.Count(scene => scene.Page == 0);
+                    <div class="beats-view">
+                    <div class="preview-toolbar beats-toolbar">
+                        <span>@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s") written</span>
+                        <label class="beats-target">Target
+                            <input type="number" class="burst-seconds" min="1" max="@BeatSheet.MaxTargetPages"
+                                   @bind="_slate.BeatSheetPages" @bind:after="SetBeatTarget" /> pages</label>
+                        <span>Double-click a page to add a beat</span>
+                        @if (unplacedScenes > 0)
+                        {
+                            <span class="beats-warning">@unplacedScenes scene@(unplacedScenes == 1 ? "" : "s") could not be placed on a page</span>
+                        }
+                    </div>
+                    @if (_editingBeat is not null)
+                    {
+                        @RenderBeatEditor(_editingBeat)
+                    }
+                    <div class="beats-tray" title="Double-click to jot down an unassigned beat"
+                         @ondblclick="() => AddBeat(0)">
+                        @foreach (var beat in _slate.Beats.Where(beat => beat.Page == 0))
+                        {
+                            @RenderBeat((beat, null))
+                        }
+                        @if (!_slate.Beats.Any(beat => beat.Page == 0))
+                        {
+                            <span class="beats-tray-hint">Unassigned beats</span>
+                        }
+                    </div>
+                    <div class="beats-surface">
+                        <div class="beats-grid" data-columns="@beatColumns"
+                             style="grid-template-columns:repeat(@beatColumns, var(--beat-col));grid-template-rows:auto repeat(@beatRows, minmax(64px, auto)) auto">
+                            @for (var column = 1; column <= beatColumns; column++)
+                            {
+                                var acts = actPages[column].ToList();
+                                var columnPage = column;
+                                <div class="beat-column @(column % 10 == 0 ? "tenth" : null) @(acts.Count > 0 ? "act-break" : null) @(column > _analysis.PageCount ? "unwritten" : null)"
+                                     style="grid-column:@column;grid-row:1 / -1" data-page="@column"
+                                     @ondblclick="() => AddBeat(columnPage)">
+                                    <div class="beat-page-number">@column</div>
+                                    @foreach (var act in acts)
+                                    {
+                                        <div class="beat-act" title="@act.Heading">@act.Heading</div>
+                                    }
+                                </div>
+                            }
+                            @foreach (var (beat, row) in beatStack)
+                            {
+                                @RenderBeat((beat, row))
+                            }
+                            @foreach (var pageScenes in scenes.Where(scene => scene.Page > 0 && scene.Page <= beatColumns).GroupBy(scene => scene.Page))
+                            {
+                                <div class="beat-track" style="grid-column:@pageScenes.Key;grid-row:-2 / -1">
+                                    @foreach (var scene in pageScenes)
+                                    {
+                                        <button class="beat-scene" title="@scene.Heading (line @scene.LineNumber)"
+                                                @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    </div>
+                }
+            }
+            else if (_mainViewIndex == 3)
             {
                 @if (!IsScreenplayMode)
                 {
@@ -1817,6 +1896,20 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_deleteBeat is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Delete Beat</h3>
+            <p>This removes the beat "@(_deleteBeat.Title.Length > 0 ? _deleteBeat.Title : "Untitled beat")" from the beat sheet. The script is not changed. Continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _deleteBeat = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmDeleteBeat">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_titlePageOpen)
 {
     <div class="modal-backdrop">
@@ -2022,6 +2115,18 @@ Open a .fountain file to see formatted pages.</div>
             try
             {
                 await _findInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        if (_focusBeatTitle)
+        {
+            _focusBeatTitle = false;
+            try
+            {
+                await _beatTitleInput.FocusAsync();
             }
             catch (JSException)
             {
@@ -2915,6 +3020,188 @@ Open a .fountain file to see formatted pages.</div>
     {
         _mainViewIndex = 0;
         await JS.InvokeVoidAsync("passage.scrollToLine", lineNumber);
+    }
+
+    // ---- Beat Sheet ----
+    //
+    // Beats live in the Slate sidecar, never the script. The script track is
+    // derived from the parse on demand and cached per analysis, so typing in
+    // SCRIPT pays nothing for it.
+
+    private DocumentAnalysis? _beatScenesFor;
+    private IReadOnlyList<ScenePlacement> _beatScenes = Array.Empty<ScenePlacement>();
+    private IReadOnlyList<ActBreak> _beatActs = Array.Empty<ActBreak>();
+
+    // The grid never shrinks under a placed beat: trimming the script or the
+    // target must not hide planning that is still saved.
+    private int BeatColumns => Math.Max(
+        BeatSheet.Columns(_analysis.PageCount, _slate.BeatSheetPages),
+        BeatSheet.LastBeatPage(_slate.Beats));
+
+    private static string BeatStyle(Beat beat, int? row)
+    {
+        var style = row is { } gridRow ? $"grid-column:{beat.Page} / span {beat.Span};grid-row:{gridRow + 2};" : string.Empty;
+        return beat.Colour.Length > 0 ? style + $"--beat-colour:{beat.Colour}" : style;
+    }
+
+    private IReadOnlyList<ScenePlacement> BeatScenes
+    {
+        get
+        {
+            if (!ReferenceEquals(_beatScenesFor, _analysis))
+            {
+                _beatScenesFor = _analysis;
+                _beatScenes = BeatSheet.MapScenes(_analysis.Elements, _analysis.PreviewPages);
+                _beatActs = BeatSheet.ActBreaks(_analysis.Elements, _beatScenes);
+            }
+
+            return _beatScenes;
+        }
+    }
+
+    // ---- Beat Sheet: add, edit, delete ----
+    //
+    // Every change saves the sidecar straight away, as the Slate tools do.
+    // Edits go through Save/Cancel like the Board's card editor.
+
+    private Beat? _editingBeat;
+    private string _beatEditTitle = string.Empty;
+    private string _beatEditDescription = string.Empty;
+    private string _beatEditColour = string.Empty;
+    private ElementReference _beatTitleInput;
+    private bool _focusBeatTitle;
+    private Beat? _deleteBeat;
+
+    // Page 0 adds to the tray.
+    private void AddBeat(int page)
+    {
+        var beat = new Beat();
+        if (page > 0)
+        {
+            (beat.Page, beat.Span) = BeatSheet.Clamp(page, 1, BeatColumns);
+        }
+
+        _slate.Beats.Add(beat);
+        SaveSlate();
+        StartBeatEdit(beat);
+    }
+
+    private void StartBeatEdit(Beat beat)
+    {
+        _editingBeat = beat;
+        _beatEditTitle = beat.Title;
+        _beatEditDescription = beat.Description;
+        _beatEditColour = beat.Colour;
+        _focusBeatTitle = true;
+    }
+
+    private void SaveBeatEdit()
+    {
+        if (_editingBeat is not { } beat)
+        {
+            return;
+        }
+
+        beat.Title = _beatEditTitle.Trim();
+        beat.Description = _beatEditDescription.Trim();
+        beat.Colour = Characters.Palette.Contains(_beatEditColour) ? _beatEditColour : string.Empty;
+        _editingBeat = null;
+        SaveSlate();
+    }
+
+    private void CancelBeatEdit() => _editingBeat = null;
+
+    private void OnBeatEditKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            SaveBeatEdit();
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelBeatEdit();
+        }
+    }
+
+    private void RequestDeleteBeat(Beat beat) => _deleteBeat = beat;
+
+    private void ConfirmDeleteBeat()
+    {
+        var beat = _deleteBeat;
+        _deleteBeat = null;
+        if (beat is null || !_slate.Beats.Remove(beat))
+        {
+            return;
+        }
+
+        if (_editingBeat == beat)
+        {
+            _editingBeat = null;
+        }
+
+        SaveSlate();
+        _statusMessage = $"Deleted beat \"{(beat.Title.Length > 0 ? beat.Title : "Untitled beat")}\"";
+    }
+
+    // ---- Beat Sheet: drag-move and resize ----
+    //
+    // The gesture runs in passage.js (trap 4); these receive only the result.
+    // The browser clamps the same way, but the server's clamp is the truth.
+
+    [JSInvokable]
+    public void OnBeatMoved(Guid id, int page)
+    {
+        if (FindBeat(id) is not { } beat)
+        {
+            return;
+        }
+
+        if (page <= 0)
+        {
+            // Into the tray, at the end of it, keeping its span for when it
+            // goes back on the grid.
+            beat.Page = 0;
+            _slate.Beats.Remove(beat);
+            _slate.Beats.Add(beat);
+        }
+        else
+        {
+            (beat.Page, beat.Span) = BeatSheet.ClampMove(page, beat.Span, BeatColumns);
+        }
+
+        SaveSlate();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnBeatResized(Guid id, int span)
+    {
+        if (FindBeat(id) is not { Page: > 0 } beat)
+        {
+            return;
+        }
+
+        (beat.Page, beat.Span) = BeatSheet.Clamp(beat.Page, span, BeatColumns);
+        SaveSlate();
+        StateHasChanged();
+    }
+
+    private Beat? FindBeat(Guid id)
+    {
+        var beat = _slate.Beats.FirstOrDefault(candidate => candidate.Id == id);
+        if (beat is null)
+        {
+            _statusMessage = "That beat is no longer on the beat sheet";
+            StateHasChanged();
+        }
+
+        return beat;
+    }
+
+    private void SetBeatTarget()
+    {
+        _slate.BeatSheetPages = Math.Clamp(_slate.BeatSheetPages, 1, BeatSheet.MaxTargetPages);
+        SaveSlate();
     }
 
     // ---- Beat Board: drag to reorder ----
@@ -4010,6 +4297,8 @@ Open a .fountain file to see formatted pages.</div>
     {
         _slate = new SlateDocument();
         _slateLoadError = null;
+        _editingBeat = null;
+        _deleteBeat = null;
         _renamingCharacter = null;
         _colourPickerFor = null;
         _handCursor = 0;
@@ -5420,6 +5709,56 @@ Open a .fountain file to see formatted pages.</div>
         var local = utc.ToLocalTime();
         return local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("d MMM");
     }
+
+    // A beat on the grid (Row set) or in the tray (Row null). Placement is
+    // CSS grid lines, so the browser can move and resize it without a round
+    // trip; only the result is sent back (trap 4).
+    private RenderFragment<(Beat Beat, int? Row)> RenderBeat => item => __builder =>
+    {
+        var beat = item.Beat;
+        <div class="beat-card @(_editingBeat == beat ? "selected" : null)"
+             data-beat-id="@beat.Id" data-page="@beat.Page" data-span="@beat.Span"
+             style="@BeatStyle(beat, item.Row)"
+             @onclick="() => StartBeatEdit(beat)"
+             @ondblclick:stopPropagation="true">
+            <div class="beat-title">@(beat.Title.Length > 0 ? beat.Title : "Untitled beat")</div>
+            @if (beat.Description.Length > 0)
+            {
+                <div class="beat-body">@beat.Description</div>
+            }
+            @if (item.Row is not null)
+            {
+                <div class="beat-resize" title="Drag to change how many pages this beat spans"></div>
+            }
+        </div>
+    };
+
+    // The popover editor. Same controls and tokens as the Board's card editor;
+    // colours are the Cast panel's palette.
+    private RenderFragment<Beat> RenderBeatEditor => beat => __builder =>
+    {
+        <div class="board-card editing beat-editor">
+            <div class="card-kind">@(beat.Page > 0 ? (beat.Span > 1 ? $"Pages {beat.Page}–{beat.Page + beat.Span - 1}" : $"Page {beat.Page}") : "Unassigned")</div>
+            <input class="card-heading-input" @ref="_beatTitleInput" @bind="_beatEditTitle" @bind:event="oninput"
+                   @onkeydown="OnBeatEditKeyDown" placeholder="Beat" />
+            <textarea class="card-body-input" rows="3" @bind="_beatEditDescription" @bind:event="oninput"
+                      placeholder="What happens"></textarea>
+            <div class="beat-palette">
+                @foreach (var swatch in Characters.Palette)
+                {
+                    <button class="character-swatch @(swatch == _beatEditColour ? "picked" : null)" style="background:@swatch"
+                            title="@swatch" @onclick="() => _beatEditColour = swatch"></button>
+                }
+                <button class="character-swatch none @(_beatEditColour.Length == 0 ? "picked" : null)" title="No colour"
+                        @onclick="() => _beatEditColour = string.Empty"></button>
+            </div>
+            <div class="card-edit-actions">
+                <button class="btn" @onclick="() => RequestDeleteBeat(beat)">Delete</button>
+                <button class="btn" @onclick="CancelBeatEdit">Cancel</button>
+                <button class="btn primary" @onclick="SaveBeatEdit">Save</button>
+            </div>
+        </div>
+    };
 
     private RenderFragment<OutlineNode> RenderOutlineNode => node => __builder =>
     {

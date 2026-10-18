@@ -79,6 +79,10 @@ class Program
         failures += RunTest("Test Layout Strips Markers", TestLayoutStripsMarkers);
         failures += RunTest("Test Outline Lists Named Markers", TestOutlineListsNamedMarkers);
         failures += RunTest("Test Outline Filters", TestOutlineFilters);
+        failures += RunTest("Test BeatSheet Sidecar Round Trip", TestBeatSheetSidecarRoundTrip);
+        failures += RunTest("Test BeatSheet Clamping", TestBeatSheetClamping);
+        failures += RunTest("Test BeatSheet Stacking", TestBeatSheetStacking);
+        failures += RunTest("Test BeatSheet Scene Pages Match Preview", TestBeatSheetScenePagesMatchPreview);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -1726,5 +1730,138 @@ class Program
 
         var restored = JsonSerializer.Deserialize<OutlineFilters>("{\"scenes\":false}", new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         Assert(!restored.Scenes && restored.Sections && !restored.Notes && restored.Markers, "Missing keys in the stored session fall back to defaults");
+    }
+
+    // ---- Beat Sheet (Passage.Web) ----
+
+    static void TestBeatSheetSidecarRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument { BeatSheetPages = 95 };
+            var midpoint = new Beat { Title = "Midpoint", Colour = "#f2c46d", Description = "False victory.\nShe wins the wrong fight.", Page = 55, Span = 3 };
+            var loose = new Beat { Title = "Maybe a dog?", Page = 0, Span = 2 };
+            document.Beats.Add(midpoint);
+            document.Beats.Add(loose);
+            store.Save("draft", document);
+
+            var loaded = store.Load("draft")!;
+            Assert(loaded.BeatSheetPages == 95, "The target length round-trips");
+            Assert(loaded.Beats.Count == 2, "Both beats round-trip");
+            var first = loaded.Beats[0];
+            Assert(first.Id == midpoint.Id && first.Title == "Midpoint" && first.Colour == "#f2c46d"
+                && first.Description == midpoint.Description && first.Page == 55 && first.Span == 3,
+                "A placed beat keeps its id, title, colour, description, page and span");
+            Assert(loaded.Beats[1].Id == loose.Id && loaded.Beats[1].Page == 0 && loaded.Beats[1].Span == 2,
+                "An unassigned beat stays in the tray and keeps its span, in list order");
+
+            // A sidecar written before the Beat Sheet existed has neither key.
+            File.WriteAllText(Path.Combine(root, ".slate", "old.fountain.json"), "{ \"SlateVersion\": 1, \"IgnoredBrackets\": [\"[x]\"] }");
+            var old = store.Load("old")!;
+            Assert(old.Beats.Count == 0 && old.BeatSheetPages == BeatSheet.DefaultTargetPages && old.IgnoredBrackets.Count == 1,
+                "An older sidecar loads with no beats and the default target, keeping its other data");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestBeatSheetClamping()
+    {
+        Assert(BeatSheet.Columns(21, 110) == 110, "A short script gets the target length of columns");
+        Assert(BeatSheet.Columns(130, 110) == 130, "A long script widens the grid past the target");
+        Assert(BeatSheet.Columns(0, 0) == 1, "The grid always has at least one column");
+
+        Assert(BeatSheet.Clamp(0, 1, 110) == (1, 1), "No beat starts before page 1");
+        Assert(BeatSheet.Clamp(-5, 3, 110) == (1, 3), "A negative start clamps to page 1 and keeps its span");
+        Assert(BeatSheet.Clamp(200, 1, 110) == (110, 1), "No beat starts past the last column");
+        Assert(BeatSheet.Clamp(3, 0, 110) == (3, 1), "A span is at least one page");
+        Assert(BeatSheet.Clamp(108, 10, 110) == (108, 3), "A resize never runs past the last column");
+        Assert(BeatSheet.Clamp(110, 4, 110) == (110, 1), "A beat on the last column spans only that column");
+
+        Assert(BeatSheet.ClampMove(110, 3, 110) == (108, 3), "A moved beat dropped at the end slides back and keeps its length");
+        Assert(BeatSheet.ClampMove(0, 2, 110) == (1, 2), "A moved beat never starts before page 1");
+        Assert(BeatSheet.ClampMove(5, 20, 10) == (1, 10), "A beat longer than the grid is cut to the grid");
+
+        var beats = new List<Beat> { new() { Page = 0, Span = 9 }, new() { Page = 40, Span = 5 }, new() { Page = 10, Span = 1 } };
+        Assert(BeatSheet.LastBeatPage(beats) == 44, "The last beat page ignores tray beats and counts the span");
+        Assert(BeatSheet.LastBeatPage(new List<Beat>()) == 0, "No placed beats means no last page");
+    }
+
+    static void TestBeatSheetStacking()
+    {
+        var a = new Beat { Title = "a", Page = 3, Span = 2 };   // 3–4
+        var b = new Beat { Title = "b", Page = 4, Span = 3 };   // 4–6, overlaps a
+        var c = new Beat { Title = "c", Page = 5, Span = 1 };   // 5, free on a's row
+        var d = new Beat { Title = "d", Page = 2, Span = 1 };   // 2, earliest page
+        var tray = new Beat { Title = "tray", Page = 0 };
+        var rows = BeatSheet.Stack(new List<Beat> { a, b, c, tray, d }).ToDictionary(item => item.Beat.Title, item => item.Row);
+
+        Assert(!rows.ContainsKey("tray"), "Tray beats are not on the grid");
+        Assert(rows["d"] == 0 && rows["a"] == 0, "Beats that do not overlap share the first row");
+        Assert(rows["b"] == 1, "An overlapping beat stacks below");
+        Assert(rows["c"] == 0, "A beat goes back up to the first row that is free at its page");
+
+        var same = BeatSheet.Stack(new List<Beat> { new() { Title = "first", Page = 7 }, new() { Title = "second", Page = 7 } });
+        Assert(same[0].Beat.Title == "first" && same[0].Row == 0 && same[1].Row == 1, "Beats on the same page stack in list order");
+    }
+
+    static void TestBeatSheetScenePagesMatchPreview()
+    {
+        // Enough distinct scenes to run several pages, with one heading long
+        // enough to wrap and acts so the act breaks have pages to land on.
+        var text = new StringBuilder("Title: Beats\n\n");
+        var expected = new List<string>();
+        for (var scene = 1; scene <= 30; scene++)
+        {
+            if (scene is 1 or 12 or 24)
+            {
+                text.Append($"# ACT {scene}\n\n");
+            }
+
+            var heading = scene == 7
+                ? "INT. OFFICE OF THE VERY LONG NAMED DEPARTMENT OF MUNICIPAL WATER AND SEWERAGE SERVICES - NIGHT"
+                : $"INT. ROOM {scene} - DAY";
+            expected.Add(heading);
+            text.Append(heading).Append("\n\n");
+            for (var beat = 0; beat < 2 + scene % 5; beat++)
+            {
+                text.Append("She crosses the room and looks at the thing on the table for a long while, thinking.\n\n");
+                text.Append("MARA\nI don't know what you want from me.\n\n");
+            }
+        }
+
+        var analysis = new DocumentAnalyzer().Analyze(text.ToString());
+        var scenes = BeatSheet.MapScenes(analysis.Elements, analysis.PreviewPages);
+        Assert(analysis.PageCount > 5, "The fixture runs several pages");
+        Assert(scenes.Count == 30 && scenes.Select(scene => scene.Heading).SequenceEqual(expected), "Every scene is listed in script order");
+
+        // The truth is the preview: the page whose lines carry the heading.
+        foreach (var scene in scenes)
+        {
+            var firstLine = scene.Heading.ToUpperInvariant()[..Math.Min(20, scene.Heading.Length)];
+            var page = analysis.PreviewPages.First(candidate => !candidate.IsTitlePage
+                && candidate.Lines.Any(line => line.Text.StartsWith(firstLine, StringComparison.Ordinal)
+                    && (line.Text.Length >= scene.Heading.Length || scene.Heading.ToUpperInvariant().StartsWith(line.Text, StringComparison.Ordinal))
+                    && line.Style == LayoutTextStyle.LeftBold));
+            Assert(scene.Page == page.PageNumber, $"{scene.Heading} is on page {page.PageNumber}, mapped to {scene.Page}");
+        }
+
+        Assert(scenes.Select(scene => scene.Page).Zip(scenes.Skip(1).Select(scene => scene.Page)).All(pair => pair.First <= pair.Second),
+            "Scene pages never go backwards");
+        var lines = text.ToString().Split('\n');
+        Assert(scenes.All(scene => lines[scene.LineNumber - 1] == scene.Heading), "Each scene's line number points at its heading");
+
+        var acts = BeatSheet.ActBreaks(analysis.Elements, scenes);
+        Assert(acts.Count == 3 && acts[0].Page == scenes[0].Page && acts[1].Page == scenes[11].Page && acts[2].Page == scenes[23].Page,
+            "Each act breaks at the page of its first scene");
+
+        // A heading the layout cannot place is reported as page 0, not guessed.
+        var orphan = new List<ScreenplayElement>(analysis.Elements) { new SceneHeadingElement("EXT. NOWHERE - DAY", "EXT. NOWHERE - DAY", 9999, false) };
+        var withOrphan = BeatSheet.MapScenes(orphan, analysis.PreviewPages);
+        Assert(withOrphan[^1].Page == 0 && withOrphan.Take(30).Select(scene => scene.Page).SequenceEqual(scenes.Select(scene => scene.Page)),
+            "An unplaceable heading gets page 0 and does not disturb the others");
     }
 }
