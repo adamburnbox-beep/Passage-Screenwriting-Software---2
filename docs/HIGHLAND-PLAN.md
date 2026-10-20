@@ -337,6 +337,8 @@ dialogue splits mid-sentence with no (MORE)/(CONT'D).
 - **Do:** Session 1 is a **design note only**: how revised ranges are stored
   (sidecar vs inline), how they survive edits, colour sets (WGA sequence),
   and margin asterisks in PDF. Implement only after Adam approves the note.
+- **Design note:** `docs/REVISIONS-DESIGN.md` (recommends sidecar baseline
+  snapshots + line diff). Awaiting approval; no code yet.
 
 ---
 
