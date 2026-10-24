@@ -410,6 +410,32 @@ Click New to start one — files are stored on the server volume.</div>
 
             @if (_mainViewIndex == 1)
             {
+                @if (IsScreenplayMode)
+                {
+                    var detachedItems = DetachedItems;
+                    <div class="preview-toolbar beats-toolbar board-toolbar">
+                        <label class="key-only-toggle"><input type="checkbox" @bind="_keyOnly" /> Key only</label>
+                        @if (detachedItems.Count > 0)
+                        {
+                            <button class="btn" @onclick="() => _showDetached = !_showDetached">Detached (@detachedItems.Count)</button>
+                        }
+                    </div>
+                    @if (_showDetached && detachedItems.Count > 0)
+                    {
+                        <div class="detached-list">
+                            <div class="detached-note">These are no longer in the script. They come back by themselves if the heading returns (Ctrl+Z, paste).</div>
+                            @foreach (var item in detachedItems)
+                            {
+                                <div class="detached-item">
+                                    <span class="detached-label">@(item.Label.Length > 0 ? item.Label : "(no heading)")</span>
+                                    <span class="detached-carries">@(item.Key ? "★ key" : "")</span>
+                                    <button class="btn" @onclick="() => DiscardDetached(item)">Discard</button>
+                                </div>
+                            }
+                            <button class="btn" @onclick="() => _confirmDiscardAll = true">Discard all</button>
+                        </div>
+                    }
+                }
                 @if (!IsScreenplayMode)
                 {
                     <div class="board-empty">The Beat Board works in Screenplay mode.
@@ -436,9 +462,10 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                 {
                                     <div class="board-lane-head">
                                         <span class="board-twisty" @onclick="() => ToggleLane(laneKey)">@(laneOpen ? "▾" : "▸")</span>
-                                        <span class="board-lane-title" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
+                                        <span class="board-lane-title @DimClass(lane.ActCard)" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
                                         @if (lane.ActCard is not null && lane.ActCard.Id != Guid.Empty)
                                         {
+                                            @RenderCardStar(lane.ActCard)
                                             <button class="icon-btn board-add" title="Edit act"
                                                     @onclick="() => StartCardEdit(lane.ActCard)">✎</button>
                                         }
@@ -467,7 +494,8 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                                 {
                                                     <div class="board-group-head">
                                                         <span class="board-twisty" @onclick="() => ToggleGroup(groupKey)">@(groupOpen ? "▾" : "▸")</span>
-                                                        <span class="board-group-title" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
+                                                        <span class="board-group-title @DimClass(group.SequenceCard)" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
+                                                        @RenderCardStar(group.SequenceCard)
                                                         <button class="icon-btn board-add" title="Edit sequence"
                                                                 @onclick="() => StartCardEdit(group.SequenceCard)">✎</button>
                                                         <button class="icon-btn board-add" title="Add a scene to this sequence"
@@ -515,6 +543,7 @@ Open a .fountain file to plan beats against its pages.</div>
                         <label class="beats-target">Target
                             <input type="number" class="burst-seconds" min="1" max="@BeatSheet.MaxTargetPages"
                                    @bind="_slate.BeatSheetPages" @bind:after="SetBeatTarget" /> pages</label>
+                        <label class="key-only-toggle"><input type="checkbox" @bind="_keyOnly" /> Key only</label>
                         <span>Double-click a page to add a beat</span>
                         @if (unplacedScenes > 0)
                         {
@@ -1896,6 +1925,20 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_confirmDiscardAll)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Discard detached items</h3>
+            <p>This permanently removes the story data on @DetachedItems.Count detached card@(DetachedItems.Count == 1 ? "" : "s"). The script is not changed. Continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _confirmDiscardAll = false">Cancel</button>
+                <button class="btn primary" @onclick="DiscardAllDetached">Discard all</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_deleteBeat is not null)
 {
     <div class="modal-backdrop">
@@ -3125,6 +3168,141 @@ Open a .fountain file to see formatted pages.</div>
 
     private void RequestDeleteBeat(Beat beat) => _deleteBeat = beat;
 
+    // ---- Key beats and story items (docs/STORY-PLAN.md S1.1) ----
+
+    private bool _keyOnly;
+    private bool _showDetached;
+    private bool _confirmDiscardAll;
+
+    private List<ItemTags> DetachedItems => StoryItems.Detached(_slate.Story.Items, _analysis.Elements);
+
+    private bool IsDuplicateCard(BoardCard card) => _analysis.DuplicateIdLines?.Contains(card.LineNumber) == true;
+
+    private bool IsCardKey(BoardCard card) =>
+        card.Id != Guid.Empty && !IsDuplicateCard(card) && StoryItems.IsKey(_slate.Story, card.Id);
+
+    private string? DimClass(BoardCard? card) =>
+        _keyOnly && (card is null || !IsCardKey(card)) ? "dimmed" : null;
+
+    private Dictionary<Guid, string> CardLabels()
+    {
+        var labels = new Dictionary<Guid, string>();
+        foreach (var element in _analysis.Elements)
+        {
+            switch (element)
+            {
+                case SectionElement section:
+                    labels.TryAdd(section.Id, section.Heading);
+                    break;
+                case SceneHeadingElement scene:
+                    labels.TryAdd(scene.Id, scene.Heading);
+                    break;
+            }
+        }
+
+        return labels;
+    }
+
+    private RenderFragment<BoardCard> RenderCardStar => card => __builder =>
+    {
+        @if (card.Id != Guid.Empty)
+        {
+            var on = IsCardKey(card);
+            <button class="icon-btn key-star @(on ? "on" : null)" title="Key beat"
+                    @onclick="() => ToggleCardKeyAsync(card)" @onclick:stopPropagation="true">@(on ? "★" : "☆")</button>
+        }
+    };
+
+    private async Task ToggleCardKeyAsync(BoardCard card)
+    {
+        if (IsCardKey(card))
+        {
+            StoryItems.SetKey(_slate.Story, card.Id, StoryItems.CardKind, card.Heading, false);
+            SaveSlate();
+            return;
+        }
+
+        var id = await EnsureCardIdAsync(card);
+        if (id is null)
+        {
+            return;
+        }
+
+        StoryItems.SetKey(_slate.Story, id.Value, StoryItems.CardKind, card.Heading, true);
+        SaveSlate();
+    }
+
+    /// <summary>Returns the card's stable id, stamping [[id:…]] onto its heading
+    /// line first if it has none or shares one with an earlier heading. One
+    /// replaceInLine edit, so one undo step; the line is appended to, never
+    /// rebuilt, so a scene number survives (decision A2).</summary>
+    private async Task<Guid?> EnsureCardIdAsync(BoardCard card)
+    {
+        var lines = _content.Replace("\r\n", "\n").Split('\n');
+        var index = card.LineNumber - 1;
+        if (index < 0 || index >= lines.Length)
+        {
+            _statusMessage = "Could not star: that heading is no longer in the script.";
+            return null;
+        }
+
+        var duplicate = IsDuplicateCard(card);
+        if (!duplicate && card.Id != Guid.Empty && StoryItems.HasIdMarker(lines[index]))
+        {
+            return card.Id;
+        }
+
+        var id = Guid.NewGuid();
+        var wanted = StoryItems.StampLine(lines[index], id);
+        bool replaced;
+        try
+        {
+            replaced = await JS.InvokeAsync<bool>("passage.replaceInLine", index, lines[index], wanted);
+        }
+        catch (JSException)
+        {
+            replaced = false;
+        }
+
+        if (!replaced)
+        {
+            _statusMessage = "Could not star: the script changed under the card. Try again.";
+            return null;
+        }
+
+        lines[index] = wanted;
+        _content = string.Join('\n', lines);
+        _isDirty = true;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        _statusMessage = duplicate
+            ? "That heading shared an id with an earlier card (a copy), so it was given a fresh one."
+            : "Card marked with an id so its star can follow it.";
+        return id;
+    }
+
+    private void ToggleBeatKey(Beat beat)
+    {
+        StoryItems.SetKey(_slate.Story, beat.Id, StoryItems.BeatKind, beat.Title, !StoryItems.IsKey(_slate.Story, beat.Id));
+        SaveSlate();
+    }
+
+    private void DiscardDetached(ItemTags item)
+    {
+        _slate.Story.Items.Remove(item);
+        SaveSlate();
+        _statusMessage = $"Discarded story data for \"{item.Label}\"";
+    }
+
+    private void DiscardAllDetached()
+    {
+        _confirmDiscardAll = false;
+        var detached = DetachedItems;
+        _slate.Story.Items.RemoveAll(detached.Contains);
+        SaveSlate();
+        _statusMessage = $"Discarded story data for {detached.Count} detached card{(detached.Count == 1 ? "" : "s")}";
+    }
+
     private void ConfirmDeleteBeat()
     {
         var beat = _deleteBeat;
@@ -3139,6 +3317,7 @@ Open a .fountain file to see formatted pages.</div>
             _editingBeat = null;
         }
 
+        StoryItems.RemoveBeat(_slate.Story, beat.Id);
         SaveSlate();
         _statusMessage = $"Deleted beat \"{(beat.Title.Length > 0 ? beat.Title : "Untitled beat")}\"";
     }
@@ -4371,6 +4550,7 @@ Open a .fountain file to see formatted pages.</div>
         _slate.Bridges.RemoveAll(bridge => bridge != _bridge && bridge.IsEmpty);
         _slate.Positions.RemoveAll(position => position != _position && position.IsEmpty);
         _slate.Revisions.RemoveAll(revision => revision != _revision && revision.IsEmpty);
+        StoryItems.RefreshLabels(_slate.Story, CardLabels());
         if (_fileName.Length == 0)
         {
             return;
@@ -5716,12 +5896,16 @@ Open a .fountain file to see formatted pages.</div>
     private RenderFragment<(Beat Beat, int? Row)> RenderBeat => item => __builder =>
     {
         var beat = item.Beat;
-        <div class="beat-card @(_editingBeat == beat ? "selected" : null)"
+        <div class="beat-card @(_editingBeat == beat ? "selected" : null) @(_keyOnly && !StoryItems.IsKey(_slate.Story, beat.Id) ? "dimmed" : null)"
              data-beat-id="@beat.Id" data-page="@beat.Page" data-span="@beat.Span"
              style="@BeatStyle(beat, item.Row)"
              @onclick="() => StartBeatEdit(beat)"
              @ondblclick:stopPropagation="true">
-            <div class="beat-title">@(beat.Title.Length > 0 ? beat.Title : "Untitled beat")</div>
+            <div class="beat-title">
+                <button class="icon-btn key-star @(StoryItems.IsKey(_slate.Story, beat.Id) ? "on" : null)" title="Key beat"
+                        @onclick="() => ToggleBeatKey(beat)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">@(StoryItems.IsKey(_slate.Story, beat.Id) ? "★" : "☆")</button>
+                @(beat.Title.Length > 0 ? beat.Title : "Untitled beat")
+            </div>
             @if (beat.Description.Length > 0)
             {
                 <div class="beat-body">@beat.Description</div>
@@ -5816,7 +6000,7 @@ Open a .fountain file to see formatted pages.</div>
         }
         else
         {
-            <div class="board-card @(_dragOverCardId == card.Id ? "drop-target" : null)"
+            <div class="board-card @(_dragOverCardId == card.Id ? "drop-target" : null) @DimClass(card)"
                  draggable="@((card.Id != Guid.Empty).ToString().ToLowerInvariant())"
                  @ondragstart="() => OnCardDragStart(card)"
                  @ondragend="OnCardDragEnd"
@@ -5827,6 +6011,7 @@ Open a .fountain file to see formatted pages.</div>
                  @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
                 <div class="card-top">
                     <span class="card-kind">@card.Kind</span>
+                    @RenderCardStar(card)
                     @if (card.Id != Guid.Empty)
                     {
                         <button class="icon-btn card-edit-btn" title="Edit card"

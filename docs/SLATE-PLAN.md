@@ -108,6 +108,9 @@ runner's output has exactly one promotion path into the script (a filled
 bracket, a synopsis line, a section heading), and once promoted the script is
 the truth. The sidecar keeps the working-out, not the result.
 
+The sidecar also holds permanent story-planning data (Beat Sheet, Cast
+colours, story elements): see STORY-PLAN decision A.
+
 **Why not a boneyard block in the fountain file:** it survives round-trips
 through the desktop apps, which is genuinely attractive, but it puts several
 KB of half-finished worksheet text inside a file whose page count and export

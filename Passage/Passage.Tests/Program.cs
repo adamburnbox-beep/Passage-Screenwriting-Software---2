@@ -56,6 +56,11 @@ class Program
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
         failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
+        failures += RunTest("Test Story Stamp Keeps Id And Scene Number", TestStoryStampKeepsIdAndSceneNumber);
+        failures += RunTest("Test Story Duplicate Id Flags Second Only", TestStoryDuplicateIdFlagsSecondOnly);
+        failures += RunTest("Test Story Detached Is Computed Never Removed", TestStoryDetachedIsComputedNeverRemoved);
+        failures += RunTest("Test Story Delete Beat Removes Tags", TestStoryDeleteBeatRemovesTags);
+        failures += RunTest("Test Story Old Sidecar Loads", TestStoryOldSidecarLoads);
         failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
         failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
         failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
@@ -536,6 +541,94 @@ class Program
 
             Assert(threw, "A corrupt sidecar throws rather than being read as empty");
             Assert(store.Exists("broken"), "The corrupt file is left in place for the user to recover");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestStoryStampKeepsIdAndSceneNumber()
+    {
+        foreach (var (line, number) in new[] { ("INT. HOUSE - DAY", (string?)null), ("INT. HOUSE - DAY #12#", "12") })
+        {
+            var id = Guid.NewGuid();
+            var stamped = StoryItems.StampLine(line, id);
+            var scene = new FountainParser().Parse(stamped + "\n\nAction.").Elements.OfType<SceneHeadingElement>().Single();
+            Assert(scene.Id == id, $"Stamped id survives the parse: {line}");
+            Assert(scene.SceneNumber == number, $"Scene number survives stamping: {line}");
+            Assert(scene.Heading == "INT. HOUSE - DAY", $"Heading text is unchanged: {line}");
+        }
+
+        var heading = "# ACT ONE";
+        var actId = Guid.NewGuid();
+        Assert(new FountainParser().Parse(StoryItems.StampLine(heading, actId)).Elements.OfType<SectionElement>().Single().Id == actId,
+            "A section heading stamps too");
+
+        var swapped = StoryItems.StampLine($"INT. A - DAY [[id:{Guid.NewGuid()}]]", actId);
+        Assert(swapped.Contains(actId.ToString()) && swapped.Split("[[id:").Length == 2, "Stamping a duplicate replaces its marker, not adds a second");
+    }
+
+    static void TestStoryDuplicateIdFlagsSecondOnly()
+    {
+        var id = Guid.NewGuid();
+        var text = $"INT. A - DAY [[id:{id}]]\n\nOne.\n\nINT. B - DAY\n\nTwo.\n\nINT. A - DAY [[id:{id}]]\n\nThree.\n";
+        var analysis = new DocumentAnalyzer().Analyze(text);
+        Assert(analysis.DuplicateIdLines is { Count: 1 } && analysis.DuplicateIdLines.Contains(9),
+            "Only the second occurrence (line 9) is flagged");
+    }
+
+    static void TestStoryDetachedIsComputedNeverRemoved()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var id = Guid.NewGuid();
+            var document = new SlateDocument();
+            document.Story.Items.Add(new ItemTags { TargetId = id, Kind = "card", Label = "INT. A - DAY", Key = true });
+            document.Story.Items.Add(new ItemTags { TargetId = Guid.NewGuid(), Kind = "beat", Key = true });
+            store.Save("draft", document);
+            var loaded = store.Load("draft")!;
+            Assert(loaded.Story.Items.Count == 2, "Load keeps items whose card is gone");
+
+            var without = new FountainParser().Parse("INT. B - DAY\n\nOne.\n").Elements;
+            var detached = StoryItems.Detached(loaded.Story.Items, without);
+            Assert(detached.Count == 1 && detached[0].TargetId == id, "Only the card item detaches; beats never do");
+            store.Save("draft", loaded);
+            Assert(store.Load("draft")!.Story.Items.Count == 2, "Save keeps detached items");
+
+            var back = new FountainParser().Parse($"INT. A - DAY [[id:{id}]]\n\nOne.\n").Elements;
+            Assert(StoryItems.Detached(loaded.Story.Items, back).Count == 0, "The item re-attaches when the id parses again");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestStoryDeleteBeatRemovesTags()
+    {
+        var story = new StoryData();
+        var beat = Guid.NewGuid();
+        var card = Guid.NewGuid();
+        StoryItems.SetKey(story, beat, "beat", "Beat", true);
+        StoryItems.SetKey(story, card, "card", "Scene", true);
+        StoryItems.RemoveBeat(story, beat);
+        Assert(story.Items.Count == 1 && story.Items[0].TargetId == card, "Deleting a beat removes its tags and leaves cards alone");
+        StoryItems.SetKey(story, card, "card", "Scene", false);
+        Assert(story.Items.Count == 0, "Un-starring an item that carries nothing removes it");
+    }
+
+    static void TestStoryOldSidecarLoads()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var dir = Path.Combine(root, ".slate");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "old.fountain.json"), "{ \"SlateVersion\": 1, \"Beats\": [] }");
+            var loaded = store.Load("old");
+            Assert(loaded is not null && loaded.Story.Items.Count == 0, "A sidecar with no Story loads with an empty one");
         }
         finally
         {
