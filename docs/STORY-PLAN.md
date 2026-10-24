@@ -389,7 +389,7 @@ the bigger rows rely on them.
   the star survives a reload, starring a beat leaves the `.fountain` SHA-256
   unchanged. Five tests added.
 
-### S1.2 Storylines and the ELEMENTS tab — `todo`
+### S1.2 Storylines and the ELEMENTS tab — `done`
 
 - **Read:** Standing decision A. `Editor.razor` sidebar tabs 150–156, CAST
   panel 195–306 (the palette and swatch pattern to match), `SaveSlate` 4367.
@@ -416,6 +416,17 @@ the bigger rows rely on them.
   `ItemTags.Storylines` and reports the count. An unknown palette colour is
   rejected, as in `SaveBeatEdit`.
 - **Budget:** ~60k.
+- **Landed:** `Storyline` and `StoryData.Storylines` in `SlateStore.cs`;
+  `ItemTags.Storylines` (ids) added for S1.4. Pure rules in `StoryItems.cs`
+  (`StorylineColour`, `StorylineUseCount`, `DeleteStoryline`); `SetKey` now
+  keeps an item that still carries storylines. `Editor.razor`: fifth sidebar
+  tab ELEMENTS (Storylines list with add, edit by Save/Cancel, counted
+  delete confirm; Locations placeholder for S1.3; "Characters: colours are
+  set in CAST →" switches tab). No second character list. Sidebar tab
+  letter-spacing tightened so five tabs fit. Checked in the running app: "A
+  Story" in red with a description survives a reload and the `.fountain` is
+  unchanged. The counted untag message needs tagged items, so it is covered by
+  the unit test until S1.4.
 
 ### S1.3 Locations — `todo`
 

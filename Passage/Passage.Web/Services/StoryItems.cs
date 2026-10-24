@@ -73,7 +73,7 @@ public static class StoryItems
             if (item is not null)
             {
                 item.Key = false;
-                story.Items.RemoveAll(existing => existing.TargetId == targetId && !existing.Key);
+                story.Items.RemoveAll(existing => existing.TargetId == targetId && !existing.Key && existing.Storylines.Count == 0);
             }
 
             return;
@@ -87,6 +87,35 @@ public static class StoryItems
 
         item.Key = true;
         item.Label = label;
+    }
+
+    /// <summary>A palette hex, or empty for anything else.</summary>
+    public static string StorylineColour(string? colour) =>
+        colour is not null && Characters.Palette.Contains(colour) ? colour : string.Empty;
+
+    public static int StorylineUseCount(StoryData story, Guid storylineId) =>
+        story.Items.Count(item => item.Storylines.Contains(storylineId));
+
+    /// <summary>Removes the storyline and untags it from every item. Returns how
+    /// many items were untagged. Items left carrying nothing are dropped.</summary>
+    public static int DeleteStoryline(StoryData story, Guid storylineId)
+    {
+        var removed = story.Storylines.RemoveAll(line => line.Id == storylineId);
+        var untagged = 0;
+        foreach (var item in story.Items)
+        {
+            if (item.Storylines.RemoveAll(id => id == storylineId) > 0)
+            {
+                untagged++;
+            }
+        }
+
+        if (removed > 0)
+        {
+            story.Items.RemoveAll(item => !item.Key && item.Storylines.Count == 0);
+        }
+
+        return untagged;
     }
 
     /// <summary>Deleting a beat is explicit and the beat is sidecar-owned, so its
