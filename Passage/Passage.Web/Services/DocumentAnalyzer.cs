@@ -53,7 +53,9 @@ public sealed record DocumentAnalysis(
     // The character panel (H3.1): speakers by speeches, and per line the
     // speaker whose block covers it, for the client-side highlight marks.
     IReadOnlyList<CharacterStat> Characters,
-    string[] LineSpeakers);
+    string[] LineSpeakers,
+    // 1-based heading lines whose [[id:…]] repeats an earlier heading's.
+    IReadOnlySet<int>? DuplicateIdLines = null);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -109,7 +111,8 @@ public sealed class DocumentAnalyzer
             BuildSuggestionKinds(parsed, text, lineCount),
             BracketScanner.Scan(text),
             characterStats,
-            lineSpeakers);
+            lineSpeakers,
+            StoryItems.DuplicateIdLines(parsed.Elements));
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)

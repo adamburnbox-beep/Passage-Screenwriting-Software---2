@@ -341,7 +341,7 @@ Key beats move to the front (brief item 5) because a star is the smallest
 possible attachment. It proves stamping, detaching and re-attaching before
 the bigger rows rely on them.
 
-### S1.1 Stable card ids + key beats — `todo`
+### S1.1 Stable card ids + key beats — `done`
 
 - **Read:** Standing decisions A, A2, B. `Editor.razor` BOARD view 411–496,
   BEATS view 497–574, `RenderBeat` / `RenderBoardCard` 5716–5847, Beat Sheet
@@ -375,6 +375,19 @@ the bigger rows rely on them.
   - Deleting a beat removes its `ItemTags`.
   - An old sidecar with no `Story` loads.
 - **Budget:** ~90k tokens.
+- **Landed:** `StoryData`/`ItemTags` (`Items` only) in `SlateStore.cs`; pure
+  rules in `Services/StoryItems.cs` (`StampLine`, `DuplicateIdLines`,
+  `Detached`, `SetKey`, `RemoveBeat`, `RefreshLabels`). `DocumentAnalysis`
+  gains `DuplicateIdLines` (1-based lines of repeat ids, second occurrence
+  on). `Editor.razor`: `EnsureCardIdAsync` (one `replaceInLine`, appended, so
+  `#12#` survives), stars on act/sequence heads, cards and beats, a new BOARD
+  toolbar (Key only, `Detached (n)`), and "Key only" on BEATS (one shared,
+  unsaved flag; dims, never hides). The duplicate message appears when you
+  star the copy, not on every parse. Beat delete cascades its tags. Checked in
+  the running app: star stamps as one undo step, Ctrl+Z after deleting the
+  scene re-attaches, a pasted copy gets a fresh id and the status message,
+  the star survives a reload, starring a beat leaves the `.fountain` SHA-256
+  unchanged. Five tests added.
 
 ### S1.2 Storylines and the ELEMENTS tab — `todo`
 

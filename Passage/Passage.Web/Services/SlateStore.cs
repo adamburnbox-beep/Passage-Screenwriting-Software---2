@@ -50,6 +50,25 @@ public sealed class SlateDocument
     // list order is the tray order and the tie-break when beats stack.
     public List<Beat> Beats { get; set; } = new();
     public int BeatSheetPages { get; set; } = BeatSheet.DefaultTargetPages;
+
+    // Permanent story-planning data (docs/STORY-PLAN.md, decision A).
+    public StoryData Story { get; set; } = new();
+}
+
+public sealed class StoryData
+{
+    public List<ItemTags> Items { get; set; } = new();
+}
+
+/// <summary>Story data on one Board card or beat. Kind is "card" or "beat";
+/// TargetId is the card's [[id:…]] or the Beat.Id. Label is the last heading
+/// seen, so a detached item stays recognisable.</summary>
+public sealed class ItemTags
+{
+    public Guid TargetId { get; set; }
+    public string Kind { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public bool Key { get; set; }
 }
 
 /// <summary>One beat on the Beat Sheet. Page 0 means unassigned (the tray);
