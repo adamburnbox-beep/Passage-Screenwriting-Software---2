@@ -34,13 +34,11 @@ Then, without changing code:
 1. Run `dotnet build Passage.Web.slnf` and the tests; report results.
 2. Check five line ranges from the plan's table at the top against the code
    (grep first). Correct any that drifted in docs/STORY-PLAN.md.
-3. Answer the plan's open questions in one line each so I can decide:
-   standing decision A (sidecar now holds permanent planning data),
-   G (click selects vs a tag button), S1.5 (derived speaking characters),
-   F (template names). Do not decide them yourself.
+3. Read standing decision A2 and tell me in five lines or fewer whether
+   lazy [[id:…]] stamping is sound given how the parser assigns ids, or what
+   you'd do instead.
 
-Only file you may change: docs/STORY-PLAN.md (line-range corrections, and
-recording my answers if I give them in this session).
+Only file you may change: docs/STORY-PLAN.md (line-range corrections).
 Branch: docs/story-s0. Commit, push, open a PR.
 ```
 
@@ -115,15 +113,13 @@ Budget: ~60k tokens.
 Read CLAUDE.md, PROJECT_RULES.md, and from docs/STORY-PLAN.md only standing
 decisions A, A2, D and G and row S1.4. Read only the line ranges S1.4 names.
 
-First check that decision G has my answer recorded in the plan (click
-selects, or the tag-button fallback). If it does not, stop and ask.
-
 Build one tag popover in passage.js, used by BOARD cards and BEATS beats
 (grid and tray). The filter runs in the browser; only Enter calls the server.
 Draw storylines as left-edge colour bars and characters as dots, and make
 CAST's rename also rename tags.
 
-Before writing code, state the selection model, the JS↔server calls and their
+Before writing code, state the selection model (decision G: click selects; it changes two existing
+clicks, so say so in the PR), the JS↔server calls and their
 payloads, and wait for my OK.
 
 Success: the row's success list in the running app, including no WebSocket
@@ -143,9 +139,9 @@ decisions B, C and D and row S1.5. Read only the line ranges S1.5 names.
 
 Add the filter bar to BOARD and BEATS (storylines, characters, locations, Key
 only), combining as OR within a kind and AND across kinds. Non-matching items
-dim; nothing hides. Persist per browser, as the outline filters do. Use the
-derived "speaks in the scene" character match only if the plan records my
-yes; otherwise match explicit tags only.
+dim; nothing hides. Persist per browser, as the outline filters do. A scene
+matches a character by explicit tag or by that character speaking in it, as
+the row says.
 
 Success: the row's success list in the running app. Tests: the row's match
 table. `dotnet build Passage.Web.slnf` passes.
@@ -192,7 +188,7 @@ updates. Then add the four built-in templates (Passage's is
 SplitScript.BuildLines of an empty run), the opt-in beat seeding, and "Save
 this structure as a template" in .slate/templates.json. Make PruneOrphans
 spare templates.json. Templates write only #, ##, ### and = lines. Use the
-template names recorded in the plan.
+template names from decision F, crediting each source in its description.
 
 Success: the row's success list in the running app, including an unchanged
 PREVIEW page count after applying a template. Tests: the row's list.

@@ -102,13 +102,17 @@ Each row adds only the part it needs.
   currently spares only `ideation.json`, so S2.2 must add `templates.json` to
   that exception with a test, or the first load deletes it.
 
-**Conflict to settle (rule 7).** `docs/SLATE-PLAN.md` decision B calls the
-sidecar "a staging area, not a second home for the story": working-out
-lives there until it's promoted into the script. The Beat Sheet and the Cast
-colours already broke that, because they store permanent planning data that is
-never promoted. This plan adds much more of it (storylines, every tag, arc
-values). **Adam: confirm the sidecar now also holds permanent story-planning
-data.** If yes, S1.1 adds one sentence to SLATE-PLAN decision B saying so.
+**Settled (2026-10-25): the sidecar now also holds permanent story-planning
+data.** `docs/SLATE-PLAN.md` decision B called it "a staging area, not a
+second home for the story". The Beat Sheet and Cast colours had already broken
+that, and Adam accepted the same for this plan. S1.1 adds one sentence to
+SLATE-PLAN decision B saying so.
+
+**A Slate sidecar revamp is coming** as its own dedicated session (not
+scheduled yet). To keep that cheap, every row keeps its data inside the one
+`StoryData` object and adds no new top-level `SlateDocument` properties. If the
+revamp lands before a row is started, re-read decision A against it first and
+flag any mismatch rather than guessing (rule 7).
 
 **Risk that grows with this plan.** `PruneOrphans` deletes the sidecar of
 any script that isn't in the library on load (it reports this, as rule 12
@@ -304,33 +308,29 @@ There is one writer. Both the Shape tool and the templates produce lines with
   so the BEATS grid shows nothing, not even act breaks. Seeded beats give it
   shape. Why opt-in: the beats duplicate the Board's `###` cards as planning
   until scenes are written.
-- **Naming (rule 7, minor):** "Save the Cat" is a book's trademark. Suggest
-  labelling templates by structure ("15-beat sheet (Snyder)", "Paradigm
-  (Field)", "Five-act TV", "8 sequences / 7 turns (Passage)"). Adam to
-  confirm.
-
+- **Naming (settled):** the built-ins are "8 sequences / 7 turns (Passage)",
+  "Paradigm (Syd Field)", "Save the Cat (Blake Snyder)" and "Five-act TV".
+  Each template's description credits its source. Passage is pointing writers
+  to the original work, not claiming the structure as its own.
 ---
 
 ## Standing decision G — selecting a card or beat (S1.4)
 
-The tag popover opens with `#` on "the selected card or beat". **Neither view
-has selection today**, and the brief's gesture conflicts with current
-behaviour (rule 7):
+**Settled (2026-10-25): a single click selects.** The tag popover opens with
+`#` on "the selected card or beat". Neither view had selection, and the
+gesture conflicted with two existing clicks:
 
 - A **Board card click jumps to the script** (`JumpToLineAsync`) and leaves
   the Board.
 - A **beat click opens its editor**, which focuses a text input, so `#` would
   type a `#`.
 
-**Recommendation:** a single click **selects** (ring highlight, done in JS),
+**What changes:** a single click **selects** (ring highlight, done in JS),
 and `#` opens the popover. The arrow keys move the selection within a view.
 On a card, **Enter / double-click** jumps to the script, and the existing ✎
 still edits. On a beat, **Enter / double-click** edits. Double-click on an
-empty page still adds a beat. This changes two existing clicks, so S1.4 must
-get Adam's OK before building it. The alternative is a tag button (🏷) on
-every card and beat that opens the same popover, which leaves the clicks
-alone. It's slower to use but zero risk.
-
+empty page still adds a beat. Escape clears the selection. S1.4's PR must say
+plainly that both clicks changed. The tag-button fallback was rejected.
 ---
 
 ## Tier S1 — Story elements (foundation)
@@ -353,8 +353,9 @@ the bigger rows rely on them.
   beats (grid and tray). A star on a card stamps the card first. Add a
   "Key only" toggle on the BOARD toolbar (new; it holds `Detached (n)` too)
   and on the BEATS toolbar; it dims non-key items (S1.5 folds it into the
-  filter bar). Add the Detached list per decision B. Add the one sentence to
-  SLATE-PLAN decision B if Adam confirmed A.
+  filter bar). Add the Detached list per decision B. Add one sentence to SLATE-PLAN
+  decision B: the sidecar also holds permanent story-planning data (Beat
+  Sheet, Cast colours, story elements), see STORY-PLAN decision A.
 - **Shared-library impact:** none. Parser and `BeatBoardText` are read only.
 - **Success (running app):**
   - Star a hand-typed scene: its heading line gains `[[id:…]]` as one undo
@@ -427,14 +428,14 @@ the bigger rows rely on them.
   heading with `#12#` and `[[id:…]]`.
 - **Budget:** ~60k.
 
-### S1.4 Tagging: selection, `#` popover, bars and dots — `todo` · needs Adam's OK on decision G first
+### S1.4 Tagging: selection, `#` popover, bars and dots — `todo`
 
 - **Read:** Standing decisions A, A2, D, G. `RenderBeat` / `RenderBoardCard`
   5713–5860. Jump palette `passage.js` 280–370. Character rename
   `Editor.razor` 3882–3960. `app.css`: grep `.board-card` and `.beat-card`
   only.
 - **Do:**
-  - Selection per G (or the tag-button fallback).
+  - Selection per G.
   - One popover, built once in `passage.js` and used on both views. It lists
     storylines, characters (from the parse) and locations (derived), each with
     its colour, pushed by a `setTagTargets` like `setJumpTargets`. Typing
@@ -477,9 +478,14 @@ the bigger rows rely on them.
 - **Matching:**
   - A scene card matches a location by its own heading (implicit, per C) or
     by an explicit tag.
-  - A scene card matches a character by an explicit tag, or (recommended,
-    zero storage) by the character speaking in that scene. Adam to confirm
-    the derived match. If he says no, matching is explicit tags only.
+  - A scene card matches a character by an explicit tag **or** by that
+    character speaking in the scene (derived from the parse, nothing
+    stored; settled 2026-10-25). Why: tagging every speaking character by hand
+    is busywork the parse already does. Explicit tags stay for characters who
+    are present but silent, and for beats, acts and sequences. Speaking is
+    matched on bare cue names (`Characters.BareName`), so `BOB (V.O.)` counts
+    as `BOB`. Derived characters aren't drawn as dots; only explicit tags
+    are, so the card stays readable.
   - An act or sequence lane matches if any card in it matches.
 - **Persistence:** per browser, as outline filters, one set per view.
 - **Shared-library impact:** none.
@@ -488,7 +494,7 @@ the bigger rows rely on them.
   and the scene track follows. The filters survive a reload, and clearing them
   restores everything.
 - **Tests:** a match table (OR within a kind, AND across kinds, implicit
-  location, derived speaker if approved, a lane matching via a child, an
+  location, derived speaker (including a `(V.O.)` cue), a lane matching via a child, an
   empty filter matching everything).
 - **Budget:** ~70k.
 
@@ -534,7 +540,7 @@ the bigger rows rely on them.
   - `InsertStructureAsync`, extracted from `WriteShapeAsync` with no change
     in behaviour.
   - `StructureTemplates` with four built-ins: Passage's (from
-    `SplitScript.BuildLines`), the paradigm, the 15-beat sheet and five-act
+    `SplitScript.BuildLines`), Paradigm (Syd Field), Save the Cat (Blake Snyder) and five-act
     TV. Each lists its `#` / `##` / `###` / `=` lines and, optionally, the
     page each beat sits at on a 110-page reference.
   - A BOARD menu, "Start from a template…", enabled only when there is no
