@@ -363,8 +363,8 @@ html, body {
     border-bottom: 2px solid transparent;
     color: var(--muted-text);
     font-size: 10px;
-    letter-spacing: 0.2em;
-    padding: 8px 4px;
+    letter-spacing: 0.1em;
+    padding: 8px 2px;
     cursor: pointer;
 }
 
@@ -1979,3 +1979,11 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .detached-note { color: var(--muted-text); font-size: 0.9em; }
 .detached-item { display: flex; gap: 12px; align-items: center; }
 .detached-carries { color: var(--muted-text); }
+
+.elements-section { margin-bottom: 16px; }
+.elements-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.storyline-edit { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 10px; }
+.storyline-edit .character-palette { padding: 0; }
+.storyline-description { color: var(--muted-text); font-size: 12px; padding: 0 8px 6px 30px; white-space: pre-wrap; }
+.character-row.storyline-row { display: flex; align-items: center; gap: 10px; }
+.storyline-row .character-name { flex: 1; min-width: 0; }

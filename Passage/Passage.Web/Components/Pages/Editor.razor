@@ -153,6 +153,7 @@ Click New to start one — files are stored on the server volume.</div>
                 <button class="@(_sidebarTab == 1 ? "active" : null)" @onclick="() => _sidebarTab = 1">NOTES</button>
                 <button class="@(_sidebarTab == 2 ? "active" : null)" @onclick="() => _sidebarTab = 2">GOALS</button>
                 <button class="@(_sidebarTab == 3 ? "active" : null)" @onclick="() => _sidebarTab = 3">CAST</button>
+                <button class="@(_sidebarTab == 4 ? "active" : null)" @onclick="() => _sidebarTab = 4">ELEMENTS</button>
             </div>
             <div class="sidebar-body">
                 @if (_sidebarTab == 0)
@@ -303,6 +304,66 @@ Click New to start one — files are stored on the server volume.</div>
                             </div>
                         }
                     }
+                }
+                else if (_sidebarTab == 4)
+                {
+                    <div class="elements-section">
+                        <div class="elements-head">
+                            <span class="goal-card-title">STORYLINES</span>
+                            <button class="btn" @onclick="AddStoryline">+ Add</button>
+                        </div>
+                        @if (_slate.Story.Storylines.Count == 0)
+                        {
+                            <div class="sidebar-empty">No storylines yet. Try "A Story", "B Story" or "Runner".</div>
+                        }
+                        @foreach (var line in _slate.Story.Storylines)
+                        {
+                            @if (_editingStoryline == line)
+                            {
+                                <div class="storyline-edit">
+                                    <input class="character-rename" @ref="_storylineNameInput" @bind="_storylineEditName" @bind:event="oninput"
+                                           placeholder="@StorylineHint(line)" @onkeydown="OnStorylineKeyDown" />
+                                    <textarea class="card-body-input" rows="3" placeholder="What is this storyline about?"
+                                              @bind="_storylineEditDescription" @bind:event="oninput"></textarea>
+                                    <div class="character-palette">
+                                        @foreach (var swatch in Characters.Palette)
+                                        {
+                                            <button class="character-swatch @(swatch == _storylineEditColour ? "picked" : null)" style="background:@swatch"
+                                                    title="@swatch" @onclick="() => _storylineEditColour = swatch"></button>
+                                        }
+                                        <button class="character-swatch none @(_storylineEditColour.Length == 0 ? "picked" : null)" title="No colour"
+                                                @onclick="() => _storylineEditColour = string.Empty"></button>
+                                    </div>
+                                    <div class="modal-actions">
+                                        <button class="btn" @onclick="() => RequestDeleteStoryline(line)">Delete</button>
+                                        <button class="btn" @onclick="CancelStorylineEdit">Cancel</button>
+                                        <button class="btn primary" @onclick="SaveStorylineEdit">Save</button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="character-row storyline-row">
+                                    <span class="character-swatch @(line.Colour.Length == 0 ? "none" : null)"
+                                          style="@(line.Colour.Length > 0 ? $"background:{line.Colour}" : null)"></span>
+                                    <span class="character-name" title="@line.Description">@(line.Name.Length > 0 ? line.Name : "Untitled storyline")</span>
+                                    <button class="icon-btn character-actions" title="Edit storyline"
+                                            @onclick="() => StartStorylineEdit(line)">✎</button>
+                                </div>
+                                @if (line.Description.Length > 0)
+                                {
+                                    <div class="storyline-description">@line.Description</div>
+                                }
+                            }
+                        }
+                    </div>
+                    <div class="elements-section">
+                        <div class="elements-head"><span class="goal-card-title">LOCATIONS</span></div>
+                        <div class="sidebar-empty">Locations arrive in a later update.</div>
+                    </div>
+                    <div class="elements-section">
+                        <button class="btn" @onclick="() => _sidebarTab = 3">Characters: colours are set in CAST →</button>
+                    </div>
                 }
                 else
                 {
@@ -1939,6 +2000,21 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_deleteStoryline is not null)
+{
+    var useCount = StoryItems.StorylineUseCount(_slate.Story, _deleteStoryline.Id);
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Delete Storyline</h3>
+            <p>This deletes the storyline "@(_deleteStoryline.Name.Length > 0 ? _deleteStoryline.Name : "Untitled storyline")"@(useCount > 0 ? $" and untags it from {useCount} item{(useCount == 1 ? "" : "s")}" : ""). The script is not changed. Continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _deleteStoryline = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmDeleteStoryline">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_deleteBeat is not null)
 {
     <div class="modal-backdrop">
@@ -2170,6 +2246,18 @@ Open a .fountain file to see formatted pages.</div>
             try
             {
                 await _beatTitleInput.FocusAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        if (_focusStorylineName)
+        {
+            _focusStorylineName = false;
+            try
+            {
+                await _storylineNameInput.FocusAsync();
             }
             catch (JSException)
             {
@@ -3167,6 +3255,88 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     private void RequestDeleteBeat(Beat beat) => _deleteBeat = beat;
+
+    // ---- Storylines (docs/STORY-PLAN.md S1.2) ----
+
+    private static readonly string[] StorylineHints = { "A Story", "B Story", "Runner" };
+
+    private Storyline? _editingStoryline;
+    private string _storylineEditName = string.Empty;
+    private string _storylineEditDescription = string.Empty;
+    private string _storylineEditColour = string.Empty;
+    private ElementReference _storylineNameInput;
+    private bool _focusStorylineName;
+    private Storyline? _deleteStoryline;
+
+    private string StorylineHint(Storyline line) =>
+        StorylineHints[Math.Max(0, _slate.Story.Storylines.IndexOf(line)) % StorylineHints.Length];
+
+    private void AddStoryline()
+    {
+        var line = new Storyline();
+        _slate.Story.Storylines.Add(line);
+        SaveSlate();
+        StartStorylineEdit(line);
+    }
+
+    private void StartStorylineEdit(Storyline line)
+    {
+        _editingStoryline = line;
+        _storylineEditName = line.Name;
+        _storylineEditDescription = line.Description;
+        _storylineEditColour = line.Colour;
+        _focusStorylineName = true;
+    }
+
+    private void SaveStorylineEdit()
+    {
+        if (_editingStoryline is not { } line)
+        {
+            return;
+        }
+
+        line.Name = _storylineEditName.Trim();
+        line.Description = _storylineEditDescription.Trim();
+        line.Colour = StoryItems.StorylineColour(_storylineEditColour);
+        _editingStoryline = null;
+        SaveSlate();
+    }
+
+    private void CancelStorylineEdit() => _editingStoryline = null;
+
+    private void OnStorylineKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            SaveStorylineEdit();
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelStorylineEdit();
+        }
+    }
+
+    private void RequestDeleteStoryline(Storyline line) => _deleteStoryline = line;
+
+    private void ConfirmDeleteStoryline()
+    {
+        var line = _deleteStoryline;
+        _deleteStoryline = null;
+        if (line is null)
+        {
+            return;
+        }
+
+        if (_editingStoryline == line)
+        {
+            _editingStoryline = null;
+        }
+
+        var untagged = StoryItems.DeleteStoryline(_slate.Story, line.Id);
+        SaveSlate();
+        _statusMessage = $"Deleted storyline \"{(line.Name.Length > 0 ? line.Name : "Untitled storyline")}\"" +
+            (untagged > 0 ? $", untagged from {untagged} item{(untagged == 1 ? "" : "s")}" : string.Empty);
+    }
 
     // ---- Key beats and story items (docs/STORY-PLAN.md S1.1) ----
 

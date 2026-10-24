@@ -61,6 +61,9 @@ class Program
         failures += RunTest("Test Story Detached Is Computed Never Removed", TestStoryDetachedIsComputedNeverRemoved);
         failures += RunTest("Test Story Delete Beat Removes Tags", TestStoryDeleteBeatRemovesTags);
         failures += RunTest("Test Story Old Sidecar Loads", TestStoryOldSidecarLoads);
+        failures += RunTest("Test Storylines Round Trip", TestStorylinesRoundTrip);
+        failures += RunTest("Test Storyline Delete Untags Items", TestStorylineDeleteUntagsItems);
+        failures += RunTest("Test Storyline Colour Rejects Unknown", TestStorylineColourRejectsUnknown);
         failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
         failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
         failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
@@ -617,6 +620,54 @@ class Program
         Assert(story.Items.Count == 1 && story.Items[0].TargetId == card, "Deleting a beat removes its tags and leaves cards alone");
         StoryItems.SetKey(story, card, "card", "Scene", false);
         Assert(story.Items.Count == 0, "Un-starring an item that carries nothing removes it");
+    }
+
+    static void TestStorylinesRoundTrip()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var document = new SlateDocument();
+            var line = new Storyline { Name = "A Story", Colour = Characters.Palette[4], Description = "Mara and the key" };
+            document.Story.Storylines.Add(line);
+            document.Story.Items.Add(new ItemTags { TargetId = Guid.NewGuid(), Kind = "beat", Storylines = { line.Id } });
+            store.Save("draft", document);
+            var loaded = store.Load("draft")!;
+            var back = loaded.Story.Storylines.Single();
+            Assert(back.Id == line.Id && back.Name == "A Story" && back.Colour == Characters.Palette[4] && back.Description == "Mara and the key",
+                "A storyline keeps its id, name, colour and description");
+            Assert(loaded.Story.Items.Single().Storylines.Single() == line.Id, "Item tags keep the storyline id");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestStorylineDeleteUntagsItems()
+    {
+        var story = new StoryData();
+        var a = new Storyline { Name = "A Story" };
+        var b = new Storyline { Name = "B Story" };
+        story.Storylines.AddRange(new[] { a, b });
+        story.Items.Add(new ItemTags { TargetId = Guid.NewGuid(), Kind = "card", Storylines = { a.Id, b.Id } });
+        story.Items.Add(new ItemTags { TargetId = Guid.NewGuid(), Kind = "beat", Storylines = { a.Id } });
+        story.Items.Add(new ItemTags { TargetId = Guid.NewGuid(), Kind = "beat", Key = true, Storylines = { a.Id } });
+        story.Items.Add(new ItemTags { TargetId = Guid.NewGuid(), Kind = "beat", Storylines = { b.Id } });
+        Assert(StoryItems.StorylineUseCount(story, a.Id) == 3, "The count matches the items tagged");
+        var untagged = StoryItems.DeleteStoryline(story, a.Id);
+        Assert(untagged == 3, "Delete reports how many items it untagged");
+        Assert(story.Storylines.Single() == b, "Only the deleted storyline goes");
+        Assert(story.Items.All(item => !item.Storylines.Contains(a.Id)), "No item still carries the deleted id");
+        Assert(story.Items.Count == 3 && story.Items.Count(item => item.Key) == 1 && story.Items.Count(item => item.Storylines.Contains(b.Id)) == 2,
+            "Items still starred or tagged stay; the one left empty is dropped");
+    }
+
+    static void TestStorylineColourRejectsUnknown()
+    {
+        Assert(StoryItems.StorylineColour(Characters.Palette[2]) == Characters.Palette[2], "A palette colour is kept");
+        Assert(StoryItems.StorylineColour("#123456").Length == 0, "An unknown colour is rejected");
+        Assert(StoryItems.StorylineColour(null).Length == 0, "Null reads as no colour");
     }
 
     static void TestStoryOldSidecarLoads()
