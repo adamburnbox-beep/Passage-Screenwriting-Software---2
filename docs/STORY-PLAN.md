@@ -428,7 +428,7 @@ the bigger rows rely on them.
   unchanged. The counted untag message needs tagged items, so it is covered by
   the unit test until S1.4.
 
-### S1.3 Locations — `todo`
+### S1.3 Locations — `done`
 
 - **Read:** Standing decision C. `ScreenplayModel.cs` 397–410
   (`SceneHeadingElement`). `Analyzer` board build 504–572. The ELEMENTS tab
@@ -451,6 +451,18 @@ the bigger rows rely on them.
   C, a multi-dash sub-location, a forced heading, an empty result, and a
   heading with `#12#` and `[[id:…]]`.
 - **Budget:** ~60k.
+- **Landed:** `Services/Locations.cs`: `Normalise` per decision C and `Build`
+  (name, first line, scenes in script order). `Normalise` also strips `#…#`
+  and `[[id:…]]` itself; a prefix only counts at a word boundary (`EXTRA` is
+  not `EXT`); a bare time of day normalises to empty. `DocumentAnalysis`
+  gains `Locations`, built inside the existing parse. `LocationSettings` and
+  `StoryData.Locations` in `SlateStore.cs`, kept only when a colour is set.
+  `Editor.razor` ELEMENTS: Locations by first appearance with scene count,
+  click to expand and jump to a scene, colour swatch, and a greyed "Not in the
+  script" list with Discard. Checked in the running app: `KITCHEN` (3) and
+  `HOUSE - KITCHEN` as separate entries, jump moves the caret, a coloured
+  location disappears into "Not in the script" and Discard clears it. No
+  per-keystroke work was added (list derived on parse only).
 
 ### S1.4 Tagging: selection, `#` popover, bars and dots — `todo`
 

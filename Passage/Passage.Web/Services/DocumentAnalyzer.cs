@@ -55,7 +55,9 @@ public sealed record DocumentAnalysis(
     IReadOnlyList<CharacterStat> Characters,
     string[] LineSpeakers,
     // 1-based heading lines whose [[id:…]] repeats an earlier heading's.
-    IReadOnlySet<int>? DuplicateIdLines = null);
+    IReadOnlySet<int>? DuplicateIdLines = null,
+    // Places from the scene headings (S1.3), derived on every parse.
+    IReadOnlyList<LocationEntry>? Locations = null);
 
 /// <summary>
 /// Runs the shared Fountain pipeline (parser + layout builder) over the editor
@@ -112,7 +114,8 @@ public sealed class DocumentAnalyzer
             BracketScanner.Scan(text),
             characterStats,
             lineSpeakers,
-            StoryItems.DuplicateIdLines(parsed.Elements));
+            StoryItems.DuplicateIdLines(parsed.Elements),
+            Passage.Web.Services.Locations.Build(parsed.Elements));
     }
 
     public static DocumentAnalysis AnalyzeMarkdown(string text)
