@@ -99,3 +99,9 @@ same scheme runs on `docs/HIGHLAND-PLAN.md` and `docs/HIGHLAND-SESSIONS.md`.
 `docs/reference/HIGHLAND2_TEARDOWN.md` is a behaviour reference: read only the
 section a row names, never the whole file, and never copy Highland code,
 assets or branding.
+
+For the story development tools (storylines, tagging, templates, arc view on
+BOARD and BEATS), the same scheme runs on `docs/STORY-PLAN.md` and
+`docs/STORY-SESSIONS.md`. Read the plan's standing decisions a row names
+before that row. Arc Studio Pro is a behaviour reference only: never copy its
+code, assets, names or branding.
