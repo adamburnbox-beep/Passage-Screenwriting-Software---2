@@ -27,20 +27,20 @@ Line ranges as of `d0a0a72` (Beat Sheet merged, PR #40):
 | What | Where |
 | --- | --- |
 | Sidebar tabs; CAST panel | `Editor.razor` 150–156; 195–306 |
-| BOARD view | `Editor.razor` 413–497 |
-| BEATS view (toolbar, tray, grid, scene track) | `Editor.razor` 498–575 |
+| BOARD view | `Editor.razor` 411–496 |
+| BEATS view (toolbar, tray, grid, scene track) | `Editor.razor` 497–574 |
 | Beat Sheet handlers | `Editor.razor` 3025–3205 |
-| Board drag / delete / add / edit handlers | `Editor.razor` 3207–3530 |
+| Board drag / delete / add / edit handlers | `Editor.razor` 3207–3525 |
 | Character rename | `Editor.razor` 3882–3960 |
 | Outline filters (per-browser persistence pattern) | `Editor.razor` 4189 (`SetOutlineFiltersAsync`); `passage.js` ~1185 |
 | Shape writer (`WriteShapeAsync`, `ScriptHasShape`) | `Editor.razor` 4845–5000 |
 | `SaveSlate` | `Editor.razor` 4367 |
-| `RenderBeat`, `RenderBeatEditor`, `RenderCardEditor`, `RenderBoardCard` | `Editor.razor` 5713–5860 |
+| `RenderBeat`, `RenderBeatEditor`, `RenderCardEditor`, `RenderBoardCard` | `Editor.razor` 5716–5847 |
 | Jump palette (filter-in-browser pattern) | `passage.js` 280–370 |
 | Beat drag / resize gesture | `passage.js` 789–985 |
 | `SlateDocument`, `Beat`, `CharacterSettings` | `Slate` 12–76 |
 | `SlateStore` (load, save, `PruneOrphans`) | `Slate` 398–551 |
-| `BoardCard` / `BoardGroup` / `BoardLane`; board build | `Analyzer` 16–24; 503–570 |
+| `BoardCard` / `BoardGroup` / `BoardLane`; board build | `Analyzer` 16–24; 504–572 |
 | `BeatBoardText` (shared) | `Passage/Passage.Parser/BeatBoardText.cs` |
 | `SplitScript.BuildLines` (the Shape's lines) | `Passage/Passage.Web/Services/SplitScript.cs` 55–80 |
 | Element `Id` default | `Passage/Passage.Parser/ScreenplayModel.cs` 181 |
@@ -343,9 +343,9 @@ the bigger rows rely on them.
 
 ### S1.1 Stable card ids + key beats — `todo`
 
-- **Read:** Standing decisions A, A2, B. `Editor.razor` BOARD view 413–497,
-  BEATS view 498–575, `RenderBeat` / `RenderBoardCard` 5713–5860, Beat Sheet
-  handlers 3025–3205. `Analyzer` 16–24 and 503–570. `FountainParser.cs`
+- **Read:** Standing decisions A, A2, B. `Editor.razor` BOARD view 411–496,
+  BEATS view 497–574, `RenderBeat` / `RenderBoardCard` 5716–5847, Beat Sheet
+  handlers 3025–3205. `Analyzer` 16–24 and 504–572. `FountainParser.cs`
   897–940 (read only). `Slate` 12–76.
 - **Do:** Add `StoryData` with `Items` only. Add `EnsureCardIdAsync(card)` per
   A2, plus duplicate-id detection in the analyzer, surfaced as a status
@@ -407,7 +407,7 @@ the bigger rows rely on them.
 ### S1.3 Locations — `todo`
 
 - **Read:** Standing decision C. `ScreenplayModel.cs` 397–410
-  (`SceneHeadingElement`). `Analyzer` board build 503–570. The ELEMENTS tab
+  (`SceneHeadingElement`). `Analyzer` board build 504–572. The ELEMENTS tab
   from S1.2.
 - **Do:** `Locations.Normalise(heading)` per C. The analyzer exposes a derived
   location list (name, scene count, first line). ELEMENTS → Locations lists
@@ -431,7 +431,7 @@ the bigger rows rely on them.
 ### S1.4 Tagging: selection, `#` popover, bars and dots — `todo`
 
 - **Read:** Standing decisions A, A2, D, G. `RenderBeat` / `RenderBoardCard`
-  5713–5860. Jump palette `passage.js` 280–370. Character rename
+  5716–5847. Jump palette `passage.js` 280–370. Character rename
   `Editor.razor` 3882–3960. `app.css`: grep `.board-card` and `.beat-card`
   only.
 - **Do:**
@@ -593,7 +593,7 @@ the bigger rows rely on them.
 
 ### S2.4 Expand all / collapse all — `todo`
 
-- **Read:** BOARD view 413–497. `_collapsedLanes` / `_collapsedGroups`
+- **Read:** BOARD view 411–496. `_collapsedLanes` / `_collapsedGroups`
   `Editor.razor` ~3500–3530. Outline-filter persistence pattern.
 - **Do:** BOARD toolbar buttons: "Descriptions: show/hide" (synopses on
   lanes, groups and cards) and "Expand all / Collapse all" (lanes and groups).
@@ -626,7 +626,7 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
 
 ### S3.1 Arc view — `todo`
 
-- **Read:** Standing decisions A, D. BEATS view 498–575 and `BeatSheet.cs`
+- **Read:** Standing decisions A, D. BEATS view 497–574 and `BeatSheet.cs`
   (`MapScenes`). Beat gesture `passage.js` 789–985. Storylines from S1.2,
   tags from S1.4.
 - **Do:**
