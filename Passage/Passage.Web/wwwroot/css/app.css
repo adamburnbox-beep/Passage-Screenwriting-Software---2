@@ -1987,3 +1987,8 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .storyline-description { color: var(--muted-text); font-size: 12px; padding: 0 8px 6px 30px; white-space: pre-wrap; }
 .character-row.storyline-row { display: flex; align-items: center; gap: 10px; }
 .storyline-row .character-name { flex: 1; min-width: 0; }
+.location-name, .location-scene { background: transparent; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; padding: 0; }
+.location-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.location-scene { display: block; width: 100%; padding: 2px 8px 2px 30px; font-size: 12px; color: var(--muted-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.location-scene:hover, .location-name:hover { color: var(--control-foreground); }
+.location-gone { opacity: 0.6; }

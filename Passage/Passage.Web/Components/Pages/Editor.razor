@@ -359,7 +359,58 @@ Click New to start one — files are stored on the server volume.</div>
                     </div>
                     <div class="elements-section">
                         <div class="elements-head"><span class="goal-card-title">LOCATIONS</span></div>
-                        <div class="sidebar-empty">Locations arrive in a later update.</div>
+                        @{
+                            var locations = _analysis.Locations ?? Array.Empty<LocationEntry>();
+                            var missing = _slate.Story.Locations.Where(saved => !locations.Any(place => place.Name == saved.Name)).ToList();
+                        }
+                        @if (locations.Count == 0)
+                        {
+                            <div class="sidebar-empty">No locations yet. They come from your scene headings.</div>
+                        }
+                        @foreach (var place in locations)
+                        {
+                            var placeColour = LocationColour(place.Name);
+                            <div class="character-row storyline-row">
+                                <button class="character-swatch @(placeColour.Length == 0 ? "none" : null)"
+                                        style="@(placeColour.Length > 0 ? $"background:{placeColour}" : null)"
+                                        title="Set colour" @onclick="() => _locationPickerFor = _locationPickerFor == place.Name ? null : place.Name"></button>
+                                <button class="location-name" title="Show scenes"
+                                        @onclick="() => ToggleLocation(place.Name)">@place.Name</button>
+                                <span class="character-count">@place.Scenes.Count</span>
+                            </div>
+                            @if (_locationPickerFor == place.Name)
+                            {
+                                <div class="character-palette">
+                                    @foreach (var swatch in Characters.Palette)
+                                    {
+                                        <button class="character-swatch @(swatch == placeColour ? "picked" : null)" style="background:@swatch"
+                                                title="@swatch" @onclick="() => SetLocationColour(place.Name, swatch)"></button>
+                                    }
+                                    <button class="character-swatch none @(placeColour.Length == 0 ? "picked" : null)" title="No colour"
+                                            @onclick="() => SetLocationColour(place.Name, string.Empty)"></button>
+                                </div>
+                            }
+                            @if (_expandedLocations.Contains(place.Name))
+                            {
+                                @foreach (var scene in place.Scenes)
+                                {
+                                    <button class="location-scene" title="Line @scene.LineNumber"
+                                            @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
+                                }
+                            }
+                        }
+                        @if (missing.Count > 0)
+                        {
+                            <div class="goal-card-title">NOT IN THE SCRIPT</div>
+                            @foreach (var gone in missing)
+                            {
+                                <div class="character-row storyline-row location-gone">
+                                    <span class="character-swatch" style="background:@gone.Colour"></span>
+                                    <span class="character-name">@gone.Name</span>
+                                    <button class="btn" title="Forget this colour" @onclick="() => DiscardLocation(gone)">Discard</button>
+                                </div>
+                            }
+                        }
                     </div>
                     <div class="elements-section">
                         <button class="btn" @onclick="() => _sidebarTab = 3">Characters: colours are set in CAST →</button>
@@ -3255,6 +3306,42 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     private void RequestDeleteBeat(Beat beat) => _deleteBeat = beat;
+
+    // ---- Locations (docs/STORY-PLAN.md S1.3) ----
+
+    private readonly HashSet<string> _expandedLocations = new();
+    private string? _locationPickerFor;
+
+    private string LocationColour(string name) =>
+        _slate.Story.Locations.FirstOrDefault(saved => saved.Name == name)?.Colour ?? string.Empty;
+
+    private void ToggleLocation(string name)
+    {
+        if (!_expandedLocations.Remove(name))
+        {
+            _expandedLocations.Add(name);
+        }
+    }
+
+    // Only locations with a colour are kept, as CharacterSettings.
+    private void SetLocationColour(string name, string colour)
+    {
+        _slate.Story.Locations.RemoveAll(saved => saved.Name == name);
+        if (Characters.Palette.Contains(colour))
+        {
+            _slate.Story.Locations.Add(new LocationSettings { Name = name, Colour = colour });
+        }
+
+        _locationPickerFor = null;
+        SaveSlate();
+    }
+
+    private void DiscardLocation(LocationSettings gone)
+    {
+        _slate.Story.Locations.Remove(gone);
+        SaveSlate();
+        _statusMessage = $"Discarded the colour for \"{gone.Name}\"";
+    }
 
     // ---- Storylines (docs/STORY-PLAN.md S1.2) ----
 

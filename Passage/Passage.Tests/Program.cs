@@ -60,6 +60,10 @@ class Program
         failures += RunTest("Test Story Duplicate Id Flags Second Only", TestStoryDuplicateIdFlagsSecondOnly);
         failures += RunTest("Test Story Detached Is Computed Never Removed", TestStoryDetachedIsComputedNeverRemoved);
         failures += RunTest("Test Story Delete Beat Removes Tags", TestStoryDeleteBeatRemovesTags);
+        failures += RunTest("Test Locations Normalise Prefixes", TestLocationsNormalisePrefixes);
+        failures += RunTest("Test Locations Normalise Times Of Day", TestLocationsNormaliseTimesOfDay);
+        failures += RunTest("Test Locations Normalise Edge Cases", TestLocationsNormaliseEdgeCases);
+        failures += RunTest("Test Locations Build Groups Scenes", TestLocationsBuildGroupsScenes);
         failures += RunTest("Test Story Old Sidecar Loads", TestStoryOldSidecarLoads);
         failures += RunTest("Test Storylines Round Trip", TestStorylinesRoundTrip);
         failures += RunTest("Test Storyline Delete Untags Items", TestStorylineDeleteUntagsItems);
@@ -549,6 +553,60 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestLocationsNormalisePrefixes()
+    {
+        // Every prefix in decision C, with and without the period, in either case.
+        foreach (var prefix in new[] { "INT.", "EXT.", "INT./EXT.", "EXT./INT.", "INT/EXT", "I/E.", "I/E", "EST.", "INT", "EXT", "int.", "Ext" })
+            Assert(Locations.Normalise($"{prefix} KITCHEN - DAY") == "KITCHEN", $"Prefix stripped: {prefix}");
+
+        Assert(Locations.Normalise(".KITCHEN") == "KITCHEN", "A forced heading's leading . is stripped");
+        Assert(Locations.Normalise("INT. KITCHEN - DAY") == Locations.Normalise("EXT. KITCHEN - NIGHT"), "INT and EXT are one place");
+        Assert(Locations.Normalise("INTERIOR HALL") == "INTERIOR HALL", "A word that merely starts with INT is not a prefix");
+        Assert(Locations.Normalise("EXTRA ROOM - DAY") == "EXTRA ROOM", "EXTRA is not the EXT prefix");
+    }
+
+    static void TestLocationsNormaliseTimesOfDay()
+    {
+        foreach (var time in new[] { "DAY", "NIGHT", "MORNING", "AFTERNOON", "EVENING", "DAWN", "DUSK", "SUNRISE", "SUNSET",
+            "LATER", "MOMENTS LATER", "CONTINUOUS", "SAME", "SAME TIME", "MAGIC HOUR" })
+            Assert(Locations.Normalise($"INT. KITCHEN - {time}") == "KITCHEN", $"Time of day dropped: {time}");
+
+        Assert(Locations.Normalise("INT. KITCHEN \u2014 NIGHT") == "KITCHEN", "An em dash separates too");
+        Assert(Locations.Normalise("int. kitchen - day") == "KITCHEN", "Result is uppercased");
+        Assert(Locations.Normalise("INT.   KITCHEN   -   DAY") == "KITCHEN", "Whitespace is collapsed");
+
+        // Sub-locations stay separate; only trailing times are dropped.
+        Assert(Locations.Normalise("INT. HOUSE - KITCHEN - NIGHT") == "HOUSE - KITCHEN", "A multi-dash sub-location keeps its parent");
+        Assert(Locations.Normalise("INT. HOUSE - KITCHEN - NIGHT") != Locations.Normalise("INT. HOUSE - DAY"), "HOUSE - KITCHEN is not HOUSE");
+        Assert(Locations.Normalise("INT. KITCHEN - DAY - LATER") == "KITCHEN", "Repeated trailing times are all dropped");
+        Assert(Locations.Normalise("INT. KITCHEN - LATER - FLASHBACK") == "KITCHEN - LATER - FLASHBACK", "Only the last segments are dropped, and only while they are times");
+        Assert(Locations.Normalise("INT. KITCHEN - FLASHBACK") == "KITCHEN - FLASHBACK", "An unknown trailing segment stays");
+        Assert(Locations.Normalise("INT. DAYCARE - NIGHT") == "DAYCARE", "A time word inside a name is not a time");
+    }
+
+    static void TestLocationsNormaliseEdgeCases()
+    {
+        Assert(Locations.Normalise(".FLASHBACK") == "FLASHBACK", "Forced heading with content is a location");
+        foreach (var empty in new[] { "", "   ", ".", "INT.", "INT. - DAY", "EXT. NIGHT", "DAY", "INT. - " })
+            Assert(Locations.Normalise(empty) == "", $"Empty after stripping is not a location: '{empty}'");
+
+        Assert(Locations.Normalise("INT. KITCHEN - DAY #12#") == "KITCHEN", "A scene number is ignored");
+        Assert(Locations.Normalise($"INT. KITCHEN - DAY [[id:{Guid.NewGuid()}]]") == "KITCHEN", "An id marker is ignored");
+        Assert(Locations.Normalise($"INT. KITCHEN - DAY #12# [[id:{Guid.NewGuid()}]]") == "KITCHEN", "Number and id together are ignored");
+        Assert(Locations.Normalise("INT. ROOM #5 - DAY") == "ROOM #5", "A # inside the name is kept");
+        Assert(Locations.Normalise(". NEW SCENE") == "NEW SCENE", "A Board-created scene normalises to NEW SCENE");
+    }
+
+    static void TestLocationsBuildGroupsScenes()
+    {
+        var script = "INT. KITCHEN - DAY\n\nA.\n\nEXT. GARDEN - DAY\n\nB.\n\nINT. KITCHEN - NIGHT\n\nC.\n\nEXT. KITCHEN - DAY\n\nD.\n\nINT. HOUSE - KITCHEN - NIGHT\n\nE.";
+        var places = Locations.Build(new FountainParser().Parse(script).Elements);
+        Assert(places.Select(place => place.Name).SequenceEqual(new[] { "KITCHEN", "GARDEN", "HOUSE - KITCHEN" }), "Locations are listed by first appearance");
+        Assert(places[0].Scenes.Count == 3 && places[0].FirstLine == 1, "Three kitchen scenes are one location");
+        Assert(places[0].Scenes.Select(scene => scene.LineNumber).SequenceEqual(new[] { 1, 9, 13 }), "Each scene keeps its line for the jump");
+        Assert(places[2].Scenes.Count == 1, "The sub-location is its own entry");
     }
 
     static void TestStoryStampKeepsIdAndSceneNumber()

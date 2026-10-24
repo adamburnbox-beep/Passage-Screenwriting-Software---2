@@ -58,6 +58,7 @@ public sealed class SlateDocument
 public sealed class StoryData
 {
     public List<Storyline> Storylines { get; set; } = new();
+    public List<LocationSettings> Locations { get; set; } = new(); // S1.3, keyed by normalised name
     public List<ItemTags> Items { get; set; } = new();
 }
 
@@ -71,6 +72,14 @@ public sealed class ItemTags
     public string Label { get; set; } = string.Empty;
     public bool Key { get; set; }
     public List<Guid> Storylines { get; set; } = new();
+}
+
+/// <summary>A location's optional colour (S1.3), keyed by normalised name
+/// (decision C). Only locations given a colour are kept.</summary>
+public sealed class LocationSettings
+{
+    public string Name { get; set; } = string.Empty;
+    public string Colour { get; set; } = string.Empty;
 }
 
 /// <summary>A named thread through the story (S1.2). Colour is a
