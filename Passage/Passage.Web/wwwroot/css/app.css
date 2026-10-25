@@ -1664,6 +1664,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .step-card textarea { font-size: 15px; }
 
+/* Push/Pull's revision note: the run's answers as plain text, wrapped, never a table. */
+.step-summary { margin: 0; padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+    color: var(--control-foreground); background: var(--control-background); border: 1px solid var(--control-border); border-radius: 4px; }
+
 .step-echo { font-size: 13px; line-height: 1.5; color: var(--secondary-text); border-left: 2px solid var(--control-border); padding-left: 8px; }
 .step-echo-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-text); margin-right: 4px; }
 

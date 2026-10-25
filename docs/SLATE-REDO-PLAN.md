@@ -691,7 +691,7 @@ block and `IStoryPartner` injection are deleted. Tests: 4 new, 2 updated for loa
   once with SDK 9.0.317 pinned (the Razor trap). Not exercised by hand: the page-plan confirm, and a Bridge run on
   sequence or act cards.
 
-### T7 — Push/Pull and Understudy · `todo`
+### T7 — Push/Pull and Understudy · `done`
 
 - Push/Pull anchored to a scene: GSU `Slots(speakers)` prefilled; six checks;
   each **Y** branches into its Lens with the `LensMinutes` clock; read-back
@@ -700,6 +700,63 @@ block and `IStoryPartner` injection are deleted. Tests: 4 new, 2 updated for loa
 - Understudy (new): default character = fewest lines among the scene's
   speakers; sends tagged inbox beats.
 - Migration: Revisions. Delete old views.
+
+**Done:** `ExerciseCatalog.PushPull` and `.Understudy`. Push/Pull: a purpose line, GSU as three
+`Slots(speakers)` steps (goal, stakes, urgency — the worksheet's table a column at a time, one field per
+speaker in the scene), a GSU flag whose **Y** shows the worksheet's words as a stop with **Open Scene Dials on
+this scene** (no Lens), then the six checks in priority order, each a `YesNo` whose **Y** opens that check's Lens
+group and no other: the problem in a line, a `Pick` of the eight Lenses (buttons show the name, the gloss of the
+one picked sits under them), the fragment on the minutes clock, *moved it?* and one line why. A stop ("one check
+or all six"), the optional belief check as a gate (A, Z, shape, match, seam, a Lens and fragment at the seam), a
+stop before the read-back, the read-back with *Plumbing aside: which scene would you skip?* and the eavesdropper
+test, and a closing `Summary` step. New step features, each tested: `StepKind.Summary` (the run's answered steps as
+"Label: answer" lines, yes / no in words, with Send to on it; `ExerciseEngine.Summary`), `Step.Clock` (the step runs
+on `BurstSettings.LensMinutes`: the runner's action row shows minutes and Go instead of the per-answer seconds;
+`IToolHost.StartBurstAsync(rootId, seconds)`), `Step.Opens` (a stop that offers another exercise on the same scene;
+`IToolHost.OpenOnSceneAsync` resumes the Scene Dials run kept for that scene or starts one), `Step.NameOnly`, and a
+`Pick` over a project list (`Step.Source`, here the speakers). Push/Pull sends the revision note to a note page named
+after the scene (`ToolTargets.AppendToNote(..., character: false)` makes a blank page when missing, else appends under
+"## Push/Pull"; it is the same function the character pages use) and to Copy. Understudy: *Whose movie is it?*
+(a pick of the scene's speakers, prefilled with the speaker who has the fewest speeches in that scene —
+`StoryFilter.SceneSpeechCounts`, `ProjectContext.LeastSpeaking`, ties going to the lower Cast order — and changeable
+by tapping Who in the trail), what they wanted walking in, five minutes before, what they want that has nothing to do
+with the plot, then a freewrite on the minutes clock; every answer sends to the Inbox tagged with that character, or
+Copy. Both are on the launcher (A dead scene, A scene going), in Right now's scene rotation and in the Board card Tools
+menu (both are scene-anchored, so the catalog filter picks them up). `SlateMigration.Migrate` moves Revisions (blank
+ones cleared, not moved). The Revisions / Revise views, their handlers, `WorkshopView.Revisions` / `Revise`, `SceneDials`,
+`BeliefShapes`, `Lenses`, `CheckQuestions` and `StartLensAsync` in `Editor.razor` are deleted; the Push/Pull "Classic"
+card link is gone. Tests: 4 new, 2 updated (138 total, all pass).
+
+**Deviations:**
+- GSU is three Slots steps, not one: a `Slots` step has one field per speaker, and the table has three columns.
+- A check is one `YesNo`; the worksheet's separate "Answer" line is asked only behind a **Y**, as "what's wrong with it?".
+  A migrated run's Answer on a check that was marked N or never flagged is kept in the sidecar but not shown (the
+  trail lists visible steps only). The one in the dev data, `fill-test`, had none.
+- Push/Pull starts with a skippable purpose line (the worksheet's setup), before GSU, so the migrated `Purpose` has a home.
+- A migrated run keeps the old free-text scene as its anchor (`SceneText`): it resolves when it is exactly a scene
+  heading, otherwise the strip says "no longer in the script". GSU rows migrate under their character; a row with no
+  name and some text joins the purpose, and a named row for someone who doesn't speak in the resolved scene stays in the
+  run but has no field.
+- The revision note is the whole run as `Label: answer` lines under one "Revision note" bullet on the note page, not
+  a hand-built layout; the note's title is the scene heading, so a renamed scene starts a new page. Sending with the
+  scene gone (renamed or deleted underneath) says "no longer in the script — nothing added" and writes nothing.
+- No inbox storyline step on Understudy (the plan's "optional new storyline"): the brief for this row is tagged beats
+  only. Understudy's Send to also offers Copy, not a note page.
+- `BurstSettings.LensMinutes` is kept and now drives both timed fragments and the freewrite; the old per-view minutes
+  input moved into the runner's action row. Nothing writes to the script in this row, so there is no undo to check.
+- Verified in the browser on a scratch copy of the dev data (§8): `fill-test`'s saved Push/Pull run (EXT. GARDEN - LATER,
+  Polarity flagged with its Lens and fragment, Linkage clean) shows under the Push/Pull card after migration and opens with
+  those answers in the trail; a fresh run on the scene under the caret, GSU prefilled with its one speaker, keyboard through
+  purpose and GSU with the real Enter key, a Y on GSU → the pointer and **Open Scene Dials on this scene** (opens Scene Dials
+  on the same scene; no Lens), a Y on Polarity opens its Lens only, Pick shows names then the gloss, Go starts the minutes
+  clock (read-in, then 4 minutes) and the fragment keeps typing, clean checks add nothing, the read-back's two new questions,
+  the revision note's text, Send to → the note page (created blank, titled with the scene, with the note under "## Push/Pull"),
+  and step 5 (the scene's heading renamed underneath, then send: status line, no page written; the status-bar Undo put the
+  heading back). Understudy on a scene with MARA (4 speeches) and TOM (1): defaults to TOM, Who changes it, the freewrite sent
+  to the Inbox tagged TOM and shows on the BOARD strip; the Board card Tools menu lists both. No counters or dates in the dock
+  text; `.partner` count 0; 375px has no horizontal overflow on Understudy's clock row. Reload and a server restart kept the run.
+  Not exercised by hand: Copy, the belief check's Lens fragment, a Push/Pull started from a Board card, and 375px on
+  Push/Pull itself.
 
 ### T8 — Ideation overlay, cleanup, docs · `todo`
 

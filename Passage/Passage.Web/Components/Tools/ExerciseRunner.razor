@@ -160,10 +160,28 @@
             {
                 <button class="btn" @onclick="() => JumpToFinishAsync(finish)">@finish.Step.Label</button>
             }
+            @if (_shown is { Step.Clock: true })
+            {
+                <span class="fill-hint">Timed —</span>
+                <input type="number" class="burst-seconds" min="1" max="30" value="@Host.Slate.Burst.LensMinutes" @onchange="LensMinutesAsync" aria-label="Minutes" />
+                <span class="fill-meta">minutes</span>
+                @if (Host.BurstRunning)
+                {
+                    <button class="btn" @onclick="Host.StopBurstAsync">Stop</button>
+                }
+                else
+                {
+                    <button class="btn" title="Puts the caret in the field and starts the clock" @onclick="StartClockAsync">Go</button>
+                }
+                <span class="burst-display" data-burst-display></span>
+            }
+            else
+            {
             <label class="burst-toggle" title="Time each answer — five seconds to read it, then the clock">
                 <input type="checkbox" checked="@Host.Slate.Burst.Enabled" @onchange="BurstToggledAsync" /> ⏱
             </label>
-            @if (Host.Slate.Burst.Enabled)
+            }
+            @if (_shown is not { Step.Clock: true } && Host.Slate.Burst.Enabled)
             {
                 <input type="number" class="burst-seconds" min="5" max="600" value="@Host.Slate.Burst.Seconds" @onchange="BurstSecondsAsync" aria-label="Seconds per answer" />
                 @if (Host.BurstRunning)
@@ -534,6 +552,20 @@
     }
 
     private Task StartBurstAsync() => Host.StartBurstAsync(RootId);
+
+    // The Lens fragment and the freewrite run on minutes, not the per-answer seconds.
+    private Task StartClockAsync() => Host.StartBurstAsync(RootId, Math.Clamp(Host.Slate.Burst.LensMinutes, 1, 30) * 60);
+
+    private Task LensMinutesAsync(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var minutes))
+        {
+            Host.Slate.Burst.LensMinutes = Math.Clamp(minutes, 1, 30);
+            Host.Save();
+        }
+
+        return Task.CompletedTask;
+    }
 
     private async Task AskPartnerAsync(StepSlot slot)
     {

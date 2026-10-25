@@ -109,6 +109,23 @@ public static class ProjectContext
         return cast.Where(character => names.Contains(character.Name)).Select(character => character.Name).ToList();
     }
 
+    /// <summary>Who speaks least in the scene: the speaker with the fewest speeches there, and of those the one with
+    /// the fewest in the whole script (the last in Cast order). Null when nobody speaks.</summary>
+    public static string? LeastSpeaking(
+        SceneChoice scene,
+        IReadOnlyDictionary<int, Dictionary<string, int>> speechCounts,
+        IReadOnlyList<string> speakers)
+    {
+        if (speakers.Count == 0)
+        {
+            return null;
+        }
+
+        var counts = speechCounts.GetValueOrDefault(scene.LineNumber) ?? new Dictionary<string, int>();
+        var fewest = speakers.Min(name => counts.GetValueOrDefault(name));
+        return speakers.Last(name => counts.GetValueOrDefault(name) == fewest);
+    }
+
     /// <summary>A character's note page: titled with their name, case-insensitively.</summary>
     public static NotePage? NoteFor(StoryData story, string character) =>
         story.Notes.FirstOrDefault(note => string.Equals(note.Title.Trim(), character.Trim(), StringComparison.OrdinalIgnoreCase));

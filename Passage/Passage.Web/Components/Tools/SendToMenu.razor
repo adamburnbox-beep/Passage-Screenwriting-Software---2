@@ -26,6 +26,8 @@
     [Parameter, EditorRequired] public IReadOnlyList<TargetKind> Targets { get; set; } = Array.Empty<TargetKind>();
     // Whose note page, when the run names someone.
     [Parameter] public string Character { get; set; } = string.Empty;
+    // The scene whose note page it is, for a run about a scene (Push/Pull's revision note).
+    [Parameter] public string SceneName { get; set; } = string.Empty;
     [Parameter] public string SynopsisLabel { get; set; } = string.Empty;
     [Parameter] public EventCallback<TargetKind> OnSend { get; set; }
 
@@ -37,7 +39,8 @@
     {
         TargetKind.InboxBeat => Character.Length > 0 ? $"Beat inbox, tagged {Character}" : "Beat inbox",
         TargetKind.Synopsis => "Synopsis in the script",
-        TargetKind.NotePage => Character.Length > 0 ? $"{Character}'s note page" : "Character note page",
+        TargetKind.NotePage => Character.Length > 0 ? $"{Character}'s note page"
+            : SceneName.Length > 0 ? $"Note page: {SceneName}" : "Character note page",
         TargetKind.Copy => "Copy",
         TargetKind.Bracket => "The bracket",
         TargetKind.SceneCard => "A new scene card between A and Z",

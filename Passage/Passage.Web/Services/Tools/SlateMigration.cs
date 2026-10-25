@@ -5,7 +5,7 @@ namespace Passage.Web.Services.Tools;
 /// (docs/SLATE-REDO-PLAN.md R-E). A move, not a copy: each record type is
 /// converted and its old list cleared by the row that deletes that type's dock
 /// view, so a second run finds nothing to do. Not gated by version; the
-/// version bump waits for T8. Handles Chains (T2), Fills (T4), the Split family (T5) and Bridges and Positions (T6); it runs from
+/// version bump waits for T8. Handles Chains (T2), Fills (T4), the Split family (T5), Bridges and Positions (T6) and Revisions (T7); it runs from
 /// <c>SlateStore.Load</c>.
 /// </summary>
 public static class SlateMigration
@@ -19,6 +19,8 @@ public static class SlateMigration
     public const string ExtendId = "extend";
     public const string BridgeId = "bridge";
     public const string PositionId = "position";
+    public const string PushPullId = "pushpull";
+    public const string UnderstudyId = "understudy";
 
     /// <summary>Moves Chains, Fills and the Split family in place. Returns the number of runs moved.</summary>
     public static int Migrate(SlateDocument document)
@@ -78,6 +80,15 @@ public static class SlateMigration
         }
 
         document.Positions.Clear();
+
+        // Revisions (Push/Pull): an untouched one is cleared, not moved.
+        foreach (var revision in document.Revisions.Where(revision => !revision.IsEmpty))
+        {
+            document.Exercises.Add(FromRevision(revision, Guid.NewGuid().ToString("N")));
+            moved++;
+        }
+
+        document.Revisions.Clear();
 
         document.Split = new SplitRun();
         document.Belief = new BeliefRun();
@@ -281,6 +292,81 @@ public static class SlateMigration
 
         return run;
     }
+
+    /// <summary>
+    /// A Push/Pull run, kept by the scene it named. GSU rows land under their character (a row with no name and some
+    /// text has no one to sit under, so it joins the purpose rather than vanishing); each check's answer becomes the
+    /// "problem" line behind its flag, its Lens answers keep their place. A Y/N the writer never set stays unset.
+    /// Whatever the old view had open (the deeper sections) has no marker, so the gates are opened only where there is text.
+    /// </summary>
+    public static ExerciseRun FromRevision(ReviseRun revision, string id)
+    {
+        var scene = Flatten(revision.Scene);
+        var run = new ExerciseRun
+        {
+            Id = id,
+            ExerciseId = PushPullId,
+            Anchor = new Anchor { Kind = AnchorKind.Scene, Text = scene, SceneText = scene }
+        };
+
+        var purpose = revision.Purpose.Trim();
+        foreach (var row in revision.Gsu.Where(row => !row.IsEmpty))
+        {
+            var who = row.Character.Trim();
+            if (who.Length == 0)
+            {
+                var loose = string.Join("; ", new[] { row.Goal, row.Stakes, row.Urgency }.Where(text => !string.IsNullOrWhiteSpace(text)));
+                if (loose.Length > 0)
+                {
+                    purpose += (purpose.Length == 0 ? string.Empty : "\n") + $"(a GSU row with no character named: {loose})";
+                }
+
+                continue;
+            }
+
+            Put(run, $"gsu-goal/{who}", 0, row.Goal);
+            Put(run, $"gsu-stakes/{who}", 0, row.Stakes);
+            Put(run, $"gsu-urgency/{who}", 0, row.Urgency);
+        }
+
+        Put(run, "purpose", 0, purpose);
+        Put(run, "gsu", 0, YesNo(revision.GsuFlag));
+        for (var i = 0; i < ExerciseCatalog.CheckNames.Length; i++)
+        {
+            var check = revision.Check(ExerciseCatalog.CheckNames[i]);
+            var key = "c" + (i + 1);
+            Put(run, key, 0, YesNo(check.Flag));
+            Put(run, key + "-why", 0, check.Answer);
+            Put(run, key + "-lens", 0, check.Lens);
+            Put(run, key + "-frag", 0, check.Fragment);
+            Put(run, key + "-moved", 0, YesNo(check.Moved));
+            Put(run, key + "-movedwhy", 0, check.MovedWhy);
+        }
+
+        if (revision.HasDiagnostic)
+        {
+            Put(run, "diag", 0, "y");
+            Put(run, "diag-a", 0, revision.DiagA);
+            Put(run, "diag-z", 0, revision.DiagZ);
+            Put(run, "diag-shape", 0, revision.DiagShape);
+            Put(run, "diag-match", 0, revision.DiagMatch);
+            Put(run, "diag-seam", 0, revision.DiagSeam);
+            Put(run, "diag-lens", 0, revision.DiagLens);
+            Put(run, "diag-frag", 0, revision.DiagFragment);
+        }
+
+        Put(run, "working", 0, revision.Working);
+        Put(run, "notsitting", 0, revision.NotSitting);
+        Put(run, "ready", 0, revision.Ready);
+        PassStopsBeforeAnswers(ExerciseCatalog.PushPull, run);
+        return run;
+    }
+
+    private static string Flatten(string text) =>
+        string.Join(' ', text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+
+    // The old Y / N flags were upper case; the engine's yes / no marks are lower case.
+    private static string YesNo(string flag) => flag.Trim().ToLowerInvariant() switch { "y" => "y", "n" => "n", _ => string.Empty };
 
     private static void Join(ExerciseRun run, string key, string value)
     {

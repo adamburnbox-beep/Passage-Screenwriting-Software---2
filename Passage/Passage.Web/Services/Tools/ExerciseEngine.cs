@@ -205,7 +205,7 @@ public sealed class ExerciseEngine
         var from = slot.Step.FromKey is { } key ? Find(key) : null;
         if (from is null)
         {
-            return slot.Step.Options;
+            return slot.Step.Source is { } source ? _slotSource(source) : slot.Step.Options;
         }
 
         if (from.Kind == StepKind.Slots)
@@ -432,6 +432,25 @@ public sealed class ExerciseEngine
         }
 
         return trail;
+    }
+
+    /// <summary>
+    /// The run's answers as one note, a "Label: answer" line per answered step the writer can see, in order
+    /// (yes / no marks in words). What a Summary step sends; unanswered and hidden steps are left out.
+    /// </summary>
+    public string Summary(ExerciseRun run)
+    {
+        var lines = new List<string>();
+        foreach (var entry in Trail(run))
+        {
+            var text = entry.Slot.Step.Kind == StepKind.YesNo
+                ? entry.Summary switch { "y" => "yes", "n" => "no", var other => other }
+                : entry.Summary;
+            var label = entry.Slot.Step.Label.Length > 0 ? entry.Slot.Step.Label : entry.Slot.Step.Question;
+            lines.Add(label.Length > 0 ? $"{label}: {text.Trim()}" : text.Trim());
+        }
+
+        return string.Join('\n', lines);
     }
 
     private string Summarise(ExerciseRun run, StepSlot slot)

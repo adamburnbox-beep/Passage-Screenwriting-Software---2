@@ -1,7 +1,7 @@
 namespace Passage.Web.Services.Tools;
 
 /// <summary>
-/// Starts the answers an anchor can supply: the moment a Position run is about, the two ends of a Bridge. Only blank answers
+/// Starts the answers an anchor can supply: the moment a Position run is about, the two ends of a Bridge, the character Understudy plays. Only blank answers
 /// are filled, so naming a beat or a card never overwrites what the writer has written. Pure over <see cref="IToolHost"/>'s lists.
 /// </summary>
 public static class AnchorPrefill
@@ -18,6 +18,9 @@ public static class AnchorPrefill
                     | Fill(run, "z", end is null ? null : Describe(end));
             case SlateMigration.PositionId:
                 return Fill(run, "moment", MomentOf(run.Anchor, host));
+            case SlateMigration.UnderstudyId:
+                // The scene's least important character, changeable in the first step.
+                return Fill(run, "who", host.LeastSpeakingFor(run.Anchor));
             default:
                 return false;
         }

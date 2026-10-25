@@ -25,7 +25,9 @@ public enum StepKind
     Dice,
     Slots,
     Stop,
-    Loop
+    Loop,
+    // Not a question: the run's answers so far as a note, with Send to on it (Push/Pull's revision note).
+    Summary
 }
 
 /// <summary>
@@ -55,8 +57,12 @@ public sealed record Step
     public bool Open { get; init; }
 
     // Pick: the Lines step whose slots become the options, or a fixed list of
-    // "Name — gloss" options (the stored answer is the Name).
+    // "Name — gloss" options (the stored answer is the Name), or the items of a project list (Source).
     public string? FromKey { get; init; }
+
+    // Pick with "Name — gloss" options: the buttons show only the Name, and the gloss of the one picked shows
+    // under them (the Lens table: eight names to choose from, one explanation at a time).
+    public bool NameOnly { get; init; }
     public IReadOnlyList<string> Options { get; init; } = Array.Empty<string>();
 
     // Branch: show BranchGroup only while the step OnKey (same round) holds
@@ -79,6 +85,13 @@ public sealed record Step
 
     // Stop: the stop-callout's words, shown with Stop here / Keep going.
     public string Text { get; init; } = string.Empty;
+
+    // Stop: also offer to open this exercise on the same scene (GSU's flag points at Scene Dials).
+    public string? Opens { get; init; }
+
+    // A step timed on the minutes clock (BurstSettings.LensMinutes) rather than the per-answer seconds:
+    // the Lens fragment and Understudy's freewrite, which are minutes of writing, not a burst of lines.
+    public bool Clock { get; init; }
 
     // The label of the Shape line this step is about (SplitScript.Slots): its text in the
     // script is shown under the question, and a fresh run starts from it (A and Z).
