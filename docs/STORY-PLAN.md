@@ -921,7 +921,7 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
 
 ## Tier S4 — Notes
 
-### S4.1 Project notes — `partial` · design note written, awaiting approval
+### S4.1 Project notes — `done` · design approved 2026-10-25
 
 - **Read:** `docs/SLATE-PLAN.md` lines 1–20 and decision B (~92–112) only.
   `Slate` 352–380 (`IdeationDocument`, the precedent for non-script data).
@@ -948,7 +948,7 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
     S2.2). The built-ins must be Passage's own wording.
 - **Budget:** ~30k (design note only).
 
-#### S4.1 design note (2026-10-25) — awaiting Adam's approval
+#### S4.1 design note (2026-10-25) — approved as recommended
 
 **Recommendation in one line:** yes, add notes, as a small per-script area
 stored in the sidecar (`Story.Notes`), edited in the existing Markdown editor,
@@ -1069,6 +1069,40 @@ per-note history, and any bridge to the Slate runners.
 1. Notes at all, yes or no.
 2. Sidecar (recommended) or companion files.
 3. Whether the three built-in templates are the right set.
+
+### S4.2 Project notes: implementation — `todo`
+
+- **Approved (2026-10-25):** per-script notes in the sidecar as
+  `StoryData.Notes` (`NotePage`), three built-in templates. Read the S4.1
+  design note above first; it is the spec.
+- **Read:** the S4.1 note; decision A; `Slate` `StoryData`, `SaveSlate`
+  (`Editor.razor` ~4367), `PruneOrphans` (`Slate` ~547) and the prune message
+  where it is reported; `StructureTemplates.cs` and the S2.2 landed note for
+  the `.slate/templates.json` schema; the sidebar tab code (`Editor.razor`
+  150–156). Grep first, ranges drift.
+- **Do:**
+  - `NotePage` and `StoryData.Notes` (defaults only, no version bump).
+  - `Services/NoteTemplates.cs`: Character, Location, Logline & premise, in
+    Passage's own wording (headings plus one-line prompts).
+  - NOTES entry in the sidebar: page list (new from blank or template, rename,
+    confirmed delete) and a Markdown editor for the selected page, saved on a
+    debounce through `SaveSlate`.
+  - Download .md per page; Download all as a zip.
+  - Custom templates: "Save as template" stored as a sibling `NoteTemplates`
+    list in `.slate/templates.json`. If S2.2's schema can't take it, stop and
+    flag it (rule 7).
+  - The prune message names how many notes a pruned sidecar held.
+- **Not in this row:** note-to-note links, search, images, history, any bridge
+  to Slate runners or the script, character-rename propagation.
+- **Success:** in the running app: create a page from each template; edit,
+  reload, text persists; rename; delete asks first; download one and all; save
+  a custom template and start a page from it; notes never appear in Board,
+  exports or page counts; an old sidecar without `Notes` loads.
+- **Tests:** `Notes` round-trips through `SlateStore`; an old sidecar loads
+  with an empty list; templates are non-empty and distinct; custom templates
+  survive `PruneOrphans`; the prune message counts notes; the zip contains one
+  `.md` per page with unique, safe file names (duplicate or empty titles).
+- **Budget:** ~80k.
 
 ---
 
