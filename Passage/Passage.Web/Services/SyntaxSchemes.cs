@@ -64,7 +64,28 @@ public static partial class SyntaxSchemes
             ["#111110", "#2E2E2C", "#3C3C39", "#757570", "#4A4A47", "#000000", "#5C5C58", "#6E6E69"]),
         Preset("contrast", "High Contrast",
             ["#00D4FF", "#FF6EC7", "#FFFFFF", "#BFBFBF", "#D0A8FF", "#FFE600", "#FFA033", "#6CFF8A"],
-            ["#0043B0", "#B8006E", "#000000", "#4D4D4D", "#5A00A8", "#8A5A00", "#A34A00", "#006B1E"])
+            ["#0043B0", "#B8006E", "#000000", "#4D4D4D", "#5A00A8", "#8A5A00", "#A34A00", "#006B1E"]),
+        // The presets below spread the eight tokens across the whole hue wheel
+        // rather than one family, so neighbouring elements never share a colour.
+        Preset("primary", "Primary",
+            ["#4D8DFF", "#FF4D4D", "#FFFFFF", "#A0A0A0", "#FF9F1A", "#FFE14D", "#B65CFF", "#3DDC84"],
+            ["#1F5FD6", "#D41F1F", "#000000", "#5A5A5A", "#C25E00", "#8A7400", "#7B22C9", "#12803F"]),
+        Preset("monokai", "Monokai",
+            ["#66D9EF", "#F92672", "#F8F8F2", "#A59F85", "#AE81FF", "#A6E22E", "#FD971F", "#E6DB74"],
+            ["#0E7C9A", "#C4104F", "#272822", "#6E6A55", "#6F3FC7", "#4A7A00", "#B35900", "#7A6A00"]),
+        Preset("dracula", "Dracula",
+            ["#8BE9FD", "#FF79C6", "#F8F8F2", "#9AA5D0", "#BD93F9", "#50FA7B", "#FFB86C", "#F1FA8C"],
+            ["#0A7E9A", "#B8247F", "#282A36", "#5B6590", "#6B3FBF", "#1B8A3E", "#A85A00", "#6F7A00"]),
+        Preset("gruvbox", "Gruvbox",
+            ["#83A598", "#FB4934", "#EBDBB2", "#A89984", "#D3869B", "#FABD2F", "#FE8019", "#B8BB26"],
+            ["#327482", "#B3140F", "#3C3836", "#7C6F64", "#9D2A6B", "#A66A00", "#B04500", "#6B7000"]),
+        Preset("jewel", "Jewel",
+            ["#3AA0FF", "#FF4F6D", "#E8E4D8", "#9C9A90", "#B56BFF", "#19D3A2", "#FFB020", "#C8E04A"],
+            ["#1665C1", "#C21E40", "#2A2824", "#6E6C62", "#7B2FD0", "#007A62", "#A8620A", "#5F7A00"]),
+        // Okabe-Ito: chosen to stay distinguishable with common colour blindness.
+        Preset("colourblind", "Colour-blind Safe",
+            ["#56B4E9", "#E69F00", "#F0F0F0", "#999999", "#CC79A7", "#F0E442", "#FF7A33", "#00B386"],
+            ["#0072B2", "#B36B00", "#111111", "#666666", "#A0457D", "#7A6F00", "#B84A00", "#007A5A"])
     ];
 
     public static SyntaxPreset Classic => Presets[0];
