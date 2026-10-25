@@ -107,6 +107,7 @@ Click New to start one — files are stored on the server volume.</div>
                     <button @onclick='() => ExportAsync("fountain")'>Fountain source (.fountain)</button>
                     <button @onclick='() => ExportAsync("highland")'>Highland 2 (.highland)</button>
                     <button @onclick='() => ExportAsync("fdx")'>Final Draft (.fdx)</button>
+                    <button @onclick="() => _outlineExportOpen = true">Export outline…</button>
                 </div>
             </details>
         </div>
@@ -2240,6 +2241,31 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_outlineExportOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Export outline</h3>
+            <p class="tool-note">Headings are always written. Fountain keeps tags as [[notes]], so it re-opens here as an outline.</p>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Synopses" /> Synopses</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Storylines" /> Storylines</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Characters" /> Characters</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Locations" /> Locations</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.KeyOnly" /> Key beats only</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.BeatSheet" /> Include the Beat Sheet</label>
+            @if (DetachedItems.Count > 0)
+            {
+                <p class="detached-note">@DetachedItems.Count detached item@(DetachedItems.Count == 1 ? "" : "s") (tags whose heading is gone) will not be exported.</p>
+            }
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _outlineExportOpen = false">Cancel</button>
+                <button class="btn" @onclick='() => ExportOutlineAsync(OutlineFormat.Text)'>Plain text</button>
+                <button class="btn primary" @onclick='() => ExportOutlineAsync(OutlineFormat.Fountain)'>Fountain</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_templatesOpen)
 {
     <div class="modal-backdrop">
@@ -3853,6 +3879,38 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     // ---- Structure templates (docs/STORY-PLAN.md S2.2) ----
+
+    private bool _outlineExportOpen;
+    private readonly OutlineOptionsModel _outlineOptions = new();
+
+    // Mutable so the dialog's checkboxes can bind; frozen into the record on export.
+    private sealed class OutlineOptionsModel
+    {
+        public bool Synopses { get; set; } = true;
+        public bool Storylines { get; set; } = true;
+        public bool Characters { get; set; } = true;
+        public bool Locations { get; set; } = true;
+        public bool KeyOnly { get; set; }
+        public bool BeatSheet { get; set; }
+    }
+
+    private async Task ExportOutlineAsync(OutlineFormat format)
+    {
+        var options = new OutlineExportOptions(
+            _outlineOptions.Synopses, _outlineOptions.Storylines, _outlineOptions.Characters,
+            _outlineOptions.Locations, _outlineOptions.KeyOnly, _outlineOptions.BeatSheet);
+        var text = OutlineExport.Build(
+            _analysis.BoardLanes, _slate.Story, _slate.Beats, _slate.BeatSheetPages, options, format);
+        var baseName = Path.GetFileNameWithoutExtension(DisplayName);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = "Untitled";
+        }
+
+        await JS.InvokeVoidAsync("passage.downloadText", text, baseName + " outline" + OutlineExport.Extension(format));
+        _outlineExportOpen = false;
+        _statusMessage = $"Exported outline ({(format == OutlineFormat.Fountain ? "Fountain" : "text")})";
+    }
 
     private bool _templatesOpen;
     private bool _seedBeats;

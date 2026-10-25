@@ -62,6 +62,10 @@ class Program
         failures += RunTest("Test Structure Template Save Round Trip", TestStructureTemplateSaveRoundTrip);
         failures += RunTest("Test SlateStore Keeps Templates File", TestSlateStoreKeepsTemplatesFile);
         failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
+        failures += RunTest("Test Outline Export Matches Golden", TestOutlineExportMatchesGolden);
+        failures += RunTest("Test Outline Export Fields Change Output", TestOutlineExportFieldsChangeOutput);
+        failures += RunTest("Test Outline Export Key Only Keeps Headers", TestOutlineExportKeyOnlyKeepsHeaders);
+        failures += RunTest("Test Outline Export Round Trips Through Parser", TestOutlineExportRoundTripsThroughParser);
         failures += RunTest("Test Story Stamp Keeps Id And Scene Number", TestStoryStampKeepsIdAndSceneNumber);
         failures += RunTest("Test Story Duplicate Id Flags Second Only", TestStoryDuplicateIdFlagsSecondOnly);
         failures += RunTest("Test Story Detached Is Computed Never Removed", TestStoryDetachedIsComputedNeverRemoved);
@@ -1120,6 +1124,115 @@ class Program
 
         var prose = new List<BoardLane> { new(null, new List<BoardGroup> { new(Sequence("Just a synopsis"), new List<BoardCard>()) }) };
         Assert(ShapeLine.Derive(prose) == "▫·▫·▫·▫·▫·▫·▫·▫", "A sequence with no slot lines shows everything unknown, not dropped");
+    }
+
+    static readonly Guid StoryA = Guid.Parse("b0000000-0000-0000-0000-00000000000a");
+    static readonly Guid StoryB = Guid.Parse("b0000000-0000-0000-0000-00000000000b");
+
+    static Guid CardId(int n) => Guid.Parse($"a0000000-0000-0000-0000-{n:D12}");
+
+    // The S3.2 fixture script and a story that tags it: card 3 is starred and carries
+    // everything, card 5 is starred with only a storyline, card 7 carries tags but no star.
+    static (IReadOnlyList<BoardLane> Lanes, StoryData Story, List<Beat> Beats) OutlineFixture()
+    {
+        var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "S32Outline.fountain"));
+        var lanes = new DocumentAnalyzer().Analyze(text).BoardLanes;
+        var story = new StoryData
+        {
+            Storylines =
+            {
+                new Storyline { Id = StoryA, Name = "A Story" },
+                new Storyline { Id = StoryB, Name = "B Story" }
+            },
+            Items =
+            {
+                new ItemTags { TargetId = CardId(3), Kind = "card", Key = true,
+                    Storylines = { StoryA, StoryB }, Characters = { "ANNA", "MOTHER" }, Locations = { "HOUSE - KITCHEN" } },
+                new ItemTags { TargetId = CardId(5), Kind = "card", Key = true, Storylines = { StoryB } },
+                new ItemTags { TargetId = CardId(7), Kind = "card", Locations = { "HARBOUR" } }
+            }
+        };
+        var beats = new List<Beat>
+        {
+            new() { Id = Guid.Parse("c0000000-0000-0000-0000-000000000001"), Title = "Opening image", Description = "Anna alone.", Page = 1, Span = 1 },
+            new() { Id = Guid.Parse("c0000000-0000-0000-0000-000000000002"), Title = "Break into two", Page = 25, Span = 3 },
+            new() { Id = Guid.Parse("c0000000-0000-0000-0000-000000000003"), Title = "Loose idea", Description = "Maybe a storm." }
+        };
+        story.Items.Add(new ItemTags { TargetId = beats[1].Id, Kind = "beat", Key = true, Storylines = { StoryA } });
+        return (lanes, story, beats);
+    }
+
+    static void AssertGolden(string name, string actual)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", name);
+        var golden = File.ReadAllText(path);
+        Assert(actual == golden, $"{name} differs. Got:\n{actual}");
+    }
+
+    static void TestOutlineExportMatchesGolden()
+    {
+        var (lanes, story, beats) = OutlineFixture();
+        var all = new OutlineExportOptions(BeatSheet: true);
+        AssertGolden("S32Outline.all.fountain.golden.txt",
+            OutlineExport.Build(lanes, story, beats, 110, all, OutlineFormat.Fountain));
+        AssertGolden("S32Outline.all.text.golden.txt",
+            OutlineExport.Build(lanes, story, beats, 110, all, OutlineFormat.Text));
+        AssertGolden("S32Outline.key.fountain.golden.txt",
+            OutlineExport.Build(lanes, story, beats, 110,
+                new OutlineExportOptions(Synopses: false, Locations: false, KeyOnly: true, BeatSheet: true), OutlineFormat.Fountain));
+    }
+
+    static void TestOutlineExportFieldsChangeOutput()
+    {
+        var (lanes, story, beats) = OutlineFixture();
+        string Fountain(OutlineExportOptions options) => OutlineExport.Build(lanes, story, beats, 110, options, OutlineFormat.Fountain);
+
+        var all = Fountain(new OutlineExportOptions());
+        Assert(all.Contains("= Anna finds the letter.") && all.Contains("[[Storylines: A Story, B Story]]")
+            && all.Contains("[[Characters: ANNA, MOTHER]]") && all.Contains("[[Locations: HOUSE - KITCHEN]]"), "Defaults write every field");
+        Assert(!all.Contains("BEAT SHEET"), "The Beat Sheet is opt-in");
+        Assert(!all.Contains("[[id:"), "Ids are not exported");
+        Assert(all.Contains("\n.THE LONG ROAD\n"), "A forced heading keeps its dot");
+
+        Assert(!Fountain(new OutlineExportOptions(Synopses: false)).Contains("= "), "Synopses off drops every = line");
+        Assert(!Fountain(new OutlineExportOptions(Storylines: false)).Contains("Storylines:"), "Storylines off");
+        Assert(!Fountain(new OutlineExportOptions(Characters: false)).Contains("Characters:"), "Characters off");
+        Assert(!Fountain(new OutlineExportOptions(Locations: false)).Contains("Locations:"), "Locations off");
+
+        var storyWithoutB = OutlineExport.Build(lanes, story, beats, 110, new OutlineExportOptions(), OutlineFormat.Text);
+        Assert(storyWithoutB.Contains("    INT. HOUSE - KITCHEN - DAY"), "Text indents a scene under its sequence under its act");
+    }
+
+    static void TestOutlineExportKeyOnlyKeepsHeaders()
+    {
+        var (lanes, story, beats) = OutlineFixture();
+        var text = OutlineExport.Build(lanes, story, beats, 110, new OutlineExportOptions(KeyOnly: true), OutlineFormat.Fountain);
+        Assert(text.Contains("# Act One") && text.Contains("## Setup"), "Starred cards keep their act and sequence headers");
+        Assert(text.Contains("INT. HOUSE - KITCHEN - DAY") && text.Contains("### Pinch"), "Starred cards are kept");
+        Assert(!text.Contains("THE LONG ROAD"), "An unstarred card in a kept group is dropped");
+        Assert(!text.Contains("Act Two") && !text.Contains("HARBOUR"), "A lane with no starred card is dropped, tags or not");
+    }
+
+    static void TestOutlineExportRoundTripsThroughParser()
+    {
+        var (lanes, story, beats) = OutlineFixture();
+        foreach (var options in new[] { new OutlineExportOptions(), new OutlineExportOptions(BeatSheet: true) })
+        {
+            var exported = OutlineExport.Build(lanes, story, beats, 110, options, OutlineFormat.Fountain);
+            var reopened = new DocumentAnalyzer().Analyze(exported).BoardLanes;
+
+            static List<string> Shape(IReadOnlyList<BoardLane> source) => source.SelectMany(lane =>
+                new[] { lane.ActCard }.Concat(lane.Groups.SelectMany(group => new[] { group.SequenceCard }.Concat(group.Cards)))
+                    .Where(card => card is not null)
+                    .Select(card => $"{card!.Kind}|{card.Heading}|{card.Description}")).ToList();
+
+            var expected = Shape(lanes);
+            var actual = Shape(reopened);
+            Assert(expected.SequenceEqual(actual),
+                $"Re-opened outline (beat sheet {options.BeatSheet}) must have the same cards.\nExpected:\n{string.Join("\n", expected)}\nGot:\n{string.Join("\n", actual)}");
+            Assert(reopened.Count == lanes.Count && reopened.Select(lane => lane.Groups.Count).SequenceEqual(lanes.Select(lane => lane.Groups.Count)),
+                "Same lanes and groups");
+        }
     }
 
     static void TestSuggestionsAskForTheNextField()
