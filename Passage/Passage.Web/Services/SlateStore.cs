@@ -25,6 +25,10 @@ public sealed class SlateDocument
     // what each chain is about, never by when it was run.
     public List<ChainRun> Chains { get; set; } = new();
 
+    // The generic run list (docs/SLATE-REDO-PLAN.md R-E). Old records are
+    // moved into it, per type, by the row that deletes that type's view.
+    public List<Passage.Web.Services.Tools.ExerciseRun> Exercises { get; set; } = new();
+
     public BurstSettings Burst { get; set; } = new();
 
     // The Split family ("Generate — Split, Belief, or Extend Backward"). One

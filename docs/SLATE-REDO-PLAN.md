@@ -113,8 +113,11 @@ false)` from a runner, status lines that fail visibly (rule 12).
 ### R-E. Storage: one generic run list, migrated once
 
 `SlateDocument` gets `List<ExerciseRun> Exercises`. The ten per-tool record
-types are migrated into it on load (sidecar `slateVersion` 1 → 2), then
-deleted in the final row. `StoryData` is **not** touched (STORY-PLAN decision
+types are **moved** into it, one type at a time, in the row that deletes that
+type's old view (`SlateMigration.Migrate` converts the records, then clears
+the old list, so a second run finds nothing). Migration is not gated by
+version; `slateVersion` goes 1 → 2 only in T8, when the old record types are
+deleted. `StoryData` is **not** touched (STORY-PLAN decision
 A, and its note that "a Slate sidecar revamp is coming" — this is that
 revamp for the worksheet runs only; flag any conflict, don't guess). A run
 never stores a line number; anchors are a Board/beat `Guid` where one exists,
@@ -347,17 +350,39 @@ must leave the dock fully working: tools not yet ported stay reachable from
 the new launcher (a "Classic" link on their card that opens the old view)
 until their row deletes the old code.
 
-### T1 — Engine, model, migration scaffold · `todo`
+### T1 — Engine, model, migration scaffold · `done`
 
 - `Exercise.cs`, `ExerciseRun.cs`, `ExerciseEngine.cs` with every step kind
   in §4.3 implemented in the engine (rendering comes later).
-- `SlateDocument.Exercises`; `slateVersion` 2; `SlateMigration` skeleton that
-  migrates **Chains** (WOAC + Flaw) only, leaves the rest untouched, and is
-  idempotent. Old sidecars still load; a v2 sidecar still loads in this build.
+- `SlateDocument.Exercises`; `SlateMigration` skeleton that moves **Chains**
+  (WOAC + Flaw) only, leaves the rest untouched, and is idempotent by
+  construction (old list cleared). Not yet called from `Load`; version stays 1.
+  Old sidecars still load; a sidecar carrying `Exercises` still loads.
 - Tests: engine (carry read live; loop appends a round when its last step is
   answered; branch shows/hides; stop point; skip), migration round-trip of a
   WOAC chain with three rounds and a Flaw run, version bump.
 - **No UI change.** Success: build clean, tests pass, existing dock untouched.
+
+**Done:** `Services/Tools/{Exercise,ExerciseRun,ExerciseEngine,SlateMigration}.cs`.
+Engine: `Sequence` (loop expansion, branch visibility), `Current`, `Trail`,
+`GetAnswer` (carry read live, never stored; `SetAnswer` refuses a carried
+slot), loop round appended when the group's last step is answered in the last
+round, `Skip`/`Continue`, `PickOptions`, `Roll`, `SetLine`/`SetItem`. Answer
+keys: round r>0 `key#r`, Lines slot `key[i]`, Slots item `key/item`. Migrated
+WOAC keys `want/obstacle/action/consequence/readback`; Flaw `q0..q7`,
+`readback`. `SlateMigration.Migrate` moves Chains and clears the old list;
+`SlateStore.Load` does not call it yet and `CurrentVersion` stays 1.
+7 new tests (117 total, all pass).
+
+**Deviations:**
+- Migration is a move per type, not a version-gated copy (review of PR #61):
+  gating on version would have blocked T4–T7 and lost edits made to Chains
+  between T1 and T2. No `slateVersion` bump until T8.
+- Skip and Stop-continue share one `Passed` list; one loop group per exercise;
+  Branch inside a Loop group is not supported (nothing in the deck needs it).
+- Branch is a marker step (`BranchGroup`, `OnKey`, `OnValue`, `AllSlots`) with
+  the group's steps tagged `Group`; `AllSlots` covers Position's "flat
+  everywhere".
 
 ### T2 — Launcher, runner shell, WOAC and Flaw ported · `todo`
 
@@ -366,6 +391,9 @@ until their row deletes the old code.
   disclosure; timer via `startBurst` on the step card root.
 - Launcher per §4.1 **without** *Right now* (T3). Cards for all twelve; the
   ten unported open their old view ("Classic").
+- **Wire `SlateMigration.Migrate` into `SlateStore.Load`** (this row deletes
+  the Chain views, so Chains move here). Each later row adds its own type to
+  `Migrate` in the row that deletes that view.
 - WOAC and Flaw defined in the catalog and running in the new runner. Anchor
   is free text for now. Old Chains / Chain views and handlers deleted.
 - Success: a WOAC chain of three rounds by keyboard only (Enter between
@@ -460,7 +488,7 @@ their own plan.
    decision A's near-verbatim copy rule for on-screen text; the question
    itself still keeps the worksheet's words.
 2. **Old runs (R-E) — settled: migrate.** Existing sidecar runs are
-   converted to `ExerciseRun` on load (v1 → v2), not dropped.
+   moved into `ExerciseRun`s (per type, in the row that deletes its view), not dropped.
 3. **New exercises — settled: build both** Scene Dials (standalone) and
    Understudy.
 4. **Dock width — settled: 400px default.**
