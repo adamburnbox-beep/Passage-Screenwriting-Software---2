@@ -693,7 +693,7 @@ the bigger rows rely on them.
   "templates" (or "ideation") has a sidecar path that is the library-wide
   file.
 
-### S2.3 Board beside the script — `todo`
+### S2.3 Board beside the script — `done`
 
 - **Read:** `Editor.razor` 60–75 (main view tabs), 405–412 (editor surface,
   hidden when not SCRIPT), `SetMainView` 3010, `UpdateCaretElementLabel` 2987.
@@ -715,6 +715,19 @@ the bigger rows rely on them.
   caret-to-card lookup is checked for a line inside a scene, on a heading, and
   before any card.
 - **Budget:** ~80k.
+- **Landed:** A "Beside" button on SCRIPT's top bar opens a right-hand pane
+  with a Board/Beats switch. `Services/BesideList.cs` holds the pure lists:
+  Board rows in the Board's order (lane, group, cards with nesting) and Beats
+  in page order, unassigned first. Clicking a row calls `passage.scrollToLine`
+  and stays on SCRIPT. The current row comes from the caret line the caret
+  callbacks already keep; rows are cached per parse (`_besideRowsFor`). Width
+  is dragged in `passage.js` (`--beside-width`); open/mode/width ride the
+  session key. Beats have no script line, so a beat jumps to the first scene
+  on its page (else the last scene before it); the current beat is the first
+  one covering the caret scene's page. Unassigned beats are listed but inert.
+  Checked in the running app: third card click, highlight move, reload.
+  Not done: the pane lists Board rows even when a filter dims them (dimmed
+  the same way); location chips are hidden in the compact rows.
 
 ### S2.4 Expand all / collapse all — `todo`
 

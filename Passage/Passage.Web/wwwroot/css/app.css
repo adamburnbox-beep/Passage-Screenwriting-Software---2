@@ -2025,3 +2025,58 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .tag-row { display: flex; align-items: center; gap: 8px; }
 .tag-row .jump-kind { margin-left: auto; }
 .tag-tick { width: 1em; text-align: center; }
+
+/* ---- Beside pane: Board / Beats list next to the script (STORY-PLAN S2.3) ---- */
+
+.beside {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--beside-width, 300px);
+    background: var(--surface-background);
+    border-left: 1px solid var(--surface-border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.beside[hidden] { display: none; }
+
+.beside-resize {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -3px;
+    width: 6px;
+    cursor: col-resize;
+    touch-action: none;
+    z-index: 1;
+}
+
+.beside-resize:hover { background: var(--control-accent); opacity: 0.5; }
+
+.beside-head { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--surface-border); }
+.beside-head button { flex: 1; }
+.beside-head button.active { background: var(--control-accent); color: #fff; }
+.beside-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+.beside-empty { padding: 12px; color: var(--muted-text); font-size: 13px; }
+
+.beside-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.beside-row:hover { background: var(--surface-border); }
+.beside-row.inert { cursor: default; }
+.beside-row.lane, .beside-row.group { font-weight: 600; margin-top: 4px; }
+.beside-row.current { background: var(--surface-border); border-left-color: var(--control-accent); }
+.beside-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.beside-star { color: #d9a21b; }
+.beside-page { color: var(--muted-text); min-width: 18px; text-align: right; font-size: 11px; }
+.beside-row .tag-marks { margin-top: 0; flex-wrap: nowrap; }
+.beside-row .tag-chip { display: none; }
