@@ -833,7 +833,7 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
   The `passage.js` 789–985 range named above is stale: the beat gesture is
   at ~1070–1260.
 
-### S3.2 Outline export: Fountain and text — `todo`
+### S3.2 Outline export: Fountain and text — `done`
 
 - **Read:** `Passage/Passage.Web/Services/ExportService.cs` (whole file,
   small). Export menu in `Editor.razor` (grep `ExportService`; read that range
@@ -857,6 +857,25 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
 - **Tests:** golden output for a fixture script with every field combination
   that changes output. The export round-trips through the parser to the same
   board shape.
+- **Landed:** Export ▾ → "Export outline…" opens a dialog with the six
+  checkboxes (synopses, storylines, characters, locations, key beats only,
+  Beat Sheet), a Fountain and a Plain text button, and the detached count.
+  `Services/OutlineExport.cs` is the pure writer, fed the Board lanes, the
+  `StoryData` and the beats; the download is the new `passage.downloadText`.
+  Not added to `ExporterCatalog.DefaultExporters`. Choices a later row should
+  know: tags are `[[Storylines: …]]` / `[[Characters: …]]` / `[[Locations: …]]`
+  notes under the `=` lines, and `[[id:…]]` markers are not exported, so the
+  file is a fresh outline rather than a copy that shares ids with the
+  original; the stars are not exported either. Section cards deeper than `##`
+  come out as `###`, as the Board already flattens them. The Beat Sheet is a
+  `/* … */` boneyard in Fountain, so re-opening leaves the lanes untouched
+  and the beats stay in the file for a human reader (they do not re-import).
+  Key beats only keeps starred cards (and starred beats) plus the act and
+  sequence headers above them; a lane or group with no star is dropped. Tests:
+  three goldens (all fields in both formats; key-only with synopses and
+  locations off), a per-field toggle check, and the parse round trip with and
+  without the Beat Sheet. Tried in the running app: exported, saved as a new
+  script and opened; the BOARD showed the same lanes and cards.
 - **Budget:** ~60k.
 
 ### S3.3 Outline export: PDF — `todo`

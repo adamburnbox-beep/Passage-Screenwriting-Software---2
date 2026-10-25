@@ -1933,6 +1933,10 @@ window.passage = (function () {
         triggerDownload(blob, baseName + "." + format);
     }
 
+    function downloadText(text, fileName) {
+        triggerDownload(new Blob([text], { type: "text/plain" }), fileName);
+    }
+
     function triggerDownload(blob, fileName) {
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -2116,7 +2120,7 @@ window.passage = (function () {
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
         init, applyHighlights, setContent, setDirty, scrollToLine, setBeside, setBoardDescriptions, setArcMode,
-        exportDocument, focusEditor, startBurst, stopBurst,
+        exportDocument, downloadText, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
         refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setJumpTargets, setTagTargets, openJumpPalette, setCharacterHighlights, restoreLineOverrides,
