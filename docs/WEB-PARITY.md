@@ -365,8 +365,9 @@ Each is one panel or dialog with a clear boundary. Roughly one session each.
   (`SetSyntaxPanelVisible`, MW.cs 337–380). The panel is a fixed 320px. Raise
   it if resizing turns out to matter.
 - **Web-only addition:** a "Colours" card at the foot of the panel picks a
-  syntax colour scheme — twelve presets (Classic, Solarized, Arctic, Ember, Ink,
-  High Contrast, Primary, Monokai, Dracula, Gruvbox, Jewel, Colour-blind Safe)
+  syntax colour scheme — thirteen presets (Classic, Solarized, Arctic, Ember, Ink,
+  High Contrast, Primary, Neon Noir, Pastel Candy, Terminal, Woodland, Coral
+  Reef, Colour-blind Safe)
   plus Custom with a picker per token. A scheme sets all eight
   `--syntax-*` variables, so the editor, outline and panel markers follow it
   together; each has a dark and a light palette, and Custom edits whichever
