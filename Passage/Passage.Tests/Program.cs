@@ -66,6 +66,10 @@ class Program
         failures += RunTest("Test Outline Export Fields Change Output", TestOutlineExportFieldsChangeOutput);
         failures += RunTest("Test Outline Export Key Only Keeps Headers", TestOutlineExportKeyOnlyKeepsHeaders);
         failures += RunTest("Test Outline Export Round Trips Through Parser", TestOutlineExportRoundTripsThroughParser);
+        failures += RunTest("Test Outline Pdf Page Count", TestOutlinePdfPageCount);
+        failures += RunTest("Test Outline Pdf Swatches Follow Storyline Tags", TestOutlinePdfSwatches);
+        failures += RunTest("Test Outline Pdf Wraps At Column Width", TestOutlinePdfWrapsAtColumnWidth);
+        failures += RunTest("Test Outline Pdf Escapes Parens And Backslash", TestOutlinePdfEscapes);
         failures += RunTest("Test Story Stamp Keeps Id And Scene Number", TestStoryStampKeepsIdAndSceneNumber);
         failures += RunTest("Test Story Duplicate Id Flags Second Only", TestStoryDuplicateIdFlagsSecondOnly);
         failures += RunTest("Test Story Detached Is Computed Never Removed", TestStoryDetachedIsComputedNeverRemoved);
@@ -1180,6 +1184,70 @@ class Program
         AssertGolden("S32Outline.key.fountain.golden.txt",
             OutlineExport.Build(lanes, story, beats, 110,
                 new OutlineExportOptions(Synopses: false, Locations: false, KeyOnly: true, BeatSheet: true), OutlineFormat.Fountain));
+    }
+
+    static string PdfText(byte[] pdf) => System.Text.Encoding.Latin1.GetString(pdf);
+
+    static int PdfPages(byte[] pdf) => System.Text.RegularExpressions.Regex.Matches(PdfText(pdf), @"/Type /Page /").Count;
+
+    static void TestOutlinePdfPageCount()
+    {
+        var (lanes, story, beats) = OutlineFixture();
+        var small = OutlinePdfWriter.Build(lanes, story, beats, 110, new OutlineExportOptions());
+        Assert(PdfText(small).StartsWith("%PDF-1.4") && PdfText(small).TrimEnd().EndsWith("%%EOF"), "A PDF header and trailer");
+        Assert(PdfPages(small) == 1, $"The fixture fits one page, got {PdfPages(small)}");
+
+        // 60 long cards must paginate: every text line stays inside the margins and no page is empty.
+        var cards = Enumerable.Range(1, 60)
+            .Select(i => new BoardCard($"INT. ROOM {i} - DAY", "Scene", string.Join(" ", Enumerable.Repeat("a synopsis that runs on", 12)), i, new List<BoardCard>()))
+            .ToList();
+        var big = new List<BoardLane> { new(null, new List<BoardGroup> { new(null, cards) }) };
+        var pdf = OutlinePdfWriter.Build(big, new StoryData(), new List<Beat>(), 0, new OutlineExportOptions());
+        var pages = PdfPages(pdf);
+        Assert(pages > 3, $"60 cards should take several pages, got {pages}");
+        Assert(PdfText(pdf).Contains($"/Count {pages} "), "Pages /Count matches the page objects");
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(PdfText(pdf), @"1 0 0 1 ([\d.]+) ([\d.]+) Tm"))
+        {
+            var x = double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            var y = double.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+            Assert(y >= OutlinePdfWriter.MarginBottom / 2 && y <= OutlinePdfWriter.PageHeight - OutlinePdfWriter.MarginTop + 1, $"Line at y={y} is clipped");
+            Assert(x >= OutlinePdfWriter.MarginLeft - 1 || y < OutlinePdfWriter.MarginBottom, $"Line at x={x} is left of the margin");
+        }
+    }
+
+    static void TestOutlinePdfSwatches()
+    {
+        var (lanes, story, beats) = OutlineFixture();
+        var colour = Characters.Palette[0];
+        story.Storylines[0].Colour = colour;
+        var with = PdfText(OutlinePdfWriter.Build(lanes, story, beats, 110, new OutlineExportOptions()));
+        var rgCount = System.Text.RegularExpressions.Regex.Matches(with, @" rg ").Count;
+        // Card 3 carries both storylines, card 5 one: three swatches in all.
+        Assert(rgCount == 3, $"Expected 3 swatches, got {rgCount}");
+        var value = Convert.ToInt32(colour.TrimStart('#'), 16);
+        Assert(with.Contains(((value >> 16) & 255) / 255.0 is var r ? r.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + " " : ""), "The palette colour is the fill colour");
+        var without = PdfText(OutlinePdfWriter.Build(lanes, story, beats, 110, new OutlineExportOptions(Storylines: false)));
+        Assert(!without.Contains(" rg "), "Storylines off draws no swatches");
+    }
+
+    static void TestOutlinePdfWrapsAtColumnWidth()
+    {
+        var lines = OutlinePdfWriter.Wrap("one two three four five six seven eight nine ten", 14);
+        Assert(lines.Count > 1 && lines.All(line => line.Length <= 14), "Every wrapped line is within the width");
+        Assert(string.Join(" ", lines) == "one two three four five six seven eight nine ten", "Wrapping loses no words");
+        var long_ = OutlinePdfWriter.Wrap(new string('x', 30), 10);
+        Assert(long_.Count == 3 && long_.All(line => line.Length <= 10), "A word longer than the column is split");
+        Assert(OutlinePdfWriter.Wrap("   ", 10).Count == 0, "Blank text wraps to nothing");
+    }
+
+    static void TestOutlinePdfEscapes()
+    {
+        Assert(OutlinePdfWriter.Escape(@"a (b) \ c") == @"a \(b\) \\ c", "Parens and backslash are backslashed");
+        Assert(OutlinePdfWriter.Escape("tab\there\u2603") == "tab here?", "Control characters and non-Latin-1 are replaced");
+        var card = new BoardCard("INT. (KITCHEN) \\ DAY", "Scene", "", 1, new List<BoardCard>());
+        var lanes = new List<BoardLane> { new(null, new List<BoardGroup> { new(null, new List<BoardCard> { card }) }) };
+        var text = PdfText(OutlinePdfWriter.Build(lanes, new StoryData(), new List<Beat>(), 0, new OutlineExportOptions()));
+        Assert(text.Contains(@"(INT. \(KITCHEN\) \\ DAY) Tj"), "The heading is escaped in the content stream");
     }
 
     static void TestOutlineExportFieldsChangeOutput()
