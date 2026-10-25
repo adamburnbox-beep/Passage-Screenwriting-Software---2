@@ -10,7 +10,9 @@ services:
       # Manager claims 8080). Change the left side if 8095 is taken too.
       - "8095:8080"
     volumes:
-      - passage-data:/data
+      # Set PASSAGE_DATA to a host path (e.g. /volume1/docker/passage/data)
+      # to bind-mount an existing folder instead of the named volume.
+      - ${PASSAGE_DATA:-passage-data}:/data
     restart: unless-stopped
 
 volumes:
