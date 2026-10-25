@@ -233,15 +233,26 @@ public sealed class ExerciseEngine
         return count;
     }
 
-    /// <summary>Deals a Dice step a row and stores it. Rolling again replaces it.</summary>
+    /// <summary>The items a Slots step has a field for: the project list its source names, in order.</summary>
+    public IReadOnlyList<string> SlotItems(StepSlot slot) =>
+        slot.Step.Kind == StepKind.Slots && slot.Step.Source is { } source ? _slotSource(source) : Array.Empty<string>();
+
+    /// <summary>
+    /// Deals a Dice step a row and stores it. Rolling again replaces it with a
+    /// different row (a re-roll that could land on the same one would feel
+    /// broken); a one-row table can only repeat itself.
+    /// </summary>
     public string? Roll(ExerciseRun run, StepSlot slot, Random random)
     {
-        if (slot.Step.Kind != StepKind.Dice || slot.Step.Table.Count == 0)
+        var table = slot.Step.Table;
+        if (slot.Step.Kind != StepKind.Dice || table.Count == 0)
         {
             return null;
         }
 
-        var row = slot.Step.Table[random.Next(slot.Step.Table.Count)];
+        var current = Read(run, Suffix(slot.Step.Key, slot.Round));
+        var candidates = table.Count > 1 ? table.Where(row => row != current).ToList() : table.ToList();
+        var row = candidates[random.Next(candidates.Count)];
         SetAnswer(run, slot.Step.Key, slot.Round, row);
         return row;
     }
@@ -320,6 +331,27 @@ public sealed class ExerciseEngine
         if (!run.Passed.Contains(slot.Id))
         {
             run.Passed.Add(slot.Id);
+        }
+    }
+
+    /// <summary>
+    /// Jumping to a step ("got the real answer already? write it here and stop"):
+    /// everything before it that has no answer is passed, so the run carries on from
+    /// it rather than back to the questions it skipped. Stops are left for the writer.
+    /// </summary>
+    public void SkipUnansweredBefore(ExerciseRun run, StepSlot target)
+    {
+        foreach (var slot in Sequence(run))
+        {
+            if (slot.Id == target.Id)
+            {
+                return;
+            }
+
+            if (slot.Step.Kind != StepKind.Stop && !IsAnswered(run, slot) && !IsCarried(slot))
+            {
+                Skip(run, slot);
+            }
         }
     }
 

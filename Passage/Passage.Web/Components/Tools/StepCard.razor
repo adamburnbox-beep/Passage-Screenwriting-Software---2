@@ -51,6 +51,35 @@ else
                 <button class="btn" @onclick="AnotherAsync">Another</button>
             }
             break;
+        case StepKind.Slots:
+            var items = Engine.SlotItems(Slot);
+            @if (items.Count == 0)
+            {
+                <div class="step-hint">Nobody speaks in this scene yet — skip this one.</div>
+            }
+            @foreach (var item in items)
+            {
+                var name = item;
+                <label class="slot-row">
+                    <span class="slot-name">@name</span>
+                    <textarea rows="1" data-slot data-step-input data-held="@(Held ? "" : null)" aria-label="@name — @step.Question"
+                              value="@Engine.GetItem(Run, step.Key, Slot.Round, name)"
+                              @onchange="args => SetItemAsync(name, args.Value?.ToString() ?? string.Empty)"></textarea>
+                </label>
+            }
+            break;
+        case StepKind.Dice:
+            var rolled = Engine.GetAnswer(Run, step.Key, Slot.Round);
+            @if (rolled.Length > 0)
+            {
+                var (dieName, dieDo) = SplitRow(rolled);
+                <div class="dice-result" aria-live="polite">
+                    <span class="die" aria-hidden="true">@Face(step, rolled)</span>
+                    <div><strong>@dieName</strong>@if (dieDo.Length > 0){<span> — @dieDo</span>}</div>
+                </div>
+            }
+            <button class="btn dice-roll" @onclick="RollAsync">@(rolled.Length == 0 ? "Roll" : "Roll again")</button>
+            break;
         default:
             <div class="step-hint">This kind of question isn't in the runner yet.</div>
             break;
@@ -89,6 +118,31 @@ else
     {
         Engine.SetLine(Run, Slot.Step.Key, Slot.Round, index, value);
         return OnChanged.InvokeAsync(Slot);
+    }
+
+    private Task SetItemAsync(string item, string value)
+    {
+        Engine.SetItem(Run, Slot.Step.Key, Slot.Round, item, value);
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    private Task RollAsync()
+    {
+        Engine.Roll(Run, Slot, Random.Shared);
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    // A dice row reads "Name — what you do".
+    private static (string Name, string Do) SplitRow(string row)
+    {
+        var at = row.IndexOf(" — ", StringComparison.Ordinal);
+        return at < 0 ? (row, string.Empty) : (row[..at], row[(at + 3)..]);
+    }
+
+    private static string Face(Step step, string row)
+    {
+        var index = step.Table.ToList().IndexOf(row);
+        return index is >= 0 and < 6 ? "⚀⚁⚂⚃⚄⚅"[index].ToString() : "🎲";
     }
 
     private Task AnotherAsync()

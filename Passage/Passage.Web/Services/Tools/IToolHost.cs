@@ -33,6 +33,28 @@ public interface IToolHost
     /// <summary>Who speaks in the scene, most speeches first.</summary>
     IReadOnlyList<string> SpeakersOf(SceneChoice scene);
 
+    /// <summary>Who speaks in the scene the anchor is about (the scene itself, the one a character is
+    /// named in, or the one a bracket sits in), most speeches first. Empty when there is none.</summary>
+    IReadOnlyList<string> SpeakersFor(Anchor anchor);
+
+    /// <summary>Every bracket in the script, ranked, with the ones the writer left out marked.</summary>
+    IReadOnlyList<BracketChoice> Brackets { get; }
+
+    /// <summary>The bracket "hand me one" offers now: the top of the queue at the cursor. Null when none is left.</summary>
+    Anchor? HandBracket();
+
+    /// <summary>Opens a run on this bracket (the one already kept for it, or a new one).</summary>
+    Task OpenBracketAsync(string text);
+
+    /// <summary>Puts the run's bracket back unfilled and hands on the next. Closes to the launcher when none is left.</summary>
+    Task NextBracketAsync();
+
+    /// <summary>"Not a bracket": adds it to the ignore list, drops its run, and hands on the next.</summary>
+    Task NotABracketAsync(string text);
+
+    /// <summary>Takes a bracket off the ignore list.</summary>
+    void RestoreBracket(string text);
+
     /// <summary>The anchor's scene as it is in the script now; null when it is gone.</summary>
     SceneChoice? ResolveScene(Anchor anchor);
 

@@ -47,6 +47,10 @@ public sealed class ExerciseRun
 
     public List<SentMark> Sent { get; set; } = new();
 
+    // A bracket or scene is handed over rather than typed, so a run that only
+    // holds one is as empty as a blank page: handing out brackets must not
+    // leave a kept run behind for each.
     [JsonIgnore]
-    public bool IsEmpty => Answers.Values.All(string.IsNullOrWhiteSpace) && string.IsNullOrWhiteSpace(Anchor.Text);
+    public bool IsEmpty => Answers.Values.All(string.IsNullOrWhiteSpace)
+        && (Anchor.Kind is AnchorKind.Bracket or AnchorKind.Scene || string.IsNullOrWhiteSpace(Anchor.Text));
 }

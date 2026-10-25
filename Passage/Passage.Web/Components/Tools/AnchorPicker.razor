@@ -4,6 +4,25 @@
 @using Passage.Web.Services.Tools
 
 <div class="anchor-picker">
+    @if (Kind == AnchorKind.Bracket)
+    {
+        @if (Host.Brackets.Count == 0)
+        {
+            <div class="sidebar-empty">No [brackets] in this script.</div>
+        }
+        @foreach (var bracket in Host.Brackets)
+        {
+            <div class="bracket-row @(bracket.Ignored ? "ignored" : null)">
+                <button class="bracket-text" title="Line @bracket.LineNumber" @onclick="() => Host.OpenBracketAsync(bracket.Text)">@bracket.Text</button>
+                @if (bracket.Ignored)
+                {
+                    <button class="icon-btn" title="Treat as a placeholder again" @onclick="() => Host.RestoreBracket(bracket.Text)">↩</button>
+                }
+            </div>
+        }
+    }
+    @if (Kind == AnchorKind.Character)
+    {
     <div class="anchor-chips" role="group" aria-label="Characters in the Cast">
         @foreach (var character in Host.Cast)
         {
@@ -17,12 +36,13 @@
         <span class="step-hint">Or someone who isn't speaking yet</span>
         <input type="text" data-anchor-input value="@Anchor.Text" @onchange="TypedAsync" />
     </label>
-    @if (SceneToo)
+    }
+    @if (SceneToo || Kind == AnchorKind.Scene)
     {
         <label class="anchor-else">
-            <span class="step-hint">A scene it happens in (optional)</span>
+            <span class="step-hint">@(Kind == AnchorKind.Scene ? "Which scene" : "A scene it happens in (optional)")</span>
             <select @onchange="SceneChosenAsync" aria-label="Scene">
-                <option value="" selected="@(!HasScene)">No particular scene</option>
+                <option value="" selected="@(!HasScene)">@(Kind == AnchorKind.Scene ? "Pick a scene" : "No particular scene")</option>
                 @if (HasScene && _chosen is null)
                 {
                     <option value="" selected>@Anchor.SceneText — no longer in the script</option>
@@ -43,6 +63,8 @@
 @code {
     [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
     [Parameter, EditorRequired] public Anchor Anchor { get; set; } = default!;
+    // What the exercise is anchored to; decides which picker shows.
+    [Parameter] public AnchorKind Kind { get; set; } = AnchorKind.Character;
     [Parameter] public bool SceneToo { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
 
@@ -85,6 +107,12 @@
 
         Anchor.SceneId = null;
         Anchor.SceneText = string.Empty;
+        if (Kind == AnchorKind.Scene)
+        {
+            Anchor.TargetId = null;
+            Anchor.Text = string.Empty;
+        }
+
         return OnChanged.InvokeAsync();
     }
 
@@ -92,6 +120,14 @@
     {
         Anchor.SceneId = scene.Id;
         Anchor.SceneText = scene.Heading;
+        if (Kind == AnchorKind.Scene)
+        {
+            // A scene-anchored run is about the scene itself, the same way Right now anchors one.
+            Anchor.Kind = AnchorKind.Scene;
+            Anchor.TargetId = scene.Id;
+            Anchor.Text = scene.Heading;
+        }
+
         return OnChanged.InvokeAsync();
     }
 }

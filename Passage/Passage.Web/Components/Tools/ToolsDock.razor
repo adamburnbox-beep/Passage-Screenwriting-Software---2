@@ -77,8 +77,9 @@ else
         new(ClassicBelief, "Belief Split", "Split on what a character believes", Shelf.Ending, "☺"),
         new(ClassicExtend, "Extend Backward", "Work back from the ending", Shelf.Ending, "↶"),
         new(ClassicPosition, "Position", "Try a scene in each story slot", Shelf.Moment, "◎"),
-        new(ClassicFill, "Fill", "Turn a [BRACKET] into the real event", Shelf.Moment, "[ ]"),
+        new(SlateMigration.FillId, "Fill", "Turn a [BRACKET] into the real event", Shelf.Moment, "[ ]"),
         new(SlateMigration.WoacId, "WOAC chain", "What happens next, round by round", Shelf.SceneGoing, "→"),
+        new(SlateMigration.SceneDialsId, "Scene Dials", "The event is right; the scene is dead", Shelf.SceneGoing, "⚂"),
         new(SlateMigration.FlawId, "Flaw Brainstorm", "One flaw, eight questions", Shelf.SceneGoing, "☹"),
         new(ClassicPushPull, "Push/Pull", "Find why a scene is flat", Shelf.DeadScene, "⇅")
     };
@@ -89,7 +90,6 @@ else
     public const string ClassicBelief = "belief";
     public const string ClassicExtend = "extend";
     public const string ClassicPosition = "position";
-    public const string ClassicFill = "fill";
     public const string ClassicPushPull = "pushpull";
 
     [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
@@ -170,13 +170,32 @@ else
             return;
         }
 
+        // One thing, not a menu (rule 0.5): a bracket exercise is handed a bracket, a scene
+        // exercise starts on the scene the caret is in. Either can be changed in the strip.
         var run = new ExerciseRun { ExerciseId = exercise.Id };
+        if (exercise.Anchor == AnchorKind.Bracket && Host.HandBracket() is { } bracket)
+        {
+            await Host.OpenBracketAsync(bracket.Text);
+            return;
+        }
+
+        if (exercise.Anchor == AnchorKind.Scene && Host.SceneUnderCaret is { } scene)
+        {
+            run.Anchor = new Anchor { Kind = AnchorKind.Scene, TargetId = scene.Id, Text = scene.Heading, SceneId = scene.Id, SceneText = scene.Heading };
+        }
+
         Host.Slate.Exercises.Add(run);
         await OpenRunIdChanged.InvokeAsync(run.Id);
     }
 
     private Task StartSuggestionAsync(RightNowSuggestion suggestion)
     {
+        // A bracket picks its kept run back up rather than starting a second one.
+        if (suggestion.Anchor.Kind == AnchorKind.Bracket)
+        {
+            return Host.OpenBracketAsync(suggestion.Anchor.Text);
+        }
+
         var run = new ExerciseRun { ExerciseId = suggestion.ExerciseId, Anchor = suggestion.Anchor };
         Host.Slate.Exercises.Add(run);
         return OpenRunIdChanged.InvokeAsync(run.Id);
