@@ -1126,9 +1126,9 @@ class Program
         document.Chains.Add(flaw);
         document.Fills.Add(new FillRun { Bracket = "[SOMETHING]" });
 
-        Assert(SlateMigration.Migrate(document) == 2, "Both chains are migrated");
-        Assert(document.SlateVersion == SlateStore.CurrentVersion && SlateStore.CurrentVersion == 2, "The version bumps to 2");
-        Assert(document.Fills.Count == 1 && document.Chains.Count == 2, "Everything that is not migrated is left untouched");
+        Assert(SlateMigration.Migrate(document) == 2, "Both chains are moved");
+        Assert(document.Chains.Count == 0, "A move leaves the old list empty");
+        Assert(document.Fills.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
 
         var run = document.Exercises[0];
         Assert(run.ExerciseId == "woac" && run.Rounds == 3 && run.Anchor.Text == "MARA wants the key", "A WOAC run keeps its seed and three rounds");
@@ -1145,9 +1145,12 @@ class Program
         Assert(flawRun.ExerciseId == "flaw" && flawRun.Answers["q2"] == "carries it alone" && flawRun.Answers.Count == 1,
             "A Flaw run keeps its one answer under its question key and drops the empties");
 
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Migrating a migrated document adds nothing");
-        document.SlateVersion = 1;
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Even forced back to v1 it doesn't duplicate");
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
+
+        var untouched = new SlateDocument();
+        untouched.Fills.Add(new FillRun { Bracket = "[X]" });
+        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.Fills.Count == 1,
+            "A document with no old chains is unchanged");
     }
 
     static void TestSlateMigrationLoadsSidecars()
@@ -1158,23 +1161,23 @@ class Program
             var dir = Path.Combine(root, ".slate");
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "old.fountain.json"),
-                "{ \"SlateVersion\": 1, \"IgnoredBrackets\": [\"[x]\"], \"Chains\": [ { \"Path\": \"Woac\", \"Seed\": \"S\", \"Rounds\": [ { \"Want\": \"w\", \"Consequence\": \"c\" }, { \"Obstacle\": \"o\" } ] } ] }");
+                "{ \"SlateVersion\": 1, \"IgnoredBrackets\": [\"[x]\"], \"Chains\": [ { \"Path\": \"Woac\", \"Seed\": \"S\", \"Rounds\": [ { \"Want\": \"w\" } ] } ] }");
 
             var old = store.Load("old")!;
-            Assert(old.SlateVersion == 2 && old.IgnoredBrackets.Count == 1, "A v1 sidecar loads and is brought to v2");
-            Assert(old.Chains.Count == 1 && old.Exercises.Count == 1 && old.Exercises[0].Rounds == 2, "Its chain is migrated and the old record kept");
+            Assert(old.SlateVersion == 1 && old.Chains.Count == 1 && old.Exercises.Count == 0,
+                "Load does not migrate yet: the dock still edits Chains");
 
+            SlateMigration.Migrate(old);
             store.Save("old", old);
-            var again = store.Load("old")!;
-            Assert(again.Exercises.Count == 1, "Save then load doesn't migrate twice");
-            Assert(again.Exercises[0].Answers["obstacle#1"] == "o", "A migrated run round-trips through the sidecar");
+            var moved = store.Load("old")!;
+            Assert(moved.Chains.Count == 0 && moved.Exercises.Count == 1 && moved.Exercises[0].Answers["want"] == "w",
+                "A moved run round-trips through the sidecar");
 
             File.WriteAllText(Path.Combine(dir, "new.fountain.json"),
                 "{ \"SlateVersion\": 2, \"Exercises\": [ { \"Id\": \"r1\", \"ExerciseId\": \"woac\", \"Anchor\": { \"Kind\": \"Character\", \"Text\": \"MARA\" }, \"Answers\": { \"want\": \"x\" }, \"Rounds\": 1 } ] }");
             var current = store.Load("new")!;
             Assert(current.Exercises.Count == 1 && current.Exercises[0].Anchor.Kind == AnchorKind.Character
-                && current.Exercises[0].Answers["want"] == "x", "A v2 sidecar loads as written, anchor kind by name");
-            Assert(current.SlateVersion == 2, "A v2 sidecar is not migrated again");
+                && current.Exercises[0].Answers["want"] == "x", "A sidecar already carrying Exercises loads as written, anchor kind by name");
         }
         finally
         {

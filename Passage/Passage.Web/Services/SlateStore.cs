@@ -25,8 +25,8 @@ public sealed class SlateDocument
     // what each chain is about, never by when it was run.
     public List<ChainRun> Chains { get; set; } = new();
 
-    // The generic run list (docs/SLATE-REDO-PLAN.md R-E). v1 records are
-    // migrated into it on load; the old lists stay until their dock views go.
+    // The generic run list (docs/SLATE-REDO-PLAN.md R-E). Old records are
+    // moved into it, per type, by the row that deletes that type's view.
     public List<Passage.Web.Services.Tools.ExerciseRun> Exercises { get; set; } = new();
 
     public BurstSettings Burst { get; set; } = new();
@@ -482,7 +482,7 @@ public sealed class FillOption
 /// </summary>
 public sealed class SlateStore
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 1;
 
     // Ideation's file. Not a script sidecar, so the orphan sweep leaves it.
     public const string IdeationFile = "ideation.json";
@@ -515,13 +515,7 @@ public sealed class SlateStore
                 return null;
             }
 
-            var document = JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
-            if (document is not null)
-            {
-                Passage.Web.Services.Tools.SlateMigration.Migrate(document);
-            }
-
-            return document;
+            return JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
         }
     }
 

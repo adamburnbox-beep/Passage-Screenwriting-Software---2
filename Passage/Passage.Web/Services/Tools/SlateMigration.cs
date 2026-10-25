@@ -1,41 +1,29 @@
 namespace Passage.Web.Services.Tools;
 
 /// <summary>
-/// Sidecar v1 to v2 (docs/SLATE-REDO-PLAN.md R-E). Each old per-tool record
-/// becomes an <see cref="ExerciseRun"/> in <see cref="SlateDocument.Exercises"/>.
-/// Row T1 migrates Chains only; later rows add the rest. The old lists are
-/// left in place until the row that deletes their dock views. Idempotent:
-/// run ids are derived from the source, and a run already present is kept.
+/// Moves old per-tool records into <see cref="SlateDocument.Exercises"/>
+/// (docs/SLATE-REDO-PLAN.md R-E). A move, not a copy: each record type is
+/// converted and its old list cleared by the row that deletes that type's dock
+/// view, so a second run finds nothing to do. Not gated by version; the
+/// version bump waits for T8. Row T1 handles Chains only and is not yet called
+/// from <c>SlateStore.Load</c> (T2 wires it in).
 /// </summary>
 public static class SlateMigration
 {
-    public const int TargetVersion = 2;
-
     public const string WoacId = "woac";
     public const string FlawId = "flaw";
 
-    /// <summary>Migrates in place. Returns the number of runs added.</summary>
+    /// <summary>Moves Chains in place. Returns the number of runs moved.</summary>
     public static int Migrate(SlateDocument document)
     {
-        var added = 0;
-        if (document.SlateVersion < TargetVersion)
+        var moved = document.Chains.Count;
+        foreach (var chain in document.Chains)
         {
-            for (var i = 0; i < document.Chains.Count; i++)
-            {
-                var id = $"migrated-chain-{i}";
-                if (document.Exercises.Any(run => run.Id == id))
-                {
-                    continue;
-                }
-
-                document.Exercises.Add(FromChain(document.Chains[i], id));
-                added++;
-            }
-
-            document.SlateVersion = TargetVersion;
+            document.Exercises.Add(FromChain(chain, Guid.NewGuid().ToString("N")));
         }
 
-        return added;
+        document.Chains.Clear();
+        return moved;
     }
 
     public static ExerciseRun FromChain(ChainRun chain, string id)
