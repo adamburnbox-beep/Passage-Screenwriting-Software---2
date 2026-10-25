@@ -515,7 +515,15 @@ public sealed class SlateStore
                 return null;
             }
 
-            return JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
+            var document = JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
+            if (document is not null)
+            {
+                // Old per-tool records become generic runs (docs/SLATE-REDO-PLAN.md
+                // R-E). In memory only; the file is rewritten on the next save.
+                Passage.Web.Services.Tools.SlateMigration.Migrate(document);
+            }
+
+            return document;
         }
     }
 

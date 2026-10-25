@@ -119,6 +119,9 @@ public sealed class ExerciseEngine
         return loop is not null && loop.CarryTo == slot.Step.Key ? (loop, slot.Step) : null;
     }
 
+    /// <summary>True when the slot shows a carried value: read-only, edited at its source.</summary>
+    public bool IsCarried(StepSlot slot) => CarryTarget(slot) is not null;
+
     /// <summary>
     /// The value a single-value step shows. A loop's carry target in a later
     /// round shows the previous round's source answer, read at call time.
@@ -211,6 +214,9 @@ public sealed class ExerciseEngine
 
         return options;
     }
+
+    /// <summary>Slots a Lines step shows: declared, or more when an Open step has been given more.</summary>
+    public int LineCount(ExerciseRun run, StepSlot slot) => SlotCount(run, slot.Step, slot.Round);
 
     // Declared slots, or more when an Open step has been given more lines.
     private int SlotCount(ExerciseRun run, Step step, int round)

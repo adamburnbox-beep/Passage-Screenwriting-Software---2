@@ -1,0 +1,116 @@
+@* Renders one step by kind (docs/SLATE-REDO-PLAN.md §4.3). The question
+   verbatim, one muted hint, the longer explanation folded behind "Why?". *@
+@using Passage.Web.Services.Tools
+
+@{
+    var step = Slot.Step;
+}
+@if (step.Kind == StepKind.Stop)
+{
+    <div class="step-stop">
+        <p class="step-question">@step.Text</p>
+        <div class="step-actions">
+            <button class="btn" @onclick="OnStopHere">Stop here</button>
+            <button class="btn primary" @onclick="() => OnContinue.InvokeAsync(Slot)">Keep going</button>
+        </div>
+    </div>
+}
+else
+{
+    <p class="step-question">@step.Question</p>
+    @if (step.Hint.Length > 0)
+    {
+        <div class="step-hint">@step.Hint</div>
+    }
+    @if (step.Why.Length > 0)
+    {
+        <details class="why" data-why>
+            <summary>Why?</summary>
+            <p>@step.Why</p>
+        </details>
+    }
+    @switch (step.Kind)
+    {
+        case StepKind.Text:
+            <textarea rows="@(step.Multiline ? 3 : 2)" data-slot data-step-input
+                      data-slot-multiline="@(step.Multiline ? "" : null)" data-held="@(Held ? "" : null)"
+                      aria-label="@step.Question"
+                      value="@Engine.GetAnswer(Run, step.Key, Slot.Round)"
+                      @onchange="args => SetAnswerAsync(args.Value?.ToString() ?? string.Empty)"></textarea>
+            break;
+        case StepKind.Lines:
+            @for (var i = 0; i < Engine.LineCount(Run, Slot); i++)
+            {
+                var index = i;
+                <textarea rows="1" data-slot data-step-input data-held="@(Held ? "" : null)" aria-label="@step.Question"
+                          value="@Engine.GetLine(Run, step.Key, Slot.Round, index)"
+                          @onchange="args => SetLineAsync(index, args.Value?.ToString() ?? string.Empty)"></textarea>
+            }
+            @if (step.Open)
+            {
+                <button class="btn" @onclick="AnotherAsync">Another</button>
+            }
+            break;
+        default:
+            <div class="step-hint">This kind of question isn't in the runner yet.</div>
+            break;
+    }
+    @if (step.Send == TargetKind.Synopsis)
+    {
+        <div class="step-send">
+            <button class="btn" title="Adds it to the script as a synopsis line" @onclick="PutAsync">Put it in the script</button>
+            <div class="fill-meta">@Host.SynopsisTargetLabel</div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public ExerciseEngine Engine { get; set; } = default!;
+    [Parameter, EditorRequired] public ExerciseRun Run { get; set; } = default!;
+    [Parameter, EditorRequired] public StepSlot Slot { get; set; }
+    [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
+    // The card is being held open (reopened from the trail), so Enter ends the
+    // hold instead of waiting for a change.
+    [Parameter] public bool Held { get; set; }
+    [Parameter] public EventCallback<StepSlot> OnChanged { get; set; }
+    [Parameter] public EventCallback<StepSlot> OnContinue { get; set; }
+    [Parameter] public EventCallback OnStopHere { get; set; }
+    [Parameter] public EventCallback<string> OnPutSynopsis { get; set; }
+
+    private Task SetAnswerAsync(string value)
+    {
+        if (!Engine.SetAnswer(Run, Slot.Step.Key, Slot.Round, value))
+        {
+            Host.SetStatus("That one is carried — change the answer it comes from");
+            return Task.CompletedTask;
+        }
+
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    private Task SetLineAsync(int index, string value)
+    {
+        Engine.SetLine(Run, Slot.Step.Key, Slot.Round, index, value);
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    private Task AnotherAsync()
+    {
+        Engine.SetLine(Run, Slot.Step.Key, Slot.Round, Engine.LineCount(Run, Slot), string.Empty);
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    // Not a disabled button: the field's change event and this tap arrive
+    // together, and a button disabled until the change lands would swallow it.
+    private Task PutAsync()
+    {
+        var text = Engine.GetAnswer(Run, Slot.Step.Key, Slot.Round);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            Host.SetStatus("Nothing to add yet — write the one line first");
+            return Task.CompletedTask;
+        }
+
+        return OnPutSynopsis.InvokeAsync(text);
+    }
+}
