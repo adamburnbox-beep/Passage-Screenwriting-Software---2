@@ -37,12 +37,63 @@
         <input type="text" data-anchor-input value="@Anchor.Text" @onchange="TypedAsync" />
     </label>
     }
-    @if (SceneToo || Kind == AnchorKind.Scene)
+    @if (Kind == AnchorKind.TwoPoints)
     {
         <label class="anchor-else">
-            <span class="step-hint">@(Kind == AnchorKind.Scene ? "Which scene" : "A scene it happens in (optional)")</span>
+            <span class="step-hint">A — the card it starts from</span>
+            <select @onchange="StartChosenAsync" aria-label="A, the starting card">
+                <option value="" selected="@(!HasScene)">No card for A</option>
+                @if (HasScene && _chosen is null)
+                {
+                    <option value="" selected>@Anchor.SceneText — no longer in the script</option>
+                }
+                @for (var i = 0; i < _scenes.Count; i++)
+                {
+                    <option value="@i" selected="@IsChosen(_scenes[i])">@_scenes[i].Heading</option>
+                }
+            </select>
+        </label>
+        <label class="anchor-else">
+            <span class="step-hint">Z — the card it builds to</span>
+            <select @onchange="EndChosenAsync" aria-label="Z, the ending card">
+                <option value="" selected="@(!HasEnd)">No card for Z</option>
+                @if (HasEnd && _chosenEnd is null)
+                {
+                    <option value="" selected>@Anchor.EndSceneText — no longer in the script</option>
+                }
+                @for (var i = 0; i < _scenes.Count; i++)
+                {
+                    <option value="@i" selected="@(_chosenEnd is { } end && end.LineNumber == _scenes[i].LineNumber)">@_scenes[i].Heading</option>
+                }
+            </select>
+        </label>
+        @if (Host.SceneUnderCaret is { } there && !IsChosen(there))
+        {
+            <button class="btn" @onclick="() => ChooseStartAsync(there)">Use the scene I'm in as A: @there.Heading</button>
+        }
+    }
+    @if (Kind == AnchorKind.InboxBeat)
+    {
+        @if (!Host.Slate.Beats.Any(beat => beat.Page == 0))
+        {
+            <div class="sidebar-empty">No beats in the inbox.</div>
+        }
+        <div class="anchor-chips" role="group" aria-label="Beats in the inbox">
+            @foreach (var beat in Host.Slate.Beats.Where(beat => beat.Page == 0))
+            {
+                var chosen = beat;
+                <button class="anchor-chip @(Anchor.Kind == AnchorKind.InboxBeat && Anchor.TargetId == beat.Id ? "on" : null)"
+                        aria-pressed="@(Anchor.Kind == AnchorKind.InboxBeat && Anchor.TargetId == beat.Id)"
+                        @onclick="() => PickBeatAsync(chosen)">@(beat.Title.Length > 0 ? beat.Title : "Untitled beat")</button>
+            }
+        </div>
+    }
+    @if (SceneToo || Kind is AnchorKind.Scene or AnchorKind.InboxBeat)
+    {
+        <label class="anchor-else">
+            <span class="step-hint">@(Kind == AnchorKind.Scene ? "Which scene" : Kind == AnchorKind.InboxBeat ? "Or a scene already in the script" : "A scene it happens in (optional)")</span>
             <select @onchange="SceneChosenAsync" aria-label="Scene">
-                <option value="" selected="@(!HasScene)">@(Kind == AnchorKind.Scene ? "Pick a scene" : "No particular scene")</option>
+                <option value="" selected="@(!HasScene)">@(Kind == AnchorKind.Scene ? "Pick a scene" : Kind == AnchorKind.InboxBeat ? "No scene" : "No particular scene")</option>
                 @if (HasScene && _chosen is null)
                 {
                     <option value="" selected>@Anchor.SceneText — no longer in the script</option>
@@ -71,14 +122,59 @@
     private IReadOnlyList<SceneChoice> _scenes = Array.Empty<SceneChoice>();
 
     private SceneChoice? _chosen;
+    private SceneChoice? _chosenEnd;
 
     protected override void OnParametersSet()
     {
         _scenes = Host.Scenes;
         _chosen = Host.ResolveScene(Anchor);
+        _chosenEnd = ProjectContext.ResolveEnd(_scenes, Anchor);
     }
 
     private bool HasScene => Anchor.SceneId is not null || Anchor.SceneText.Length > 0;
+
+    private bool HasEnd => Anchor.EndSceneId is not null || Anchor.EndSceneText.Length > 0;
+
+    // A two-point run is kept by what it connects: "A → Z", a ? for a point not named yet.
+    private void NameTwoPoints()
+    {
+        Anchor.Kind = AnchorKind.TwoPoints;
+        Anchor.TargetId = Anchor.SceneId;
+        Anchor.Text = !HasScene && !HasEnd ? string.Empty
+            : $"{(HasScene ? Anchor.SceneText : "?")} → {(HasEnd ? Anchor.EndSceneText : "?")}";
+    }
+
+    private Task StartChosenAsync(ChangeEventArgs args) =>
+        int.TryParse(args.Value?.ToString(), out var index) && index >= 0 && index < _scenes.Count
+            ? ChooseStartAsync(_scenes[index])
+            : ChooseStartAsync(null);
+
+    private Task ChooseStartAsync(SceneChoice? scene)
+    {
+        Anchor.SceneId = scene?.Id;
+        Anchor.SceneText = scene?.Heading ?? string.Empty;
+        NameTwoPoints();
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task EndChosenAsync(ChangeEventArgs args)
+    {
+        var chosen = int.TryParse(args.Value?.ToString(), out var index) && index >= 0 && index < _scenes.Count ? _scenes[index] : null;
+        Anchor.EndSceneId = chosen?.Id;
+        Anchor.EndSceneText = chosen?.Heading ?? string.Empty;
+        NameTwoPoints();
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task PickBeatAsync(Beat beat)
+    {
+        Anchor.Kind = AnchorKind.InboxBeat;
+        Anchor.TargetId = beat.Id;
+        Anchor.Text = beat.Title.Length > 0 ? beat.Title : "Untitled beat";
+        Anchor.SceneId = null;
+        Anchor.SceneText = string.Empty;
+        return OnChanged.InvokeAsync();
+    }
 
     private static bool Same(string a, string b) => string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
 
@@ -107,7 +203,7 @@
 
         Anchor.SceneId = null;
         Anchor.SceneText = string.Empty;
-        if (Kind == AnchorKind.Scene)
+        if (Kind == AnchorKind.Scene || Kind == AnchorKind.InboxBeat && Anchor.Kind == AnchorKind.Scene)
         {
             Anchor.TargetId = null;
             Anchor.Text = string.Empty;
@@ -120,7 +216,7 @@
     {
         Anchor.SceneId = scene.Id;
         Anchor.SceneText = scene.Heading;
-        if (Kind == AnchorKind.Scene)
+        if (Kind == AnchorKind.Scene || Kind == AnchorKind.InboxBeat)
         {
             // A scene-anchored run is about the scene itself, the same way Right now anchors one.
             Anchor.Kind = AnchorKind.Scene;

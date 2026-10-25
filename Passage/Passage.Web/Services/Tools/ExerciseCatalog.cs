@@ -11,6 +11,15 @@ public static class ExerciseCatalog
     /// <summary>The Slots source that lists the people who speak in the run's scene.</summary>
     public const string SpeakersSource = "speakers";
 
+    /// <summary>The Slots source that lists the story's seven turns, in order.</summary>
+    public const string TurnsSource = "turns";
+
+    /// <summary>The Position step whose answer is the turn Send to the Board files the beat under.</summary>
+    public const string PositionTurnKey = "turn";
+
+    /// <summary>The seven turns' labels, as the Shape names them.</summary>
+    public static IReadOnlyList<string> TurnLabels { get; } = SplitScript.Turns.Select(slot => slot.Label).ToList();
+
     /// <summary>The Fill step whose answer replaces the bracket.</summary>
     public const string FillAnswerKey = "answer";
 
@@ -364,7 +373,98 @@ public static class ExerciseCatalog
         }
     };
 
-    public static readonly IReadOnlyList<Exercise> All = new[] { Woac, Flaw, Fill, SceneDials, Split, Belief, Extend };
+    // ---- Bridge and Position (T6): the worksheet's Path B and Path A ----
+
+    public static readonly Exercise Bridge = new()
+    {
+        Id = SlateMigration.BridgeId,
+        Name = "Bridge",
+        Tagline = "Connect two moments you know",
+        Shelf = Shelf.Nothing,
+        Anchor = AnchorKind.TwoPoints,
+        AnchorLabel = "Which two cards?",
+        Targets = new[] { TargetKind.InboxBeat, TargetKind.SceneCard, TargetKind.Copy },
+        Why = "Two fixed points — a planted detail and its payoff, an opening image and the climax, two characters who haven't "
+            + "met yet but will — and nothing between them. Bridge fixes both ends before anything else; that's the whole trick. "
+            + "Then rounds of three candidate links: pick the one that works, or half-pick one that's close but not quite right. "
+            + "Move to the next round only if the gap still needs more than one link. Stop after any round — a picked or "
+            + "half-picked link is a complete session. A gap that needs more than three or four links is probably a whole "
+            + "story's gap, not a scene-to-scene one: that's the slower card version, which is Treatment-stage work and isn't "
+            + "built here. A→Z→Split is the tool for a whole story's shape.",
+        Steps = new[]
+        {
+            new Step { Key = "a", Label = "A", Question = "A — the point you're starting from.",
+                Hint = "Don't skip this — the whole tool depends on it." },
+            new Step { Key = "z", Label = "Z", Question = "Z — the point you're building to." },
+            new Step { Key = "links", Kind = StepKind.Lines, Count = 3, Group = "round", Label = "Candidates", Offer = true,
+                Question = "Three candidate links between A and Z.",
+                Hint = "About ten seconds each if you time it." },
+            new Step { Key = "pick", Kind = StepKind.Pick, FromKey = "links", Group = "round", Label = "Link",
+                Question = "Which one works — or is close but not quite right?",
+                Hint = "Tap one, or write your own. A half-pick counts." },
+            new Step { Key = "loop", Kind = StepKind.Loop, LoopGroup = "round" },
+            new Step { Key = "wire", Label = "The wire", Multiline = true, ReadForwardKey = "pick", LeadKey = "a", EndKeys = new[] { "z" },
+                Question = "The wire, read start to finish.",
+                Hint = "A, the links you picked, Z — as one run.",
+                Why = "If it's a whole story's gap rather than a scene-to-scene one, this burst version isn't the right tool — "
+                    + "that's the slower card version, which is Treatment-stage work and isn't built here. A→Z→Split is the tool "
+                    + "for a whole story's shape." }
+        }
+    };
+
+    public static readonly Exercise Position = new()
+    {
+        Id = SlateMigration.PositionId,
+        Name = "Position",
+        Tagline = "Try a scene in each story slot",
+        Shelf = Shelf.Moment,
+        Anchor = AnchorKind.InboxBeat,
+        AnchorLabel = "Which beat or scene?",
+        Targets = new[] { TargetKind.Board, TargetKind.Copy },
+        Why = "For a scene, image or line you already have and already love, but don't know where it goes. Run it through the "
+            + "story's seven turns, as few or as many as you want: if this sat here, what does it need before it, and what does "
+            + "it force after it? An answer that comes easily and feels like it belongs is alive; one you have to force, or "
+            + "nothing at all, is flat. Flat is information — wrong slot, not a wasted turn — and more than one alive means "
+            + "you've found candidates, not committed to an answer. Carry the strongest one or two into Split or Fill and let "
+            + "the surrounding structure make the final call.",
+        Steps = new[]
+        {
+            new Step { Key = "moment", Label = "Moment", Multiline = true,
+                Question = "The moment — the scene, image or line you already have and love, with nowhere to put it yet." },
+            new Step { Key = "before", Kind = StepKind.Slots, Source = TurnsSource, Label = "Before",
+                Question = "If this moment sat right here, what would it need to be true right before it?",
+                Hint = "Fill in the turns you want to try; leave the rest.",
+                Why = "If an answer comes easily and feels like it belongs, that's alive. If you have to force it, or nothing comes, "
+                    + "that's flat — not a failure, just proof this isn't the slot." },
+            new Step { Key = "after", Kind = StepKind.Slots, Source = TurnsSource, Label = "After",
+                Question = "…and what would it force to happen right after?" },
+            new Step { Key = "alive", Kind = StepKind.Slots, Source = TurnsSource, Pills = true, Label = "Alive or flat",
+                Question = "Alive or flat, in each turn you tried?",
+                Hint = "Flat is information — wrong slot. More than one alive isn't a problem." },
+            new Step { Key = "ladder-if", Kind = StepKind.Branch, BranchGroup = "ladder", OnKey = "alive", OnValue = "flat", AllSlots = true },
+            new Step { Key = "at", Group = "ladder", Label = "At it", Multiline = true,
+                Question = "Flat everywhere? Write the moment again, as it happens.",
+                Hint = "Time-Skip Ladder: three times — as it happens, a year on, a minute on.",
+                Why = "A moment that's actually structural earns its keep in all three; one that only ever worked as mood usually "
+                    + "can't survive the jump either direction. It cuts a moment down to what's structural about it versus what's "
+                    + "just atmosphere — sometimes the moment was never flat, it was just timed wrong." },
+            new Step { Key = "year", Group = "ladder", Label = "One year later", Multiline = true,
+                Question = "One year later — has anything about it survived?" },
+            new Step { Key = "minute", Group = "ladder", Label = "One minute later", Multiline = true,
+                Question = "One minute later — what's the very next domino it knocks over?" },
+            new Step { Key = "structural", Kind = StepKind.YesNo, Group = "ladder", Label = "Still structural?",
+                Question = "Still structural?",
+                Hint = "Yes: it wasn't flat, it was timed wrong — go back and try the remaining slots. No: it may be a mood beat, and that's fine to know." },
+            new Step { Key = "shortlist", Kind = StepKind.Lines, Count = 2, Label = "Shortlist",
+                Question = "Shortlist the strongest one or two alive answers.",
+                Hint = "Split or Fill picks the winner another day, not this." },
+            new Step { Key = PositionTurnKey, Kind = StepKind.Pick, FromKey = "alive", Label = "The turn",
+                Question = "Which turn does it go in?",
+                Hint = "Optional — it's what Send to the Board files the beat under." }
+        }
+    };
+
+    public static readonly IReadOnlyList<Exercise> All = new[] { Woac, Flaw, Fill, SceneDials, Split, Belief, Extend, Bridge, Position };
 
     public static Exercise? Find(string id) => All.FirstOrDefault(exercise => exercise.Id == id);
 }

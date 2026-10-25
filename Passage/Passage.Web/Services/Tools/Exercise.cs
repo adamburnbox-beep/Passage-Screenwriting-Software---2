@@ -11,7 +11,7 @@ public enum AnchorKind { None, Character, Scene, Bracket, InboxBeat, TwoPoints, 
 
 /// <summary>Where an answer can be sent (§4.4). Stored by name in the sidecar.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum TargetKind { Bracket, Synopsis, InboxBeat, SceneCard, NotePage, Shape, Copy }
+public enum TargetKind { Bracket, Synopsis, InboxBeat, SceneCard, NotePage, Shape, Board, Copy }
 
 /// <summary>The whole step vocabulary (§4.3). New behaviour means a new kind with a test.</summary>
 public enum StepKind
@@ -74,6 +74,9 @@ public sealed record Step
     // the speakers in a scene).
     public string? Source { get; init; }
 
+    // Slots: each item takes an alive / flat mark instead of text.
+    public bool Pills { get; init; }
+
     // Stop: the stop-callout's words, shown with Stop here / Keep going.
     public string Text { get; init; } = string.Empty;
 
@@ -97,6 +100,10 @@ public sealed record Step
     // Reads a loop's answers to ReadForwardKey back from the first round to the last, then
     // the first non-blank of EndKeys (a chain written backward, read forward).
     public string? ReadForwardKey { get; init; }
+
+    // With ReadForwardKey: the chain was written forward, so it is read in order: this step's
+    // answer first, then the loop's answers first round to last, then EndKeys (Bridge: A, links, Z).
+    public string? LeadKey { get; init; }
 
     // A step whose answer is about someone other than the run's character: the step (same
     // round) that holds their name, used when the answer is sent to a note page or the inbox.

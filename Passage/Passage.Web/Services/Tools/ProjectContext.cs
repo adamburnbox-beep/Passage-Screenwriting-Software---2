@@ -86,6 +86,10 @@ public static class ProjectContext
         return matches.Count == 1 ? matches[0] : null;
     }
 
+    /// <summary>Finds the second point of a two-point anchor (Bridge's Z) the way <see cref="Resolve"/> finds the first.</summary>
+    public static SceneChoice? ResolveEnd(IReadOnlyList<SceneChoice> scenes, Anchor? anchor) =>
+        anchor is null ? null : Resolve(scenes, new Anchor { SceneId = anchor.EndSceneId, SceneText = anchor.EndSceneText });
+
     /// <summary>Every bracket in the script as the picker lists it (ranked order), marked if ignored.</summary>
     public static List<BracketChoice> Brackets(IEnumerable<Bracket> brackets, IReadOnlyCollection<string> ignored) =>
         brackets.Select(bracket => new BracketChoice(bracket.Text, bracket.LineNumber, bracket.Rank == 1,

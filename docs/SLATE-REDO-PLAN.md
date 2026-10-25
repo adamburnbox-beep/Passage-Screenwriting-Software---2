@@ -634,7 +634,7 @@ total, all pass).
   overflow; no counters or dates; `.partner` count 0; no server errors. Not exercised by
   hand: the Cast card's Send to, and a Belief run started from a Cast row.
 
-### T6 — Bridge and Position · `todo`
+### T6 — Bridge and Position · `done`
 
 - Bridge anchored to two Board cards; Position anchored to an inbox beat or a
   scene, `Slots(turns)`, Time-Skip Ladder branch.
@@ -643,6 +643,50 @@ total, all pass).
   plan being dropped). Inbox "Position this" entry point.
 - Migration: Bridges, Positions (prune trailing empty turns — handover open
   observation, now moot in the generic model). Delete old views.
+
+**Done:** `ExerciseCatalog.Bridge` and `.Position`; `Services/Tools/AnchorPrefill.cs` starts the blank answers an
+anchor can supply (Bridge's A and Z from the two cards' heading and synopsis, Position's moment from the beat or
+scene). Bridge is anchored to two scenes (`Anchor` gained `EndSceneId` / `EndSceneText` for Z; A is the existing
+`SceneId` / `SceneText`; `ProjectContext.ResolveEnd`): A, Z, then a loop of `Lines(3)` → `Pick` (a pick opens the
+next round, which the writer can leave), then the wire read forward (new `Step.LeadKey`: A, the picks in order, Z).
+It sends a link to the inbox, Copy, or a new scene card (`TargetKind.SceneCard`, built from `BeatInbox.SceneLines`,
+placed with `BeatInbox.TryPlan` just before Z, or just after A when Z isn't named, by `passage.insertLinesAt`, so
+undo restores it exactly). Position is `Slots(turns)` three times (before, after, alive / flat pills — new
+`Step.Pills`), the script's own turn text under each slot, the Time-Skip Ladder as a `Branch` that opens only when
+all seven turns are flat, a two-line shortlist and a `Pick` of the turn over the alive ones (all seven when none is
+marked). Its target `TargetKind.Board` files the inbox beat as a scene under the sequence whose synopsis carries the
+chosen turn's line (`ToolTargets.SequenceForTurn`), through `ConvertBeatToCardAsync`, the Send-to-Board path; a beat
+still on the page plan asks first with the same modal, which now says "under <turn>". "Position this" is a button on
+every inbox beat (BEATS tray and BOARD strip share `RenderBeat`) and Right now's Position rule is live; both resume
+the run kept for that beat. `ScriptTurnHint` is folded into the host's `ScriptShapeValue`. The Bridge card is in the
+Board card Tools menu (that scene as A). `SlateMigration.Migrate` moves Bridges and Positions (blank ones are cleared,
+not moved; trailing empty rounds and turns are not carried; a turn with text but no slot named keeps its text on the
+moment). Old views, handlers, `WorkshopView` members, `BridgeSlotsId`, and (now unused) the Editor's whole partner
+block and `IStoryPartner` injection are deleted. Tests: 4 new, 2 updated for load-time migration (138 total, all pass).
+
+**Deviations:**
+- Bridge's cards are scenes (a Board scene card), not sequence or act cards; Z can't be "the end of the Shape" (type
+  it in the step). A migrated Bridge has no cards, so its ends are text and its "scene card" target says "Name the
+  two cards first" until they are picked.
+- `ConvertBeatToCardAsync` now mirrors its insert into `_content` and re-analyses (as `PutSynopsisAsync` already did):
+  a second write in a row would otherwise plan from stale text. Undo of that insert restores the script exactly; as
+  with the tray's Send to Board, the beat stays out of the inbox after an undo.
+- Position's Board target is offered only on a run about an inbox beat; a run about a scene, or a migrated one, has
+  Copy only (moving a card that is already in the script is a drag, not a send). "Flat everywhere" is the engine's
+  all-seven rule, so the Ladder opens only after every turn is marked flat.
+- Position's three questions are three `Slots` steps over the seven turns, not one row per turn: before, then after,
+  then the marks. A turn left blank is a turn not tried.
+- Beats on the page plan (Page > 0) can't be the anchor from "Position this" (inbox beats only), so the confirm
+  modal is reached only if a beat is moved onto the plan after its run began. It was checked by reading, not by hand.
+- Verified in the browser on a scratch copy of the dev data (§8): `split-test`'s Bridge and Position runs show on
+  their cards after migration; "Position this" on a BOARD-strip beat, Right now → Position, moment prefilled, a
+  turn marked alive, the pick, Send to → under Plot point 1 / Pinch 1 (a scene under Sequence 2 / 3, beat out of the
+  inbox), status-bar Undo restores the script exactly; all seven turns flat opens the Ladder; Bridge from the card
+  pickers (A and Z prefilled), three links, pick, Beat inbox (shows on the BOARD strip), scene card before Z, Undo
+  exact; step 5 for both (Z's heading renamed, then a sequence's turn line renamed: status line, script untouched,
+  no exception); no counters or dates; `.partner` 0; 375px has no horizontal overflow; no server errors. Also built
+  once with SDK 9.0.317 pinned (the Razor trap). Not exercised by hand: the page-plan confirm, and a Bridge run on
+  sequence or act cards.
 
 ### T7 — Push/Pull and Understudy · `todo`
 

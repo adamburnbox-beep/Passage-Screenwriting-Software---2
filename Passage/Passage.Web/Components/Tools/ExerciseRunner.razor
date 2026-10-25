@@ -51,7 +51,7 @@
                     }
                     else if (!AnchorFound)
                     {
-                        <span class="anchor-gone">no longer in the script</span>
+                        <span class="anchor-gone">@GoneText</span>
                     }
                 }
             }
@@ -64,7 +64,7 @@
                 <span class="anchor-scene">@Run.Anchor.SceneText@(SceneFound ? null : " — no longer in the script")</span>
             }
         </div>
-        @if (Exercise.Anchor == AnchorKind.Shape ? (HasScene ? SceneFound : Host.ScriptHasShape) : Run.Anchor.Text.Length > 0 && AnchorFound || Exercise.Anchor == AnchorKind.Character && SceneFound)
+        @if (CanJump)
         {
             <button class="icon-btn" title="Show it in the script" aria-label="Show it in the script" @onclick="JumpAsync">↗</button>
         }
@@ -90,7 +90,7 @@
             <button class="btn" title="Put this one back and hand me another" @onclick="NextBracketAsync">Next bracket</button>
         </div>
     }
-    @if (_changing || Run.Anchor.Text.Length == 0 && !_dismissedPicker && Exercise.Anchor != AnchorKind.Shape)
+    @if (_changing || NeedsPicker && !_dismissedPicker && Exercise.Anchor != AnchorKind.Shape)
     {
         <AnchorPicker Host="Host" Anchor="Run.Anchor" Kind="Exercise.Anchor" SceneToo="Exercise.SceneToo" OnChanged="AnchorChangedAsync" />
     }
@@ -208,11 +208,16 @@
     private string _partnerFor = string.Empty;
     private List<string> _partnerLines = new();
 
-    protected override void OnInitialized() => ShapeAnswers.Prefill(Exercise, Run, Host.ScriptShapeValue);
+    protected override void OnInitialized()
+    {
+        ShapeAnswers.Prefill(Exercise, Run, Host.ScriptShapeValue);
+        AnchorPrefill.Apply(Exercise, Run, Host);
+    }
 
     protected override void OnParametersSet()
     {
-        _engine = new ExerciseEngine(Exercise, source => source == ExerciseCatalog.SpeakersSource ? Host.SpeakersFor(Run.Anchor) : Array.Empty<string>());
+        _engine = new ExerciseEngine(Exercise, source => source == ExerciseCatalog.SpeakersSource ? Host.SpeakersFor(Run.Anchor)
+            : source == ExerciseCatalog.TurnsSource ? ExerciseCatalog.TurnLabels : Array.Empty<string>());
         Refresh();
     }
 
@@ -290,6 +295,7 @@
         TargetKind.NotePage => "note",
         TargetKind.Bracket => "bracket",
         TargetKind.SceneCard => "scene card",
+        TargetKind.Board => "Board",
         TargetKind.Shape => "Shape",
         _ => "copied"
     };
@@ -299,11 +305,18 @@
     private bool _changing;
     private bool _dismissedPicker;
 
+    // Nobody named yet; a pair of cards stays open until both are.
+    private bool NeedsPicker => Exercise.Anchor == AnchorKind.TwoPoints
+        ? !HasScene || Run.Anchor.EndSceneId is null && Run.Anchor.EndSceneText.Length == 0
+        : Run.Anchor.Text.Length == 0;
+
     private string AnchorGlyph => Exercise.Anchor switch
     {
         AnchorKind.Scene => "🎬",
         AnchorKind.Bracket => "[ ]",
         AnchorKind.Shape => "◇",
+        AnchorKind.TwoPoints => "⇄",
+        AnchorKind.InboxBeat => Run.Anchor.Kind == AnchorKind.Scene ? "🎬" : "◎",
         _ => "👤"
     };
 
@@ -316,12 +329,43 @@
 
     private BracketChoice? ThisBracket => Host.Brackets.FirstOrDefault(bracket => bracket.Text == Run.Anchor.Text);
 
-    // A scene or bracket anchor that can still be found in the script.
+    // A scene, bracket, pair of cards or inbox beat anchor that can still be found.
     private bool AnchorFound => Exercise.Anchor switch
     {
         AnchorKind.Scene => Host.ResolveScene(Run.Anchor) is not null,
         AnchorKind.Bracket => ThisBracket is not null,
+        AnchorKind.TwoPoints => StartFound && EndFound,
+        AnchorKind.InboxBeat => Run.Anchor.Kind switch
+        {
+            AnchorKind.InboxBeat => Host.Slate.Beats.Any(beat => beat.Id == Run.Anchor.TargetId),
+            AnchorKind.Scene => Host.ResolveScene(Run.Anchor) is not null,
+            _ => true
+        },
         _ => true
+    };
+
+    // A point left unnamed is not missing; only a named one that can't be found is.
+    private bool StartFound => !HasScene || Host.ResolveScene(Run.Anchor) is not null;
+
+    private bool EndFound => (Run.Anchor.EndSceneId is null && Run.Anchor.EndSceneText.Length == 0)
+        || ProjectContext.ResolveEnd(Host.Scenes, Run.Anchor) is not null;
+
+    private string GoneText => Exercise.Anchor switch
+    {
+        AnchorKind.TwoPoints => !StartFound && !EndFound ? "A and Z are no longer in the script"
+            : !StartFound ? "A is no longer in the script" : "Z is no longer in the script",
+        AnchorKind.InboxBeat when Run.Anchor.Kind == AnchorKind.InboxBeat => "no longer in the inbox",
+        _ => "no longer in the script"
+    };
+
+    // The arrow shows the anchor in the script: a beat in the inbox isn't in the script yet.
+    private bool CanJump => Exercise.Anchor switch
+    {
+        AnchorKind.Shape => HasScene ? SceneFound : Host.ScriptHasShape,
+        AnchorKind.InboxBeat => Run.Anchor.Kind == AnchorKind.Scene && AnchorFound,
+        AnchorKind.TwoPoints => HasScene && StartFound,
+        AnchorKind.Character => Run.Anchor.Text.Length > 0 && AnchorFound || SceneFound,
+        _ => Run.Anchor.Text.Length > 0 && AnchorFound
     };
 
     private async Task FillItAsync()
@@ -358,7 +402,10 @@
 
     private Task AnchorChangedAsync()
     {
+        // A beat or a pair of cards just named starts the blank answers it can (the moment, A and Z).
+        AnchorPrefill.Apply(Exercise, Run, Host);
         Host.Save();
+        Refresh();
         return Task.CompletedTask;
     }
 

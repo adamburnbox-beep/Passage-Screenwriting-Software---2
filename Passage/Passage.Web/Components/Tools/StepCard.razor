@@ -44,6 +44,15 @@ else
     @switch (step.Kind)
     {
         case StepKind.Text:
+            @if (step.ReadForwardKey is not null && Engine.ReadForward(Run, Slot) is { Count: > 0 } wire)
+            {
+                <ol class="chain-forward">
+                    @for (var i = 0; i < wire.Count; i++)
+                    {
+                        <li class="@(IsChainEnd(wire, i) ? "chain-z" : null)">@wire[i]</li>
+                    }
+                </ol>
+            }
             <textarea rows="@(step.Multiline ? 3 : 2)" data-slot data-step-input
                       data-slot-multiline="@(step.Multiline ? "" : null)" data-held="@(Held ? "" : null)"
                       aria-label="@step.Question"
@@ -77,7 +86,7 @@ else
                 <ol class="chain-forward">
                     @for (var i = 0; i < chain.Count; i++)
                     {
-                        <li class="@(i == chain.Count - 1 ? "chain-z" : null)">@chain[i]</li>
+                        <li class="@(IsChainEnd(chain, i) ? "chain-z" : null)">@chain[i]</li>
                     }
                 </ol>
             }
@@ -105,12 +114,26 @@ else
             @foreach (var item in items)
             {
                 var name = item;
-                <label class="slot-row">
-                    <span class="slot-name">@name</span>
-                    <textarea rows="1" data-slot data-step-input data-held="@(Held ? "" : null)" aria-label="@name — @step.Question"
-                              value="@Engine.GetItem(Run, step.Key, Slot.Round, name)"
-                              @onchange="args => SetItemAsync(name, args.Value?.ToString() ?? string.Empty)"></textarea>
-                </label>
+                @if (step.Pills)
+                {
+                    <div class="slot-row">
+                        <span class="slot-name">@name</span>
+                        <AliveFlat Value="@Engine.GetItem(Run, step.Key, Slot.Round, name)" ValueChanged="value => SetItemAsync(name, value)" />
+                    </div>
+                }
+                else
+                {
+                    <label class="slot-row">
+                        <span class="slot-name">@name</span>
+                        <textarea rows="1" data-slot data-step-input data-held="@(Held ? "" : null)" aria-label="@name — @step.Question"
+                                  value="@Engine.GetItem(Run, step.Key, Slot.Round, name)"
+                                  @onchange="args => SetItemAsync(name, args.Value?.ToString() ?? string.Empty)"></textarea>
+                    </label>
+                }
+                @if (step.Source == ExerciseCatalog.TurnsSource && Host.ScriptShapeValue(name) is { } inTheScript)
+                {
+                    <div class="fill-hint slot-script">In the script: @inTheScript</div>
+                }
             }
             break;
         case StepKind.Dice:
@@ -133,9 +156,9 @@ else
     {
         <label class="burst-toggle"><input type="checkbox" checked="@Engine.IsAlt(Run, Slot)" @onchange="AltToggledAsync" /> @step.AltLabel</label>
     }
-    @if ((step.Kind is StepKind.Text or StepKind.Lines) && Exercise.Targets.Count > 0)
+    @if ((step.Kind is StepKind.Text or StepKind.Lines or StepKind.Pick) && SendTargets.Count > 0)
     {
-        <SendToMenu Targets="Exercise.Targets" Character="@CharacterName" SynopsisLabel="@Host.SynopsisTargetLabel(SendAnchor)" OnSend="SendAsync" />
+        <SendToMenu Targets="SendTargets" Character="@CharacterName" SynopsisLabel="@Host.SynopsisTargetLabel(SendAnchor)" OnSend="SendAsync" />
     }
 }
 
@@ -226,10 +249,21 @@ else
         ? string.Join('\n', Enumerable.Range(0, Engine.LineCount(Run, Slot)).Select(i => Engine.GetLine(Run, Slot.Step.Key, Slot.Round, i)).Where(line => !string.IsNullOrWhiteSpace(line)))
         : Engine.GetAnswer(Run, Slot.Step.Key, Slot.Round);
 
+    // The Board files a beat from the inbox under a turn, so it is offered only on a run about a beat.
+    private IReadOnlyList<TargetKind> SendTargets => Run.Anchor.Kind == AnchorKind.InboxBeat
+        ? Exercise.Targets
+        : Exercise.Targets.Where(target => target != TargetKind.Board).ToList();
+
+    // A chain's two ends are marked: the end, and (a chain written forward) the start.
+    private bool IsChainEnd(IReadOnlyList<string> chain, int index) =>
+        index == chain.Count - 1 || index == 0 && Slot.Step.LeadKey is { } lead && Engine.GetAnswer(Run, lead) == chain[0];
+
     private async Task SendAsync(TargetKind target)
     {
         var label = string.IsNullOrWhiteSpace(Slot.Step.Label) ? Slot.Step.Question : Slot.Step.Label;
-        var landed = await Host.SendAsync(target, new ToolSend(SendAnchor, Exercise.Name, label, AnswerText()));
+        // Sending the beat to the Board sends the run's chosen turn, wherever the menu was opened.
+        var text = target == TargetKind.Board ? Engine.GetAnswer(Run, ExerciseCatalog.PositionTurnKey) : AnswerText();
+        var landed = await Host.SendAsync(target, new ToolSend(SendAnchor, Exercise.Name, label, text));
         if (landed && !Run.Sent.Any(mark => mark.Key == Slot.Id && mark.Target == target))
         {
             Run.Sent.Add(new SentMark { Key = Slot.Id, Target = target });

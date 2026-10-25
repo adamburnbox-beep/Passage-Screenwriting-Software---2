@@ -17,6 +17,9 @@ public sealed record TrailEntry(StepSlot Slot, string Summary);
 /// </summary>
 public sealed class ExerciseEngine
 {
+    /// <summary>The mark an alive / flat pill stores for "alive".</summary>
+    public const string Alive = "alive";
+
     private readonly Exercise _exercise;
     private readonly Func<string, IReadOnlyList<string>> _slotSource;
 
@@ -205,6 +208,17 @@ public sealed class ExerciseEngine
             return slot.Step.Options;
         }
 
+        if (from.Kind == StepKind.Slots)
+        {
+            // The items of a Slots step: the ones marked alive (or, with no marks yet, all of them so the
+            // writer can still choose), or the ones with text.
+            var items = SlotItems(new StepSlot(from, slot.Round));
+            var marked = items.Where(item => from.Pills
+                ? GetItem(run, from.Key, slot.Round, item) == Alive
+                : !Blank(GetItem(run, from.Key, slot.Round, item))).ToList();
+            return marked.Count > 0 || !from.Pills ? marked : items;
+        }
+
         var options = new List<string>();
         for (var i = 0; i < SlotCount(run, from, slot.Round); i++)
         {
@@ -289,7 +303,8 @@ public sealed class ExerciseEngine
 
     /// <summary>
     /// A chain written backward, read forward: the loop's answers from the last round to the
-    /// first, then the chain's end. Blank links are left out.
+    /// first, then the chain's end. A chain written forward (<see cref="Step.LeadKey"/>) is read in
+    /// order, start to end. Blank links are left out.
     /// </summary>
     public IReadOnlyList<string> ReadForward(ExerciseRun run, StepSlot slot)
     {
@@ -298,7 +313,25 @@ public sealed class ExerciseEngine
             return Array.Empty<string>();
         }
 
-        var chain = Enumerable.Range(0, Math.Max(1, run.Rounds)).Reverse()
+        var rounds = Enumerable.Range(0, Math.Max(1, run.Rounds));
+        if (slot.Step.LeadKey is { } lead)
+        {
+            var forward = new List<string>();
+            if (GetAnswer(run, lead) is { } start && !Blank(start))
+            {
+                forward.Add(start);
+            }
+
+            forward.AddRange(rounds.Select(round => GetAnswer(run, key, round)).Where(text => !Blank(text)));
+            if (FirstEnd(run, slot.Step) is { Length: > 0 } last)
+            {
+                forward.Add(last);
+            }
+
+            return forward;
+        }
+
+        var chain = rounds.Reverse()
             .Select(round => GetAnswer(run, key, round)).Where(text => !Blank(text)).ToList();
         if (FirstEnd(run, slot.Step) is { Length: > 0 } end)
         {

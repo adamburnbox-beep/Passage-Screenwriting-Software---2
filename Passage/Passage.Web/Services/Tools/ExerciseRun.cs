@@ -16,6 +16,11 @@ public sealed class Anchor
     // By id where the heading has a marker, otherwise by heading text.
     public Guid? SceneId { get; set; }
     public string SceneText { get; set; } = string.Empty;
+
+    // The second point of a two-point run (Bridge's Z), a scene found the same way as SceneId / SceneText;
+    // the first point is the scene above.
+    public Guid? EndSceneId { get; set; }
+    public string EndSceneText { get; set; } = string.Empty;
 }
 
 /// <summary>An answer that was sent somewhere, so the trail can tag it.</summary>
@@ -47,10 +52,11 @@ public sealed class ExerciseRun
 
     public List<SentMark> Sent { get; set; } = new();
 
-    // A bracket or scene is handed over rather than typed, so a run that only
-    // holds one is as empty as a blank page: handing out brackets must not
-    // leave a kept run behind for each.
+    // A bracket, scene, inbox beat or pair of cards is handed over rather than typed, so a run that
+    // only holds one is as empty as a blank page: handing out brackets must not leave a kept run
+    // behind for each.
     [JsonIgnore]
     public bool IsEmpty => Answers.Values.All(string.IsNullOrWhiteSpace)
-        && (Anchor.Kind is AnchorKind.Bracket or AnchorKind.Scene || string.IsNullOrWhiteSpace(Anchor.Text));
+        && (Anchor.Kind is AnchorKind.Bracket or AnchorKind.Scene or AnchorKind.InboxBeat or AnchorKind.TwoPoints
+            || string.IsNullOrWhiteSpace(Anchor.Text));
 }

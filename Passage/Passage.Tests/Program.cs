@@ -78,6 +78,10 @@ class Program
         failures += RunTest("Test Split Adapter Matches The Old Shape Write", TestSplitAdapter);
         failures += RunTest("Test Catalog Belief And Extend", TestCatalogBeliefAndExtend);
         failures += RunTest("Test Slate Migration Split Family", TestSlateMigrationSplitFamily);
+        failures += RunTest("Test Catalog Bridge Reads Forward", TestCatalogBridge);
+        failures += RunTest("Test Catalog Position Turns And Ladder", TestCatalogPosition);
+        failures += RunTest("Test Position Sequence For Turn", TestPositionSequenceForTurn);
+        failures += RunTest("Test Slate Migration Bridges And Positions", TestSlateMigrationBridgeAndPosition);
         failures += RunTest("Test Shape Prefill From The Script", TestShapePrefill);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
         failures += RunTest("Test Structure Template Passage Is The Shape", TestStructureTemplatePassageIsTheShape);
@@ -1143,11 +1147,11 @@ class Program
         var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks" };
         flaw.Answers[2] = "carries it alone";
         document.Chains.Add(flaw);
-        document.Positions.Add(new PositionRun { Moment = "the keeper's letter" });
+        document.Revisions.Add(new ReviseRun());
 
         Assert(SlateMigration.Migrate(document) == 2, "Both chains are moved");
         Assert(document.Chains.Count == 0, "A move leaves the old list empty");
-        Assert(document.Positions.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
+        Assert(document.Revisions.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
 
         var run = document.Exercises[0];
         Assert(run.ExerciseId == "woac" && run.Rounds == 3 && run.Anchor.Text == "MARA wants the key", "A WOAC run keeps its seed and three rounds");
@@ -1167,8 +1171,8 @@ class Program
         Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
 
         var untouched = new SlateDocument();
-        untouched.Positions.Add(new PositionRun { Moment = "x" });
-        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.Positions.Count == 1,
+        untouched.Revisions.Add(new ReviseRun());
+        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.Revisions.Count == 1,
             "A document with no old chains is unchanged");
     }
 
@@ -1683,6 +1687,134 @@ class Program
         var loaded = System.Text.Json.JsonSerializer.Deserialize<SlateDocument>(json)!;
         SlateMigration.Migrate(loaded);
         Assert(loaded.Exercises.Single().Answers["a"] == "from disk", "An old sidecar's Split shows up as a run");
+    }
+
+    static void TestCatalogBridge()
+    {
+        var engine = new ExerciseEngine(ExerciseCatalog.Bridge);
+        var run = new ExerciseRun { ExerciseId = "bridge" };
+        Assert(engine.Current(run)!.Value.Step.Key == "a", "Bridge asks for the ends first");
+        engine.SetAnswer(run, "a", 0, "She buries the letter");
+        engine.SetAnswer(run, "z", 0, "He finds it");
+        var links = engine.Current(run)!.Value;
+        Assert(links.Step.Key == "links" && engine.LineCount(run, links) == 3, "Then three candidate links");
+        engine.SetLine(run, "links", 0, 0, "the flood");
+        engine.SetLine(run, "links", 0, 1, "the move");
+        var pick = new StepSlot(ExerciseCatalog.Bridge.Steps.First(step => step.Key == "pick"), 0);
+        Assert(engine.PickOptions(run, pick).SequenceEqual(new[] { "the flood", "the move" }), "A pick offers the written candidates");
+        Assert(run.Rounds == 1, "Nothing is picked yet, so no new round");
+        engine.Pick(run, pick, "the move");
+        Assert(run.Rounds == 2 && engine.Current(run)!.Value is { Round: 1 } next && next.Step.Key == "links", "A pick opens the next round, which the writer may leave");
+        engine.SetLine(run, "links", 1, 0, "the sale");
+        engine.Pick(run, new StepSlot(pick.Step, 1), "the sale");
+
+        var wire = new StepSlot(ExerciseCatalog.Bridge.Steps.First(step => step.Key == "wire"), 0);
+        Assert(engine.ReadForward(run, wire).SequenceEqual(new[] { "She buries the letter", "the move", "the sale", "He finds it" }),
+            "The wire reads A, the picked links in order, then Z");
+        engine.SetAnswer(run, "z", 0, "");
+        Assert(engine.ReadForward(run, wire).SequenceEqual(new[] { "She buries the letter", "the move", "the sale" }), "A blank end is left out");
+    }
+
+    static void TestCatalogPosition()
+    {
+        var turns = ExerciseCatalog.TurnLabels;
+        Assert(turns.Count == 7 && turns[0] == "Inciting incident" && turns[6] == "Last obstacle", "The seven turns are the Shape's, in order");
+        var engine = new ExerciseEngine(ExerciseCatalog.Position, source => source == ExerciseCatalog.TurnsSource ? turns : Array.Empty<string>());
+        var run = new ExerciseRun { ExerciseId = "position" };
+        var alive = ExerciseCatalog.Position.Steps.First(step => step.Key == "alive");
+        var aliveSlot = new StepSlot(alive, 0);
+        var turn = new StepSlot(ExerciseCatalog.Position.Steps.First(step => step.Key == "turn"), 0);
+
+        Assert(engine.SlotItems(aliveSlot).SequenceEqual(turns), "The turns are the slots");
+        Assert(engine.PickOptions(run, turn).SequenceEqual(turns), "With nothing marked yet, every turn can still be chosen");
+        engine.SetItem(run, "alive", 0, "Midpoint", "alive");
+        engine.SetItem(run, "alive", 0, "Pinch 1", "flat");
+        Assert(engine.PickOptions(run, turn).SequenceEqual(new[] { "Midpoint" }), "Once turns are marked, the pick offers the alive ones");
+        Assert(!engine.Sequence(run).Any(slot => slot.Step.Key == "at"), "The Time-Skip Ladder stays away while any turn is alive or untried");
+
+        var flatRun = new ExerciseRun { ExerciseId = "position" };
+        foreach (var label in turns)
+        {
+            engine.SetItem(flatRun, "alive", 0, label, "flat");
+        }
+
+        Assert(engine.Sequence(flatRun).Select(slot => slot.Step.Key).Where(key => key is "at" or "year" or "minute" or "structural").SequenceEqual(new[] { "at", "year", "minute", "structural" }),
+            "Flat in all seven opens the ladder");
+        engine.SetItem(flatRun, "alive", 0, "Pinch 2", string.Empty);
+        Assert(!engine.Sequence(flatRun).Any(slot => slot.Step.Key == "at"), "Clearing one flat mark hides it again");
+
+        var summary = engine.Trail(run).Single(entry => entry.Slot.Step.Key == "alive").Summary;
+        Assert(summary.Contains("Midpoint: alive") && summary.Contains("Pinch 1: flat"), "The trail shows the marks by turn");
+        Assert(new ExerciseRun { Anchor = new Anchor { Kind = AnchorKind.InboxBeat, Text = "A beat" } }.IsEmpty
+            && new ExerciseRun { Anchor = new Anchor { Kind = AnchorKind.TwoPoints, Text = "A → Z" } }.IsEmpty, "A handed beat or pair of cards is not a kept run by itself");
+    }
+
+    static void TestPositionSequenceForTurn()
+    {
+        var script = string.Join("\n", SplitScript.BuildLines(new SplitRun { Pinch1 = "the letter" })).Trim();
+        var analysis = new DocumentAnalyzer().Analyze(script);
+        var sequences = analysis.BoardLanes.SelectMany(lane => lane.Groups).Where(group => group.SequenceCard is not null).Select(group => group.SequenceCard!).ToList();
+        Assert(sequences.Count == 8, "The written shape has eight sequences");
+        Assert(ToolTargets.SequenceForTurn(sequences, "Pinch 1") is { } pinch && pinch.Heading == "Sequence 3" && pinch.Id != Guid.Empty,
+            "A turn sits on the sequence whose synopsis carries its line, bracket or not");
+        Assert(ToolTargets.SequenceForTurn(sequences, "Midpoint")!.Heading == "Sequence 4", "An unwritten turn is found by its bracket line");
+        Assert(ToolTargets.SequenceForTurn(sequences.Take(2), "Pinch 1") is null, "A script without it gives nothing to guess at");
+
+        var scenes = ProjectContext.Scenes(analysis.Elements);
+        var anchor = new Anchor { EndSceneText = "INT. NOWHERE - DAY" };
+        Assert(ProjectContext.ResolveEnd(scenes, anchor) is null && ProjectContext.ResolveEnd(scenes, new Anchor()) is null, "A second point that isn't in the script resolves to nothing");
+    }
+
+    static void TestSlateMigrationBridgeAndPosition()
+    {
+        var document = new SlateDocument();
+        document.Bridges.Add(new BridgeRun
+        {
+            A = "letter planted", Z = "letter found", Wire = "the wire",
+            Rounds = new List<BridgeRound>
+            {
+                new() { Candidates = { [0] = "flood", [1] = "move" }, Picked = "move" },
+                new() { Candidates = { [2] = "sale" } },
+                new(),
+                new()
+            }
+        });
+        document.Bridges.Add(new BridgeRun());
+        document.Positions.Add(new PositionRun
+        {
+            Moment = "A dance in the rain",
+            Turns = new List<PositionTurn>
+            {
+                new() { Slot = "Midpoint", Before = "she must have lied", After = "he leaves", Alive = "alive" },
+                new() { Slot = "Pinch 1", Alive = "flat" },
+                new() { Before = "no slot named" },
+                new()
+            },
+            Shortlist = { [0] = "Midpoint" }
+        });
+        document.Positions.Add(new PositionRun());
+
+        Assert(SlateMigration.Migrate(document) == 2, "One bridge and one position are moved; the blank ones are cleared");
+        Assert(document.Bridges.Count == 0 && document.Positions.Count == 0, "A move leaves the old lists empty");
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
+
+        var bridge = document.Exercises.Single(run => run.ExerciseId == "bridge");
+        var bridgeEngine = new ExerciseEngine(ExerciseCatalog.Bridge);
+        Assert(bridge.Anchor.Kind == AnchorKind.TwoPoints && bridge.Anchor.Text == "letter planted → letter found", "The bridge is kept by its two ends");
+        Assert(bridge.Rounds == 2 && bridgeEngine.GetLine(bridge, "links", 0, 1) == "move" && bridgeEngine.GetAnswer(bridge, "pick") == "move"
+            && bridgeEngine.GetLine(bridge, "links", 1, 2) == "sale", "Rounds with writing are carried over, trailing empty ones are not");
+        Assert(bridgeEngine.GetAnswer(bridge, "wire") == "the wire" && bridgeEngine.GetAnswer(bridge, "a") == "letter planted", "The ends and the wire come across");
+
+        var position = document.Exercises.Single(run => run.ExerciseId == "position");
+        var positionEngine = new ExerciseEngine(ExerciseCatalog.Position, source => source == ExerciseCatalog.TurnsSource ? ExerciseCatalog.TurnLabels : Array.Empty<string>());
+        var step = new StepSlot(ExerciseCatalog.Position.Steps.First(entry => entry.Key == "before"), 0);
+        Assert(positionEngine.GetItem(position, "before", 0, "Midpoint") == "she must have lied" && positionEngine.GetItem(position, "after", 0, "Midpoint") == "he leaves"
+            && positionEngine.GetItem(position, "alive", 0, "Midpoint") == "alive" && positionEngine.GetItem(position, "alive", 0, "Pinch 1") == "flat",
+            "Each tried turn lands under its turn");
+        Assert(positionEngine.SlotItems(step).Count == 7 && position.Answers.Keys.All(key => !key.Contains("/Last obstacle")), "Only the turns that were tried carry text; the others stay blank");
+        Assert(positionEngine.GetAnswer(position, "moment").Contains("A dance in the rain") && positionEngine.GetAnswer(position, "moment").Contains("no slot named"),
+            "A turn with no slot named keeps its text on the moment instead of vanishing");
+        Assert(positionEngine.GetLine(position, "shortlist", 0, 0) == "Midpoint" && !position.Answers.ContainsKey("shortlist[1]"), "The shortlist comes across without its blank second line");
     }
 
     static void TestShapePrefill()
@@ -2289,13 +2421,16 @@ class Program
             document.Positions.Add(position);
             store.Save("draft", document);
 
+            // The file keeps the old records; loading moves them into runs (T6), and the blank bridge is cleared.
             var loaded = store.Load("draft")!;
-            Assert(loaded.Bridges.Count == 2, "Bridges round-trip; pruning empties is the runner's job, not the store's");
-            Assert(loaded.Bridges[0].Rounds.Count == 2 && loaded.Bridges[0].Rounds[0].Picked == "she pawns it"
-                && loaded.Bridges[0].Rounds[0].Candidates.Count == 3, "Rounds, their three candidates and the picked line round-trip");
-            Assert(loaded.Bridges[1].IsEmpty && !loaded.Bridges[0].IsEmpty, "IsEmpty reads every field");
-            Assert(loaded.Positions.Count == 1 && loaded.Positions[0].Turns[0].Slot == "Midpoint"
-                && loaded.Positions[0].Turns[0].Alive == "alive" && loaded.Positions[0].Shortlist.Count == 2, "Position turns and shortlist round-trip");
+            Assert(loaded.Bridges.Count == 0 && loaded.Positions.Count == 0, "Loading moves the records out of the old lists");
+            var bridgeRun = loaded.Exercises.Single(run => run.ExerciseId == "bridge");
+            var engine = new ExerciseEngine(ExerciseCatalog.Bridge);
+            Assert(bridgeRun.Rounds == 2 && bridgeRun.Anchor.Text == "the ring is planted → the ring is found" && engine.GetAnswer(bridgeRun, "pick") == "she pawns it"
+                && engine.GetLine(bridgeRun, "links", 0, 1) == "she pawns it", "The bridge's ends, round, candidates and pick come through the file");
+            var positionRun = loaded.Exercises.Single(run => run.ExerciseId == "position");
+            Assert(new ExerciseEngine(ExerciseCatalog.Position).GetItem(positionRun, "alive", 0, "Midpoint") == "alive"
+                && positionRun.Answers["shortlist[0]"] == "midpoint" && positionRun.Anchor.Text == "the dog on the roof", "The position's turn mark and shortlist come through the file");
             Assert(new PositionRun().IsEmpty && !position.IsEmpty, "A fresh run is empty; one with a moment is not");
         }
         finally

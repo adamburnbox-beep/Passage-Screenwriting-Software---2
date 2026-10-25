@@ -5,7 +5,7 @@ namespace Passage.Web.Services.Tools;
 /// (docs/SLATE-REDO-PLAN.md R-E). A move, not a copy: each record type is
 /// converted and its old list cleared by the row that deletes that type's dock
 /// view, so a second run finds nothing to do. Not gated by version; the
-/// version bump waits for T8. Handles Chains (T2), Fills (T4) and the Split family (T5); it runs from
+/// version bump waits for T8. Handles Chains (T2), Fills (T4), the Split family (T5) and Bridges and Positions (T6); it runs from
 /// <c>SlateStore.Load</c>.
 /// </summary>
 public static class SlateMigration
@@ -17,6 +17,8 @@ public static class SlateMigration
     public const string SplitId = "split";
     public const string BeliefId = "belief";
     public const string ExtendId = "extend";
+    public const string BridgeId = "bridge";
+    public const string PositionId = "position";
 
     /// <summary>Moves Chains, Fills and the Split family in place. Returns the number of runs moved.</summary>
     public static int Migrate(SlateDocument document)
@@ -59,6 +61,23 @@ public static class SlateMigration
             document.Exercises.Add(FromExtend(document.Extend, Guid.NewGuid().ToString("N")));
             moved++;
         }
+
+        // Bridges and Positions: an untouched one is cleared, not moved.
+        foreach (var bridge in document.Bridges.Where(bridge => !bridge.IsEmpty))
+        {
+            document.Exercises.Add(FromBridge(bridge, Guid.NewGuid().ToString("N")));
+            moved++;
+        }
+
+        document.Bridges.Clear();
+
+        foreach (var position in document.Positions.Where(position => !position.IsEmpty))
+        {
+            document.Exercises.Add(FromPosition(position, Guid.NewGuid().ToString("N")));
+            moved++;
+        }
+
+        document.Positions.Clear();
 
         document.Split = new SplitRun();
         document.Belief = new BeliefRun();
@@ -185,6 +204,92 @@ public static class SlateMigration
         Put(run, "weak", 0, extend.WeakestLink);
         run.Passed.Add("obit");
         return run;
+    }
+
+    /// <summary>A Bridge run: A and Z as text, each round's candidates and pick as one loop round. Trailing rounds
+    /// with nothing written are not carried over; a last round that was picked gets the empty round the engine
+    /// would have appended. The two cards were never stored, so the run names its ends by their text.</summary>
+    public static ExerciseRun FromBridge(BridgeRun bridge, string id)
+    {
+        var a = bridge.A.Trim();
+        var z = bridge.Z.Trim();
+        var run = new ExerciseRun
+        {
+            Id = id,
+            ExerciseId = BridgeId,
+            Anchor = new Anchor { Kind = AnchorKind.TwoPoints, Text = a.Length == 0 && z.Length == 0 ? string.Empty : $"{(a.Length == 0 ? "?" : a)} → {(z.Length == 0 ? "?" : z)}" }
+        };
+
+        Put(run, "a", 0, bridge.A);
+        Put(run, "z", 0, bridge.Z);
+        var written = bridge.Rounds.FindLastIndex(round => !round.IsEmpty) + 1;
+        var picked = written > 0 && !string.IsNullOrWhiteSpace(bridge.Rounds[written - 1].Picked);
+        run.Rounds = Math.Max(1, written + (picked ? 1 : 0));
+        for (var r = 0; r < written; r++)
+        {
+            var round = bridge.Rounds[r];
+            for (var i = 0; i < round.Candidates.Count; i++)
+            {
+                Put(run, r == 0 ? $"links[{i}]" : $"links#{r}[{i}]", 0, round.Candidates[i]);
+            }
+
+            Put(run, "pick", r, round.Picked);
+        }
+
+        Put(run, "wire", 0, bridge.Wire);
+        return run;
+    }
+
+    /// <summary>A Position run: the moment, then each tried turn's before / after / alive-or-flat under its turn
+    /// label, and the shortlist. A turn with text but no slot named has nowhere to go in the seven, so its text
+    /// is kept on the moment rather than dropped.</summary>
+    public static ExerciseRun FromPosition(PositionRun position, string id)
+    {
+        var run = new ExerciseRun
+        {
+            Id = id,
+            ExerciseId = PositionId,
+            Anchor = new Anchor { Kind = AnchorKind.None, Text = string.Join(' ', position.Moment.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)).Trim() }
+        };
+
+        var moment = position.Moment.Trim();
+        foreach (var turn in position.Turns.Where(turn => !turn.IsEmpty))
+        {
+            var slot = ExerciseCatalog.TurnLabels.FirstOrDefault(label => label == turn.Slot);
+            if (slot is null)
+            {
+                var loose = string.Join("; ", new[] { turn.Before, turn.After, turn.Alive }.Where(text => !string.IsNullOrWhiteSpace(text)));
+                if (loose.Length > 0)
+                {
+                    moment += (moment.Length == 0 ? string.Empty : "\n") + $"(a turn with no slot named: {loose})";
+                }
+
+                continue;
+            }
+
+            // A slot tried twice keeps both writings; the mark is the later one.
+            Join(run, $"before/{slot}", turn.Before);
+            Join(run, $"after/{slot}", turn.After);
+            Put(run, $"alive/{slot}", 0, turn.Alive);
+        }
+
+        Put(run, "moment", 0, moment);
+        for (var i = 0; i < position.Shortlist.Count; i++)
+        {
+            Put(run, $"shortlist[{i}]", 0, position.Shortlist[i]);
+        }
+
+        return run;
+    }
+
+    private static void Join(ExerciseRun run, string key, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        run.Answers[key] = run.Answers.TryGetValue(key, out var existing) ? existing + "\n" + value : value;
     }
 
     private static bool IsBlank(FillRun fill) =>
