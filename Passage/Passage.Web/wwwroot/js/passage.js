@@ -720,6 +720,33 @@ window.passage = (function () {
         }
     }
 
+    // Scene/section ids ([[id:GUID]]) live in the text but are never shown:
+    // each is folded into an atomic, zero-width mark. The text itself is
+    // untouched, so saving, parsing and the board still see it.
+    const ID_MARKER = /\s*\[\[id:[a-f\d\-]+\]\]/gi;
+
+    function hideIdMarkers(from, to) {
+        cm.operation(() => {
+            cm.eachLine(from, to, (handle) => {
+                const lineNo = cm.getLineNumber(handle);
+                if (lineNo === null) return;
+                const text = handle.text;
+                if (text.indexOf("[[id:") < 0) return;
+                ID_MARKER.lastIndex = 0;
+                let match;
+                while ((match = ID_MARKER.exec(text)) !== null) {
+                    const start = { line: lineNo, ch: match.index };
+                    const end = { line: lineNo, ch: match.index + match[0].length };
+                    const exists = cm.findMarksAt(start).some((m) => m.__idMarker) ||
+                        cm.findMarks(start, end).some((m) => m.__idMarker);
+                    if (exists) continue;
+                    const mark = cm.markText(start, end, { collapsed: true, atomic: true, inclusiveLeft: false, inclusiveRight: false });
+                    mark.__idMarker = true;
+                }
+            });
+        });
+    }
+
     function init(reference) {
         dotnetRef = reference;
         const host = document.getElementById("editor-host");
@@ -776,6 +803,13 @@ window.passage = (function () {
         cm.getWrapperElement().addEventListener("keydown", () => { lastInputWasPointer = false; }, true);
         cm.on("changes", updatePageRules);
         cm.on("refresh", updatePageRules);
+        cm.on("changes", (_, changes) => {
+            changes.forEach((c) => {
+                const first = Math.max(0, c.from.line);
+                const last = Math.min(cm.lastLine(), c.from.line + c.text.length - 1);
+                hideIdMarkers(first, last + 1);
+            });
+        });
 
         // Close any open dropdown menu after a choice or an outside click.
         document.addEventListener("click", (event) => {
