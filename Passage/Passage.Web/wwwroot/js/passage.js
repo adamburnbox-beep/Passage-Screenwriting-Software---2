@@ -1937,6 +1937,11 @@ window.passage = (function () {
         triggerDownload(new Blob([text], { type: "text/plain" }), fileName);
     }
 
+    function downloadBase64(base64, fileName, mimeType) {
+        const bytes = Uint8Array.from(atob(base64), ch => ch.charCodeAt(0));
+        triggerDownload(new Blob([bytes], { type: mimeType }), fileName);
+    }
+
     function triggerDownload(blob, fileName) {
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -2120,7 +2125,7 @@ window.passage = (function () {
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
         init, applyHighlights, setContent, setDirty, scrollToLine, setBeside, setBoardDescriptions, setArcMode,
-        exportDocument, downloadText, focusEditor, startBurst, stopBurst,
+        exportDocument, downloadText, downloadBase64, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
         refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setJumpTargets, setTagTargets, openJumpPalette, setCharacterHighlights, restoreLineOverrides,

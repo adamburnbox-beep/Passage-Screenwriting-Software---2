@@ -2259,6 +2259,7 @@ Open a .fountain file to see formatted pages.</div>
             }
             <div class="modal-actions">
                 <button class="btn" @onclick="() => _outlineExportOpen = false">Cancel</button>
+                <button class="btn" @onclick="ExportOutlinePdfAsync">PDF</button>
                 <button class="btn" @onclick='() => ExportOutlineAsync(OutlineFormat.Text)'>Plain text</button>
                 <button class="btn primary" @onclick='() => ExportOutlineAsync(OutlineFormat.Fountain)'>Fountain</button>
             </div>
@@ -3894,11 +3895,28 @@ Open a .fountain file to see formatted pages.</div>
         public bool BeatSheet { get; set; }
     }
 
+    private OutlineExportOptions OutlineOptionsSnapshot() => new(
+        _outlineOptions.Synopses, _outlineOptions.Storylines, _outlineOptions.Characters,
+        _outlineOptions.Locations, _outlineOptions.KeyOnly, _outlineOptions.BeatSheet);
+
+    private async Task ExportOutlinePdfAsync()
+    {
+        var pdf = OutlinePdfWriter.Build(
+            _analysis.BoardLanes, _slate.Story, _slate.Beats, _slate.BeatSheetPages, OutlineOptionsSnapshot());
+        var baseName = Path.GetFileNameWithoutExtension(DisplayName);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = "Untitled";
+        }
+
+        await JS.InvokeVoidAsync("passage.downloadBase64", Convert.ToBase64String(pdf), baseName + " outline.pdf", "application/pdf");
+        _outlineExportOpen = false;
+        _statusMessage = "Exported outline (PDF)";
+    }
+
     private async Task ExportOutlineAsync(OutlineFormat format)
     {
-        var options = new OutlineExportOptions(
-            _outlineOptions.Synopses, _outlineOptions.Storylines, _outlineOptions.Characters,
-            _outlineOptions.Locations, _outlineOptions.KeyOnly, _outlineOptions.BeatSheet);
+        var options = OutlineOptionsSnapshot();
         var text = OutlineExport.Build(
             _analysis.BoardLanes, _slate.Story, _slate.Beats, _slate.BeatSheetPages, options, format);
         var baseName = Path.GetFileNameWithoutExtension(DisplayName);

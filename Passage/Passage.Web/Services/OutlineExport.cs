@@ -42,7 +42,22 @@ public static class OutlineExport
         OutlineFormat format)
     {
         var writer = new Writer(format == OutlineFormat.Fountain, story, options);
+        Walk(lanes, story, options, writer.Card);
 
+        if (options.BeatSheet)
+        {
+            writer.BeatSheet(beats, targetPages);
+        }
+
+        return writer.ToString();
+    }
+
+    /// <summary>Visits the cards the options keep, in outline order, with their
+    /// indent depth and Fountain section depth (1–3, or 0 for a scene). Shared
+    /// with <see cref="OutlinePdfWriter"/> so every format keeps the same cards.</summary>
+    public static void Walk(
+        IReadOnlyList<BoardLane> lanes, StoryData story, OutlineExportOptions options, Action<BoardCard, int, int> visit)
+    {
         foreach (var lane in lanes)
         {
             var laneKept = !options.KeyOnly || IsKey(story, lane.ActCard)
@@ -55,7 +70,7 @@ public static class OutlineExport
             var depth = 0;
             if (lane.ActCard is not null)
             {
-                writer.Card(lane.ActCard, depth, 1);
+                visit(lane.ActCard, depth, 1);
                 depth++;
             }
 
@@ -70,23 +85,16 @@ public static class OutlineExport
                 var cardDepth = depth;
                 if (group.SequenceCard is not null)
                 {
-                    writer.Card(group.SequenceCard, depth, 2);
+                    visit(group.SequenceCard, depth, 2);
                     cardDepth++;
                 }
 
                 foreach (var card in cards)
                 {
-                    writer.Card(card, cardDepth, card.Kind == "Scene" ? 0 : 3);
+                    visit(card, cardDepth, card.Kind == "Scene" ? 0 : 3);
                 }
             }
         }
-
-        if (options.BeatSheet)
-        {
-            writer.BeatSheet(beats, targetPages);
-        }
-
-        return writer.ToString();
     }
 
     private static bool IsKey(StoryData story, BoardCard? card) =>

@@ -878,7 +878,7 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
   script and opened; the BOARD showed the same lanes and cards.
 - **Budget:** ~60k.
 
-### S3.3 Outline export: PDF — `todo`
+### S3.3 Outline export: PDF — `done`
 
 - **Read:** `Passage/Passage.Export/ScreenplayPdfExporter.cs` 31–216 (how the
   hand-rolled PDF is written: no PDF library is referenced). S3.2's outline
@@ -898,6 +898,23 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
   and a 60-card board paginates without clipping.
 - **Tests:** page count for a fixture, wrapping at the column width, and
   sanitising of `( ) \`.
+- **Landed:** Took option (a), agreed before starting: `Services/OutlinePdfWriter.cs`
+  is a web-only writer, so `Passage.Export` is untouched. "Export outline…"
+  gains a **PDF** button (same six checkboxes); the download is the new
+  `passage.downloadBase64`. To keep every format on the same cards,
+  `OutlineExport.Build`'s traversal was extracted into `OutlineExport.Walk`
+  (no output change: the S3.2 goldens still pass). Layout: Letter, Courier
+  10pt; Act (14pt) and Sequence (12pt) headings and section cards are bold;
+  scene cards are regular; synopses wrap at the column width; storyline
+  swatches sit in the left gutter, one per tagged storyline (grey if the
+  storyline has no palette colour); the page number is centred at the foot.
+  A heading never strands at the foot of a page. Tests: page count (fixture
+  is one page; 60 long cards paginate with every line inside the margins),
+  wrapping and long-word splitting, `( ) \` escaping, and swatch counts.
+  Tried in the running app: the PDF downloaded and `pdftotext`/`pdfinfo` read
+  it cleanly (1 page, headings, synopses, page number); the swatches and a
+  multi-page board were covered by the tests only (the scratch library had no
+  tags), and Evince was not opened here.
 - **Budget:** ~80k.
 
 ---
