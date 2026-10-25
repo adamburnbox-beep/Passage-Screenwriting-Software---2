@@ -68,9 +68,8 @@ Click New to start one — files are stored on the server volume.</div>
         <nav class="view-tabs">
             <button class="@(_mainViewIndex == 0 ? "active" : null)" @onclick="() => SetMainView(0)">SCRIPT</button>
             <button class="@(_mainViewIndex == 1 ? "active" : null)" @onclick="() => SetMainView(1)">BOARD</button>
-            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">BEATS</button>
-            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">ARC</button>
-            <button class="@(_mainViewIndex == 4 ? "active" : null)" @onclick="() => SetMainView(4)">PREVIEW</button>
+            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">ARC</button>
+            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">PREVIEW</button>
         </nav>
 
         <div class="topbar-actions">
@@ -81,7 +80,7 @@ Click New to start one — files are stored on the server volume.</div>
             @if (_mainViewIndex == 0)
             {
                 <button class="btn @(_besideOpen ? "on" : null)"
-                        title="Show the Board or Beats beside the script" @onclick="ToggleBesideAsync">Beside</button>
+                        title="Show the Board beside the script" @onclick="ToggleBesideAsync">Beside</button>
             }
             <button class="btn theme-toggle @(_syntaxPanelOpen ? "on" : null)"
                     title="Syntax reference (F1)" @onclick="ToggleSyntaxPanel">?</button>
@@ -613,12 +612,12 @@ Click New to start one — files are stored on the server volume.</div>
                         @RenderBeatEditor(_editingBeat)
                     }
                     <div class="beats-tray board-inbox" title="Double-click to jot down an unassigned beat. Drag a beat onto a card to turn it into a scene."
-                         @ondblclick="() => AddBeat(0)">
-                        @foreach (var beat in _slate.Beats.Where(beat => beat.Page == 0))
+                         @ondblclick="() => AddBeat()">
+                        @foreach (var beat in _slate.Beats)
                         {
-                            @RenderBeat((beat, null))
+                            @RenderBeat(beat)
                         }
-                        @if (!_slate.Beats.Any(beat => beat.Page == 0))
+                        @if (_slate.Beats.Count == 0)
                         {
                             <span class="beats-tray-hint">Inbox: double-click to jot a beat, drag it onto a card to make it a scene</span>
                         }
@@ -711,85 +710,6 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                 }
             }
             else if (_mainViewIndex == 2)
-            {
-                @if (!IsScreenplayMode)
-                {
-                    <div class="board-empty">The Beat Sheet works in Screenplay mode.
-Open a .fountain file to plan beats against its pages.</div>
-                }
-                else
-                {
-                    var beatColumns = BeatColumns;
-                    var beatStack = BeatSheet.Stack(_slate.Beats);
-                    var beatRows = beatStack.Select(item => item.Row + 1).DefaultIfEmpty(0).Max() + 1;
-                    var scenes = BeatScenes;
-                    var actPages = _beatActs.ToLookup(act => act.Page);
-                    var unplacedScenes = scenes.Count(scene => scene.Page == 0);
-                    <div class="beats-view">
-                    <div class="preview-toolbar beats-toolbar">
-                        <span>@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s") written</span>
-                        <label class="beats-target">Target
-                            <input type="number" class="burst-seconds" min="1" max="@BeatSheet.MaxTargetPages"
-                                   @bind="_slate.BeatSheetPages" @bind:after="SetBeatTarget" /> pages</label>
-                        @RenderFilterBar
-                        <span>Double-click a page to add a beat</span>
-                        @if (unplacedScenes > 0)
-                        {
-                            <span class="beats-warning">@unplacedScenes scene@(unplacedScenes == 1 ? "" : "s") could not be placed on a page</span>
-                        }
-                    </div>
-                    @if (_editingBeat is not null)
-                    {
-                        @RenderBeatEditor(_editingBeat)
-                    }
-                    <div class="beats-tray" title="Double-click to jot down an unassigned beat"
-                         @ondblclick="() => AddBeat(0)">
-                        @foreach (var beat in _slate.Beats.Where(beat => beat.Page == 0))
-                        {
-                            @RenderBeat((beat, null))
-                        }
-                        @if (!_slate.Beats.Any(beat => beat.Page == 0))
-                        {
-                            <span class="beats-tray-hint">Unassigned beats</span>
-                        }
-                    </div>
-                    <div class="beats-surface">
-                        <div class="beats-grid" data-columns="@beatColumns"
-                             style="grid-template-columns:repeat(@beatColumns, var(--beat-col));grid-template-rows:auto repeat(@beatRows, minmax(64px, auto)) auto">
-                            @for (var column = 1; column <= beatColumns; column++)
-                            {
-                                var acts = actPages[column].ToList();
-                                var columnPage = column;
-                                <div class="beat-column @(column % 10 == 0 ? "tenth" : null) @(acts.Count > 0 ? "act-break" : null) @(column > _analysis.PageCount ? "unwritten" : null)"
-                                     style="grid-column:@column;grid-row:1 / -1" data-page="@column"
-                                     @ondblclick="() => AddBeat(columnPage)">
-                                    <div class="beat-page-number">@column</div>
-                                    @foreach (var act in acts)
-                                    {
-                                        <div class="beat-act" title="@act.Heading">@act.Heading</div>
-                                    }
-                                </div>
-                            }
-                            @foreach (var (beat, row) in beatStack)
-                            {
-                                @RenderBeat((beat, row))
-                            }
-                            @foreach (var pageScenes in scenes.Where(scene => scene.Page > 0 && scene.Page <= beatColumns).GroupBy(scene => scene.Page))
-                            {
-                                <div class="beat-track" style="grid-column:@pageScenes.Key;grid-row:-2 / -1">
-                                    @foreach (var scene in pageScenes)
-                                    {
-                                        <button class="beat-scene @DimScene(scene)" title="@scene.Heading (line @scene.LineNumber)"
-                                                @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                    </div>
-                }
-            }
-            else if (_mainViewIndex == 3)
             {
                 @if (!IsScreenplayMode)
                 {
@@ -892,7 +812,7 @@ Open a .fountain file to chart storylines against its scenes.</div>
                     </div>
                 }
             }
-            else if (_mainViewIndex == 4)
+            else if (_mainViewIndex == 3)
             {
                 @if (!IsScreenplayMode)
                 {
@@ -948,18 +868,14 @@ Open a .fountain file to see formatted pages.</div>
         @{ var besideShown = _besideOpen && _mainViewIndex == 0; }
         <aside class="beside" hidden="@(!besideShown)">
             <div id="beside-resize" class="beside-resize" title="Drag to resize"></div>
-            <div class="beside-head">
-                <button class="@(!_besideBeats ? "active" : null)" @onclick="() => SetBesideAsync(false)">Board</button>
-                <button class="@(_besideBeats ? "active" : null)" @onclick="() => SetBesideAsync(true)">Beats</button>
-            </div>
             @if (besideShown)
             {
                 <div class="beside-body">
                     @if (!IsScreenplayMode)
                     {
-                        <div class="beside-empty">Board and Beats work in Screenplay mode.</div>
+                        <div class="beside-empty">The Board works in Screenplay mode.</div>
                     }
-                    else if (!_besideBeats)
+                    else
                     {
                         var rows = BesideRows;
                         var current = BesideList.RowAt(rows, _caretLine);
@@ -987,32 +903,6 @@ Open a .fountain file to see formatted pages.</div>
                                 {
                                     @RenderTagMarks(marked.Id)
                                 }
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        var beats = BesideList.Beats(_slate.Beats, BeatScenes);
-                        var current = BesideList.BeatAt(beats, BeatScenes, _caretLine);
-                        @if (beats.Count == 0)
-                        {
-                            <div class="beside-empty">No beats yet. Add them in BEATS.</div>
-                        }
-                        @for (var i = 0; i < beats.Count; i++)
-                        {
-                            var item = beats[i];
-                            var line = item.Line;
-                            <div class="beside-row card @(i == current ? "current" : null) @(line == 0 ? "inert" : null) @DimBeat(item.Beat)"
-                                 title="@(item.Beat.Page > 0 ? "Page " + item.Beat.Page : "Unassigned")"
-                                 @onclick="() => JumpBesideAsync(line)">
-                                @RenderTagBars(item.Beat.Id)
-                                <span class="beside-page">@(item.Beat.Page > 0 ? item.Beat.Page.ToString() : "–")</span>
-                                <span class="beside-text">@(item.Beat.Title.Length > 0 ? item.Beat.Title : "Untitled beat")</span>
-                                @if (StoryItems.IsKey(_slate.Story, item.Beat.Id))
-                                {
-                                    <span class="beside-star">★</span>
-                                }
-                                @RenderTagMarks(item.Beat.Id)
                             </div>
                         }
                     }
@@ -1697,7 +1587,7 @@ Open a .fountain file to see formatted pages.</div>
             <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Characters" /> Characters</label>
             <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Locations" /> Locations</label>
             <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.KeyOnly" /> Key beats only</label>
-            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.BeatSheet" /> Include the Beat Sheet</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.BeatSheet" /> Include the Board inbox beats</label>
             @if (DetachedItems.Count > 0)
             {
                 <p class="detached-note">@DetachedItems.Count detached item@(DetachedItems.Count == 1 ? "" : "s") (tags whose heading is gone) will not be exported.</p>
@@ -1724,7 +1614,6 @@ Open a .fountain file to see formatted pages.</div>
             else
             {
                 <p class="tool-note">Writes headings and prompts only, nothing that prints, so the page count does not change.</p>
-                <label class="key-only-toggle"><input type="checkbox" @bind="_seedBeats" /> Seed the Beat Sheet too</label>
             }
             @foreach (var template in AllTemplates)
             {
@@ -2291,8 +2180,6 @@ Open a .fountain file to see formatted pages.</div>
 
         public bool BesideOpen { get; init; }
 
-        public bool BesideBeats { get; init; }
-
         public bool BoardDescriptions { get; init; } = true;
 
         public string ArcMode { get; init; } = "board";
@@ -2306,8 +2193,6 @@ Open a .fountain file to see formatted pages.</div>
         public OutlineFilters? OutlineFilters { get; init; }
 
         public StoryFilter? BoardFilter { get; init; }
-
-        public StoryFilter? BeatFilter { get; init; }
 
         // "Classify As" overrides ride in the session key, per row 3.2's note
         // that they are session state rather than file content.
@@ -2376,7 +2261,6 @@ Open a .fountain file to see formatted pages.</div>
         _previewZoom = Math.Clamp(snapshot.PreviewZoom, MinPreviewZoom, MaxPreviewZoom);
         _workshopOpen = snapshot.WorkshopOpen;
         _besideOpen = snapshot.BesideOpen;
-        _besideBeats = snapshot.BesideBeats;
         _boardDescriptions = snapshot.BoardDescriptions;
         _arcPages = snapshot.ArcMode == "pages";
         _typewriterScrolling = snapshot.TypewriterScrolling;
@@ -2384,7 +2268,6 @@ Open a .fountain file to see formatted pages.</div>
         _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
         _outlineFilters = snapshot.OutlineFilters ?? new OutlineFilters();
         _boardFilter = snapshot.BoardFilter ?? new StoryFilter();
-        _beatFilter = snapshot.BeatFilter ?? new StoryFilter();
 
         // Prune entries the server no longer has rather than erroring on click.
         _recentFiles.Clear();
@@ -2993,12 +2876,11 @@ Open a .fountain file to see formatted pages.</div>
 
     // ---- Beside pane (S2.3) ----
     //
-    // A compact Board or Beats list next to the script. The rows are rebuilt
+    // A compact Board list next to the script. The rows are rebuilt
     // only when a parse produces a new analysis; the highlight is looked up
     // from the caret line the caret callback already keeps.
 
     private bool _besideOpen;
-    private bool _besideBeats;
     private DocumentAnalysis? _besideRowsFor;
     private List<BesideRow> _besideRows = new();
 
@@ -3022,17 +2904,11 @@ Open a .fountain file to see formatted pages.</div>
         await PersistBesideAsync();
     }
 
-    private async Task SetBesideAsync(bool beats)
-    {
-        _besideBeats = beats;
-        await PersistBesideAsync();
-    }
-
     private async Task PersistBesideAsync()
     {
         try
         {
-            await JS.InvokeVoidAsync("passage.setBeside", _besideOpen, _besideBeats);
+            await JS.InvokeVoidAsync("passage.setBeside", _besideOpen);
         }
         catch (JSException)
         {
@@ -3070,19 +2946,6 @@ Open a .fountain file to see formatted pages.</div>
 
     private DocumentAnalysis? _beatScenesFor;
     private IReadOnlyList<ScenePlacement> _beatScenes = Array.Empty<ScenePlacement>();
-    private IReadOnlyList<ActBreak> _beatActs = Array.Empty<ActBreak>();
-
-    // The grid never shrinks under a placed beat: trimming the script or the
-    // target must not hide planning that is still saved.
-    private int BeatColumns => Math.Max(
-        BeatSheet.Columns(_analysis.PageCount, _slate.BeatSheetPages),
-        BeatSheet.LastBeatPage(_slate.Beats));
-
-    private static string BeatStyle(Beat beat, int? row)
-    {
-        var style = row is { } gridRow ? $"grid-column:{beat.Page} / span {beat.Span};grid-row:{gridRow + 2};" : string.Empty;
-        return beat.Colour.Length > 0 ? style + $"--beat-colour:{beat.Colour}" : style;
-    }
 
     private IReadOnlyList<ScenePlacement> BeatScenes
     {
@@ -3092,7 +2955,6 @@ Open a .fountain file to see formatted pages.</div>
             {
                 _beatScenesFor = _analysis;
                 _beatScenes = BeatSheet.MapScenes(_analysis.Elements, _analysis.PreviewPages);
-                _beatActs = BeatSheet.ActBreaks(_analysis.Elements, _beatScenes);
             }
 
             return _beatScenes;
@@ -3112,15 +2974,9 @@ Open a .fountain file to see formatted pages.</div>
     private bool _focusBeatTitle;
     private Beat? _deleteBeat;
 
-    // Page 0 adds to the tray.
-    private void AddBeat(int page)
+    private void AddBeat()
     {
         var beat = new Beat();
-        if (page > 0)
-        {
-            (beat.Page, beat.Span) = BeatSheet.Clamp(page, 1, BeatColumns);
-        }
-
         _slate.Beats.Add(beat);
         SaveSlate();
         StartBeatEdit(beat);
@@ -3411,7 +3267,6 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     private bool _templatesOpen;
-    private bool _seedBeats;
     private string _saveTemplateName = string.Empty;
     private Guid? _renamingTemplate;
     private string _renameTemplateName = string.Empty;
@@ -3470,15 +3325,6 @@ Open a .fountain file to see formatted pages.</div>
         }
 
         var message = $"Wrote {template.Name} from line {insertAt + 1} — see BOARD";
-        if (_seedBeats)
-        {
-            var columns = BeatSheet.Columns(_analysis.PageCount, _slate.BeatSheetPages);
-            var (added, skipped) = StructureTemplates.SeedBeats(template, _slate.Beats, _slate.BeatSheetPages, columns);
-            SaveSlate();
-            message += $"; {added} beat{(added == 1 ? "" : "s")} added to the Beat Sheet"
-                + (skipped > 0 ? $", {skipped} beat{(skipped == 1 ? "" : "s")} already there" : string.Empty);
-        }
-
         _statusMessage = message;
         _templatesOpen = false;
     }
@@ -3704,16 +3550,14 @@ Open a .fountain file to see formatted pages.</div>
     // ---- Filters (S1.5): dim, never hide. One set per view, per browser. ----
 
     private StoryFilter _boardFilter = new();
-    private StoryFilter _beatFilter = new();
-    private StoryFilter ActiveFilter => _mainViewIndex == 2 ? _beatFilter : _boardFilter;
+    private StoryFilter ActiveFilter => _boardFilter;
 
     private async Task SetStoryFilterAsync(StoryFilter filter)
     {
-        var view = _mainViewIndex == 2 ? "beats" : "board";
-        if (view == "beats") _beatFilter = filter; else _boardFilter = filter;
+        _boardFilter = filter;
         try
         {
-            await JS.InvokeVoidAsync("passage.setStoryFilter", view, filter);
+            await JS.InvokeVoidAsync("passage.setStoryFilter", "board", filter);
         }
         catch (JSException)
         {
@@ -3766,16 +3610,7 @@ Open a .fountain file to see formatted pages.</div>
         _boardFilter.IsActive && !StoryFilter.LaneMatches(lane.ActCard is { } act && CardMatches(_boardFilter, act), lane.Groups.Select(group => GroupMatches(_boardFilter, group))) ? "dimmed" : null;
 
     private string? DimBeat(Beat beat) =>
-        _beatFilter.IsActive && !ItemMatches(_beatFilter, beat.Id, null, 0) ? "dimmed" : null;
-
-    private string? DimScene(ScenePlacement scene)
-    {
-        if (!_beatFilter.IsActive) return null;
-        EnsureFilterCaches();
-        if (!_filterScenes.TryGetValue(scene.LineNumber, out var element)) return "dimmed";
-        var id = element.Id != Guid.Empty && _analysis.DuplicateIdLines?.Contains(scene.LineNumber) != true ? element.Id : Guid.Empty;
-        return ItemMatches(_beatFilter, id, scene.Heading, scene.LineNumber) ? null : "dimmed";
-    }
+        _boardFilter.IsActive && !ItemMatches(_boardFilter, beat.Id, null, 0) ? "dimmed" : null;
 
     private RenderFragment RenderFilterBar => __builder =>
     {
@@ -4261,65 +4096,16 @@ Open a .fountain file to see formatted pages.</div>
         return true;
     }
 
-    // ---- Beat Sheet: drag-move and resize ----
-    //
-    // The gesture runs in passage.js (trap 4); these receive only the result.
-    // The browser clamps the same way, but the server's clamp is the truth.
-
-    [JSInvokable]
-    public void OnBeatMoved(Guid id, int page)
-    {
-        if (FindBeat(id) is not { } beat)
-        {
-            return;
-        }
-
-        if (page <= 0)
-        {
-            // Into the tray, at the end of it, keeping its span for when it
-            // goes back on the grid.
-            beat.Page = 0;
-            _slate.Beats.Remove(beat);
-            _slate.Beats.Add(beat);
-        }
-        else
-        {
-            (beat.Page, beat.Span) = BeatSheet.ClampMove(page, beat.Span, BeatColumns);
-        }
-
-        SaveSlate();
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void OnBeatResized(Guid id, int span)
-    {
-        if (FindBeat(id) is not { Page: > 0 } beat)
-        {
-            return;
-        }
-
-        (beat.Page, beat.Span) = BeatSheet.Clamp(beat.Page, span, BeatColumns);
-        SaveSlate();
-        StateHasChanged();
-    }
-
     private Beat? FindBeat(Guid id)
     {
         var beat = _slate.Beats.FirstOrDefault(candidate => candidate.Id == id);
         if (beat is null)
         {
-            _statusMessage = "That beat is no longer on the beat sheet";
+            _statusMessage = "That beat is no longer in the inbox";
             StateHasChanged();
         }
 
         return beat;
-    }
-
-    private void SetBeatTarget()
-    {
-        _slate.BeatSheetPages = Math.Clamp(_slate.BeatSheetPages, 1, BeatSheet.MaxTargetPages);
-        SaveSlate();
     }
 
     // ---- Beat Board: drag to reorder ----
@@ -6994,16 +6780,12 @@ Open a .fountain file to see formatted pages.</div>
         return local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("d MMM");
     }
 
-    // A beat on the grid (Row set) or in the tray (Row null). Placement is
-    // CSS grid lines, so the browser can move and resize it without a round
-    // trip; only the result is sent back (trap 4).
-    private RenderFragment<(Beat Beat, int? Row)> RenderBeat => item => __builder =>
+    // A beat in the Board inbox.
+    private RenderFragment<Beat> RenderBeat => beat => __builder =>
     {
-        var beat = item.Beat;
         <div class="beat-card @(_editingBeat == beat ? "selected" : null) @DimBeat(beat)"
-             data-beat-id="@beat.Id" data-page="@beat.Page" data-span="@beat.Span"
-             data-item-kind="beat" data-item-id="@beat.Id"
-             style="@BeatStyle(beat, item.Row)"
+             data-beat-id="@beat.Id" data-item-kind="beat" data-item-id="@beat.Id"
+             style="@(beat.Colour.Length > 0 ? $"--beat-colour:{beat.Colour}" : null)"
              @ondblclick:stopPropagation="true">
             @RenderTagBars(beat.Id)
             <div class="beat-title">
@@ -7016,10 +6798,6 @@ Open a .fountain file to see formatted pages.</div>
             {
                 <div class="beat-body">@beat.Description</div>
             }
-            @if (item.Row is not null)
-            {
-                <div class="beat-resize" title="Drag to change how many pages this beat spans"></div>
-            }
         </div>
     };
 
@@ -7028,7 +6806,7 @@ Open a .fountain file to see formatted pages.</div>
     private RenderFragment<Beat> RenderBeatEditor => beat => __builder =>
     {
         <div class="board-card editing beat-editor">
-            <div class="card-kind">@(beat.Page > 0 ? (beat.Span > 1 ? $"Pages {beat.Page}–{beat.Page + beat.Span - 1}" : $"Page {beat.Page}") : "Unassigned")</div>
+            <div class="card-kind">Unassigned</div>
             <input class="card-heading-input" @ref="_beatTitleInput" @bind="_beatEditTitle" @bind:event="oninput"
                    @onkeydown="OnBeatEditKeyDown" placeholder="Beat" />
             <textarea class="card-body-input" rows="3" @bind="_beatEditDescription" @bind:event="oninput"

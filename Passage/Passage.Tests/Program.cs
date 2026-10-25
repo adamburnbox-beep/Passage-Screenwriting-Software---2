@@ -81,8 +81,6 @@ class Program
         failures += RunTest("Test Shape Prefill From The Script", TestShapePrefill);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
         failures += RunTest("Test Structure Template Passage Is The Shape", TestStructureTemplatePassageIsTheShape);
-        failures += RunTest("Test Structure Template Page Scaling", TestStructureTemplatePageScaling);
-        failures += RunTest("Test Structure Template Seed Skips Duplicates", TestStructureTemplateSeedSkipsDuplicates);
         failures += RunTest("Test Structure Template Save Round Trip", TestStructureTemplateSaveRoundTrip);
         failures += RunTest("Test SlateStore Keeps Templates File", TestSlateStoreKeepsTemplatesFile);
         failures += RunTest("Test Project Notes Round Trip", TestProjectNotesRoundTrip);
@@ -142,8 +140,6 @@ class Program
         failures += RunTest("Test Outline Lists Named Markers", TestOutlineListsNamedMarkers);
         failures += RunTest("Test Outline Filters", TestOutlineFilters);
         failures += RunTest("Test BeatSheet Sidecar Round Trip", TestBeatSheetSidecarRoundTrip);
-        failures += RunTest("Test BeatSheet Clamping", TestBeatSheetClamping);
-        failures += RunTest("Test BeatSheet Stacking", TestBeatSheetStacking);
         failures += RunTest("Test BeatSheet Scene Pages Match Preview", TestBeatSheetScenePagesMatchPreview);
         failures += RunTest("Test Beside List Order Matches Board", TestBesideListOrderMatchesBoard);
         failures += RunTest("Test Collapse All Collects Every Key", TestCollapseAllCollectsEveryKey);
@@ -1770,35 +1766,6 @@ class Program
         Assert(fromTemplate.SequenceEqual(fromShape), "Passage's template is SplitScript.BuildLines of an empty run");
     }
 
-    static void TestStructureTemplatePageScaling()
-    {
-        Assert(StructureTemplates.ScalePage(55, 110) == 55, "On the reference length a page is itself");
-        Assert(StructureTemplates.ScalePage(55, 90) == 45, "Page 55 of 110 is 45 of 90 (45.0)");
-        Assert(StructureTemplates.ScalePage(1, 90) == 1, "Scaling never goes below page 1");
-        Assert(StructureTemplates.ScalePage(110, 90) == 90, "The last reference page is the last target page");
-        Assert(StructureTemplates.ScalePage(110, 300) == 300, "A longer target scales up");
-        Assert(StructureTemplates.ScalePage(5, 3) is >= 1 and <= 3, "A tiny target clamps onto the grid");
-    }
-
-    static void TestStructureTemplateSeedSkipsDuplicates()
-    {
-        var template = StructureTemplates.BuiltIns.Single(entry => entry.Name.StartsWith("Save the Cat"));
-        var withPage = template.Nodes.Count(node => node.Page > 0);
-        var beats = new List<Beat>();
-        var (added, skipped) = StructureTemplates.SeedBeats(template, beats, 90, 90);
-        Assert(added == withPage && skipped == 0 && beats.Count == withPage, "Every node with a page seeds a beat");
-        var midpoint = beats.Single(beat => beat.Title == "Midpoint");
-        Assert(midpoint.Page == 45, $"Midpoint lands at page 45 of 90, got {midpoint.Page}");
-        Assert(beats.All(beat => beat.Page is >= 1 and <= 90), "Every seeded beat is on the grid");
-
-        (added, skipped) = StructureTemplates.SeedBeats(template, beats, 90, 90);
-        Assert(added == 0 && skipped == withPage && beats.Count == withPage, "A second run adds nothing and counts what was there");
-
-        var existing = new List<Beat> { new() { Title = "  catalyst " } };
-        (added, skipped) = StructureTemplates.SeedBeats(template, existing, 90, 90);
-        Assert(skipped == 1 && added == withPage - 1, "A title match ignores case and spacing");
-    }
-
     static void TestStructureTemplateSaveRoundTrip()
     {
         var script = string.Join("\n", new[]
@@ -3403,46 +3370,6 @@ class Program
         }
     }
 
-    static void TestBeatSheetClamping()
-    {
-        Assert(BeatSheet.Columns(21, 110) == 110, "A short script gets the target length of columns");
-        Assert(BeatSheet.Columns(130, 110) == 130, "A long script widens the grid past the target");
-        Assert(BeatSheet.Columns(0, 0) == 1, "The grid always has at least one column");
-
-        Assert(BeatSheet.Clamp(0, 1, 110) == (1, 1), "No beat starts before page 1");
-        Assert(BeatSheet.Clamp(-5, 3, 110) == (1, 3), "A negative start clamps to page 1 and keeps its span");
-        Assert(BeatSheet.Clamp(200, 1, 110) == (110, 1), "No beat starts past the last column");
-        Assert(BeatSheet.Clamp(3, 0, 110) == (3, 1), "A span is at least one page");
-        Assert(BeatSheet.Clamp(108, 10, 110) == (108, 3), "A resize never runs past the last column");
-        Assert(BeatSheet.Clamp(110, 4, 110) == (110, 1), "A beat on the last column spans only that column");
-
-        Assert(BeatSheet.ClampMove(110, 3, 110) == (108, 3), "A moved beat dropped at the end slides back and keeps its length");
-        Assert(BeatSheet.ClampMove(0, 2, 110) == (1, 2), "A moved beat never starts before page 1");
-        Assert(BeatSheet.ClampMove(5, 20, 10) == (1, 10), "A beat longer than the grid is cut to the grid");
-
-        var beats = new List<Beat> { new() { Page = 0, Span = 9 }, new() { Page = 40, Span = 5 }, new() { Page = 10, Span = 1 } };
-        Assert(BeatSheet.LastBeatPage(beats) == 44, "The last beat page ignores tray beats and counts the span");
-        Assert(BeatSheet.LastBeatPage(new List<Beat>()) == 0, "No placed beats means no last page");
-    }
-
-    static void TestBeatSheetStacking()
-    {
-        var a = new Beat { Title = "a", Page = 3, Span = 2 };   // 3–4
-        var b = new Beat { Title = "b", Page = 4, Span = 3 };   // 4–6, overlaps a
-        var c = new Beat { Title = "c", Page = 5, Span = 1 };   // 5, free on a's row
-        var d = new Beat { Title = "d", Page = 2, Span = 1 };   // 2, earliest page
-        var tray = new Beat { Title = "tray", Page = 0 };
-        var rows = BeatSheet.Stack(new List<Beat> { a, b, c, tray, d }).ToDictionary(item => item.Beat.Title, item => item.Row);
-
-        Assert(!rows.ContainsKey("tray"), "Tray beats are not on the grid");
-        Assert(rows["d"] == 0 && rows["a"] == 0, "Beats that do not overlap share the first row");
-        Assert(rows["b"] == 1, "An overlapping beat stacks below");
-        Assert(rows["c"] == 0, "A beat goes back up to the first row that is free at its page");
-
-        var same = BeatSheet.Stack(new List<Beat> { new() { Title = "first", Page = 7 }, new() { Title = "second", Page = 7 } });
-        Assert(same[0].Beat.Title == "first" && same[0].Row == 0 && same[1].Row == 1, "Beats on the same page stack in list order");
-    }
-
     static void TestInboxConversionLines()
     {
         var id = Guid.NewGuid();
@@ -3575,10 +3502,6 @@ class Program
         var lines = text.ToString().Split('\n');
         Assert(scenes.All(scene => lines[scene.LineNumber - 1] == scene.Heading), "Each scene's line number points at its heading");
 
-        var acts = BeatSheet.ActBreaks(analysis.Elements, scenes);
-        Assert(acts.Count == 3 && acts[0].Page == scenes[0].Page && acts[1].Page == scenes[11].Page && acts[2].Page == scenes[23].Page,
-            "Each act breaks at the page of its first scene");
-
         // A heading the layout cannot place is reported as page 0, not guessed.
         var orphan = new List<ScreenplayElement>(analysis.Elements) { new SceneHeadingElement("EXT. NOWHERE - DAY", "EXT. NOWHERE - DAY", 9999, false) };
         var withOrphan = BeatSheet.MapScenes(orphan, analysis.PreviewPages);
@@ -3635,16 +3558,6 @@ class Program
         Assert(Passage.Web.Services.BesideList.RowAt(rows, LineOf(".SECOND")) == second, "On a heading it finds that card");
         Assert(Passage.Web.Services.BesideList.RowAt(rows, LineOf("Action two")) == second, "Inside a scene it finds that scene");
         Assert(Passage.Web.Services.BesideList.RowAt(rows, 9999) == rows.Count - 1, "Past the end it finds the last card");
-
-        var scenes = new List<Passage.Web.Services.ScenePlacement> { new("A", 3, 1), new("B", 10, 4), new("C", 20, 9) };
-        var beats = Passage.Web.Services.BesideList.Beats(new List<Passage.Web.Services.Beat>
-        {
-            new() { Title = "late", Page = 9 }, new() { Title = "loose", Page = 0 }, new() { Title = "mid", Page = 3, Span = 3 }
-        }, scenes);
-        Assert(beats.Select(item => item.Beat.Title).SequenceEqual(new[] { "loose", "mid", "late" }), "Beats are in page order, unassigned first");
-        Assert(beats.Select(item => item.Line).SequenceEqual(new[] { 0, 3, 20 }), "A beat points at the scene on its page, else the one before");
-        Assert(Passage.Web.Services.BesideList.BeatAt(beats, scenes, 12) == 1, "A caret in a scene on a spanned page finds the covering beat");
-        Assert(Passage.Web.Services.BesideList.BeatAt(beats, scenes, 1) == -1, "Before the first scene no beat is current");
     }
 
     // Four scenes; line numbers are 1-based so ScenePlacement can point at them.
