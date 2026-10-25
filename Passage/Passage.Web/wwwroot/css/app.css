@@ -1141,28 +1141,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     gap: 6px;
 }
 
-.workshop-tool {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    text-align: left;
-    background: var(--control-background);
-    color: var(--control-foreground);
-    border: 1px solid var(--control-border);
-    border-radius: var(--radius);
-    padding: 8px 12px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.workshop-tool:hover:not(:disabled) { border-color: var(--muted-text); }
-
-.workshop-tool:disabled { opacity: 0.55; cursor: default; }
-
-.tool-name { font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-
-.tool-paths { display: flex; flex-direction: column; gap: 4px; }
-
 .tool-note {
     margin: 0 0 4px;
     font-size: 12px;
@@ -1180,12 +1158,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     line-height: 1.5;
     color: var(--muted-text);
 }
-
-.workshop-nav { display: flex; align-items: center; gap: 10px; }
-
-.workshop-nav .sidebar-heading { margin: 0; }
-
-.workshop-hand { padding: 10px 14px; font-size: 13px; }
 
 .bracket-row { display: flex; align-items: center; gap: 4px; }
 
@@ -1210,26 +1182,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .bracket-text:hover { background: var(--surface-raised); color: var(--control-foreground); }
 
-.fill-bracket { font-size: 13.5px; color: var(--control-foreground); }
-
 .fill-meta { color: var(--muted-text); font-size: 11px; padding: 0 8px; }
-
-.fill-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin-top: 8px;
-}
-
-.fill-field { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-
-.fill-label {
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted-text);
-    line-height: 1.5;
-}
 
 .workshop textarea {
     width: 100%;
@@ -1248,8 +1201,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .workshop textarea:focus { border-color: var(--control-accent); }
 
-.fill-actions { display: flex; gap: 8px; margin-top: 10px; }
-
 /* The assist seam's offers (SLATE-PLAN Phase 7): a button, then the lines
    as taps. Nothing here renders with the null partner. */
 .partner { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; }
@@ -1264,24 +1215,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     cursor: pointer;
 }
 .partner-line:hover { border-color: var(--control-foreground); }
-
-/* Forward chain runner. A kept chain is listed by its seed line in the
-   ordinary face, not the script face the bracket rows use. */
-.chain-seed { font-family: inherit; }
-
-.chain-round {
-    border-top: 1px solid var(--surface-border);
-    margin-top: 10px;
-    padding-top: 6px;
-}
-
-.chain-round-label {
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--header-text);
-    font-weight: 600;
-}
 
 .burst-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
 
@@ -1298,17 +1231,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     font-size: 12px;
 }
 
-/* The Split family. The stop-callouts are the worksheet's own words and the
-   only thing between one rung and the next. */
-.rung-label {
-    margin-top: 12px;
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--header-text);
-    font-weight: 600;
-}
-
+/* The stop-callouts are the worksheet's own words. */
 .stop-callout {
     margin-top: 10px;
     padding: 8px 10px;
@@ -1319,10 +1242,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     line-height: 1.55;
     color: var(--control-foreground);
 }
-
-.stress-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-
-.stress-row .fill-hint { flex: 1; min-width: 160px; }
 
 .alive-flat { display: inline-flex; gap: 4px; }
 
@@ -1342,9 +1261,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     border-color: var(--control-accent);
     color: var(--control-pressed-foreground);
 }
-
-.belief-cut { margin-left: 12px; padding-left: 8px; border-left: 1px dashed var(--control-border); }
-.gsu-row + .gsu-row { margin-top: 14px; }
 
 .workshop .workshop-select {
     width: 100%;
@@ -1701,8 +1617,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .bracket-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .anchor-name.anchor-bracket { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
-
-.step-send { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px; }
 
 /* On a phone the dock takes the whole main area rather than squeezing the
    editor: the engines are meant to be usable from there (SLATE-PLAN Phase 1). */

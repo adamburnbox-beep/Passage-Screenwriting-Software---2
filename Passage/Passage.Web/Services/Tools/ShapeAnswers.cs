@@ -73,50 +73,15 @@ public static class ShapeAnswers
             A = Get(run, A),
             Z = Get(run, Z),
             Midpoint = Get(run, Midpoint),
-            MidpointAlive = Get(run, Stress),
             PP1 = Get(run, PP1),
             Crisis = Get(run, Crisis),
             Inciting = Get(run, Inciting),
             Pinch1 = Get(run, Pinch1),
             Pinch2 = Get(run, Pinch2),
-            LastObstacle = Get(run, LastObstacle),
-            BeliefLayer = Get(run, BeliefLayer) == "y",
-            Pinch1ThirdRail = Get(run, Pinch1ThirdRail),
-            Pinch2ThirdRail = Get(run, Pinch2ThirdRail),
-            Candidates = new List<string>()
+            LastObstacle = Get(run, LastObstacle)
         };
-
-        for (var i = 0; run.Answers.ContainsKey($"{Candidates}[{i}]") || i < 3; i++)
-        {
-            split.Candidates.Add(Get(run, $"{Candidates}[{i}]"));
-        }
 
         return split;
-    }
-
-    /// <summary>A Belief run's answers as a <see cref="BeliefRun"/>: the shape, the ends, the origin and the five cuts.</summary>
-    public static BeliefRun ToBeliefRun(ExerciseRun run)
-    {
-        var belief = new BeliefRun
-        {
-            Shape = Get(run, "shape"),
-            A = Get(run, A),
-            Z = Get(run, Z),
-            Ghost = Get(run, "ghost"),
-            GhostSize = Get(run, "size"),
-            GhostCommensurate = Get(run, "fits"),
-            GhostMismatch = Get(run, "resize"),
-            Cut50Change = Get(run, "chg50")
-        };
-
-        foreach (var ratio in BeliefCut.Ratios)
-        {
-            var cut = belief.Cut(ratio);
-            cut.Text = Get(run, CutKey(ratio));
-            cut.Alive = Get(run, AliveKey(ratio));
-        }
-
-        return belief;
     }
 
     /// <summary>

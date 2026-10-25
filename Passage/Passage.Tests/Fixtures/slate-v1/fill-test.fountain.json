@@ -1,0 +1,233 @@
+{
+  "SlateVersion": 1,
+  "IgnoredBrackets": [
+    "[CONDITION stops her]"
+  ],
+  "Fills": [],
+  "Chains": [
+    {
+      "Path": "Woac",
+      "Seed": "MARA wants to leave before he wakes",
+      "Rounds": [
+        {
+          "Want": "to get out the door",
+          "Obstacle": "the key is in his coat",
+          "Action": "she goes through his pockets",
+          "Consequence": "he stirs and says her name",
+          "IsEmpty": false
+        },
+        {
+          "Want": "",
+          "Obstacle": "he\u0027s awake nowshe pretends she was getting water",
+          "Action": "he sits up",
+          "Consequence": "she pretends she was getting water",
+          "IsEmpty": false
+        },
+        {
+          "Want": "",
+          "Obstacle": "he asks why she has her shoes on",
+          "Action": "",
+          "Consequence": "",
+          "IsEmpty": false
+        }
+      ],
+      "Answers": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ReadBack": "Mara tries to slip out before he wakes; he catches her with her shoes on.",
+      "IsEmpty": false
+    },
+    {
+      "Path": "Flaw",
+      "Seed": "MARA \u2014 never asks for help",
+      "Rounds": [
+        {
+          "Want": "",
+          "Obstacle": "",
+          "Action": "",
+          "Consequence": "",
+          "IsEmpty": true
+        }
+      ],
+      "Answers": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "she asks for help"
+      ],
+      "ReadBack": "",
+      "IsEmpty": false
+    }
+  ],
+  "Burst": {
+    "Enabled": true,
+    "Seconds": 5,
+    "LensMinutes": 4
+  },
+  "Split": {
+    "A": "",
+    "Z": "",
+    "Candidates": [
+      "",
+      "",
+      ""
+    ],
+    "Midpoint": "",
+    "MidpointAlive": "",
+    "PP1": "",
+    "Crisis": "",
+    "Inciting": "",
+    "Pinch1": "",
+    "Pinch2": "",
+    "LastObstacle": "",
+    "BeliefLayer": false,
+    "Pinch1ThirdRail": "",
+    "Pinch2ThirdRail": "",
+    "HasRung2": false,
+    "HasRung3": false
+  },
+  "Belief": {
+    "Shape": "",
+    "A": "",
+    "Z": "",
+    "Ghost": "",
+    "GhostSize": "",
+    "GhostCommensurate": "",
+    "GhostMismatch": "",
+    "Cut50Change": "",
+    "Cuts": [
+      {
+        "Ratio": 12,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 25,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 50,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 75,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 88,
+        "Text": "",
+        "Alive": ""
+      }
+    ],
+    "HasRung3": false,
+    "HasRung4": false
+  },
+  "Extend": {
+    "Z": "",
+    "Links": [
+      {
+        "Text": "",
+        "Mystery": false
+      }
+    ],
+    "ChainAlive": "",
+    "WeakestLink": ""
+  },
+  "Bridges": [],
+  "Positions": [],
+  "Revisions": [
+    {
+      "Scene": "EXT. GARDEN - LATER",
+      "Purpose": "",
+      "Checks": [
+        {
+          "Name": "Polarity",
+          "Answer": "",
+          "Flag": "Y",
+          "Lens": "Compression to breaking point",
+          "Fragment": "He waits.The gate stays shut.",
+          "Moved": "",
+          "MovedWhy": "",
+          "IsEmpty": false
+        },
+        {
+          "Name": "Linkage",
+          "Answer": "",
+          "Flag": "N",
+          "Lens": "",
+          "Fragment": "",
+          "Moved": "",
+          "MovedWhy": "",
+          "IsEmpty": false
+        },
+        {
+          "Name": "Third rail",
+          "Answer": "",
+          "Flag": "",
+          "Lens": "",
+          "Fragment": "",
+          "Moved": "",
+          "MovedWhy": "",
+          "IsEmpty": true
+        },
+        {
+          "Name": "Migration",
+          "Answer": "",
+          "Flag": "",
+          "Lens": "",
+          "Fragment": "",
+          "Moved": "",
+          "MovedWhy": "",
+          "IsEmpty": true
+        },
+        {
+          "Name": "Escalation",
+          "Answer": "",
+          "Flag": "",
+          "Lens": "",
+          "Fragment": "",
+          "Moved": "",
+          "MovedWhy": "",
+          "IsEmpty": true
+        },
+        {
+          "Name": "Two-test",
+          "Answer": "",
+          "Flag": "",
+          "Lens": "",
+          "Fragment": "",
+          "Moved": "",
+          "MovedWhy": "",
+          "IsEmpty": true
+        }
+      ],
+      "DiagA": "",
+      "DiagZ": "",
+      "DiagShape": "",
+      "DiagMatch": "",
+      "DiagSeam": "",
+      "DiagLens": "",
+      "DiagFragment": "",
+      "Working": "",
+      "NotSitting": "",
+      "Ready": "",
+      "HasDiagnostic": false,
+      "HasReadBack": false,
+      "IsEmpty": false
+    }
+  ]
+}

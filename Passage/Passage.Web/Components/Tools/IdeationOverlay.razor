@@ -1,0 +1,370 @@
+@* The Ideation burst (SLATE-PLAN Phase 6, docs/SLATE-REDO-PLAN.md T8): the one
+   tool that is not about the script. Full screen, in the step-card look, and it
+   never reads a character, a scene or any other project data. The sitting lives
+   in its own file (.slate/ideation.json); the rounds are throwaway, the one kept
+   line is the output. Nothing here shows a count, a date or a score (rule 0). *@
+@using System.Text.Json
+@using Passage.Web.Services.Tools
+@inject SlateStore Store
+@inject IJSRuntime JS
+
+<div class="ideation-overlay">
+    <div class="ideation-page runner" @key="_sittingKey">
+        <div class="runner-head">
+            <button class="btn" title="Close — keeps the sitting as it is" @onclick="CloseAsync">←</button>
+            <span class="runner-title">Ideation burst</span>
+            <button class="btn runner-done" title="Closes this and keeps everything as it is" @onclick="CloseAsync">Done for now</button>
+        </div>
+        @if (_loadError is not null)
+        {
+            <div class="fill-meta">@_loadError — nothing here will be saved until it is fixed.</div>
+        }
+        @if (_note.Length > 0)
+        {
+            <div class="step-hint" role="status">@_note</div>
+        }
+        @if (_ideation.Current is null)
+        {
+            <div class="step-wrap">
+                <p class="step-question">Which lane?</p>
+                <div class="step-hint">Don't deliberate — deliberating isn't the drill.</div>
+                <details class="why" data-why>
+                    <summary>Why?</summary>
+                    <p>Rapid-fire, throwaway writing from a prompt. Nothing here is about your script — invented material, or something borrowed from a film you don't much like, never your own characters. One round is a complete session. Roll a die, pick a number at random, or just pick one, and stay on the same lane for the whole sitting; re-roll only when you come back another time.</p>
+                </details>
+                <button class="btn primary dice-roll" @onclick="RollLane">Roll</button>
+                <div class="pick-options" role="group" aria-label="Lanes">
+                    @for (var i = 0; i < Lanes.Length; i++)
+                    {
+                        var laneNumber = i + 1;
+                        <button class="pick-option" @onclick="() => StartSitting(laneNumber)">@laneNumber. @Lanes[i].Name</button>
+                    }
+                </div>
+                @if (_ideation.Kept.Count > 0)
+                {
+                    <div class="slot-name">Lines kept</div>
+                    <div class="trail">
+                        @foreach (var line in _ideation.Kept.ToList())
+                        {
+                            var kept = line;
+                            <div class="trail-line carried">
+                                <span class="trail-text kept-line" title="@kept">@kept</span>
+                                @if (_sent.Contains(kept))
+                                {
+                                    <span class="trail-sent">sent to the Inbox</span>
+                                }
+                                else if (Host.HasScript)
+                                {
+                                    <button class="icon-btn" title="Add it to the Beat inbox" @onclick="() => SendToInboxAsync(kept)">Send to Inbox</button>
+                                }
+                                <button class="icon-btn" title="Let it go" @onclick="() => DropKeptLine(kept)">×</button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            var sitting = _ideation.Current;
+            var lane = Lanes[Math.Clamp(sitting.Lane, 1, Lanes.Length) - 1];
+            var shown = Math.Clamp(_open ?? sitting.Rounds.Count - 1, 0, sitting.Rounds.Count - 1);
+            var round = sitting.Rounds[shown];
+            <div class="anchor-strip">
+                <span class="anchor-glyph" aria-hidden="true">⚡</span>
+                <div class="anchor-main">
+                    <span class="anchor-name">@lane.Name</span>
+                </div>
+            </div>
+
+            @if (sitting.Rounds.Count > 1)
+            {
+                <div class="trail">
+                    @for (var r = 0; r < sitting.Rounds.Count; r++)
+                    {
+                        if (r == shown)
+                        {
+                            continue;
+                        }
+
+                        var index = r;
+                        <button class="trail-line" title="Open this round again" @onclick="() => OpenRound(index)">
+                            <span class="trail-label">Input</span>
+                            <span class="trail-text">@RoundLine(sitting.Rounds[index])</span>
+                        </button>
+                    }
+                </div>
+            }
+
+            <div class="step-wrap" id="ideation-round">
+                <div class="step-card">
+                    <p class="step-question">@lane.Prompt</p>
+                    <div class="step-hint">Read it once, then start the round — don't re-read mid-round.</div>
+                    <details class="why" data-why>
+                        <summary>Why?</summary>
+                        <p>The input is dealt for you, so there's nothing to think up — deal another if it lands flat, or type over it if you've got one of your own. Work it for the round, move on whether or not it feels finished.@(sitting.Lane == Lanes.Length ? " Three steps is enough for a round here — the full eight-question chain is the Flaw Brainstorm in Writer's Tools, if you want to take this one further." : string.Empty)</p>
+                    </details>
+                    <div class="stop-callout">The only failure state is silence.</div>
+
+                    <label class="slot-row">
+                        <span class="slot-name">Input</span>
+                        <textarea rows="2" @bind="round.Input" @bind:after="Save"></textarea>
+                    </label>
+                    <div class="step-actions">
+                        <button class="btn" title="Replaces the input with a fresh one for this lane" disabled="@Host.BurstRunning" @onclick="() => DealRound(round)">Deal another</button>
+                    </div>
+
+                    <div class="step-actions">
+                        @if (Host.BurstRunning)
+                        {
+                            <button class="btn" @onclick="Host.StopBurstAsync">Stop</button>
+                        }
+                        else
+                        {
+                            <button class="btn primary" title="Puts the caret in the output and starts the round" @onclick="StartRoundAsync">Start the round</button>
+                        }
+                        <label class="burst-row">
+                            <input type="number" class="burst-seconds" min="10" max="600" aria-label="Seconds per round" @bind="_ideation.RoundSeconds" @bind:after="Save" />
+                            <span class="fill-meta">seconds</span>
+                        </label>
+                        <span class="burst-display" data-burst-display></span>
+                    </div>
+                    <label class="slot-row">
+                        <span class="slot-name">Output</span>
+                        <textarea rows="5" data-slot data-slot-multiline @bind="round.Output" @bind:after="Save"></textarea>
+                    </label>
+                    <div class="step-actions">
+                        @if (!string.IsNullOrWhiteSpace(round.Output))
+                        {
+                            <button class="btn" title="Copies this output into the kept line below" @onclick="() => KeepFromRound(round)">Keep a line from this</button>
+                        }
+                        <button class="btn" @onclick="AddRound">Next round</button>
+                    </div>
+                </div>
+
+                <div class="step-card">
+                    <p class="step-question">Circle one line worth keeping.</p>
+                    <div class="step-hint">Just one. You don't have to know why yet.</div>
+                    <details class="why" data-why>
+                        <summary>Why?</summary>
+                        <p>That's a complete session, whether it was one round or fifteen. Thirty seconds, on your phone, in a queue at Woolworths is a real session and it counts. Don't review in the same sitting — skim the kept lines another day.</p>
+                    </details>
+                    <textarea rows="2" aria-label="Kept line" @bind="sitting.KeptLine" @bind:after="Save"></textarea>
+                    <div class="step-actions">
+                        <button class="btn primary" title="Files the kept line and clears the rounds" @onclick="FinishSittingAsync">Done for this sitting</button>
+                        @if (Host.HasScript)
+                        {
+                            <button class="btn" title="Adds the kept line to the Beat inbox, then files it" @onclick="SendKeptToInboxAsync">Send to the Beat inbox</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    // Ten lanes, each from the worksheet (SLATE-PLAN Phase 6).
+    private static readonly (string Name, string Prompt)[] Lanes =
+    {
+        ("Noise-seed", "Grab the nearest object, headline, or image within reach. Whatever it is, it forces the premise. \"This is now load-bearing in the story. How?\""),
+        ("Grievance-to-premise", "Something that angered or moved you this month. Name it in one line, then: \"A character's whole fight, right now, is this.\""),
+        ("Branch-from-catastrophe", "One fixed event. Then five continuations from it — mutually exclusive, all kept alive, none crossed out."),
+        ("Situation collision", "Two unrelated fragments — anything, don't cherry-pick for compatibility — forced into one scene."),
+        ("Metaphor method", "Pick a noun. List its qualities. Ask what else has those qualities. Splice."),
+        ("Adversarial interrogation", "A character who won't open up to a plain question. Write both sides of a confrontation instead — force the answer out of them."),
+        ("Voice journal", "Become the character. Talk as them, out loud or typed as if out loud. Don't plan what you'll say, don't stop."),
+        ("Stock-character improv", "A random stock type (the villain, the sidekick, the ingenue — pick blind). Ninety seconds in their voice, no editing."),
+        ("Cheap champagne", "Two voices talking, no attribution, no punctuation rules. Most of it is expected to be thrown away — that's fine, that's the point."),
+        ("Character Flaw Brainstorm", "One fixed character flaw. Run it through: worst situation it causes → their first (wrong) response → how that backfires.")
+    };
+
+    private IdeationDocument _ideation = new();
+    private string? _loadError;
+
+    // The round on screen; null is the last one. Lines already sent to the inbox are marked, not counted.
+    private int? _open;
+    private readonly HashSet<string> _sent = new();
+    private string _note = string.Empty;
+    private int _sittingKey;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _ideation = Store.LoadIdeation() ?? new IdeationDocument();
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            // Left on disk untouched, as with a script's sidecar.
+            _ideation = new IdeationDocument();
+            _loadError = $"Ideation data could not be read: {exception.Message}";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("passage.restoreWhy");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        await Host.StopBurstAsync();
+        Save();
+        await OnClose.InvokeAsync();
+    }
+
+    private void Save()
+    {
+        if (_loadError is not null)
+        {
+            Host.SetStatus("Not saving ideation data — " + _loadError);
+            return;
+        }
+
+        try
+        {
+            Store.SaveIdeation(_ideation);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _note = $"Could not save ideation data: {exception.Message}";
+        }
+    }
+
+    private void RollLane() => StartSitting(Random.Shared.Next(1, Lanes.Length + 1));
+
+    private void StartSitting(int lane)
+    {
+        _ideation.Current = new IdeationSitting { Lane = lane };
+        _open = null;
+        _note = string.Empty;
+        DealRound(_ideation.Current.Rounds[0]);
+    }
+
+    // The seed is forced on you, not chosen — the worksheet's "pick blind".
+    // A writer with something of their own types over it.
+    private void DealRound(IdeationRound round)
+    {
+        if (_ideation.Current is null)
+        {
+            return;
+        }
+
+        round.Input = IdeationDealer.Deal(_ideation.Current.Lane);
+        Save();
+    }
+
+    private async Task StartRoundAsync() =>
+        await Host.StartBurstAsync("ideation-round", Math.Clamp(_ideation.RoundSeconds, 10, 600));
+
+    private void AddRound()
+    {
+        if (_ideation.Current is null)
+        {
+            return;
+        }
+
+        var round = new IdeationRound();
+        _ideation.Current.Rounds.Add(round);
+        _open = null;
+        DealRound(round);
+    }
+
+    private void OpenRound(int index) => _open = index;
+
+    private static string RoundLine(IdeationRound round)
+    {
+        var text = string.IsNullOrWhiteSpace(round.Output) ? round.Input : round.Output;
+        return string.Join(' ', text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+    }
+
+    private void KeepFromRound(IdeationRound round)
+    {
+        if (_ideation.Current is null)
+        {
+            return;
+        }
+
+        _ideation.Current.KeptLine = round.Output.Trim();
+        Save();
+    }
+
+    // The sitting ends: the kept line is filed, the rounds are not. Don't
+    // review — the worksheet says skim later, not in the same sitting.
+    private async Task FinishSittingAsync()
+    {
+        if (_ideation.Current is null)
+        {
+            return;
+        }
+
+        await Host.StopBurstAsync();
+        var kept = _ideation.Current.KeptLine.Trim();
+        if (kept.Length > 0)
+        {
+            _ideation.Kept.Add(kept);
+        }
+
+        _ideation.Current = null;
+        _open = null;
+        _note = string.Empty;
+        _sittingKey++;
+        Save();
+    }
+
+    private void DropKeptLine(string line)
+    {
+        _ideation.Kept.Remove(line);
+        _sent.Remove(line);
+        Save();
+    }
+
+    // The kept line goes to the inbox as an untagged beat, then the sitting is filed as usual.
+    // This is the only thing in the overlay that reaches into the project, and it only writes.
+    private async Task SendKeptToInboxAsync()
+    {
+        if (_ideation.Current is null)
+        {
+            return;
+        }
+
+        var kept = _ideation.Current.KeptLine.Trim();
+        if (kept.Length == 0)
+        {
+            _note = "Nothing to send yet — circle a line first";
+            return;
+        }
+
+        if (await SendToInboxAsync(kept))
+        {
+            await FinishSittingAsync();
+            _note = "Sent to the Beat inbox";
+        }
+    }
+
+    private async Task<bool> SendToInboxAsync(string text)
+    {
+        var landed = await Host.SendAsync(TargetKind.InboxBeat, new ToolSend(new Anchor { Kind = AnchorKind.None }, "Ideation burst", "Kept line", text));
+        if (landed)
+        {
+            _sent.Add(text);
+            _note = "Sent to the Beat inbox";
+        }
+        else
+        {
+            _note = "Could not add it to the Beat inbox";
+        }
+
+        return landed;
+    }
+}

@@ -124,12 +124,10 @@ class Program
         failures += RunTest("Test Storylines Round Trip", TestStorylinesRoundTrip);
         failures += RunTest("Test Storyline Delete Untags Items", TestStorylineDeleteUntagsItems);
         failures += RunTest("Test Storyline Colour Rejects Unknown", TestStorylineColourRejectsUnknown);
-        failures += RunTest("Test SlateStore Split Family Round Trip", TestSlateStoreSplitFamilyRoundTrip);
-        failures += RunTest("Test SlateStore Bridge And Position Round Trip", TestSlateStoreBridgeAndPositionRoundTrip);
-        failures += RunTest("Test SlateStore Revise Round Trip", TestSlateStoreReviseRoundTrip);
+        failures += RunTest("Test Slate Migration Real Sidecars", TestSlateMigrationRealSidecars);
+        failures += RunTest("Test Slate Migration Every Old Record Type", TestSlateMigrationEveryOldRecordType);
         failures += RunTest("Test SlateStore Ideation Is Kept Apart", TestSlateStoreIdeationIsKeptApart);
         failures += RunTest("Test IdeationDealer Deals Every Lane", TestIdeationDealerDealsEveryLane);
-        failures += RunTest("Test Suggestions Ask For The Next Field", TestSuggestionsAskForTheNextField);
         failures += RunTest("Test NullStoryPartner Offers Nothing", TestNullStoryPartnerOffersNothing);
         failures += RunTest("Test SyntaxSchemes Presets Are Complete", TestSyntaxSchemesPresetsAreComplete);
         failures += RunTest("Test SyntaxSchemes Custom Falls Back And Round Trips", TestSyntaxSchemesCustomFallsBackAndRoundTrips);
@@ -495,6 +493,28 @@ class Program
         return (library, new SlateStore(library), root);
     }
 
+    // A version 1 sidecar as the old build wrote it: PascalCase keys, one record list per tool.
+    static string OldSidecar(object old) => JsonSerializer.Serialize(old, new JsonSerializerOptions { WriteIndented = true });
+
+    // What SlateStore.Load does with a sidecar's text.
+    static SlateDocument LoadSidecarText(string json)
+    {
+        var document = JsonSerializer.Deserialize<SlateDocument>(json)!;
+        SlateMigration.Migrate(document, json);
+        return document;
+    }
+
+    static SlateDocument LoadOld(object old) => LoadSidecarText(OldSidecar(old));
+
+    static string OldFixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "slate-v1", name));
+
+    static void SeedSidecar(string root, string scriptName, string json)
+    {
+        var dir = Path.Combine(root, ".slate");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, scriptName + ".json"), json);
+    }
+
     static void TestSlateStoreRoundTrip()
     {
         var (library, store, root) = NewSlateFixture();
@@ -505,13 +525,14 @@ class Program
 
             var document = new SlateDocument { SlateVersion = 0 };
             document.IgnoredBrackets.Add("[sic]");
-            document.Fills.Add(new FillRun
+            document.Exercises.Add(new ExerciseRun
             {
-                Bracket = "[SOMETHING forces her to stay]",
-                Options = { [0] = new FillOption { Text = "the storm", WhyWrong = "weather is never a reason" } },
-                PointsTo = "she wants to be made to stay",
-                Answer = string.Empty
+                Id = "r1",
+                ExerciseId = "fill",
+                Anchor = new Anchor { Kind = AnchorKind.Bracket, Text = "[SOMETHING forces her to stay]" },
+                Answers = { ["cands[0]"] = "the storm", ["why[0]"] = "weather is never a reason", ["points"] = "she wants to be made to stay" }
             });
+            document.Burst.LensMinutes = 3;
             store.Save("draft", document);
 
             var path = Path.Combine(root, ".slate", "draft.fountain.json");
@@ -522,8 +543,9 @@ class Program
             Assert(loaded is not null, "Sidecar loads back");
             Assert(loaded!.SlateVersion == SlateStore.CurrentVersion, "Save stamps the current schema version");
             Assert(loaded.IgnoredBrackets.SequenceEqual(new[] { "[sic]" }), "Ignore list round-trips");
-            Assert(loaded.Fills.Count == 0 && loaded.Exercises.Count == 1 && loaded.Exercises[0].ExerciseId == "fill"
-                && loaded.Exercises[0].Anchor.Text == "[SOMETHING forces her to stay]", "Fill run round-trips by bracket text, as a migrated exercise run");
+            Assert(loaded.Exercises.Count == 1 && loaded.Exercises[0].ExerciseId == "fill"
+                && loaded.Exercises[0].Anchor.Text == "[SOMETHING forces her to stay]", "Fill run round-trips by bracket text");
+            Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
             Assert(loaded.Exercises[0].Answers["cands[0]"] == "the storm" && loaded.Exercises[0].Answers["why[0]"] == "weather is never a reason"
                 && !loaded.Exercises[0].Answers.ContainsKey("cands[2]"), "The option rows round-trip, empty ones dropped");
             Assert(loaded.Exercises[0].Answers["points"] == "she wants to be made to stay", "Free-text fields round-trip");
@@ -930,34 +952,27 @@ class Program
         try
         {
             var document = new SlateDocument();
-            var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key" };
-            woac.Rounds[0].Want = "the key";
-            woac.Rounds[0].Consequence = "the door is open but the dog is loose";
-            woac.Rounds.Add(new ChainRound { Obstacle = "the dog" });
-            document.Chains.Add(woac);
-            var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA — never asks for help" };
-            flaw.Answers[2] = "she carries it alone and drops it";
-            document.Chains.Add(flaw);
+            document.Exercises.Add(new ExerciseRun
+            {
+                Id = "w", ExerciseId = "woac", Rounds = 2, Anchor = new Anchor { Kind = AnchorKind.Character, Text = "MARA" },
+                Answers = { ["want"] = "the key", ["consequence"] = "the door is open but the dog is loose", ["obstacle#1"] = "the dog" }
+            });
+            document.Exercises.Add(new ExerciseRun { Id = "f", ExerciseId = "flaw", Answers = { ["q2"] = "she carries it alone and drops it" } });
             document.Burst.Enabled = true;
             document.Burst.Seconds = 10;
             store.Save("draft", document);
 
             var json = File.ReadAllText(Path.Combine(root, ".slate", "draft.fountain.json"));
-            Assert(json.Contains("\"Woac\"") && json.Contains("\"Flaw\""), "The path is stored by name, not by enum number");
+            Assert(json.Contains("\"Character\""), "The anchor kind is stored by name, not by enum number");
 
-            // Load now moves chains into Exercises (T2), so what comes back is the moved form.
             var loaded = store.Load("draft")!;
-            Assert(loaded.Chains.Count == 0 && loaded.Exercises.Count == 2, "Both chains load as exercise runs");
+            Assert(loaded.Exercises.Count == 2, "Both runs load");
             var woacRun = loaded.Exercises[0];
-            Assert(woacRun.ExerciseId == "woac" && woacRun.Rounds == 2 && woacRun.Answers["obstacle#1"] == "the dog",
-                "WOAC rounds load in order");
+            Assert(woacRun.ExerciseId == "woac" && woacRun.Rounds == 2 && woacRun.Answers["obstacle#1"] == "the dog", "WOAC rounds load in order");
             Assert(!woacRun.Answers.ContainsKey("want#1"), "A later round stores no Want: it is read from the consequence above");
             Assert(loaded.Exercises[1].ExerciseId == "flaw" && loaded.Exercises[1].Answers["q2"] == "she carries it alone and drops it",
                 "The flaw answer loads under its question key");
             Assert(loaded.Burst.Enabled && loaded.Burst.Seconds == 10, "Burst settings round-trip");
-
-            Assert(new ChainRun().IsEmpty, "A fresh chain is empty");
-            Assert(!new ChainRun { ReadBack = "x" }.IsEmpty, "A read-back line alone makes a chain worth keeping");
         }
         finally
         {
@@ -1135,23 +1150,29 @@ class Program
 
     static void TestSlateMigrationChains()
     {
-        var document = new SlateDocument { SlateVersion = 1 };
-        var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key", ReadBack = "a scene" };
-        woac.Rounds[0].Want = "the key";
-        woac.Rounds[0].Obstacle = "the dog";
-        woac.Rounds[0].Action = "feeds it";
-        woac.Rounds[0].Consequence = "it follows her";
-        woac.Rounds.Add(new ChainRound { Obstacle = "the gate", Action = "climbs", Consequence = "she's out" });
-        woac.Rounds.Add(new ChainRound { Obstacle = "the road" });
-        document.Chains.Add(woac);
-        var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks" };
-        flaw.Answers[2] = "carries it alone";
-        document.Chains.Add(flaw);
-        document.IgnoredBrackets.Add("[x]");
+        var json = OldSidecar(new
+        {
+            SlateVersion = 1,
+            IgnoredBrackets = new[] { "[x]" },
+            Chains = new object[]
+            {
+                new
+                {
+                    Path = "Woac", Seed = "MARA wants the key", ReadBack = "a scene",
+                    Rounds = new[]
+                    {
+                        new { Want = "the key", Obstacle = "the dog", Action = "feeds it", Consequence = "it follows her" },
+                        new { Want = "", Obstacle = "the gate", Action = "climbs", Consequence = "she's out" },
+                        new { Want = "", Obstacle = "the road", Action = "", Consequence = "" }
+                    }
+                },
+                new { Path = "Flaw", Seed = "MARA, never asks", ReadBack = "", Answers = new[] { "", "", "carries it alone", "", "", "", "", "" } }
+            }
+        });
+        var document = JsonSerializer.Deserialize<SlateDocument>(json)!;
 
-        Assert(SlateMigration.Migrate(document) == 2, "Both chains are moved");
-        Assert(document.Chains.Count == 0, "A move leaves the old list empty");
-        Assert(document.IgnoredBrackets.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
+        Assert(SlateMigration.Migrate(document, json) == 2, "Both chains are moved");
+        Assert(document.IgnoredBrackets.Count == 1 && document.SlateVersion == SlateStore.CurrentVersion, "Everything that is not migrated is left untouched; the document is stamped current");
 
         var run = document.Exercises[0];
         Assert(run.ExerciseId == "woac" && run.Rounds == 3 && run.Anchor.Text == "MARA wants the key", "A WOAC run keeps its seed and three rounds");
@@ -1168,12 +1189,11 @@ class Program
         Assert(flawRun.ExerciseId == "flaw" && flawRun.Answers["q2"] == "carries it alone" && flawRun.Answers.Count == 1,
             "A Flaw run keeps its one answer under its question key and drops the empties");
 
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
+        var saved = JsonSerializer.Serialize(document);
+        Assert(SlateMigration.Migrate(document, saved) == 0 && document.Exercises.Count == 2, "What was saved after migrating is current: loading it adds nothing");
 
-        var untouched = new SlateDocument();
-        untouched.IgnoredBrackets.Add("[x]");
-        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.IgnoredBrackets.Count == 1,
-            "A document with no old chains is unchanged");
+        var untouched = LoadOld(new { SlateVersion = 1, IgnoredBrackets = new[] { "[x]" } });
+        Assert(untouched.Exercises.Count == 0 && untouched.IgnoredBrackets.Count == 1, "A document with no old chains is unchanged");
     }
 
     static void TestSlateMigrationLoadsSidecars()
@@ -1181,25 +1201,131 @@ class Program
         var (_, store, root) = NewSlateFixture();
         try
         {
-            var dir = Path.Combine(root, ".slate");
-            Directory.CreateDirectory(dir);
-            File.WriteAllText(Path.Combine(dir, "old.fountain.json"),
+            SeedSidecar(root, "old.fountain",
                 "{ \"SlateVersion\": 1, \"IgnoredBrackets\": [\"[x]\"], \"Chains\": [ { \"Path\": \"Woac\", \"Seed\": \"S\", \"Rounds\": [ { \"Want\": \"w\" } ] } ] }");
 
             var old = store.Load("old")!;
-            Assert(old.SlateVersion == 1 && old.Chains.Count == 0 && old.Exercises.Count == 1 && old.Exercises[0].Answers["want"] == "w"
-                && old.IgnoredBrackets.Count == 1, "Load moves the old chains into Exercises and leaves the rest alone");
+            Assert(old.SlateVersion == SlateStore.CurrentVersion && old.Exercises.Count == 1 && old.Exercises[0].Answers["want"] == "w"
+                && old.IgnoredBrackets.Count == 1, "Load moves the old chains into Exercises, leaves the rest alone and stamps the current version");
 
             store.Save("old", old);
+            Assert(!File.ReadAllText(Path.Combine(root, ".slate", "old.fountain.json")).Contains("\"Chains\""), "The rewritten file has no old record lists");
             var moved = store.Load("old")!;
-            Assert(moved.Chains.Count == 0 && moved.Exercises.Count == 1 && moved.Exercises[0].Id == old.Exercises[0].Id,
+            Assert(moved.Exercises.Count == 1 && moved.Exercises[0].Id == old.Exercises[0].Id,
                 "A moved run round-trips through the sidecar and loading again adds nothing");
 
-            File.WriteAllText(Path.Combine(dir, "new.fountain.json"),
+            SeedSidecar(root, "new.fountain",
                 "{ \"SlateVersion\": 2, \"Exercises\": [ { \"Id\": \"r1\", \"ExerciseId\": \"woac\", \"Anchor\": { \"Kind\": \"Character\", \"Text\": \"MARA\" }, \"Answers\": { \"want\": \"x\" }, \"Rounds\": 1 } ] }");
             var current = store.Load("new")!;
             Assert(current.Exercises.Count == 1 && current.Exercises[0].Anchor.Kind == AnchorKind.Character
-                && current.Exercises[0].Answers["want"] == "x", "A sidecar already carrying Exercises loads as written, anchor kind by name");
+                && current.Exercises[0].Answers["want"] == "x", "A version 2 sidecar loads as written, anchor kind by name");
+
+            // Version 2 means the old lists are not looked at, even if a stray one is there.
+            SeedSidecar(root, "stray.fountain",
+                "{ \"SlateVersion\": 2, \"Chains\": [ { \"Path\": \"Woac\", \"Seed\": \"S\", \"Rounds\": [ { \"Want\": \"w\" } ] } ] }");
+            Assert(store.Load("stray")!.Exercises.Count == 0, "A current sidecar is never migrated");
+
+            // The version is read from the raw text: the key may be cased differently, or missing.
+            SeedSidecar(root, "lower.fountain", "{ \"slateVersion\": 1, \"Chains\": [ { \"Path\": \"Flaw\", \"Answers\": [ \"a\" ] } ] }");
+            SeedSidecar(root, "bare.fountain", "{ \"Chains\": [ { \"Path\": \"Flaw\", \"Answers\": [ \"a\" ] } ] }");
+            Assert(store.Load("lower")!.Exercises.Count == 1 && store.Load("bare")!.Exercises.Count == 1, "A sidecar with a lower-case or missing version key is treated as version 1");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateMigrationRealSidecars()
+    {
+        // Copies of the dev data's sidecars (fill-test and split-test) as the old build wrote them.
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            SeedSidecar(root, "fill-test.fountain", OldFixture("fill-test.fountain.json"));
+            SeedSidecar(root, "split-test.fountain", OldFixture("split-test.fountain.json"));
+
+            var fill = store.Load("fill-test")!;
+            Assert(fill.SlateVersion == SlateStore.CurrentVersion, "A version 1 sidecar loads stamped as version 2");
+            Assert(fill.Exercises.Select(run => run.ExerciseId).SequenceEqual(new[] { "woac", "flaw", "pushpull" }),
+                "fill-test holds a WOAC chain, a Flaw run and a Push/Pull run; its untouched Split, Belief and Extend add nothing");
+            var woac = fill.Exercises[0];
+            Assert(woac.Rounds == 3 && woac.Anchor.Text == "MARA wants to leave before he wakes" && woac.Answers["want"] == "to get out the door"
+                && woac.Answers["consequence"] == "he stirs and says her name"
+                && woac.Answers["readback"].StartsWith("Mara tries to slip out"), "The WOAC chain keeps its three rounds and read-back");
+            Assert(fill.Exercises[1].Answers["q7"] == "she asks for help", "The Flaw answer lands under its question");
+            var pushPull = fill.Exercises[2];
+            Assert(pushPull.Anchor.Text == "EXT. GARDEN - LATER" && pushPull.Answers["c1"] == "y" && pushPull.Answers["c1-lens"] == "Compression to breaking point"
+                && pushPull.Answers["c2"] == "n", "The Push/Pull run keeps its scene, flags and Lens");
+            Assert(fill.IgnoredBrackets.SequenceEqual(new[] { "[CONDITION stops her]" }), "The ignore list is carried as it was");
+
+            var split = store.Load("split-test")!;
+            Assert(split.Exercises.Select(run => run.ExerciseId).OrderBy(id => id).SequenceEqual(new[] { "bridge", "extend", "position", "split" }),
+                "split-test holds a Split, an Extend, a Bridge and a Position run");
+            Assert(split.Exercises.Single(run => run.ExerciseId == "split").Answers["z"].StartsWith("The keeper rows the stowaway"), "The Split run keeps its ends");
+            Assert(split.Exercises.Single(run => run.ExerciseId == "extend").Answers["z"] == "The lighthouse burns", "The Extend run keeps its Z");
+            Assert(split.Exercises.Single(run => run.ExerciseId == "bridge").Anchor.Text == "The ring is planted in the drawer → The ring turns up at the pawnshop", "The Bridge keeps its two ends");
+            Assert(split.Exercises.Single(run => run.ExerciseId == "position").Anchor.Text == "The keeper reading the stowaway's letter aloud to the gulls", "The Position keeps its moment");
+
+            // Saving writes version 2 with none of the old lists; loading that again is the same set of runs.
+            store.Save("fill-test", fill);
+            store.Save("split-test", split);
+            foreach (var name in new[] { "fill-test.fountain", "split-test.fountain" })
+            {
+                var text = File.ReadAllText(Path.Combine(root, ".slate", name + ".json"));
+                Assert(text.Contains("\"SlateVersion\": 2") && !new[] { "\"Fills\"", "\"Chains\"", "\"Split\"", "\"Belief\"", "\"Extend\"", "\"Bridges\"", "\"Positions\"", "\"Revisions\"" }.Any(text.Contains),
+                    $"{name} is saved at version 2 with no old record lists");
+            }
+
+            var again = store.Load("split-test")!;
+            Assert(again.Exercises.Select(run => run.Id).SequenceEqual(split.Exercises.Select(run => run.Id)), "A saved version 2 sidecar loads unchanged");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateMigrationEveryOldRecordType()
+    {
+        // fill-test and split-test cover chains, Push/Pull, Split, Extend, Bridge and Position; a Fill and a Belief run are added.
+        var node = System.Text.Json.Nodes.JsonNode.Parse(OldFixture("fill-test.fountain.json"))!.AsObject();
+        var other = System.Text.Json.Nodes.JsonNode.Parse(OldFixture("split-test.fountain.json"))!.AsObject();
+        foreach (var key in new[] { "Split", "Extend", "Bridges", "Positions" })
+        {
+            node.Remove(key);
+            node.Add(key, other[key]!.DeepClone());
+        }
+
+        node["Fills"] = System.Text.Json.Nodes.JsonNode.Parse(OldSidecar(new[] { new
+        {
+            Bracket = "[SOMETHING forces her to stay]",
+            Options = new[] { new { Text = "the storm", WhyWrong = "weather" }, new { Text = "", WhyWrong = "" }, new { Text = "", WhyWrong = "" } },
+            PointsTo = "she wants to be made to stay", Answer = ""
+        } }));
+        node["Belief"] = System.Text.Json.Nodes.JsonNode.Parse(OldSidecar(new
+        {
+            Shape = "Fall", A = "Lie", Z = "Truth", Cuts = new[] { new { Ratio = 50, Text = "fifty", Alive = "alive" } }
+        }));
+
+        var json = node.ToJsonString();
+        var document = LoadSidecarText(json);
+        var ids = document.Exercises.Select(run => run.ExerciseId).OrderBy(id => id).ToList();
+        Assert(ids.SequenceEqual(new[] { "belief", "bridge", "extend", "fill", "flaw", "position", "pushpull", "split", "woac" }),
+            "Every old record type becomes a run: " + string.Join(", ", ids));
+        Assert(document.Exercises.Single(run => run.ExerciseId == "fill").Answers["cands[0]"] == "the storm"
+            && document.Exercises.Single(run => run.ExerciseId == "belief").Answers["cut50"] == "fifty", "The Fill and Belief runs keep their text");
+
+        // Saved, it is version 2; and a version 2 sidecar goes through Load unchanged.
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            store.Save("all", document);
+            var again = store.Load("all")!;
+            Assert(again.SlateVersion == 2 && again.Exercises.Count == document.Exercises.Count
+                && again.Exercises.Select(run => run.Id).SequenceEqual(document.Exercises.Select(run => run.Id))
+                && again.Exercises.All(run => run.Answers.Count == document.Exercises.Single(other => other.Id == run.Id).Answers.Count),
+                "Loading what was saved changes nothing");
         }
         finally
         {
@@ -1209,20 +1335,25 @@ class Program
 
     static void TestSlateMigrationFills()
     {
-        var document = new SlateDocument();
-        var fill = new FillRun
+        var json = OldSidecar(new
         {
-            Bracket = "[SOMETHING forces her to stay]",
-            Options = { [0] = new FillOption { Text = "the storm", WhyWrong = "weather is never a reason" }, [2] = new FillOption { WhyWrong = "too neat" } },
-            PointsTo = "she wants to be made to stay",
-            Answer = "her car won't start"
-        };
-        document.Fills.Add(fill);
-        document.Fills.Add(new FillRun { Bracket = "[CONDITION]" });
-        document.IgnoredBrackets.Add("[sic]");
+            SlateVersion = 1,
+            IgnoredBrackets = new[] { "[sic]" },
+            Fills = new object[]
+            {
+                new
+                {
+                    Bracket = "[SOMETHING forces her to stay]",
+                    Options = new[] { new { Text = "the storm", WhyWrong = "weather is never a reason" }, new { Text = "", WhyWrong = "" }, new { Text = "", WhyWrong = "too neat" } },
+                    PointsTo = "she wants to be made to stay",
+                    Answer = "her car won't start"
+                },
+                new { Bracket = "[CONDITION]" }
+            }
+        });
+        var document = JsonSerializer.Deserialize<SlateDocument>(json)!;
 
-        Assert(SlateMigration.Migrate(document) == 1, "Only the Fill with something written is moved");
-        Assert(document.Fills.Count == 0, "A move leaves the old list empty, the blank Fill included");
+        Assert(SlateMigration.Migrate(document, json) == 1, "Only the Fill with something written is moved");
         Assert(document.IgnoredBrackets.SequenceEqual(new[] { "[sic]" }), "The ignore list is not touched");
 
         var run = document.Exercises.Single();
@@ -1235,7 +1366,6 @@ class Program
         Assert(engine.GetAnswer(run, "points") == "she wants to be made to stay" && engine.GetAnswer(run, "answer") == "her car won't start",
             "Points-to and the real answer survive");
         Assert(engine.Current(run)!.Value.Step.Key == "stage-stop", "A migrated run that has its answer is waiting at the optional Stage it, not asking again");
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 1, "Running it twice adds nothing");
     }
 
     static void TestExerciseEngineDiceAndSlots()
@@ -1393,22 +1523,32 @@ class Program
         Assert(ExerciseCatalog.Flaw.Steps.Count(step => step.Key.StartsWith('q')) == 8, "Flaw has its eight questions");
         Assert(ExerciseCatalog.Find("woac") == ExerciseCatalog.Woac && ExerciseCatalog.Find("nothing") is null, "Exercises are found by id");
 
-        var chain = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks", ReadBack = "she asks" };
-        chain.Answers[0] = "the flood";
-        chain.Answers[3] = "the neighbour";
-        var run = SlateMigration.FromChain(chain, "r");
+        var run = LoadOld(new
+        {
+            SlateVersion = 1,
+            Chains = new[] { new { Path = "Flaw", Seed = "MARA, never asks", ReadBack = "she asks", Answers = new[] { "the flood", "", "", "the neighbour", "", "", "", "" } } }
+        }).Exercises.Single();
         var engine = new ExerciseEngine(ExerciseCatalog.Flaw);
         Assert(engine.Trail(run).Select(entry => entry.Summary).SequenceEqual(new[] { "the flood", "the neighbour", "she asks" }),
             "A migrated Flaw run reads back through the catalog's step keys");
         Assert(engine.Current(run)!.Value.Step.Key == "q1", "The first unanswered question is next");
 
-        var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key" };
-        woac.Rounds[0].Want = "the key";
-        woac.Rounds[0].Obstacle = "the dog";
-        woac.Rounds[0].Action = "feeds it";
-        woac.Rounds[0].Consequence = "it follows her";
-        woac.Rounds.Add(new ChainRound());
-        var woacRun = SlateMigration.FromChain(woac, "w");
+        var woacRun = LoadOld(new
+        {
+            SlateVersion = 1,
+            Chains = new[]
+            {
+                new
+                {
+                    Path = "Woac", Seed = "MARA wants the key", ReadBack = "",
+                    Rounds = new[]
+                    {
+                        new { Want = "the key", Obstacle = "the dog", Action = "feeds it", Consequence = "it follows her" },
+                        new { Want = "", Obstacle = "", Action = "", Consequence = "" }
+                    }
+                }
+            }
+        }).Exercises.Single();
         var woacEngine = new ExerciseEngine(ExerciseCatalog.Woac);
         Assert(woacEngine.Current(woacRun)!.Value.Id == "obstacle#1", "A migrated chain resumes at its open round");
         Assert(woacEngine.Trail(woacRun).Any(entry => entry.Slot.Id == "want#1" && entry.Summary == "it follows her"), "with the carry visible");
@@ -1529,7 +1669,7 @@ class Program
 
         // Rung 1 written: the adapter hands SplitScript exactly the turns that are set.
         var split = ShapeAnswers.ToSplitRun(run);
-        Assert(split.A == "she inherits the lighthouse" && split.Z == "she sells it" && split.Midpoint == "her brother arrives" && split.MidpointAlive == "alive",
+        Assert(split.A == "she inherits the lighthouse" && split.Z == "she sells it" && split.Midpoint == "her brother arrives",
             "Rung 1 reaches the Shape write");
         var lines = SplitScript.BuildLines(split).Select(StripIds).ToList();
         Assert(lines.Count(line => line.StartsWith("# ")) == 4 && lines.Count(line => line.StartsWith("## ")) == 8, "Four acts and eight sequences");
@@ -1539,35 +1679,53 @@ class Program
 
     static void TestSplitAdapter()
     {
+        var document = LoadOld(new
+        {
+            SlateVersion = 1,
+            Split = new
+            {
+                A = "start", Z = "end", Midpoint = "mid", MidpointAlive = "flat", PP1 = "pp1", Crisis = "crisis", Inciting = "inc",
+                Pinch1 = "p1", Pinch2 = "p2", LastObstacle = "last", BeliefLayer = true, Pinch1ThirdRail = "r1", Pinch2ThirdRail = "r2",
+                Candidates = new[] { "c0", "", "c2" }
+            }
+        });
         var old = new SplitRun
         {
-            A = "start", Z = "end", Midpoint = "mid", MidpointAlive = "flat", PP1 = "pp1", Crisis = "crisis", Inciting = "inc",
-            Pinch1 = "p1", Pinch2 = "p2", LastObstacle = "last", BeliefLayer = true, Pinch1ThirdRail = "r1", Pinch2ThirdRail = "r2",
-            Candidates = { [0] = "c0", [2] = "c2" }
+            A = "start", Z = "end", Midpoint = "mid", PP1 = "pp1", Crisis = "crisis", Inciting = "inc", Pinch1 = "p1", Pinch2 = "p2", LastObstacle = "last"
         };
-        var back = ShapeAnswers.ToSplitRun(SlateMigration.FromSplit(old, new BeliefRun(), "r"));
+        var splitRun = document.Exercises.Single();
+        var back = ShapeAnswers.ToSplitRun(splitRun);
         Assert(SplitScript.Values(back).SequenceEqual(SplitScript.Values(old)), "Every turn survives the move");
-        Assert(back.Candidates.SequenceEqual(old.Candidates) && back.MidpointAlive == "flat" && back.BeliefLayer
-            && back.Pinch1ThirdRail == "r1" && back.Pinch2ThirdRail == "r2", "Candidates, the stress mark and the belief layer survive too");
+        var engine = new ExerciseEngine(ExerciseCatalog.Split);
+        Assert(engine.GetLine(splitRun, "cands", 0, 0) == "c0" && engine.GetLine(splitRun, "cands", 0, 2) == "c2" && engine.GetAnswer(splitRun, "stress") == "flat"
+            && engine.GetAnswer(splitRun, "layer") == "y" && engine.GetAnswer(splitRun, "rail1") == "r1" && engine.GetAnswer(splitRun, "rail2") == "r2",
+            "Candidates, the stress mark and the belief layer survive too");
         Assert(SplitScript.BuildLines(back).Select(StripIds).SequenceEqual(SplitScript.BuildLines(old).Select(StripIds)),
             "The Shape the adapter writes is the Shape the old record wrote");
 
         // The update path reads the same values: a turn the run leaves blank stays a bracket.
         var sparse = ShapeAnswers.ToSplitRun(new ExerciseRun { Answers = { ["a"] = "x", ["mid"] = "y" } });
-        Assert(SplitScript.Values(sparse).Count(value => value.Length > 0) == 2 && sparse.Candidates.Count == 3, "A sparse run is mostly blank, with three candidate rows");
+        Assert(SplitScript.Values(sparse).Count(value => value.Length > 0) == 2, "A sparse run is mostly blank");
         Assert(SplitScript.Line(SplitScript.Slots[7], sparse.LastObstacle) == "= Last obstacle: [LAST OBSTACLE]", "A blank turn is written as its bracket");
 
-        var belief = new BeliefRun { Shape = "Fall", A = "a", Z = "z", Ghost = "g", GhostSize = "7", GhostCommensurate = "n", GhostMismatch = "m", Cut50Change = "c" };
-        belief.Cut(50).Text = "fifty";
-        belief.Cut(50).Alive = "alive";
-        belief.Cut(88).Text = "eighty-eight";
-        var round = ShapeAnswers.ToBeliefRun(SlateMigration.FromBelief(belief, "b"));
-        Assert(round.Shape == "Fall" && round.A == "a" && round.Z == "z" && round.Ghost == "g" && round.GhostSize == "7" && round.GhostCommensurate == "n"
-            && round.GhostMismatch == "m" && round.Cut50Change == "c", "Belief's ends and origin survive");
-        Assert(round.Cut(50).Text == "fifty" && round.Cut(50).Alive == "alive" && round.Cut(88).Text == "eighty-eight" && round.Cut(12).Text == string.Empty, "The cuts keep their ratios");
+        var beliefRun = LoadOld(new
+        {
+            SlateVersion = 1,
+            Belief = new
+            {
+                Shape = "Fall", A = "a", Z = "z", Ghost = "g", GhostSize = "7", GhostCommensurate = "n", GhostMismatch = "m", Cut50Change = "c",
+                Cuts = new[] { new { Ratio = 50, Text = "fifty", Alive = "alive" }, new { Ratio = 88, Text = "eighty-eight", Alive = "" } }
+            }
+        }).Exercises.Single();
+        var beliefEngine = new ExerciseEngine(ExerciseCatalog.Belief);
+        Assert(beliefEngine.GetAnswer(beliefRun, "shape") == "Fall" && beliefEngine.GetAnswer(beliefRun, "a") == "a" && beliefEngine.GetAnswer(beliefRun, "z") == "z"
+            && beliefEngine.GetAnswer(beliefRun, "ghost") == "g" && beliefEngine.GetAnswer(beliefRun, "size") == "7" && beliefEngine.GetAnswer(beliefRun, "fits") == "n"
+            && beliefEngine.GetAnswer(beliefRun, "resize") == "m" && beliefEngine.GetAnswer(beliefRun, "chg50") == "c", "Belief's ends and origin survive");
+        Assert(beliefEngine.GetAnswer(beliefRun, "cut50") == "fifty" && beliefEngine.GetAnswer(beliefRun, "al50") == "alive"
+            && beliefEngine.GetAnswer(beliefRun, "cut88") == "eighty-eight" && beliefEngine.GetAnswer(beliefRun, "cut12") == string.Empty, "The cuts keep their ratios");
 
         var slate = new SlateDocument();
-        slate.Exercises.Add(SlateMigration.FromSplit(old, new BeliefRun(), "s"));
+        slate.Exercises.Add(splitRun);
         Assert(ShapeAnswers.SplitTurn(slate, "Midpoint") == "mid" && ShapeAnswers.SplitTurn(slate, "Pinch 1") == "p1" && ShapeAnswers.SplitTurn(slate, "nope") is null,
             "A belief cut finds its matched plot turn in the Split run");
         Assert(ShapeAnswers.SplitTurn(new SlateDocument(), "Midpoint") is null, "No Split run, no matched turn");
@@ -1640,23 +1798,28 @@ class Program
 
     static void TestSlateMigrationSplitFamily()
     {
-        var document = new SlateDocument();
-        document.Split.A = "start";
-        document.Split.Midpoint = "mid";
-        document.Split.Candidates[1] = "a candidate";
-        document.Split.BeliefLayer = true;
-        document.Split.Pinch1ThirdRail = "rail";
-        document.Belief.Shape = "Flat";
-        document.Belief.Cut(50).Text = "fifty";
-        document.Belief.Cut(25).Text = "twenty-five";
-        document.Extend.Z = "end";
-        document.Extend.Links = new List<ExtendLink> { new() { Text = "one" }, new() { Text = "two", Mystery = true }, new() };
-        document.Extend.WeakestLink = "two";
+        var json = OldSidecar(new
+        {
+            SlateVersion = 1,
+            Split = new
+            {
+                A = "start", Midpoint = "mid", Candidates = new[] { "", "a candidate", "" }, BeliefLayer = true, Pinch1ThirdRail = "rail"
+            },
+            Belief = new
+            {
+                Shape = "Flat",
+                Cuts = new[] { new { Ratio = 50, Text = "fifty", Alive = "" }, new { Ratio = 25, Text = "twenty-five", Alive = "" } }
+            },
+            Extend = new
+            {
+                Z = "end",
+                Links = new[] { new { Text = "one", Mystery = false }, new { Text = "two", Mystery = true }, new { Text = "", Mystery = false } },
+                WeakestLink = "two"
+            }
+        });
+        var document = JsonSerializer.Deserialize<SlateDocument>(json)!;
 
-        Assert(SlateMigration.Migrate(document) == 3, "Split, Belief and Extend are each moved");
-        Assert(document.Split.A == string.Empty && document.Belief.Shape == string.Empty && document.Extend.Z == string.Empty && document.Extend.Links.Count == 1
-            && document.Belief.Cuts.All(cut => cut.Text.Length == 0), "A move leaves the old records empty");
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 3, "Running it twice adds nothing");
+        Assert(SlateMigration.Migrate(document, json) == 3, "Split, Belief and Extend are each moved");
 
         var split = document.Exercises.Single(run => run.ExerciseId == "split");
         var engine = new ExerciseEngine(ExerciseCatalog.Split);
@@ -1666,7 +1829,8 @@ class Program
             "The belief layer comes with its third rail and the cuts it asked");
 
         var beliefRun = document.Exercises.Single(run => run.ExerciseId == "belief");
-        Assert(new ExerciseEngine(ExerciseCatalog.Belief).GetAnswer(beliefRun, "cut50") == "fifty" && ShapeAnswers.ToBeliefRun(beliefRun).Cut(25).Text == "twenty-five",
+        var beliefEngine = new ExerciseEngine(ExerciseCatalog.Belief);
+        Assert(beliefEngine.GetAnswer(beliefRun, "cut50") == "fifty" && beliefEngine.GetAnswer(beliefRun, "cut25") == "twenty-five",
             "Belief Split keeps its cuts too (the layer's copy is separate)");
 
         var extendRun = document.Exercises.Single(run => run.ExerciseId == "extend");
@@ -1677,16 +1841,12 @@ class Program
         Assert(engine.Current(split)!.Value.Step.Key == "z", "A migrated Split run asks for the end it lacks, not the new optional questions");
         Assert(engine.Sequence(split).All(slot => slot.Step.Key != "stop1" || split.Passed.Contains("stop1")), "A stop above written text is behind the writer");
 
-        // Untouched records are not worth a kept run, but they are cleared.
-        var blank = new SlateDocument();
-        blank.Belief.Cut(50).Alive = string.Empty;
-        Assert(SlateMigration.Migrate(blank) == 0 && blank.Exercises.Count == 0, "Blank records add nothing");
+        // Untouched records are not worth a kept run.
+        var blank = LoadOld(new { SlateVersion = 1, Belief = new { Cuts = new[] { new { Ratio = 50, Text = "", Alive = "" } } }, Extend = new { Links = new[] { new { Text = "", Mystery = false } } } });
+        Assert(blank.Exercises.Count == 0, "Blank records add nothing");
 
-        // The saved file round-trips: a sidecar written by the old build loads into runs on the next Load.
-        var json = System.Text.Json.JsonSerializer.Serialize(new SlateDocument { Split = new SplitRun { A = "from disk" } });
-        var loaded = System.Text.Json.JsonSerializer.Deserialize<SlateDocument>(json)!;
-        SlateMigration.Migrate(loaded);
-        Assert(loaded.Exercises.Single().Answers["a"] == "from disk", "An old sidecar's Split shows up as a run");
+        var fromDisk = LoadOld(new { SlateVersion = 1, Split = new { A = "from disk" } });
+        Assert(fromDisk.Exercises.Single().Answers["a"] == "from disk", "An old sidecar's Split shows up as a run");
     }
 
     static void TestCatalogBridge()
@@ -1767,36 +1927,45 @@ class Program
 
     static void TestSlateMigrationBridgeAndPosition()
     {
-        var document = new SlateDocument();
-        document.Bridges.Add(new BridgeRun
+        var blankRound = new { Candidates = new[] { "", "", "" }, Picked = "" };
+        var json = OldSidecar(new
         {
-            A = "letter planted", Z = "letter found", Wire = "the wire",
-            Rounds = new List<BridgeRound>
+            SlateVersion = 1,
+            Bridges = new object[]
             {
-                new() { Candidates = { [0] = "flood", [1] = "move" }, Picked = "move" },
-                new() { Candidates = { [2] = "sale" } },
-                new(),
-                new()
+                new
+                {
+                    A = "letter planted", Z = "letter found", Wire = "the wire",
+                    Rounds = new[]
+                    {
+                        new { Candidates = new[] { "", "move", "" }, Picked = "move" },
+                        new { Candidates = new[] { "", "", "sale" }, Picked = "" },
+                        blankRound,
+                        blankRound
+                    }
+                },
+                new { A = "", Z = "", Wire = "", Rounds = new[] { blankRound } }
+            },
+            Positions = new object[]
+            {
+                new
+                {
+                    Moment = "A dance in the rain",
+                    Turns = new[]
+                    {
+                        new { Slot = "Midpoint", Before = "she must have lied", After = "he leaves", Alive = "alive" },
+                        new { Slot = "Pinch 1", Before = "", After = "", Alive = "flat" },
+                        new { Slot = "", Before = "no slot named", After = "", Alive = "" },
+                        new { Slot = "", Before = "", After = "", Alive = "" }
+                    },
+                    Shortlist = new[] { "Midpoint", "" }
+                },
+                new { Moment = "", Turns = new[] { new { Slot = "", Before = "", After = "", Alive = "" } }, Shortlist = new[] { "", "" } }
             }
         });
-        document.Bridges.Add(new BridgeRun());
-        document.Positions.Add(new PositionRun
-        {
-            Moment = "A dance in the rain",
-            Turns = new List<PositionTurn>
-            {
-                new() { Slot = "Midpoint", Before = "she must have lied", After = "he leaves", Alive = "alive" },
-                new() { Slot = "Pinch 1", Alive = "flat" },
-                new() { Before = "no slot named" },
-                new()
-            },
-            Shortlist = { [0] = "Midpoint" }
-        });
-        document.Positions.Add(new PositionRun());
+        var document = JsonSerializer.Deserialize<SlateDocument>(json)!;
 
-        Assert(SlateMigration.Migrate(document) == 2, "One bridge and one position are moved; the blank ones are cleared");
-        Assert(document.Bridges.Count == 0 && document.Positions.Count == 0, "A move leaves the old lists empty");
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
+        Assert(SlateMigration.Migrate(document, json) == 2, "One bridge and one position are moved; the blank ones are dropped");
 
         var bridge = document.Exercises.Single(run => run.ExerciseId == "bridge");
         var bridgeEngine = new ExerciseEngine(ExerciseCatalog.Bridge);
@@ -1815,8 +1984,8 @@ class Program
         Assert(positionEngine.GetAnswer(position, "moment").Contains("A dance in the rain") && positionEngine.GetAnswer(position, "moment").Contains("no slot named"),
             "A turn with no slot named keeps its text on the moment instead of vanishing");
         Assert(positionEngine.GetLine(position, "shortlist", 0, 0) == "Midpoint" && !position.Answers.ContainsKey("shortlist[1]"), "The shortlist comes across without its blank second line");
+        Assert(position.Anchor.Text == "A dance in the rain", "The position is kept by its moment");
     }
-
 
     static ExerciseEngine PushPullEngine(params string[] speakers) =>
         new(ExerciseCatalog.PushPull, source => source == ExerciseCatalog.SpeakersSource ? speakers : Array.Empty<string>());
@@ -1909,28 +2078,33 @@ class Program
 
     static void TestSlateMigrationRevisions()
     {
-        var document = new SlateDocument();
-        var revision = new ReviseRun { Scene = "INT. KITCHEN - DAY", Purpose = "she decides to leave" };
-        revision.Gsu[0].Character = "MARA";
-        revision.Gsu[0].Goal = "get the keys";
-        revision.Gsu[0].Urgency = "the bus";
-        revision.Gsu[1].Goal = "an orphan goal";
-        revision.GsuFlag = "Y";
-        var polarity = revision.Check("Polarity");
-        polarity.Answer = "warm to warm";
-        polarity.Flag = "Y";
-        polarity.Lens = "Tone swap, minimum edit";
-        polarity.Fragment = "line one\nline two";
-        polarity.Moved = "N";
-        polarity.MovedWhy = "still warm";
-        revision.Check("Linkage").Flag = "N";
-        revision.DiagA = "the lie";
-        revision.Working = "the door";
-        document.Revisions.Add(revision);
-        document.Revisions.Add(new ReviseRun());
+        var json = OldSidecar(new
+        {
+            SlateVersion = 1,
+            Revisions = new object[]
+            {
+                new
+                {
+                    Scene = "INT. KITCHEN - DAY", Purpose = "she decides to leave",
+                    Gsu = new[]
+                    {
+                        new { Character = "MARA", Goal = "get the keys", Stakes = "", Urgency = "the bus" },
+                        new { Character = "", Goal = "an orphan goal", Stakes = "", Urgency = "" }
+                    },
+                    GsuFlag = "Y",
+                    Checks = new[]
+                    {
+                        new { Name = "Polarity", Answer = "warm to warm", Flag = "Y", Lens = "Tone swap, minimum edit", Fragment = "line one\nline two", Moved = "N", MovedWhy = "still warm" },
+                        new { Name = "Linkage", Answer = "", Flag = "N", Lens = "", Fragment = "", Moved = "", MovedWhy = "" }
+                    },
+                    DiagA = "the lie", Working = "the door"
+                },
+                new { Scene = "" }
+            }
+        });
+        var document = JsonSerializer.Deserialize<SlateDocument>(json)!;
 
-        Assert(SlateMigration.Migrate(document) == 1 && document.Revisions.Count == 0, "One run moves; the blank one is cleared; the old list ends empty");
-        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 1, "Running it twice adds nothing");
+        Assert(SlateMigration.Migrate(document, json) == 1, "One run moves; the blank one is dropped");
 
         var run = document.Exercises.Single();
         var engine = PushPullEngine("MARA");
@@ -2414,67 +2588,7 @@ class Program
         }
     }
 
-    static void TestSuggestionsAskForTheNextField()
-    {
-        // Fill: the worksheet so far, in order, empties skipped.
-        var fill = new FillRun { Bracket = "[SOMETHING forces her to stay]" };
-        fill.Options[0].Text = "Her sister calls";
-        fill.Options[0].WhyWrong = "Too convenient";
-        var fillAsk = Suggestions.ForFill(fill, "[SOMETHING forces her to stay] She sits.");
-        Assert(fillAsk.Tool == "Fill" && fillAsk.Count == 3, "Fill asks for three under its own name");
-        Assert(fillAsk.Context.Select(line => line.Label).SequenceEqual(new[] { "Bracket", "The line it's on", "Candidate 1", "Why candidate 1 is probably wrong" }),
-            "Fill's context is the bracket, its line, and only the written cells, in reading order");
-        Assert(fillAsk.Context[1].Text == "[SOMETHING forces her to stay] She sits.", "The script line rides along for the partner");
 
-        // WOAC: the next empty answer of the last round, in the chain's order; null when all written.
-        var chain = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants to leave" };
-        Assert(Suggestions.ForChain(chain, Array.Empty<string>())?.Ask.StartsWith("Want") == true, "Round 1 starts by asking the want");
-        chain.Rounds[0].Want = "to get out the door";
-        chain.Rounds[0].Obstacle = "the key is in his coat";
-        var woac = Suggestions.ForChain(chain, Array.Empty<string>());
-        Assert(woac?.Ask.StartsWith("Action") == true, "Then the first empty of obstacle, action, consequence");
-        Assert(woac!.Context.Select(line => line.Text).SequenceEqual(new[] { "MARA wants to leave", "to get out the door", "the key is in his coat" }),
-            "The chain so far is the context");
-        chain.Rounds[0].Action = "she goes through his pockets";
-        chain.Rounds[0].Consequence = "he stirs";
-        chain.Rounds.Add(new ChainRound());
-        var round2 = Suggestions.ForChain(chain, Array.Empty<string>());
-        Assert(round2?.Ask.StartsWith("Obstacle") == true, "Round 2 reads its want from the consequence above and asks the obstacle");
-        Assert(round2!.Context.Any(line => line.Label == "Round 2 — want" && line.Text == "he stirs"), "The carried want is in the context");
-        chain.Rounds[1].Obstacle = "o"; chain.Rounds[1].Action = "a"; chain.Rounds[1].Consequence = "c";
-        Assert(Suggestions.ForChain(chain, Array.Empty<string>()) is null, "Nothing to ask when every answer is written");
-
-        // Flaw: the first unanswered question, asked in the worksheet's words.
-        var questions = new[] { "Worst situation the flaw causes", "The character's first (wrong) response" };
-        var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA — never asks for help" };
-        flaw.Answers[0] = "She loses the flat";
-        var flawAsk = Suggestions.ForChain(flaw, questions);
-        Assert(flawAsk?.Ask == "2. The character's first (wrong) response", "Flaw asks the next question by its number and words");
-        Assert(flawAsk!.Context.Last().Label == "1. Worst situation the flaw causes", "Answered questions carry their question as the label");
-
-        // Extend: the open link, mystery lens changing the ask.
-        var extend = new ExtendRun { Z = "The lighthouse burns" };
-        extend.Links[0].Text = "Someone knocked over the lamp";
-        extend.Links.Add(new ExtendLink { Mystery = true });
-        var extendAsk = Suggestions.ForExtendLink(extend);
-        Assert(extendAsk.Ask.StartsWith("Mystery lens"), "The open link's mystery lens changes the question");
-        Assert(extendAsk.Context.Select(line => line.Text).SequenceEqual(new[] { "The lighthouse burns", "Someone knocked over the lamp" }), "Z and the links so far, in order");
-
-        // Bridge: the ends, earlier rounds' picks, this round's candidates.
-        var bridge = new BridgeRun { A = "The ring is planted", Z = "The ring turns up at the pawnshop" };
-        bridge.Rounds[0].Picked = "She finds it (half)";
-        bridge.Rounds.Add(new BridgeRound());
-        bridge.Rounds[1].Candidates[0] = "She pawns it herself";
-        var bridgeAsk = Suggestions.ForBridgeRound(bridge);
-        Assert(bridgeAsk.Context.Select(line => line.Label).SequenceEqual(new[] { "A — the point you're starting from", "Z — the point you're building to", "Round 1, picked / half-picked", "Round 2, candidate 1" }),
-            "Bridge's context is the ends, the picks so far and this round's candidates");
-
-        // Split: the ends and the candidates so far.
-        var split = new SplitRun { A = "A stowaway is found", Z = "The keeper rows away" };
-        split.Candidates[1] = "The supply boat comes early";
-        var splitAsk = Suggestions.ForSplitMidpoint(split);
-        Assert(splitAsk.Context.Count == 3 && splitAsk.Context[2].Label == "Candidate 2", "Split skips the empty candidate slot and keeps the written one's number");
-    }
 
     static void TestNullStoryPartnerOffersNothing()
     {
@@ -2484,114 +2598,11 @@ class Program
         Assert(offered.Count == 0, "The null partner offers nothing, so the dock has nothing to show");
     }
 
-    static void TestSlateStoreSplitFamilyRoundTrip()
-    {
-        var (_, store, root) = NewSlateFixture();
-        try
-        {
-            var document = new SlateDocument();
-            document.Split.A = "arrives";
-            document.Split.Midpoint = "confesses";
-            document.Split.MidpointAlive = "alive";
-            document.Split.BeliefLayer = true;
-            document.Belief.Shape = "Fall";
-            document.Belief.Cut(50).Text = "she thinks she can leave";
-            document.Belief.Cut(50).Alive = "flat";
-            document.Extend.Z = "the lighthouse burns";
-            document.Extend.Links.Add(new ExtendLink { Text = "she lit it", Mystery = true });
-            store.Save("draft", document);
 
-            // Load moves the Split family into runs (the file is rewritten on the next save).
-            var loaded = store.Load("draft")!;
-            var split = ShapeAnswers.ToSplitRun(loaded.Exercises.Single(run => run.ExerciseId == "split"));
-            Assert(split.Midpoint == "confesses" && split.MidpointAlive == "alive" && split.BeliefLayer, "Split run round-trips");
-            Assert(split.Candidates.Count == 3, "Three candidate rows round-trip, empty included");
-            var belief = ShapeAnswers.ToBeliefRun(loaded.Exercises.Single(run => run.ExerciseId == "belief"));
-            Assert(belief.Shape == "Fall" && belief.Cut(50).Text == "she thinks she can leave" && belief.Cut(50).Alive == "flat", "Belief cuts round-trip by ratio");
-            Assert(belief.Cuts.Count == 5, "All five named cuts, no more");
-            var extend = loaded.Exercises.Single(run => run.ExerciseId == "extend");
-            Assert(extend.Rounds == 3 && extend.Answers["link#1"] == "she lit it" && extend.Answers["link#1~alt"] == "y", "Extend links become rounds, the mystery lens kept");
-            Assert(loaded.Split.A.Length == 0 && loaded.Belief.Shape.Length == 0 && loaded.Extend.Z.Length == 0, "The old records are empty once moved");
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
 
-    static void TestSlateStoreBridgeAndPositionRoundTrip()
-    {
-        var (_, store, root) = NewSlateFixture();
-        try
-        {
-            var document = new SlateDocument();
-            var bridge = new BridgeRun { A = "the ring is planted", Z = "the ring is found" };
-            bridge.Rounds[0].Candidates[1] = "she pawns it";
-            bridge.Rounds[0].Picked = "she pawns it";
-            bridge.Rounds.Add(new BridgeRound());
-            document.Bridges.Add(bridge);
-            document.Bridges.Add(new BridgeRun());
-            var position = new PositionRun { Moment = "the dog on the roof" };
-            position.Turns[0].Slot = "Midpoint";
-            position.Turns[0].Alive = "alive";
-            position.Shortlist[0] = "midpoint";
-            document.Positions.Add(position);
-            store.Save("draft", document);
 
-            // The file keeps the old records; loading moves them into runs (T6), and the blank bridge is cleared.
-            var loaded = store.Load("draft")!;
-            Assert(loaded.Bridges.Count == 0 && loaded.Positions.Count == 0, "Loading moves the records out of the old lists");
-            var bridgeRun = loaded.Exercises.Single(run => run.ExerciseId == "bridge");
-            var engine = new ExerciseEngine(ExerciseCatalog.Bridge);
-            Assert(bridgeRun.Rounds == 2 && bridgeRun.Anchor.Text == "the ring is planted → the ring is found" && engine.GetAnswer(bridgeRun, "pick") == "she pawns it"
-                && engine.GetLine(bridgeRun, "links", 0, 1) == "she pawns it", "The bridge's ends, round, candidates and pick come through the file");
-            var positionRun = loaded.Exercises.Single(run => run.ExerciseId == "position");
-            Assert(new ExerciseEngine(ExerciseCatalog.Position).GetItem(positionRun, "alive", 0, "Midpoint") == "alive"
-                && positionRun.Answers["shortlist[0]"] == "midpoint" && positionRun.Anchor.Text == "the dog on the roof", "The position's turn mark and shortlist come through the file");
-            Assert(new PositionRun().IsEmpty && !position.IsEmpty, "A fresh run is empty; one with a moment is not");
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
 
-    static void TestSlateStoreReviseRoundTrip()
-    {
-        var (_, store, root) = NewSlateFixture();
-        try
-        {
-            var document = new SlateDocument();
-            var revision = new ReviseRun { Scene = "INT. KITCHEN - DAY", Purpose = "she decides to leave" };
-            revision.Check("Polarity").Answer = "starts warm, ends warm";
-            revision.Check("Polarity").Flag = "Y";
-            revision.Check("Polarity").Lens = "Tone swap, minimum edit";
-            revision.Check("Polarity").Fragment = "line one\nline two";
-            revision.Check("Polarity").Moved = "Y";
-            revision.Gsu[0].Character = "MARA";
-            revision.Gsu[0].Goal = "get the keys back";
-            revision.Gsu.Add(new GsuRow { Character = "TOM", Urgency = "the bus leaves at six" });
-            revision.GsuFlag = "Y";
-            document.Revisions.Add(revision);
-            document.Burst.LensMinutes = 3;
-            store.Save("draft", document);
 
-            var loaded = store.Load("draft")!;
-            Assert(loaded.Revisions.Count == 0 && loaded.Exercises.Count == 1 && loaded.Exercises[0].ExerciseId == "pushpull"
-                && loaded.Exercises[0].Anchor.Text == "INT. KITCHEN - DAY", "Load moves a saved Push/Pull run into Exercises, kept by its scene");
-            Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
-            Assert(ReviseRun.CheckNames.SequenceEqual(ExerciseCatalog.CheckNames), "The old record and the exercise name the six checks alike");
-            Assert(revision.Check("Linkage").IsEmpty, "An untouched check is empty");
-            Assert(new ReviseRun().Gsu.Count == 2, "A new run starts with two GSU rows");
-            Assert(!new ReviseRun { GsuFlag = "N" }.IsEmpty && !new ReviseRun { Gsu = { new GsuRow { Stakes = "x" } } }.IsEmpty, "GSU content makes a run non-empty");
-            Assert(new ReviseRun().IsEmpty && !revision.IsEmpty && !revision.HasDiagnostic && !revision.HasReadBack, "Emptiness and the deeper sections read the content");
-            Assert(new ReviseRun().Check("Made up").Name == "Made up", "Check() adds a missing check rather than throwing");
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
 
     static void TestIdeationDealerDealsEveryLane()
     {

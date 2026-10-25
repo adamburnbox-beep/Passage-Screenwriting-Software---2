@@ -17,34 +17,11 @@ public sealed class SlateDocument
     // reference survives the script being edited underneath it.
     public List<string> IgnoredBrackets { get; set; } = new();
 
-    // Fill working-out, keyed by bracket text. A run is dropped on accept: the
-    // filled line in the script is then the only truth.
-    public List<FillRun> Fills { get; set; } = new();
-
-    // Forward-chain working-out (WOAC and Character Flaw Brainstorm), kept by
-    // what each chain is about, never by when it was run.
-    public List<ChainRun> Chains { get; set; } = new();
-
-    // The generic run list (docs/SLATE-REDO-PLAN.md R-E). Old records are
-    // moved into it, per type, by the row that deletes that type's view.
+    // Every worksheet run (docs/SLATE-REDO-PLAN.md R-E). Version 1 sidecars kept
+    // one list per tool; SlateMigration converts them on load.
     public List<Passage.Web.Services.Tools.ExerciseRun> Exercises { get; set; } = new();
 
     public BurstSettings Burst { get; set; } = new();
-
-    // The Split family ("Generate — Split, Belief, or Extend Backward"). One
-    // of each per script: the worksheet runs them once per story, and the
-    // belief cuts are shared between Split's optional layer and Belief Split.
-    public SplitRun Split { get; set; } = new();
-    public BeliefRun Belief { get; set; } = new();
-    public ExtendRun Extend { get; set; } = new();
-
-    // Bridge and Position runs, kept by what each is about — the two ends,
-    // the moment — never by when it was run.
-    public List<BridgeRun> Bridges { get; set; } = new();
-    public List<PositionRun> Positions { get; set; } = new();
-
-    // Push/Pull and Lens runs, kept by the scene or stretch they check.
-    public List<ReviseRun> Revisions { get; set; } = new();
 
     // Character panel settings (HIGHLAND-PLAN H3.1), keyed by bare cue name.
     // Only characters given something are kept.
@@ -152,142 +129,6 @@ public sealed class CharacterSettings
     public string Gender { get; set; } = string.Empty;
 }
 
-/// <summary>Push/Pull and Lens ("Revise — Push-Pull and Lens"): check 0
-/// (GSU) and six checks on one scene or stretch, a Lens where a check is
-/// flagged, and the optional diagnostic belief layer and read-back beneath.</summary>
-public sealed class ReviseRun
-{
-    public static readonly string[] CheckNames = { "Polarity", "Linkage", "Third rail", "Migration", "Escalation", "Two-test" };
-
-    public string Scene { get; set; } = string.Empty;
-    public string Purpose { get; set; } = string.Empty;
-
-    // Check 0 — GSU. Not one of CheckNames: a flag here points at a Scene
-    // Dial, never a Lens. Two rows to start, as the worksheet prints them.
-    public List<GsuRow> Gsu { get; set; } = new() { new GsuRow(), new GsuRow() };
-    public string GsuFlag { get; set; } = string.Empty;
-
-    public List<ReviseCheck> Checks { get; set; } = CheckNames.Select(name => new ReviseCheck { Name = name }).ToList();
-
-    // Going deeper still — Belief Split, diagnostic.
-    public string DiagA { get; set; } = string.Empty;
-    public string DiagZ { get; set; } = string.Empty;
-    public string DiagShape { get; set; } = string.Empty;
-    public string DiagMatch { get; set; } = string.Empty;
-    public string DiagSeam { get; set; } = string.Empty;
-    public string DiagLens { get; set; } = string.Empty;
-    public string DiagFragment { get; set; } = string.Empty;
-
-    // Read-back and crit.
-    public string Working { get; set; } = string.Empty;
-    public string NotSitting { get; set; } = string.Empty;
-    public string Ready { get; set; } = string.Empty;
-
-    public ReviseCheck Check(string name)
-    {
-        var check = Checks.FirstOrDefault(existing => existing.Name == name);
-        if (check is null)
-        {
-            check = new ReviseCheck { Name = name };
-            Checks.Add(check);
-        }
-
-        return check;
-    }
-
-    public bool HasDiagnostic =>
-        !string.IsNullOrWhiteSpace(DiagA) || !string.IsNullOrWhiteSpace(DiagZ) || !string.IsNullOrWhiteSpace(DiagShape)
-        || !string.IsNullOrWhiteSpace(DiagMatch) || !string.IsNullOrWhiteSpace(DiagSeam)
-        || !string.IsNullOrWhiteSpace(DiagLens) || !string.IsNullOrWhiteSpace(DiagFragment);
-
-    public bool HasReadBack =>
-        !string.IsNullOrWhiteSpace(Working) || !string.IsNullOrWhiteSpace(NotSitting) || !string.IsNullOrWhiteSpace(Ready);
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Scene) && string.IsNullOrWhiteSpace(Purpose)
-        && Gsu.All(row => row.IsEmpty) && string.IsNullOrWhiteSpace(GsuFlag)
-        && Checks.All(check => check.IsEmpty) && !HasDiagnostic && !HasReadBack;
-}
-
-/// <summary>One character's line in check 0: goal, stakes, urgency.</summary>
-public sealed class GsuRow
-{
-    public string Character { get; set; } = string.Empty;
-    public string Goal { get; set; } = string.Empty;
-    public string Stakes { get; set; } = string.Empty;
-    public string Urgency { get; set; } = string.Empty;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Character) && string.IsNullOrWhiteSpace(Goal)
-        && string.IsNullOrWhiteSpace(Stakes) && string.IsNullOrWhiteSpace(Urgency);
-}
-
-/// <summary>One check: its answer and Y/N flag, and — only where flagged —
-/// the Lens applied to that flagged thing.</summary>
-public sealed class ReviseCheck
-{
-    public string Name { get; set; } = string.Empty;
-    public string Answer { get; set; } = string.Empty;
-    public string Flag { get; set; } = string.Empty;
-    public string Lens { get; set; } = string.Empty;
-    public string Fragment { get; set; } = string.Empty;
-    public string Moved { get; set; } = string.Empty;
-    public string MovedWhy { get; set; } = string.Empty;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Answer) && string.IsNullOrWhiteSpace(Flag) && string.IsNullOrWhiteSpace(Lens)
-        && string.IsNullOrWhiteSpace(Fragment) && string.IsNullOrWhiteSpace(Moved) && string.IsNullOrWhiteSpace(MovedWhy);
-}
-
-/// <summary>Bridge ("Generate — Ideation or Bridge", Path B): two fixed
-/// points, rounds of three candidate links between them.</summary>
-public sealed class BridgeRun
-{
-    public string A { get; set; } = string.Empty;
-    public string Z { get; set; } = string.Empty;
-    public List<BridgeRound> Rounds { get; set; } = new() { new() };
-    public string Wire { get; set; } = string.Empty;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(A) && string.IsNullOrWhiteSpace(Z) && string.IsNullOrWhiteSpace(Wire)
-        && Rounds.All(round => round.IsEmpty);
-}
-
-public sealed class BridgeRound
-{
-    public List<string> Candidates { get; set; } = new() { string.Empty, string.Empty, string.Empty };
-    public string Picked { get; set; } = string.Empty;
-
-    public bool IsEmpty => string.IsNullOrWhiteSpace(Picked) && Candidates.All(string.IsNullOrWhiteSpace);
-}
-
-/// <summary>Position ("Place or Build — Position or Fill", Path A): one
-/// moment tried in the story's seven slots, one turn at a time.</summary>
-public sealed class PositionRun
-{
-    public string Moment { get; set; } = string.Empty;
-    public List<PositionTurn> Turns { get; set; } = new() { new() };
-    public List<string> Shortlist { get; set; } = new() { string.Empty, string.Empty };
-
-    public const int SlotCount = 7;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Moment) && Shortlist.All(string.IsNullOrWhiteSpace) && Turns.All(turn => turn.IsEmpty);
-}
-
-public sealed class PositionTurn
-{
-    // One of the seven turn labels (SplitScript.Turns), or empty.
-    public string Slot { get; set; } = string.Empty;
-    public string Before { get; set; } = string.Empty;
-    public string After { get; set; } = string.Empty;
-    public string Alive { get; set; } = string.Empty;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Slot) && string.IsNullOrWhiteSpace(Before)
-        && string.IsNullOrWhiteSpace(After) && string.IsNullOrWhiteSpace(Alive);
-}
-
 /// <summary>
 /// The per-answer burst timer (SLATE-PLAN decision E). Off unless the writer
 /// turns it on; expiry only ever advances to the next answer.
@@ -299,132 +140,6 @@ public sealed class BurstSettings
 
     // The Lens is applied timed, 3–5 minutes in the worksheet.
     public int LensMinutes { get; set; } = 4;
-}
-
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum ChainPath { Woac, Flaw }
-
-/// <summary>
-/// One forward chain (the "Place or Build — Forward Chain" worksheet). WOAC
-/// stores its rounds; the Flaw brainstorm stores its eight answers. Every
-/// field is optional and a chain can be left at any point.
-/// </summary>
-public sealed class ChainRun
-{
-    public ChainPath Path { get; set; }
-
-    // "Character + starting want" or "Character + the flaw".
-    public string Seed { get; set; } = string.Empty;
-
-    // WOAC rounds. Only the first round's Want is stored: every later Want
-    // is the previous round's Consequence, read live, so it cannot drift.
-    public List<ChainRound> Rounds { get; set; } = new() { new() };
-
-    // Character Flaw Brainstorm, one answer per fixed question.
-    public List<string> Answers { get; set; } = Enumerable.Repeat(string.Empty, ChainRun.FlawQuestionCount).ToList();
-
-    // "Read it back — what's the scene now, in one line?"
-    public string ReadBack { get; set; } = string.Empty;
-
-    public const int FlawQuestionCount = 8;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Seed) && string.IsNullOrWhiteSpace(ReadBack)
-        && Rounds.All(round => round.IsEmpty)
-        && Answers.All(string.IsNullOrWhiteSpace);
-}
-
-/// <summary>Path A — A→Z→Split. Rung 0 fixes the ends; each rung after is one split.</summary>
-public sealed class SplitRun
-{
-    public string A { get; set; } = string.Empty;
-    public string Z { get; set; } = string.Empty;
-    public List<string> Candidates { get; set; } = new() { string.Empty, string.Empty, string.Empty };
-    public string Midpoint { get; set; } = string.Empty;
-    public string MidpointAlive { get; set; } = string.Empty;
-    public string PP1 { get; set; } = string.Empty;
-    public string Crisis { get; set; } = string.Empty;
-    public string Inciting { get; set; } = string.Empty;
-    public string Pinch1 { get; set; } = string.Empty;
-    public string Pinch2 { get; set; } = string.Empty;
-    public string LastObstacle { get; set; } = string.Empty;
-
-    // The optional matched belief cut, asked inline after each plot turn.
-    public bool BeliefLayer { get; set; }
-    public string Pinch1ThirdRail { get; set; } = string.Empty;
-    public string Pinch2ThirdRail { get; set; } = string.Empty;
-
-    public bool HasRung2 => !string.IsNullOrWhiteSpace(PP1) || !string.IsNullOrWhiteSpace(Crisis);
-    public bool HasRung3 => !string.IsNullOrWhiteSpace(Inciting) || !string.IsNullOrWhiteSpace(Pinch1)
-        || !string.IsNullOrWhiteSpace(Pinch2) || !string.IsNullOrWhiteSpace(LastObstacle);
-}
-
-/// <summary>Path B — Belief Split. The five named cuts, by ratio.</summary>
-public sealed class BeliefRun
-{
-    public string Shape { get; set; } = string.Empty;
-    public string A { get; set; } = string.Empty;
-    public string Z { get; set; } = string.Empty;
-    public string Ghost { get; set; } = string.Empty;
-    public string GhostSize { get; set; } = string.Empty;
-    public string GhostCommensurate { get; set; } = string.Empty;
-    public string GhostMismatch { get; set; } = string.Empty;
-    public string Cut50Change { get; set; } = string.Empty;
-    public List<BeliefCut> Cuts { get; set; } = BeliefCut.Ratios.Select(ratio => new BeliefCut { Ratio = ratio }).ToList();
-
-    public BeliefCut Cut(int ratio)
-    {
-        var cut = Cuts.FirstOrDefault(existing => existing.Ratio == ratio);
-        if (cut is null)
-        {
-            cut = new BeliefCut { Ratio = ratio };
-            Cuts.Add(cut);
-        }
-
-        return cut;
-    }
-
-    public bool HasRung3 => !string.IsNullOrWhiteSpace(Cut(25).Text) || !string.IsNullOrWhiteSpace(Cut(75).Text);
-    public bool HasRung4 => !string.IsNullOrWhiteSpace(Cut(12).Text) || !string.IsNullOrWhiteSpace(Cut(88).Text);
-}
-
-public sealed class BeliefCut
-{
-    public static readonly int[] Ratios = { 12, 25, 50, 75, 88 };
-
-    public int Ratio { get; set; }
-    public string Text { get; set; } = string.Empty;
-    public string Alive { get; set; } = string.Empty;
-}
-
-/// <summary>Path C — Extend Backward. Links run from Z backwards, one at a time.</summary>
-public sealed class ExtendRun
-{
-    public string Z { get; set; } = string.Empty;
-    public List<ExtendLink> Links { get; set; } = new() { new() };
-    public string ChainAlive { get; set; } = string.Empty;
-    public string WeakestLink { get; set; } = string.Empty;
-}
-
-public sealed class ExtendLink
-{
-    public string Text { get; set; } = string.Empty;
-
-    // The mystery-lens variant: Z as a crime scene, what would a detective
-    // need to find — a different question for this link only.
-    public bool Mystery { get; set; }
-}
-
-public sealed class ChainRound
-{
-    public string Want { get; set; } = string.Empty;
-    public string Obstacle { get; set; } = string.Empty;
-    public string Action { get; set; } = string.Empty;
-    public string Consequence { get; set; } = string.Empty;
-
-    public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(Want) && string.IsNullOrWhiteSpace(Obstacle)
-        && string.IsNullOrWhiteSpace(Action) && string.IsNullOrWhiteSpace(Consequence);
 }
 
 /// <summary>
@@ -458,21 +173,6 @@ public sealed class IdeationRound
     public string Output { get; set; } = string.Empty;
 }
 
-/// <summary>The Fill worksheet (Path B) for one bracket. Every field is optional.</summary>
-public sealed class FillRun
-{
-    public string Bracket { get; set; } = string.Empty;
-    public List<FillOption> Options { get; set; } = new() { new(), new(), new() };
-    public string PointsTo { get; set; } = string.Empty;
-    public string Answer { get; set; } = string.Empty;
-}
-
-public sealed class FillOption
-{
-    public string Text { get; set; } = string.Empty;
-    public string WhyWrong { get; set; } = string.Empty;
-}
-
 /// <summary>
 /// Reads and writes <c>&lt;root&gt;/.slate/&lt;script name&gt;.json</c>. Keys
 /// go through <see cref="ScriptLibrary.TryValidateName"/> so browser input can
@@ -482,7 +182,7 @@ public sealed class FillOption
 /// </summary>
 public sealed class SlateStore
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     // Ideation's file. Not a script sidecar, so the orphan sweep leaves it.
     public const string IdeationFile = "ideation.json";
@@ -515,12 +215,15 @@ public sealed class SlateStore
                 return null;
             }
 
-            var document = JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
+            var json = File.ReadAllText(path);
+            var document = JsonSerializer.Deserialize<SlateDocument>(json, JsonOptions);
             if (document is not null)
             {
-                // Old per-tool records become generic runs (docs/SLATE-REDO-PLAN.md
-                // R-E). In memory only; the file is rewritten on the next save.
-                Passage.Web.Services.Tools.SlateMigration.Migrate(document);
+                // A sidecar below the current version kept one record list per tool. They
+                // become generic runs (docs/SLATE-REDO-PLAN.md R-E), in memory only; the file
+                // is rewritten at the current version on the next save. The version is read
+                // from the raw JSON: a sidecar that lacks the key would otherwise pass for current.
+                Passage.Web.Services.Tools.SlateMigration.Migrate(document, json);
             }
 
             return document;

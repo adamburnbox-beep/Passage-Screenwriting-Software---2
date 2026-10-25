@@ -1,8 +1,8 @@
 @* The Writer's Tools dock's top level (docs/SLATE-REDO-PLAN.md §4.1): a grid
    of small cards under one chip row, and the runner once a run is open.
-   Exercises in the catalog open in the runner; the rest still open their
-   old view until the row that ports them ("Classic"). No counts, ticks or
-   dates anywhere (rule 0). *@
+   Exercises in the catalog open in the runner; the Ideation burst is the one
+   card that opens a full-screen overlay instead. No counts, ticks or dates
+   anywhere (rule 0). *@
 @using Passage.Web.Services.Tools
 @inject IJSRuntime JS
 
@@ -67,11 +67,10 @@ else
         (Shelf.DeadScene, "A dead scene")
     };
 
-    // Exercises in the catalog and the old-view tools, in launcher order. A
-    // tool leaves the Classic list when the row that ports it lands.
+    // The deck in launcher order: the catalog's exercises, and the Ideation burst overlay.
     private static readonly Card[] Cards =
     {
-        new(ClassicIdeation, "Ideation burst", "Loosen up with fast, throwaway lines", Shelf.Nothing, "⚡"),
+        new(IdeationId, "Ideation burst", "Loosen up with fast, throwaway lines", Shelf.Nothing, "⚡"),
         new(SlateMigration.BridgeId, "Bridge", "Connect two moments you know", Shelf.Nothing, "⇄"),
         new(SlateMigration.SplitId, "A→Z→Split", "Find the middle of the story", Shelf.Ending, "◇"),
         new(SlateMigration.BeliefId, "Belief Split", "Split on what a character believes", Shelf.Ending, "☺"),
@@ -85,14 +84,14 @@ else
         new(SlateMigration.UnderstudyId, "Understudy", "The furniture is the hero of its own movie", Shelf.SceneGoing, "🎭")
     };
 
-    public const string ClassicIdeation = "ideation";
+    public const string IdeationId = "ideation";
 
     [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
     [Parameter] public string? OpenRunId { get; set; }
     [Parameter] public EventCallback<string?> OpenRunIdChanged { get; set; }
 
-    // A tool without an exercise yet: the host opens its old view.
-    [Parameter] public EventCallback<string> OnOpenClassic { get; set; }
+    // The Ideation burst is not an exercise: the host opens its overlay.
+    [Parameter] public EventCallback OnOpenIdeation { get; set; }
 
     private Shelf? _shelf;
     private IReadOnlyList<RightNowSuggestion> _rightNow = Array.Empty<RightNowSuggestion>();
@@ -161,7 +160,7 @@ else
     {
         if (ExerciseCatalog.Find(card.Id) is not { } exercise)
         {
-            await OnOpenClassic.InvokeAsync(card.Id);
+            await OnOpenIdeation.InvokeAsync();
             return;
         }
 

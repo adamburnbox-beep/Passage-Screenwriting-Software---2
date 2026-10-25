@@ -136,3 +136,18 @@ public static class SplitScript
     public static string OneLine(string value) =>
         string.Join(' ', (value ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(part => part.Trim()));
 }
+
+/// <summary>The nine lines of the Shape a Split run holds, as <see cref="SplitScript"/> writes them. Built from a run's
+/// answers by <c>ShapeAnswers.ToSplitRun</c>; never stored.</summary>
+public sealed class SplitRun
+{
+    public string A { get; set; } = string.Empty;
+    public string Z { get; set; } = string.Empty;
+    public string Inciting { get; set; } = string.Empty;
+    public string PP1 { get; set; } = string.Empty;
+    public string Pinch1 { get; set; } = string.Empty;
+    public string Midpoint { get; set; } = string.Empty;
+    public string Pinch2 { get; set; } = string.Empty;
+    public string Crisis { get; set; } = string.Empty;
+    public string LastObstacle { get; set; } = string.Empty;
+}
