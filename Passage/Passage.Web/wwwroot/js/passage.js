@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, besideOpen: false, besideBeats: false, besideWidth: 300, typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, besideOpen: false, besideBeats: false, besideWidth: 300, boardDescriptions: true, typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -196,6 +196,11 @@ window.passage = (function () {
     function setBeside(open, beats) {
         session.besideOpen = !!open;
         session.besideBeats = !!beats;
+        scheduleSessionSave();
+    }
+
+    function setBoardDescriptions(show) {
+        session.boardDescriptions = !!show;
         scheduleSessionSave();
     }
 
@@ -2041,7 +2046,7 @@ window.passage = (function () {
 
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
-        init, applyHighlights, setContent, setDirty, scrollToLine, setBeside,
+        init, applyHighlights, setContent, setDirty, scrollToLine, setBeside, setBoardDescriptions,
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,

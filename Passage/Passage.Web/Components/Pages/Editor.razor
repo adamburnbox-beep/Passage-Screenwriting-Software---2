@@ -532,6 +532,8 @@ Click New to start one — files are stored on the server volume.</div>
                     var detachedItems = DetachedItems;
                     <div class="preview-toolbar beats-toolbar board-toolbar">
                         @RenderFilterBar
+                        <button class="btn" @onclick="ToggleBoardDescriptionsAsync">Descriptions: @(_boardDescriptions ? "hide" : "show")</button>
+                        <button class="btn" @onclick="ToggleCollapseAll">@(BoardAllCollapsed ? "Expand all" : "Collapse all")</button>
                         <button class="btn" title="@(TemplatesAvailable ? "Write a structure into the script" : "Available only while the script has no # or ## heading")" @onclick="OpenTemplates">Start from a template…</button>
                         @if (detachedItems.Count > 0)
                         {
@@ -581,7 +583,7 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                 }
                 else
                 {
-                    <div class="board-surface">
+                    <div class="board-surface @(_boardDescriptions ? null : "no-descriptions")">
                         @foreach (var lane in _analysis.BoardLanes)
                         {
                             var laneKey = LaneKey(lane);
@@ -614,7 +616,7 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                 {
                                     @foreach (var group in lane.Groups)
                                     {
-                                        var groupKey = laneKey + "/" + GroupKey(group);
+                                        var groupKey = BoardCollapse.GroupKey(laneKey, group);
                                         var groupOpen = !_collapsedGroups.Contains(groupKey);
                                         <div class="board-group">
                                             @if (group.SequenceCard is not null)
@@ -2678,6 +2680,8 @@ Open a .fountain file to see formatted pages.</div>
 
         public bool BesideBeats { get; init; }
 
+        public bool BoardDescriptions { get; init; } = true;
+
         public bool TypewriterScrolling { get; init; }
 
         public bool FocusLine { get; init; }
@@ -2758,6 +2762,7 @@ Open a .fountain file to see formatted pages.</div>
         _workshopOpen = snapshot.WorkshopOpen;
         _besideOpen = snapshot.BesideOpen;
         _besideBeats = snapshot.BesideBeats;
+        _boardDescriptions = snapshot.BoardDescriptions;
         _typewriterScrolling = snapshot.TypewriterScrolling;
         _focusLine = snapshot.FocusLine;
         _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
@@ -4725,9 +4730,39 @@ Open a .fountain file to see formatted pages.</div>
     private readonly HashSet<string> _collapsedLanes = new(StringComparer.Ordinal);
     private readonly HashSet<string> _collapsedGroups = new(StringComparer.Ordinal);
 
-    private static string LaneKey(BoardLane lane) => lane.ActCard?.Heading ?? "\u0000lane";
+    private static string LaneKey(BoardLane lane) => BoardCollapse.LaneKey(lane);
 
-    private static string GroupKey(BoardGroup group) => group.SequenceCard?.Heading ?? "\u0000group";
+    private bool _boardDescriptions = true;
+
+    private bool BoardAllCollapsed =>
+        _analysis.BoardLanes.Count > 0 && BoardCollapse.AllKeys(_analysis.BoardLanes) is var (lanes, groups)
+            && lanes.IsSubsetOf(_collapsedLanes) && groups.IsSubsetOf(_collapsedGroups);
+
+    private void ToggleCollapseAll()
+    {
+        if (BoardAllCollapsed)
+        {
+            _collapsedLanes.Clear();
+            _collapsedGroups.Clear();
+            return;
+        }
+
+        var (lanes, groups) = BoardCollapse.AllKeys(_analysis.BoardLanes);
+        _collapsedLanes.UnionWith(lanes);
+        _collapsedGroups.UnionWith(groups);
+    }
+
+    private async Task ToggleBoardDescriptionsAsync()
+    {
+        _boardDescriptions = !_boardDescriptions;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setBoardDescriptions", _boardDescriptions);
+        }
+        catch (JSException)
+        {
+        }
+    }
 
     private void ToggleLane(string key)
     {

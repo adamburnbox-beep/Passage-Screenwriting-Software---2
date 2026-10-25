@@ -1626,6 +1626,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     text-transform: uppercase;
 }
 
+.board-surface.no-descriptions .board-lane-synopsis,
+.board-surface.no-descriptions .board-group-synopsis,
+.board-surface.no-descriptions .card-body { display: none; }
+
 .board-group-synopsis {
     font-size: 11px;
     color: var(--muted-text);
