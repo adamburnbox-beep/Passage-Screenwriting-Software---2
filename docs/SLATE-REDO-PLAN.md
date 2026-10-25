@@ -347,7 +347,7 @@ must leave the dock fully working: tools not yet ported stay reachable from
 the new launcher (a "Classic" link on their card that opens the old view)
 until their row deletes the old code.
 
-### T1 — Engine, model, migration scaffold · `todo`
+### T1 — Engine, model, migration scaffold · `done`
 
 - `Exercise.cs`, `ExerciseRun.cs`, `ExerciseEngine.cs` with every step kind
   in §4.3 implemented in the engine (rendering comes later).
@@ -358,6 +358,29 @@ until their row deletes the old code.
   answered; branch shows/hides; stop point; skip), migration round-trip of a
   WOAC chain with three rounds and a Flaw run, version bump.
 - **No UI change.** Success: build clean, tests pass, existing dock untouched.
+
+**Done:** `Services/Tools/{Exercise,ExerciseRun,ExerciseEngine,SlateMigration}.cs`.
+Engine: `Sequence` (loop expansion, branch visibility), `Current`, `Trail`,
+`GetAnswer` (carry read live, never stored; `SetAnswer` refuses a carried
+slot), loop round appended when the group's last step is answered in the last
+round, `Skip`/`Continue`, `PickOptions`, `Roll`, `SetLine`/`SetItem`. Answer
+keys: round r>0 `key#r`, Lines slot `key[i]`, Slots item `key/item`. Migrated
+WOAC keys `want/obstacle/action/consequence/readback`; Flaw `q0..q7`,
+`readback`. `SlateStore.Load` migrates in memory when `SlateVersion < 2`;
+`CurrentVersion` is 2. 7 new tests (117 total, all pass).
+
+**Deviations:**
+- `SlateStore.CurrentVersion` is shared with the ideation and templates files,
+  so those are now stamped 2 as well. Nothing reads their version.
+- Migration keeps `Chains` in the document (the dock still reads it until T2)
+  and derives run ids (`migrated-chain-N`); T2 must stop the dock writing
+  Chains once its views go, or migrated copies go stale.
+- Skip and Stop-continue share one `Passed` list; one loop group per exercise;
+  Branch inside a Loop group is not supported (nothing in the deck needs it).
+- Branch is a marker step (`BranchGroup`, `OnKey`, `OnValue`, `AllSlots`) with
+  the group's steps tagged `Group`; `AllSlots` covers Position's "flat
+  everywhere". A sidecar with no `SlateVersion` key reads as current, not v1
+  (every written sidecar has the key).
 
 ### T2 — Launcher, runner shell, WOAC and Flaw ported · `todo`
 

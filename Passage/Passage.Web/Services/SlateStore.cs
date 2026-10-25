@@ -25,6 +25,10 @@ public sealed class SlateDocument
     // what each chain is about, never by when it was run.
     public List<ChainRun> Chains { get; set; } = new();
 
+    // The generic run list (docs/SLATE-REDO-PLAN.md R-E). v1 records are
+    // migrated into it on load; the old lists stay until their dock views go.
+    public List<Passage.Web.Services.Tools.ExerciseRun> Exercises { get; set; } = new();
+
     public BurstSettings Burst { get; set; } = new();
 
     // The Split family ("Generate — Split, Belief, or Extend Backward"). One
@@ -478,7 +482,7 @@ public sealed class FillOption
 /// </summary>
 public sealed class SlateStore
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     // Ideation's file. Not a script sidecar, so the orphan sweep leaves it.
     public const string IdeationFile = "ideation.json";
@@ -511,7 +515,13 @@ public sealed class SlateStore
                 return null;
             }
 
-            return JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
+            var document = JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions);
+            if (document is not null)
+            {
+                Passage.Web.Services.Tools.SlateMigration.Migrate(document);
+            }
+
+            return document;
         }
     }
 

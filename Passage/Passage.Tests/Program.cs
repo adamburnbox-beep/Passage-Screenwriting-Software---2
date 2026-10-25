@@ -1,3 +1,4 @@
+using Passage.Web.Services.Tools;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -53,6 +54,13 @@ class Program
         failures += RunTest("Test SlateStore Prunes Orphans", TestSlateStorePrunesOrphans);
         failures += RunTest("Test SlateStore Corrupt Sidecar Fails Visibly", TestSlateStoreCorruptSidecarFailsVisibly);
         failures += RunTest("Test SlateStore Chain Round Trip", TestSlateStoreChainRoundTrip);
+        failures += RunTest("Test Exercise Engine Carry Is Read Live", TestExerciseEngineCarryIsReadLive);
+        failures += RunTest("Test Exercise Engine Loop Appends A Round", TestExerciseEngineLoopAppendsRound);
+        failures += RunTest("Test Exercise Engine Branch Shows And Hides", TestExerciseEngineBranch);
+        failures += RunTest("Test Exercise Engine Stop And Skip", TestExerciseEngineStopAndSkip);
+        failures += RunTest("Test Exercise Engine Step Kinds", TestExerciseEngineStepKinds);
+        failures += RunTest("Test Slate Migration Chains", TestSlateMigrationChains);
+        failures += RunTest("Test Slate Migration Loads Old And New Sidecars", TestSlateMigrationLoadsSidecars);
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
@@ -927,6 +935,246 @@ class Program
 
             Assert(new ChainRun().IsEmpty, "A fresh chain is empty");
             Assert(!new ChainRun { ReadBack = "x" }.IsEmpty, "A read-back line alone makes a chain worth keeping");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static Exercise WoacLike() => new()
+    {
+        Id = "woac",
+        Name = "WOAC",
+        Steps = new Step[]
+        {
+            new() { Key = "want", Group = "round" },
+            new() { Key = "obstacle", Group = "round" },
+            new() { Key = "action", Group = "round" },
+            new() { Key = "consequence", Group = "round" },
+            new() { Key = "rounds", Kind = StepKind.Loop, LoopGroup = "round", CarryFrom = "consequence", CarryTo = "want" },
+            new() { Key = "readback" }
+        }
+    };
+
+    static void TestExerciseEngineCarryIsReadLive()
+    {
+        var engine = new ExerciseEngine(WoacLike());
+        var run = new ExerciseRun();
+        engine.SetAnswer(run, "want", 0, "the key");
+        engine.SetAnswer(run, "consequence", 0, "the dog is loose");
+        Assert(engine.GetAnswer(run, "want", 1) == "the dog is loose", "Round two's Want is round one's Consequence");
+
+        engine.SetAnswer(run, "consequence", 0, "the door is locked");
+        Assert(engine.GetAnswer(run, "want", 1) == "the door is locked", "Editing the source changes the carry: it was read, not copied");
+        Assert(!run.Answers.ContainsKey("want#1"), "The carried Want is never stored");
+        Assert(!engine.SetAnswer(run, "want", 1, "typed over"), "A carried value refuses to be set");
+        Assert(engine.GetAnswer(run, "want", 1) == "the door is locked", "The refused write changed nothing");
+    }
+
+    static void TestExerciseEngineLoopAppendsRound()
+    {
+        var engine = new ExerciseEngine(WoacLike());
+        var run = new ExerciseRun();
+        engine.SetAnswer(run, "want", 0, "w");
+        engine.SetAnswer(run, "obstacle", 0, "o");
+        engine.SetAnswer(run, "action", 0, "a");
+        Assert(run.Rounds == 1, "No round appended before the last step is answered");
+
+        engine.SetAnswer(run, "consequence", 0, "c");
+        Assert(run.Rounds == 2, "Answering the last step appends a round");
+        var current = engine.Current(run);
+        Assert(current is { } now && now.Step.Key == "obstacle" && now.Round == 1,
+            "The next round opens past the carried Want, at the Obstacle");
+
+        engine.SetAnswer(run, "consequence", 0, "c edited");
+        Assert(run.Rounds == 2, "Re-answering an earlier round appends nothing");
+        engine.SetAnswer(run, "obstacle", 1, "o2");
+        engine.SetAnswer(run, "action", 1, "a2");
+        engine.SetAnswer(run, "consequence", 1, "   ");
+        Assert(run.Rounds == 2, "A blank last answer appends nothing");
+        engine.SetAnswer(run, "consequence", 1, "c2");
+        Assert(run.Rounds == 3 && engine.Sequence(run).Count(slot => slot.Round == 2) == 4, "A third round appears with its four steps");
+        Assert(engine.Sequence(run).Last().Step.Key == "readback", "Steps after the loop follow the last round");
+    }
+
+    static Exercise BranchExercise() => new()
+    {
+        Id = "revise",
+        Name = "Check",
+        Steps = new Step[]
+        {
+            new() { Key = "alive", Kind = StepKind.YesNo },
+            new() { Key = "y-branch", Kind = StepKind.Branch, BranchGroup = "lens", OnKey = "alive", OnValue = "Y" },
+            new() { Key = "lens", Group = "lens" },
+            new() { Key = "turns", Kind = StepKind.Slots, Source = "turns" },
+            new() { Key = "flat-branch", Kind = StepKind.Branch, BranchGroup = "ladder", OnKey = "turns", OnValue = "flat", AllSlots = true },
+            new() { Key = "ladder", Group = "ladder" },
+            new() { Key = "last" }
+        }
+    };
+
+    static void TestExerciseEngineBranch()
+    {
+        var engine = new ExerciseEngine(BranchExercise(), source => new[] { "one", "two" });
+        var run = new ExerciseRun();
+        Func<string[]> keys = () => engine.Sequence(run).Select(slot => slot.Step.Key).ToArray();
+
+        Assert(!keys().Contains("lens"), "A branch group is hidden until its Y is given");
+        engine.SetAnswer(run, "alive", 0, "Y");
+        Assert(keys().SequenceEqual(new[] { "alive", "lens", "turns", "last" }), "Y shows the lens in place");
+        engine.SetAnswer(run, "lens", 0, "kept text");
+        engine.SetAnswer(run, "alive", 0, "N");
+        Assert(!keys().Contains("lens"), "Changing the answer hides the group again");
+        Assert(run.Answers["lens"] == "kept text", "Hiding a group keeps what was written in it");
+        engine.SetAnswer(run, "alive", 0, string.Empty);
+        Assert(!keys().Contains("lens"), "Clearing the answer hides the group");
+        Assert(!keys().Contains("y-branch"), "The Branch marker is never a step");
+
+        engine.SetItem(run, "turns", 0, "one", "flat");
+        Assert(!keys().Contains("ladder"), "AllSlots needs every item");
+        engine.SetItem(run, "turns", 0, "two", "flat");
+        Assert(keys().Contains("ladder"), "Flat everywhere shows the ladder");
+        engine.SetItem(run, "turns", 0, "two", "alive");
+        Assert(!keys().Contains("ladder"), "One alive turn hides it");
+    }
+
+    static void TestExerciseEngineStopAndSkip()
+    {
+        var exercise = new Exercise
+        {
+            Id = "t",
+            Name = "T",
+            Steps = new Step[]
+            {
+                new() { Key = "a" },
+                new() { Key = "halt", Kind = StepKind.Stop, Text = "Stop here" },
+                new() { Key = "b" },
+                new() { Key = "c" }
+            }
+        };
+        var engine = new ExerciseEngine(exercise);
+        var run = new ExerciseRun();
+        engine.SetAnswer(run, "a", 0, "x");
+        engine.SetAnswer(run, "c", 0, "already written");
+
+        Assert(engine.Current(run) is { } stop && stop.Step.Key == "halt", "The stop point is current once the step before it is answered");
+        Assert(engine.Trail(run).Select(entry => entry.Slot.Step.Key).SequenceEqual(new[] { "a", "c" }),
+            "A stop point doesn't hide a later step that already has text, and isn't a trail line");
+
+        engine.Continue(run, engine.Current(run)!.Value);
+        Assert(engine.Current(run) is { } next && next.Step.Key == "b", "Keep going moves on to the next unanswered step");
+        engine.Skip(run, engine.Current(run)!.Value);
+        Assert(engine.Current(run) is null, "Skipping the last open step leaves nothing current: no prompt, no block");
+        Assert(!run.Answers.ContainsKey("b"), "Skip stores no answer");
+        Assert(engine.Trail(run).Count == 2, "A skipped step is not in the trail");
+
+        engine.SetAnswer(run, "b", 0, "late text");
+        Assert(!run.Passed.Contains("b") && engine.Trail(run).Count == 3, "Text written after a skip still counts");
+    }
+
+    static void TestExerciseEngineStepKinds()
+    {
+        var exercise = new Exercise
+        {
+            Id = "k",
+            Name = "K",
+            Steps = new Step[]
+            {
+                new() { Key = "cands", Kind = StepKind.Lines, Count = 3, Open = true },
+                new() { Key = "pick", Kind = StepKind.Pick, FromKey = "cands" },
+                new() { Key = "dice", Kind = StepKind.Dice, Table = new[] { "A", "B", "C" } },
+                new() { Key = "who", Kind = StepKind.Slots, Source = "speakers" }
+            }
+        };
+        var engine = new ExerciseEngine(exercise, source => source == "speakers" ? new[] { "MARA", "JOE" } : Array.Empty<string>());
+        var run = new ExerciseRun();
+
+        Assert(engine.Current(run)!.Value.Step.Key == "cands", "An empty Lines step is current");
+        engine.SetLine(run, "cands", 0, 0, "one");
+        engine.SetLine(run, "cands", 0, 2, "three");
+        Assert(engine.Current(run)!.Value.Step.Key == "pick", "Any filled slot answers a Lines step");
+        Assert(engine.PickOptions(run, engine.Current(run)!.Value).SequenceEqual(new[] { "one", "three" }), "Pick offers the non-blank lines");
+        engine.SetLine(run, "cands", 0, 3, "an extra");
+        Assert(engine.PickOptions(run, engine.Current(run)!.Value).Contains("an extra"), "An Open step's added line is offered too");
+
+        engine.SetAnswer(run, "pick", 0, "write my own");
+        Assert(engine.Current(run)!.Value.Step.Key == "dice", "A Pick takes any text, not only an option");
+        var rolled = engine.Roll(run, engine.Current(run)!.Value, new Random(1));
+        Assert(rolled is "A" or "B" or "C" && engine.GetAnswer(run, "dice") == rolled, "Roll stores a row of the table");
+        Assert(engine.Roll(run, new StepSlot(exercise.Steps[0], 0), new Random(1)) is null, "Roll on a non-Dice step does nothing");
+
+        Assert(engine.Current(run)!.Value.Step.Key == "who", "The Slots step is next");
+        engine.SetItem(run, "who", 0, "JOE", "wants out");
+        Assert(engine.Current(run) is null, "One filled item answers a Slots step");
+        Assert(engine.Trail(run).Last().Summary == "JOE: wants out", "The trail shows only filled items");
+    }
+
+    static void TestSlateMigrationChains()
+    {
+        var document = new SlateDocument { SlateVersion = 1 };
+        var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key", ReadBack = "a scene" };
+        woac.Rounds[0].Want = "the key";
+        woac.Rounds[0].Obstacle = "the dog";
+        woac.Rounds[0].Action = "feeds it";
+        woac.Rounds[0].Consequence = "it follows her";
+        woac.Rounds.Add(new ChainRound { Obstacle = "the gate", Action = "climbs", Consequence = "she's out" });
+        woac.Rounds.Add(new ChainRound { Obstacle = "the road" });
+        document.Chains.Add(woac);
+        var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks" };
+        flaw.Answers[2] = "carries it alone";
+        document.Chains.Add(flaw);
+        document.Fills.Add(new FillRun { Bracket = "[SOMETHING]" });
+
+        Assert(SlateMigration.Migrate(document) == 2, "Both chains are migrated");
+        Assert(document.SlateVersion == SlateStore.CurrentVersion && SlateStore.CurrentVersion == 2, "The version bumps to 2");
+        Assert(document.Fills.Count == 1 && document.Chains.Count == 2, "Everything that is not migrated is left untouched");
+
+        var run = document.Exercises[0];
+        Assert(run.ExerciseId == "woac" && run.Rounds == 3 && run.Anchor.Text == "MARA wants the key", "A WOAC run keeps its seed and three rounds");
+        var engine = new ExerciseEngine(WoacLike());
+        Assert(engine.GetAnswer(run, "want", 0) == "the key" && engine.GetAnswer(run, "obstacle", 1) == "the gate"
+            && engine.GetAnswer(run, "consequence", 1) == "she's out" && engine.GetAnswer(run, "obstacle", 2) == "the road",
+            "Round answers are readable through the engine");
+        Assert(engine.GetAnswer(run, "want", 1) == "it follows her" && engine.GetAnswer(run, "want", 2) == "she's out",
+            "Later wants come from the carry, as they did in v1");
+        Assert(!run.Answers.ContainsKey("want#1"), "No later Want is stored");
+        Assert(run.Answers["readback"] == "a scene", "The read-back survives");
+
+        var flawRun = document.Exercises[1];
+        Assert(flawRun.ExerciseId == "flaw" && flawRun.Answers["q2"] == "carries it alone" && flawRun.Answers.Count == 1,
+            "A Flaw run keeps its one answer under its question key and drops the empties");
+
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Migrating a migrated document adds nothing");
+        document.SlateVersion = 1;
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Even forced back to v1 it doesn't duplicate");
+    }
+
+    static void TestSlateMigrationLoadsSidecars()
+    {
+        var (_, store, root) = NewSlateFixture();
+        try
+        {
+            var dir = Path.Combine(root, ".slate");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "old.fountain.json"),
+                "{ \"SlateVersion\": 1, \"IgnoredBrackets\": [\"[x]\"], \"Chains\": [ { \"Path\": \"Woac\", \"Seed\": \"S\", \"Rounds\": [ { \"Want\": \"w\", \"Consequence\": \"c\" }, { \"Obstacle\": \"o\" } ] } ] }");
+
+            var old = store.Load("old")!;
+            Assert(old.SlateVersion == 2 && old.IgnoredBrackets.Count == 1, "A v1 sidecar loads and is brought to v2");
+            Assert(old.Chains.Count == 1 && old.Exercises.Count == 1 && old.Exercises[0].Rounds == 2, "Its chain is migrated and the old record kept");
+
+            store.Save("old", old);
+            var again = store.Load("old")!;
+            Assert(again.Exercises.Count == 1, "Save then load doesn't migrate twice");
+            Assert(again.Exercises[0].Answers["obstacle#1"] == "o", "A migrated run round-trips through the sidecar");
+
+            File.WriteAllText(Path.Combine(dir, "new.fountain.json"),
+                "{ \"SlateVersion\": 2, \"Exercises\": [ { \"Id\": \"r1\", \"ExerciseId\": \"woac\", \"Anchor\": { \"Kind\": \"Character\", \"Text\": \"MARA\" }, \"Answers\": { \"want\": \"x\" }, \"Rounds\": 1 } ] }");
+            var current = store.Load("new")!;
+            Assert(current.Exercises.Count == 1 && current.Exercises[0].Anchor.Kind == AnchorKind.Character
+                && current.Exercises[0].Answers["want"] == "x", "A v2 sidecar loads as written, anchor kind by name");
+            Assert(current.SlateVersion == 2, "A v2 sidecar is not migrated again");
         }
         finally
         {
