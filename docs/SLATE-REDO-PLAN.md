@@ -1,0 +1,489 @@
+# Writer's Tools, redone — plan
+
+Replaces the *UI and run model* of the Writer's Tools dock (internally
+"Slate"). Same scheme as the other plans: numbered rows, one row per session,
+status per row, this file is the source of truth and is updated in the same
+commit as the change. Copy-paste prompts are in `docs/SLATE-REDO-SESSIONS.md`.
+
+Status values: `todo` · `partial` · `done` · `verified` (done and checked in
+the running app).
+
+Read with it: `CLAUDE.md`, `PROJECT_RULES.md`, and **only** these parts of
+`docs/SLATE-PLAN.md`: *Rule 0*, decisions *B*, *D* and *E*. The rest of
+SLATE-PLAN describes the build being replaced; its Done notes are useful for
+finding code, not for design.
+
+---
+
+## 1. What's wrong now (review, 2026-10-25)
+
+Checked in the running app on `split-test.fountain` at desktop width.
+
+1. **The launcher is an essay.** Ten tools, each with a 25–45 word
+   description, under five headed groups, in a 340px column. You read
+   ~450 words to pick one. Nothing about the current script influences what
+   is offered.
+2. **Every runner is a printed worksheet.** A→Z→Split opens with a preamble
+   paragraph, then rung headings, a paragraph per rung, six labelled
+   textareas, a stress question, alive/flat pills, a checkbox, a stop-callout,
+   a "keep going" button and an "update the script" button with its own
+   paragraph — all on screen at once. Push/Pull is worse (GSU table, six
+   checks, eight lenses, diagnostic split, read-back). The writer is doing
+   reading comprehension, not writing.
+3. **The worksheets were written for a partner.** The vault's own
+   description (`How the Slate Works.md`, *What I do*) is "hand you one thing
+   … three options, expected to be rejected … write your answers back into
+   the file". The dock kept the worksheet and dropped the partner, so each
+   tool is a form with homework instructions and empty boxes.
+4. **Almost no integration with the project.** Inputs are free text: you
+   type a character's name, a scene, a start and end event, even when the
+   script, Cast, Board and Beat inbox already hold them. Outputs are three
+   paths (fill a bracket, insert one `=` line, write the Shape). Everything
+   else stays in sidecar "working-out" that no other view shows. The story
+   tools built since (Cast colours, storylines, tagging, Beat inbox, project
+   notes) are not used at all.
+5. **The code can't take a redesign in place.** Dock markup is
+   `Editor.razor` ~1017–2092, the ideation overlay ~2122, handlers ~6016–7360:
+   ~2,600 lines of bespoke markup and handlers per tool inside a 7,864-line
+   page. Ten record types in `SlateStore.cs`, one per worksheet.
+
+## 2. The idea in one paragraph
+
+Turn the dock into a **deck of exercises**. Each exercise is a short
+sequence of **one question at a time**, anchored to **something in the
+project** (a character, a scene, a bracket, an inbox beat, two Board cards,
+the story's shape), and every answer can be **sent somewhere real**: the Beat
+inbox, a scene's synopsis, the bracket it came from, a character's note page,
+the Shape. The launcher is a grid of small cards, filtered by one chip row
+("what have you got?") and topped by up to three **"right now"** suggestions
+derived from where the caret is and what the project holds. Exercises can
+also be launched from the thing they're about: a Board card, a Cast row, an
+inbox beat, a bracket under the caret. Rule 0 stays binding throughout.
+
+---
+
+## 3. Standing decisions
+
+### R-A. Rule 0 still outranks everything
+
+`SLATE-PLAN.md` Rule 0 applies to every row here, plus three readings of it
+for the new UI, binding:
+
+- **No step counter.** No "3 of 8", no dots, no progress bar in the runner.
+  The trail of answered questions is the only record of where you are.
+- **No completion state on launcher cards.** No ticks, no "done", no counts
+  of runs. A card may list kept runs *by their anchor* ("Maggie",
+  "INT. KITCHEN"), never by date or number.
+- **Every step can be skipped and every exercise closed** at any point with
+  no prompt. "Done for now" is always visible.
+
+### R-B. Copy: the question verbatim, the explanation folded
+
+*This changes SLATE-PLAN decision A's copy rule. Settled 2026-10-25 — see §7.*
+
+- The **question** on each step keeps the worksheet's words (≤ ~25 words).
+- At most **one hint line** under it (≤ ~15 words), muted.
+- Anything longer — the *why*, the worked example, the "proof it works"
+  column — goes behind a **"Why?"** disclosure, collapsed by default and
+  remembered per browser (not per run).
+- Stop-callouts keep their words but become an **end-of-step panel** with two
+  buttons ("Stop here" / "Keep going"), not a paragraph between fields.
+- Launcher cards: name + one line of ≤ 8 words. The long description moves to
+  the exercise's intro "Why?".
+
+### R-C. Exercises are data; one runner renders them all
+
+No more bespoke markup per worksheet. An exercise is a definition (C#, in
+`Passage.Web/Services/Tools/ExerciseCatalog.cs`), a run is generic
+(answers keyed by step), and a single runner component renders any of them.
+Behaviour that genuinely differs between tools (WOAC carry, Split writing the
+Shape, Position over the seven turns, a Revise **Y** opening its Lens) is
+expressed with a small, fixed set of step kinds and hooks — not by forking
+the runner. If a tool needs something the model can't express, add one step
+kind, with a test; do not special-case the runner.
+
+### R-D. Anchors and outputs go through one host interface
+
+The runner never touches CodeMirror, `_content` or `_analysis` directly. It
+talks to an `IToolHost` that `Editor.razor` implements, which keeps every
+existing trap handled in one place: ranged writes only (SLATE-PLAN D,
+WEB-PARITY 1.6), mirror into `_content` and re-analyse, `scrollToLine(…,
+false)` from a runner, status lines that fail visibly (rule 12).
+
+### R-E. Storage: one generic run list, migrated once
+
+`SlateDocument` gets `List<ExerciseRun> Exercises`. The ten per-tool record
+types are migrated into it on load (sidecar `slateVersion` 1 → 2), then
+deleted in the final row. `StoryData` is **not** touched (STORY-PLAN decision
+A, and its note that "a Slate sidecar revamp is coming" — this is that
+revamp for the worksheet runs only; flag any conflict, don't guess). A run
+never stores a line number; anchors are a Board/beat `Guid` where one exists,
+otherwise text matched at use time (bracket text, character name).
+
+### R-F. Client/server split stays as it is
+
+Burst timers stay in `passage.js` (`startBurst` / `stopBurst`, which already
+work over `textarea[data-slot]` under a root id — the step card exposes its
+inputs that way). Nothing per-keystroke goes over the circuit (CLAUDE.md
+trap 4). Answers save on change, like today.
+
+---
+
+## 4. The design
+
+### 4.1 Launcher (dock top level)
+
+```
+┌ WRITER'S TOOLS ─────────────────── × ┐
+│ RIGHT NOW                            │
+│ ▸ Fill  [SOMETHING forces her to…]   │  ← caret is in a bracket
+│ ▸ Push/Pull  INT. LIGHTHOUSE – NIGHT │  ← caret is in a scene
+│ ▸ Position  "The keeper's letter"    │  ← inbox has a beat
+│                                      │
+│ What have you got?                   │
+│ (All)(Nothing)(An ending)(A moment)  │
+│ (A scene going)(A dead scene)        │
+│                                      │
+│ ┌──────────┐ ┌──────────┐            │
+│ │ ⚡ Burst  │ │ ⇄ Bridge │            │
+│ │ Loosen up│ │ Connect  │            │
+│ │ fast     │ │ two cards│            │
+│ └──────────┘ └──────────┘  …         │
+└──────────────────────────────────────┘
+```
+
+- **Right now** (max 3, hidden when empty), derived on the server from
+  `_caretLine`, `_analysis` and `_slate` by a pure `RightNow.Suggest(...)`:
+  caret inside a bracket → Fill it; caret inside a scene → Push/Pull,
+  Scene Dials or Understudy on that scene (one of them, rotate on each
+  open); inbox beats exist → Position the newest; no Shape and no `#`/`##`
+  headings → A→Z→Split; a character in Cast with no note page → Flaw
+  Brainstorm on the character with the most lines. "One thing, not a menu"
+  (Rule 0.5) is honoured by showing at most three and making each one tap
+  straight into a run with its anchor filled.
+- **Chip row**: the five "what have you got?" rows from the vault's
+  `0 — Which Worksheet`, short labels. Default *All*; selection remembered in
+  `passage.session.v1`.
+- **Cards**: two columns at ≥ 360px dock width, one below. Icon, name, ≤ 8
+  word tagline, and a small anchor glyph (👤 character, 🎬 scene, [ ] bracket,
+  ⇄ two points, ◇ shape, none). Under a card, kept runs as anchor chips;
+  tapping a chip resumes it.
+
+### 4.2 Runner (one question at a time)
+
+```
+┌ ← WOAC chain                   Done for now ┐
+│ ┌ 👤 MAGGIE · wants the lighthouse sold ─ ↗ ┐│  ← anchor strip
+│ └───────────────────────────────────────────┘│
+│  Want      the lighthouse sold          ✎    │  ← trail: answered steps,
+│  Obstacle  her brother won't sign       ✎    │    one line each, tap to edit
+│                                              │
+│  What does she DO about it?                  │  ← the question, 17px
+│  Action, not feeling.            Why? ▾      │  ← hint + disclosure
+│  ┌────────────────────────────────────────┐  │
+│  │                                        │  │
+│  └────────────────────────────────────────┘  │
+│  [ Next ⏎ ]   Skip    ⏱ 30s     Send to ▾    │
+└──────────────────────────────────────────────┘
+```
+
+- **Anchor strip** at the top: the thing this run is about, with its colour
+  (Cast / storyline colour), a ↗ that jumps to it in the script without
+  stealing focus, and a "change" affordance. A missing anchor (scene deleted
+  underneath) renders as "INT. KITCHEN — no longer in the script" and the run
+  still works (rule 12, SLATE-PLAN risk 3).
+- **Trail**: previous answers as single lines; tap one to reopen that step.
+  No numbers.
+- **Step card**: the question, hint, *Why?*, the input(s) for the step kind,
+  and the actions. Enter = Next on single-line steps; Shift+Enter breaks a
+  line on multiline ones (the existing `data-slot-multiline` rule).
+- **Timer** is a per-run toggle in the step card's action row, using the
+  existing burst settings; with it on, Next is automatic on expiry (decision
+  E, unchanged).
+- **Send to ▾** on any answered step and on the end panel: the exercise's
+  allowed targets (§4.4). After a send, the trail line shows a small "→ Inbox"
+  / "→ synopsis" tag so the writer can see where it went — not a count.
+- **Stop points** (the worksheets' stop-callouts) render as an end-of-step
+  panel: the callout's words, *Stop here* (closes, run kept) and *Keep going*.
+- **Partner seam**: a step flagged `Offer = true` shows `PartnerLines` under
+  its input. With `NullStoryPartner` registered nothing renders (existing
+  check: `document.querySelectorAll('.partner')` is empty).
+
+Width: default dock width rises from 340 to 400px; the runner has to be
+readable at 340 (narrowest drag) and at 375px phone width, where the dock
+already covers the main area.
+
+### 4.3 Step kinds (the whole vocabulary)
+
+| Kind | Renders | Used by |
+| --- | --- | --- |
+| `Text` | one textarea (single or multiline) | almost everything |
+| `Lines(n)` | n short slots, burst-able, "another" link if `Open` | Fill candidates, Bridge round, Split candidates, Ideation output |
+| `Pick(fromKey)` | the lines of an earlier `Lines` step as tap targets + "none of these, write it" | Split chosen midpoint, Bridge picked link |
+| `AliveFlat` / `YesNo` | the existing `AliveFlat` pills | Split stress test, Revise checks, Position |
+| `Branch(on, value, group)` | not a widget: shows a step group only when an earlier `YesNo` has a value | Revise **Y** → its Lens; Position flat everywhere → Time-Skip Ladder |
+| `Dice(table)` | a "Roll" button, the rolled row with its meaning, "roll again" | Scene Dials, Ideation lane |
+| `Slots(source)` | one row per item from a project list (the seven turns, the speakers in a scene) with a field each | Position (turns), GSU (speakers), Belief cuts |
+| `Stop(text)` | the end-of-step panel | every stop-callout |
+| `Loop(group, carry)` | repeats a group; `carry` maps one step's answer into the next round's first step, *read live, never copied* (SLATE-PLAN Phase 2's WOAC rule) | WOAC, Extend Backward links, Bridge rounds |
+
+`ExerciseEngine` (pure, in `Services/Tools/`) owns: which step is current,
+what the trail shows, loop expansion, carry, branch visibility. Every rule in
+that table is a unit test in `Passage.Tests` (rule 9: test the carry reads
+live, a branch hides when its Y is cleared, a stop point doesn't block a
+later step that already has text, etc.).
+
+### 4.4 Anchors (inputs) and targets (outputs)
+
+`ProjectContext` (pure, built from `_analysis` + `_slate` on demand) gives the
+pickers their lists:
+
+| Anchor | Source | Picker shows |
+| --- | --- | --- |
+| Character | `_analysis.Characters` + `Slate.Characters` colours | name chips in Cast colour, most lines first |
+| Scene | Board cards of kind Scene (`BoardLanes`), `[[id:…]]` | heading + synopsis line; default = scene under caret |
+| Bracket | `_analysis.Brackets` (ranked, ignore list) | the bracket text and its line |
+| Inbox beat | `Slate.Beats` where `Page == 0` | beat title |
+| Two points | two Board cards, or a card and the end of the Shape | two scene pickers |
+| Shape | `SplitScript.Turns` read from the script | the seven turns with their current text |
+
+Per scene, `StoryFilter.SceneSpeakers(_analysis.Elements)` gives who speaks —
+GSU rows and Understudy's "least important character" come from it, not
+from typing.
+
+Targets, all through `IToolHost`:
+
+| Target | Mechanism (existing code to reuse) |
+| --- | --- |
+| **Fill the bracket** | `passage.replaceInLine` by text (Fill's `AcceptFillAsync`) |
+| **Synopsis under the anchored scene** (or under caret) | `SynopsisPlacement.Find` + `passage.insertLinesAt` |
+| **New Beat in the inbox**, tagged with the run's character / storyline | add a `Beat` with `Page = 0` (the tray's `AddBeat(0)` path) + `StoryItems.ToggleTag` for character/storyline |
+| **New scene card after the anchor** | `BeatBoardText.BuildCardLines("Scene", …)` + `BeatInbox.TryPlan` placement + `insertLinesAt` |
+| **Append to a note page** (character's note, or "Workbench") | `Story.Notes`; create from the built-in *Character* template (`NoteTemplates`, id `…a001`) when the character has no page |
+| **The Shape** | `SplitScript.BuildLines` / the existing `WriteShapeAsync` update path, via an adapter from answers to `SplitRun` |
+| **Copy** | clipboard, for anything else |
+
+Every target reports in the status line what it did or why it didn't
+("INT. KITCHEN is no longer in the script — nothing inserted").
+
+### 4.5 The deck
+
+Existing tools ported, Phase 8 leftovers folded in where they belong, two
+new ones from `engines.md` that need a project to be useful. Questions come
+from the vault worksheets (`/home/arosa/Sync/Obsidian Vault/Story/Slate/
+Worksheets/`) — read the section named, per R-B.
+
+| Exercise | Shelf | Anchor | Steps (sketch) | Lands in |
+| --- | --- | --- | --- | --- |
+| **Ideation burst** | Nothing | none | `Dice(lane)` → loop: dealt input (editable) → `Lines` output, timed → keep one line | Inbox beat (untagged) or copy. Stays full-screen. |
+| **Bridge** | Nothing | Two points | loop: `Lines(3)` timed → `Pick` → the wire read forward | Inbox beats, or scene cards between A and Z |
+| **A→Z→Split** | An ending | Shape | ends (prefilled from the script) → *optional end checks* → `Stop` → `Lines` candidates → `Pick` midpoint → stress `AliveFlat` → `Stop` → PP1/PP2 → `Stop` → the other four; *Mirror Z* as an optional branch | The Shape (write / update) |
+| **Belief Split** | An ending | Character | the five cuts as `Slots` over the turns, third-rail at the pinches; *Cast card* for opponent/supporting as an optional group | Character note; turns' synopses |
+| **Extend Backward** | An ending | Shape end or a scene | Z (or *Obituary Z* branch) → loop: "what had to be true right before this?" with mystery-lens toggle | Inbox beats in order, or scene cards before Z |
+| **Position** | A moment | Inbox beat or scene | `Slots(turns)`: before / after / alive-flat per turn → `Branch` flat everywhere → *Time-Skip Ladder* → shortlist | Moves the beat to the Board under the chosen turn's sequence (the existing Send-to-Board path) |
+| **Fill** | A moment | Bracket | the bracket → `Lines(3)` with "why it's probably wrong" → what the wrongness points to → the real answer (escape hatch first: "if it showed up already, write it here") → optional *Stage it* group | The bracket; then *Next bracket* |
+| **Scene Dials** *(new standalone; was Fill Phase 8 item)* | A scene going | Scene | `Slots(speakers)`: wants out of *this* scene → `Dice(dials)` → fragment | Synopsis under the scene, or copy |
+| **WOAC chain** | A scene going | Character (+ scene) | loop: Want (carried) → Obstacle → Action → Consequence → read it back | Inbox beats per round, or synopsis |
+| **Flaw Brainstorm** | A scene going | Character | the eight questions | Character note; inbox beats |
+| **Push/Pull** | A dead scene | Scene | `Slots(speakers)` GSU → six `YesNo` checks, each **Y** `Branch`es into its Lens + fragment → read-back (incl. the two new Phase 8 questions) | Revision note on the scene; fragment to copy |
+| **Understudy** *(new)* | A scene going | Scene | picks the speaker with fewest lines in the scene (changeable) → what they wanted walking in → five minutes before → what they want that has nothing to do with your plot → freewrite, timed | Inbox beats tagged with that character; optional new storyline |
+
+Not in the deck: Casting Against Type (needs the vault's script library),
+the five-layer build and structure remix (undecided in `engines.md`). Same
+"Not going in" list as SLATE-PLAN otherwise.
+
+### 4.6 Entry points outside the dock
+
+- **Board card**: a "Tools" item in the card's existing action row (next to
+  ✎) → menu of scene-anchored exercises.
+- **Cast row** (CHARACTER panel): "Tools" → character-anchored exercises.
+- **Inbox beat** (BEATS tray and BOARD strip): "Position this".
+- **Bracket under the caret**: covered by *Right now*; no editor widget
+  (keeps CodeMirror untouched).
+
+Each opens the dock (if closed) straight into a new run with the anchor set.
+
+---
+
+## 5. Code layout
+
+New, all in `Passage/Passage.Web/`:
+
+| Path | What |
+| --- | --- |
+| `Services/Tools/Exercise.cs` | `Exercise`, `Step`, `StepKind`, `Shelf`, `AnchorKind`, `TargetKind` records |
+| `Services/Tools/ExerciseCatalog.cs` | the deck: one static definition per exercise |
+| `Services/Tools/ExerciseRun.cs` | `ExerciseRun { Id, ExerciseId, Anchor, Answers (Dictionary<string,string>), Rounds, Sent }`, `Anchor { Kind, TargetId?, Text }` |
+| `Services/Tools/ExerciseEngine.cs` | pure: current step, trail, loops, carry, branches |
+| `Services/Tools/ProjectContext.cs` | pure: anchor lists from analysis + sidecar |
+| `Services/Tools/RightNow.cs` | pure: the ≤3 suggestions |
+| `Services/Tools/SlateMigration.cs` | v1 → v2: each old record → `ExerciseRun` |
+| `Services/Tools/IToolHost.cs` | the host interface (R-D) |
+| `Components/Tools/ToolsDock.razor` | launcher + routing between launcher and runner |
+| `Components/Tools/ExerciseRunner.razor` | anchor strip, trail, step card, end panel |
+| `Components/Tools/StepCard.razor` | renders one step by kind |
+| `Components/Tools/AnchorPicker.razor`, `SendToMenu.razor` | pickers and target menu |
+| `Components/Tools/IdeationOverlay.razor` | the full-screen burst, moved out |
+| `wwwroot/css/tools.css` (or a new section in `app.css` — match whichever the repo does for components; today it's all `app.css`) | styles |
+
+`Editor.razor` keeps: the `<aside class="workshop">` shell, the TOOLS button,
+the `IToolHost` implementation (thin wrappers over methods it already has),
+and the entry-point buttons on Board / Cast / inbox. Every old dock view and
+handler is deleted as its exercise is ported. Reuse, don't rewrite:
+`AliveFlat.razor`, `PartnerLines.razor`, `SplitScript`, `SynopsisPlacement`,
+`BracketScanner`, `IdeationDealer`, `BeatInbox`, `StoryItems`, `NoteTemplates`,
+`passage.startBurst` / `replaceInLine` / `insertLinesAt` / `scrollToLine`.
+
+Check `Passage.Web.csproj` needs nothing (no new `ProjectReference`, so the
+Dockerfile COPY list — CLAUDE.md trap 2 — is untouched). If a row adds a
+project reference anyway, it adds the Dockerfile line in the same commit.
+
+---
+
+## 6. Rows
+
+One row per session, one branch and one PR per row, per CLAUDE.md. Every row
+must leave the dock fully working: tools not yet ported stay reachable from
+the new launcher (a "Classic" link on their card that opens the old view)
+until their row deletes the old code.
+
+### T1 — Engine, model, migration scaffold · `todo`
+
+- `Exercise.cs`, `ExerciseRun.cs`, `ExerciseEngine.cs` with every step kind
+  in §4.3 implemented in the engine (rendering comes later).
+- `SlateDocument.Exercises`; `slateVersion` 2; `SlateMigration` skeleton that
+  migrates **Chains** (WOAC + Flaw) only, leaves the rest untouched, and is
+  idempotent. Old sidecars still load; a v2 sidecar still loads in this build.
+- Tests: engine (carry read live; loop appends a round when its last step is
+  answered; branch shows/hides; stop point; skip), migration round-trip of a
+  WOAC chain with three rounds and a Flaw run, version bump.
+- **No UI change.** Success: build clean, tests pass, existing dock untouched.
+
+### T2 — Launcher, runner shell, WOAC and Flaw ported · `todo`
+
+- `IToolHost` + Editor's implementation; `ToolsDock`, `ExerciseRunner`,
+  `StepCard` for `Text`, `Lines`, `Loop`, `Stop`; trail; Done for now; *Why?*
+  disclosure; timer via `startBurst` on the step card root.
+- Launcher per §4.1 **without** *Right now* (T3). Cards for all twelve; the
+  ten unported open their old view ("Classic").
+- WOAC and Flaw defined in the catalog and running in the new runner. Anchor
+  is free text for now. Old Chains / Chain views and handlers deleted.
+- Success: a WOAC chain of three rounds by keyboard only (Enter between
+  steps), carry visible, close and reopen keeps it, reload keeps it; phone
+  width readable; verification checklist (§8) passes.
+
+### T3 — Anchors, targets, Right now · `todo`
+
+- `ProjectContext`, `AnchorPicker`, anchor strip (with "no longer in the
+  script"), `SendToMenu` with: inbox beat (tagged), synopsis under anchor,
+  note page append (Character template), copy.
+- WOAC anchored to a character (+ optional scene); Flaw anchored to a
+  character, sends to the character's note.
+- `RightNow.Suggest` with tests; *Right now* row on the launcher.
+- Entry points: Cast row "Tools", Board card "Tools" (menus list only the
+  exercises ported so far).
+- Success: from the Cast panel, start Flaw on a character, answer two
+  questions, send to note: the character's note page exists with both
+  answers; a WOAC consequence sent to the inbox shows on BEATS and BOARD
+  strip tagged with the character; undo of any script write restores exactly.
+
+### T4 — Fill and Scene Dials · `todo`
+
+- Fill as an exercise anchored to a bracket; *Next bracket* keeps the
+  "hand me one" cursor semantics (`_handCursor`, ignore list); "Not a
+  bracket" still adds to the ignore list. Optional *Stage it* group.
+- Scene Dials as its own exercise (`Slots(speakers)`, `Dice`).
+- Migration: Fills. Delete old Brackets / Fill views (keep the bracket list
+  as a picker inside the anchor picker).
+- Success: SLATE-PLAN Phase 1's success line, in the new runner: caret on a
+  bracket → *Right now* → Fill → accept → script edited, undo intact, next
+  bracket handed.
+
+### T5 — Split family · `todo`
+
+- A→Z→Split (with optional end checks and Mirror Z), Belief Split (with Cast
+  card group), Extend Backward (with Obituary Z and mystery lens).
+- Adapter answers → `SplitRun` for `SplitScript`; Write / Update the Shape
+  unchanged in behaviour.
+- Migration: Split, Belief, Extend. Delete old views.
+- Success: a fresh script, Split to rung 1, write the Shape: Board shows the
+  four acts / eight sequences with the midpoint; update after rung 2 fills
+  only bracketed turns.
+
+### T6 — Bridge and Position · `todo`
+
+- Bridge anchored to two Board cards; Position anchored to an inbox beat or a
+  scene, `Slots(turns)`, Time-Skip Ladder branch.
+- Position's target: send the beat to the Board under the chosen turn's
+  sequence (reuse the Send-to-Board path; same confirm wording about the page
+  plan being dropped). Inbox "Position this" entry point.
+- Migration: Bridges, Positions (prune trailing empty turns — handover open
+  observation, now moot in the generic model). Delete old views.
+
+### T7 — Push/Pull and Understudy · `todo`
+
+- Push/Pull anchored to a scene: GSU `Slots(speakers)` prefilled; six checks;
+  each **Y** branches into its Lens with the `LensMinutes` clock; read-back
+  with the two Phase 8 questions. Revision note appended to a note page named
+  after the scene.
+- Understudy (new): default character = fewest lines among the scene's
+  speakers; sends tagged inbox beats.
+- Migration: Revisions. Delete old views.
+
+### T8 — Ideation overlay, cleanup, docs · `todo`
+
+- Move the overlay to `IdeationOverlay.razor`, restyle into the step-card
+  look; keep it full-screen and project-free (vault `writing-practice` rule).
+  Its kept line can go to the inbox.
+- Delete the old record types from `SlateStore.cs` once nothing reads them
+  (migration keeps reading v1 JSON via private DTOs inside
+  `SlateMigration`). Remove "Classic" links.
+- Update `SLATE-HANDOVER.md` to describe the new structure; mark SLATE-PLAN
+  Phase 8 `superseded` with a pointer to the rows here that absorbed each
+  item.
+
+### T9 — A real partner · `blocked on Adam`
+
+Not part of this plan. Listed because it is the biggest remaining lever: the
+worksheets were designed to be run with someone offering three wrong answers.
+The seam already exists (`IStoryPartner`); R-C makes every `Lines` step a
+partner site for free (`Offer = true`). Whether, which model, where the key
+lives and what text leaves the machine are Adam's decisions, and would get
+their own plan.
+
+---
+
+## 7. Decisions — settled 2026-10-25 (Adam accepted all four recommendations)
+
+1. **Copy rule (R-B) — settled: fold.** Explanations go behind *Why?*; only
+   the question and one hint stay on screen. This supersedes SLATE-PLAN
+   decision A's near-verbatim copy rule for on-screen text; the question
+   itself still keeps the worksheet's words.
+2. **Old runs (R-E) — settled: migrate.** Existing sidecar runs are
+   converted to `ExerciseRun` on load (v1 → v2), not dropped.
+3. **New exercises — settled: build both** Scene Dials (standalone) and
+   Understudy.
+4. **Dock width — settled: 400px default.**
+
+---
+
+## 8. Verification (every row, by hand, in the browser)
+
+Use your own server with a scratch copy of the dev data (see
+`SLATE-HANDOVER.md` → Environment: `~/.dotnet/dotnet`, never Adam's server on
+5210, a `launch.json` entry with `--Passage:DataDir=<scratchpad>/data`).
+
+1. Desktop width and 375px: launcher readable without scrolling past
+   descriptions; runner shows one question at a time.
+2. Type, ←, reopen: kept. Reload, reopen the script: kept (sidecar).
+3. Keyboard only through three steps (real Enter key, `key: "Enter"` in the
+   agent browser).
+4. Every script write: undo restores exactly, caret doesn't jump to line 1
+   (test undo as the handover's *Traps* section says — synthetic Ctrl+Z
+   doesn't reach CM5).
+5. Delete the anchor underneath an open run, then send: status line, no
+   exception, no wrong edit.
+6. Rule 0: no counter, percentage, date, streak or "done" mark anywhere.
+7. `document.querySelectorAll('.partner').length === 0` with the null
+   partner.
+8. `dotnet build Passage.Web.slnf` warning-free; tests pass; CI green.
