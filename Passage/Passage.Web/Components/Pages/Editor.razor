@@ -547,6 +547,21 @@ Click New to start one — files are stored on the server volume.</div>
                             <button class="btn" @onclick="() => _confirmDiscardAll = true">Discard all</button>
                         </div>
                     }
+                    @if (_editingBeat is not null)
+                    {
+                        @RenderBeatEditor(_editingBeat)
+                    }
+                    <div class="beats-tray board-inbox" title="Double-click to jot down an unassigned beat. Drag a beat onto a card to turn it into a scene."
+                         @ondblclick="() => AddBeat(0)">
+                        @foreach (var beat in _slate.Beats.Where(beat => beat.Page == 0))
+                        {
+                            @RenderBeat((beat, null))
+                        }
+                        @if (!_slate.Beats.Any(beat => beat.Page == 0))
+                        {
+                            <span class="beats-tray-hint">Inbox: double-click to jot a beat, drag it onto a card to make it a scene</span>
+                        }
+                    </div>
                 }
                 @if (!IsScreenplayMode)
                 {
@@ -572,7 +587,7 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                 }
                                 else
                                 {
-                                    <div class="board-lane-head">
+                                    <div class="board-lane-head" data-drop-id="@DropId(lane.ActCard)">
                                         <span class="board-twisty" @onclick="() => ToggleLane(laneKey)">@(laneOpen ? "▾" : "▸")</span>
                                         <span class="board-lane-title @DimLane(lane)" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
                                         @if (lane.ActCard is not null && lane.ActCard.Id != Guid.Empty)
@@ -604,7 +619,7 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                                 }
                                                 else
                                                 {
-                                                    <div class="board-group-head">
+                                                    <div class="board-group-head" data-drop-id="@DropId(group.SequenceCard)">
                                                         <span class="board-twisty" @onclick="() => ToggleGroup(groupKey)">@(groupOpen ? "▾" : "▸")</span>
                                                         <span class="board-group-title @DimGroup(group)" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
                                                         @RenderCardStar(group.SequenceCard)
@@ -2075,6 +2090,20 @@ Open a .fountain file to see formatted pages.</div>
             <div class="modal-actions">
                 <button class="btn" @onclick="() => _deleteBeat = null">Cancel</button>
                 <button class="btn primary" @onclick="ConfirmDeleteBeat">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_sendBeat is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Send to Board</h3>
+            <p>This turns the beat "@(_sendBeat.Title.Length > 0 ? _sendBeat.Title : "Untitled beat")" into a scene at the end of the script. Its page plan (page @_sendBeat.Page) is dropped and the script track takes over. Continue?</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _sendBeat = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmSendToBoard">Send</button>
             </div>
         </div>
     </div>
@@ -3894,6 +3923,115 @@ Open a .fountain file to see formatted pages.</div>
         StoryItems.RemoveBeat(_slate.Story, beat.Id);
         SaveSlate();
         _statusMessage = $"Deleted beat \"{(beat.Title.Length > 0 ? beat.Title : "Untitled beat")}\"";
+    }
+
+    // ---- Inbox beat -> Board card (docs/STORY-PLAN.md S2.1, decision E) ----
+    //
+    // The gesture runs in passage.js and calls OnInboxBeatPlaced once, on
+    // release. The script is the truth afterwards: the beat is deleted and its
+    // tags and star move to the new card. CodeMirror undo removes the card but
+    // does not restore the beat, so its tags then show as Detached.
+
+    private Beat? _sendBeat;
+
+    private string DropId(BoardCard? card) =>
+        card is not null && IsStampedCard(card) ? card.Id.ToString() : string.Empty;
+
+    [JSInvokable]
+    public async Task OnInboxBeatPlaced(Guid beatId, Guid targetId, bool after)
+    {
+        if (FindBeat(beatId) is not { } beat)
+        {
+            _statusMessage = "That beat is no longer in the inbox, so nothing was placed.";
+            StateHasChanged();
+            return;
+        }
+
+        await ConvertBeatToCardAsync(beat, targetId, after);
+        StateHasChanged();
+    }
+
+    private void RequestSendToBoard(Beat beat)
+    {
+        // The editor's text is a buffer until Save; send what is on screen.
+        if (_editingBeat == beat)
+        {
+            SaveBeatEdit();
+        }
+
+        if (beat.Page > 0)
+        {
+            _sendBeat = beat;
+            return;
+        }
+
+        _ = SendToBoardAsync(beat);
+    }
+
+    private async Task ConfirmSendToBoard()
+    {
+        var beat = _sendBeat;
+        _sendBeat = null;
+        if (beat is not null)
+        {
+            await SendToBoardAsync(beat);
+        }
+    }
+
+    private async Task SendToBoardAsync(Beat beat)
+    {
+        await ConvertBeatToCardAsync(beat, null, true);
+        StateHasChanged();
+    }
+
+    // targetId null puts the scene at the end of the script.
+    private async Task<bool> ConvertBeatToCardAsync(Beat beat, Guid? targetId, bool after)
+    {
+        var cardId = Guid.NewGuid();
+        var lines = BeatInbox.SceneLines(beat, cardId);
+        var scriptLines = _content.Replace("\r\n", "\n").Split('\n');
+        int insertAt;
+        string text;
+        if (targetId is { } target)
+        {
+            if (!BeatInbox.TryPlan(_analysis.Elements, scriptLines, target, after, lines, out insertAt, out text))
+            {
+                _statusMessage = "That card is no longer in the script, so the beat stays in the inbox.";
+                return false;
+            }
+        }
+        else
+        {
+            insertAt = scriptLines.Length;
+            text = BeatInbox.TextAtEnd(scriptLines, lines);
+        }
+
+        bool inserted;
+        try
+        {
+            inserted = await JS.InvokeAsync<bool>("passage.insertLinesAt", insertAt, text);
+        }
+        catch (JSException)
+        {
+            inserted = false;
+        }
+
+        if (!inserted)
+        {
+            _statusMessage = "Could not write the scene into the script, so the beat stays where it was.";
+            return false;
+        }
+
+        BeatInbox.MoveTags(_slate.Story, beat.Id, cardId, BeatInbox.Heading(beat));
+        _slate.Beats.Remove(beat);
+        if (_editingBeat == beat)
+        {
+            _editingBeat = null;
+        }
+
+        SaveSlate();
+        _statusMessage = $"Sent \"{BeatInbox.Heading(beat)}\" to the Board as a scene";
+        return true;
     }
 
     // ---- Beat Sheet: drag-move and resize ----
@@ -6518,6 +6656,8 @@ Open a .fountain file to see formatted pages.</div>
                         @onclick="() => _beatEditColour = string.Empty"></button>
             </div>
             <div class="card-edit-actions">
+                <button class="btn" title="Turn this beat into a scene card at the end of the script"
+                        @onclick="() => RequestSendToBoard(beat)">Send to Board</button>
                 <button class="btn" @onclick="() => RequestDeleteBeat(beat)">Delete</button>
                 <button class="btn" @onclick="CancelBeatEdit">Cancel</button>
                 <button class="btn primary" @onclick="SaveBeatEdit">Save</button>
@@ -6583,6 +6723,7 @@ Open a .fountain file to see formatted pages.</div>
         {
             <div class="board-card @(_dragOverCardId == card.Id ? "drop-target" : null) @DimClass(card)"
                  data-item-kind="card" data-item-id="@(IsStampedCard(card) ? card.Id.ToString() : string.Empty)" data-line="@card.LineNumber"
+                 data-drop-id="@DropId(card)"
                  draggable="@((card.Id != Guid.Empty).ToString().ToLowerInvariant())"
                  @ondragstart="() => OnCardDragStart(card)"
                  @ondragend="OnCardDragEnd"

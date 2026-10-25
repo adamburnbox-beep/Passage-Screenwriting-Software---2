@@ -101,6 +101,10 @@ class Program
         failures += RunTest("Test BeatSheet Clamping", TestBeatSheetClamping);
         failures += RunTest("Test BeatSheet Stacking", TestBeatSheetStacking);
         failures += RunTest("Test BeatSheet Scene Pages Match Preview", TestBeatSheetScenePagesMatchPreview);
+        failures += RunTest("Test Inbox Conversion Lines", TestInboxConversionLines);
+        failures += RunTest("Test Inbox Tag Transfer", TestInboxTagTransfer);
+        failures += RunTest("Test Inbox Insert Points", TestInboxInsertPoints);
+        failures += RunTest("Test Inbox Missing Target Is Reported", TestInboxMissingTarget);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -2126,6 +2130,92 @@ class Program
 
         var same = BeatSheet.Stack(new List<Beat> { new() { Title = "first", Page = 7 }, new() { Title = "second", Page = 7 } });
         Assert(same[0].Beat.Title == "first" && same[0].Row == 0 && same[1].Row == 1, "Beats on the same page stack in list order");
+    }
+
+    static void TestInboxConversionLines()
+    {
+        var id = Guid.NewGuid();
+
+        var titled = BeatInbox.SceneLines(new Beat { Title = "  Dinner goes wrong ", Description = "She leaves.\n\nHe stays." }, id);
+        Assert(titled.Count == 3, $"Title plus two description lines, got {titled.Count}");
+        Assert(titled[0] == $". Dinner goes wrong [[id:{id}]]", $"Scene heading carries the id, got '{titled[0]}'");
+        Assert(titled[1] == "= She leaves." && titled[2] == "= He stays.", "Each non-blank description line becomes a synopsis line");
+
+        var bare = BeatInbox.SceneLines(new Beat { Title = "Dinner" }, id);
+        Assert(bare.Count == 1 && bare[0] == $". Dinner [[id:{id}]]", "A beat without a description is one heading line");
+
+        var untitled = BeatInbox.SceneLines(new Beat { Description = "Something." }, id);
+        Assert(untitled[0] == $". UNTITLED BEAT [[id:{id}]]", $"An untitled beat still gets a real heading, got '{untitled[0]}'");
+
+        var sluglined = BeatInbox.SceneLines(new Beat { Title = "INT. CELLAR - NIGHT" }, id);
+        Assert(sluglined[0] == $"INT. CELLAR - NIGHT [[id:{id}]]", "A title that is already a slugline is not prefixed with a dot");
+    }
+
+    static void TestInboxTagTransfer()
+    {
+        var story = new StoryData();
+        var beatId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+        var line = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        story.Items.Add(new ItemTags { TargetId = beatId, Kind = StoryItems.BeatKind, Label = "old", Key = true, Storylines = { line }, Characters = { "ANNA" }, Locations = { "kitchen" } });
+        story.Items.Add(new ItemTags { TargetId = other, Kind = StoryItems.BeatKind, Label = "other", Key = true });
+
+        Assert(BeatInbox.MoveTags(story, beatId, cardId, "NEW"), "A tagged beat reports that its tags moved");
+        var moved = story.Items.Single(item => item.TargetId == cardId);
+        Assert(moved.Kind == StoryItems.CardKind, "The moved item is re-keyed to kind card");
+        Assert(moved.Label == "NEW" && moved.Key && moved.Storylines.Single() == line && moved.Characters.Single() == "ANNA" && moved.Locations.Single() == "kitchen",
+            "Star, storyline, character and location survive the move");
+        Assert(story.Items.All(item => item.TargetId != beatId), "Nothing is left keyed to the beat");
+        Assert(story.Items.Single(item => item.TargetId == other).Kind == StoryItems.BeatKind, "Another beat's item is untouched");
+        Assert(!BeatInbox.MoveTags(story, beatId, Guid.NewGuid(), "x"), "A beat with no tags moves nothing");
+    }
+
+    static void TestInboxInsertPoints()
+    {
+        // BoardScript: ACT ONE 0-11 (whole block), Setup 3-11, KITCHEN 5-9, GARDEN 10-11, ACT TWO 12-14.
+        var (parsed, lineCount) = ParseBoardScript();
+        var scriptLines = BoardScript.Split('\n');
+        var cardLines = new List<string> { ". NEW [[id:x]]" };
+
+        int At(int lineIndex, bool after)
+        {
+            var target = FindElement(parsed, lineIndex);
+            Assert(BeatInbox.TryPlan(parsed.Elements, scriptLines, target.Id, after, cardLines, out var insertAt, out _),
+                $"Target at line {lineIndex} should be found");
+            return insertAt;
+        }
+
+        Assert(At(0, false) == 0, "Before an act is the act's heading line");
+        Assert(At(0, true) == 12, "After an act is past its whole block, the next act's heading");
+        Assert(At(3, false) == 3, "Before a sequence is the sequence's heading line");
+        Assert(At(3, true) == 12, "After a sequence is past its scenes");
+        Assert(At(5, false) == 5, "Before a scene is its heading line");
+        Assert(At(5, true) == 10, "After a scene is past its action, the next scene's heading");
+        Assert(At(12, true) == lineCount, "After the last act is the end of the script");
+
+        string TextFor(int lineIndex, bool after)
+        {
+            BeatInbox.TryPlan(parsed.Elements, scriptLines, FindElement(parsed, lineIndex).Id, after, cardLines, out _, out var text);
+            return text;
+        }
+
+        // The blocks end in their own blank line, so nothing doubles up.
+        Assert(TextFor(5, true) == ". NEW [[id:x]]\n", $"After a scene: no leading blank, trailing blank, got '{TextFor(5, true)}'");
+        Assert(TextFor(5, false) == ". NEW [[id:x]]\n", $"Before a scene: the line above is blank, got '{TextFor(5, false)}'");
+        // The script ends on text, so a blank line goes above and nothing below.
+        Assert(TextFor(12, true) == "\n. NEW [[id:x]]", $"After the last act pads above only, got '{TextFor(12, true)}'");
+        Assert(BeatInbox.TextAtEnd(scriptLines, cardLines) == "\n. NEW [[id:x]]", "Send to Board at the end pads like after the last block");
+        Assert(TextFor(0, false) == ". NEW [[id:x]]\n", "Before the first line needs no leading blank");
+        Assert(BeatInbox.TextAtEnd(new[] { "text", string.Empty }, cardLines) == ". NEW [[id:x]]", "A script already ending in a blank line is not padded again");
+    }
+
+    static void TestInboxMissingTarget()
+    {
+        var (parsed, lineCount) = ParseBoardScript();
+        var placed = BeatInbox.TryPlan(parsed.Elements, BoardScript.Split('\n'), Guid.NewGuid(), true, new List<string> { ". X" }, out var insertAt, out var text);
+        Assert(!placed, "A target that is not in the script is reported, not placed");
+        Assert(insertAt == 0 && text.Length == 0, "Nothing is planned for a missing target");
     }
 
     static void TestBeatSheetScenePagesMatchPreview()

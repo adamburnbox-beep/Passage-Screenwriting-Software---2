@@ -575,7 +575,7 @@ the bigger rows rely on them.
 
 ## Tier S2 — Board workflow
 
-### S2.1 One inbox for BOARD and BEATS — `todo`
+### S2.1 One inbox for BOARD and BEATS — `done`
 
 - **Read:** Standing decisions D, E. BEATS tray `Editor.razor` 528–538. Beat
   handlers 3025–3205. Board add and edit handlers 3361–3480 (insert and
@@ -603,6 +603,32 @@ the bigger rows rely on them.
     scene.
   - A beat that is no longer in the sidecar is reported, not placed.
 - **Budget:** ~100k.
+- **Landed:** `Services/BeatInbox.cs`: `SceneLines` (via `BuildCardLines`; an
+  untitled beat gets `UNTITLED BEAT`), `TryPlan` (before = the target's first
+  line, after = the line past its whole block, `GetCardLineRange` with the
+  nested block, so after an act or sequence lands past everything inside it;
+  a blank line pads whichever side touches text), `TextAtEnd`, `MoveTags`
+  (re-keys `TargetId`, `Kind`, `Label`, keeps star and tags). `Editor.razor`:
+  the unassigned beats show as `.board-inbox` above the lanes on BOARD (same
+  `RenderBeat`, double-click adds, the beat editor opens there);
+  `data-drop-id` on stamped cards and on act and sequence heads;
+  `OnInboxBeatPlaced(beatId, targetId, after)`; a **Send to Board** button in
+  the beat editor (end of the script; confirms when the beat has a page, and
+  sends the editor's unsaved text). `passage.js` `moveInboxBeat`: pointer
+  gesture on `document`, class toggles only, one call on release. It does not
+  capture the pointer, so the beat's star still takes clicks. A card with no
+  `[[id:…]]` marker is not a drop target (nothing highlights). Tests: `Test
+  Inbox Conversion Lines`, `Tag Transfer`, `Insert Points`, `Missing Target
+  Is Reported`. Tried in the app: a beat jotted on BEATS shows in BOARD's
+  inbox; dragged after a scene (and before a sequence), it wrote the scene
+  and its `=` line, a star carried across, and it left the inbox; one
+  WebSocket frame for the gesture; Ctrl+Z removed the card and `Detached (1)`
+  appeared; Send to Board from the editor. Not tried: the page-plan confirm
+  for a beat on the grid, and a storyline or character tag carried across
+  (the tag move is covered by the unit test only). Seen, not changed: on the
+  BEATS tray the star didn't take a click when tried, probably because
+  `moveBeat` captures the pointer on press (not confirmed). Undo is not atomic across the two stores (decision E), as
+  planned.
 
 ### S2.2 Structure templates — `todo`
 
