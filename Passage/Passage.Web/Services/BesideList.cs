@@ -5,10 +5,6 @@ namespace Passage.Web.Services;
 /// "Script" lane that has no heading.</summary>
 public sealed record BesideRow(string Role, string Text, int Line, int Depth, BoardCard? Card);
 
-/// <summary>One line of the Beside pane's Beats list. Line is the scene to jump
-/// to (0 for an unassigned beat, which has no place in the script).</summary>
-public sealed record BesideBeat(Beat Beat, int Line);
-
 /// <summary>
 /// The compact lists behind SCRIPT's Beside pane (docs/STORY-PLAN.md S2.3).
 /// Pure, so the order and the caret lookups are testable without a browser.
@@ -67,55 +63,5 @@ public static class BesideList
         }
 
         return found;
-    }
-
-    /// <summary>Beats in page order (unassigned first, in their tray order),
-    /// each with the scene it points at: the first scene on its page, or the
-    /// last scene before it when its page starts none.</summary>
-    public static List<BesideBeat> Beats(IReadOnlyList<Beat> beats, IReadOnlyList<ScenePlacement> scenes) =>
-        beats.Select((beat, index) => (beat, index))
-            .OrderBy(pair => pair.beat.Page)
-            .ThenBy(pair => pair.index)
-            .Select(pair => new BesideBeat(pair.beat, SceneFor(pair.beat.Page, scenes)))
-            .ToList();
-
-    private static int SceneFor(int page, IReadOnlyList<ScenePlacement> scenes)
-    {
-        if (page <= 0)
-        {
-            return 0;
-        }
-
-        var onPage = scenes.FirstOrDefault(scene => scene.Page == page);
-        if (onPage is not null)
-        {
-            return onPage.LineNumber;
-        }
-
-        var before = scenes.Where(scene => scene.Page > 0 && scene.Page < page).LastOrDefault();
-        return before?.LineNumber ?? 0;
-    }
-
-    /// <summary>The beat under the caret: the first placed beat whose pages
-    /// cover the page of the scene the caret is in. -1 when the caret is before
-    /// every scene, the scene has no page, or no beat covers it.</summary>
-    public static int BeatAt(IReadOnlyList<BesideBeat> beats, IReadOnlyList<ScenePlacement> scenes, int caretLine)
-    {
-        var scene = scenes.Where(candidate => candidate.LineNumber <= caretLine).LastOrDefault();
-        if (scene is null || scene.Page <= 0)
-        {
-            return -1;
-        }
-
-        for (var i = 0; i < beats.Count; i++)
-        {
-            var beat = beats[i].Beat;
-            if (beat.Page > 0 && scene.Page >= beat.Page && scene.Page < beat.Page + Math.Max(1, beat.Span))
-            {
-                return i;
-            }
-        }
-
-        return -1;
     }
 }

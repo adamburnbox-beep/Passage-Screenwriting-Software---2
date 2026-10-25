@@ -1894,19 +1894,9 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .board-card.drop-target { outline: 2px solid var(--control-accent); outline-offset: 1px; }
 
-/* ---- Beat Sheet ---- */
-
-.beats-view {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
+/* ---- Board inbox beats ---- */
 
 .beats-toolbar { justify-content: flex-start; gap: 16px; }
-.beats-target { display: flex; align-items: center; gap: 6px; }
-
 .beat-editor {
     position: absolute;
     top: 36px;
@@ -1918,8 +1908,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .beat-palette { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.beats-warning { color: var(--syntax-synopsis); }
-
 .beats-tray {
     display: flex;
     flex-wrap: wrap;
@@ -1936,47 +1924,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .beats-tray-hint { color: var(--muted-text); font-size: 11px; align-self: center; }
 
 .beats-tray .beat-card { width: 180px; }
-
-.beats-surface {
-    flex: 1;
-    overflow: auto;
-    padding: 16px 24px 24px;
-}
-
-.beats-grid {
-    --beat-col: 112px;
-    display: grid;
-    width: max-content;
-}
-
-.beat-column {
-    border-left: 1px solid var(--surface-border);
-    min-height: 100%;
-}
-
-.beat-column.tenth { background: var(--surface-background); }
-.beat-column.unwritten { opacity: 0.85; }
-.beat-column.act-break { border-left: 2px solid var(--control-accent); }
-
-.beat-page-number {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--muted-text);
-    padding: 4px 6px;
-}
-
-.beat-column.tenth .beat-page-number { color: var(--header-text); font-weight: 700; }
-
-.beat-act {
-    font-size: 9px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--control-accent);
-    padding: 0 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 
 .beat-card {
     position: relative;
@@ -2020,8 +1967,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 }
 
 .beat-card.dragging { opacity: 0.4; }
-.beat-card.resizing { outline: 2px solid var(--control-accent); outline-offset: 1px; }
-
 .beat-ghost {
     position: fixed;
     z-index: 50;
@@ -2030,54 +1975,11 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     box-shadow: var(--shadow-raised);
 }
 
-.beat-drop-hint {
-    grid-row: 1 / -1;
-    border: 2px dashed var(--control-accent);
-    border-radius: var(--radius);
-    background: var(--drag-over-background);
-    pointer-events: none;
-}
-
 .beats-tray.drop-target { border-color: var(--control-accent); background: var(--drag-over-background); }
 
 .board-inbox { margin: 10px 0 0; }
 .inbox-drop-before { box-shadow: 0 -3px 0 0 var(--control-accent); }
 .inbox-drop-after { box-shadow: 0 3px 0 0 var(--control-accent); }
-
-.beat-resize {
-    position: absolute;
-    top: 0;
-    right: -4px;
-    bottom: 0;
-    width: 8px;
-    cursor: ew-resize;
-}
-
-.beat-track {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 4px;
-    border-top: 1px solid var(--surface-border);
-    min-width: 0;
-}
-
-.beat-scene {
-    background: transparent;
-    border: none;
-    border-left: 2px solid var(--syntax-scene);
-    color: var(--secondary-text);
-    font-family: var(--mono);
-    font-size: 9.5px;
-    text-align: left;
-    padding: 1px 4px;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.beat-scene:hover { color: var(--control-foreground); background: var(--surface-muted); }
 
 /* ---- Page-break rules ---- */
 
@@ -2259,7 +2161,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .tag-row .jump-kind { margin-left: auto; }
 .tag-tick { width: 1em; text-align: center; }
 
-/* ---- Beside pane: Board / Beats list next to the script (STORY-PLAN S2.3) ---- */
+/* ---- Beside pane: Board list next to the script (STORY-PLAN S2.3) ---- */
 
 .beside {
     position: relative;
@@ -2287,9 +2189,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .beside-resize:hover { background: var(--control-accent); opacity: 0.5; }
 
-.beside-head { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--surface-border); }
-.beside-head button { flex: 1; }
-.beside-head button.active { background: var(--control-accent); color: #fff; }
 .beside-body { flex: 1; overflow-y: auto; padding: 4px 0; }
 .beside-empty { padding: 12px; color: var(--muted-text); font-size: 13px; }
 
@@ -2310,7 +2209,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .beside-row.current { background: var(--surface-border); border-left-color: var(--control-accent); }
 .beside-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .beside-star { color: #d9a21b; }
-.beside-page { color: var(--muted-text); min-width: 18px; text-align: right; font-size: 11px; }
 .beside-row .tag-marks { margin-top: 0; flex-wrap: nowrap; }
 .beside-row .tag-chip { display: none; }
 

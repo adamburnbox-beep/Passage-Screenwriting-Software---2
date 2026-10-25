@@ -137,39 +137,6 @@ public static partial class StructureTemplates
         return nodes;
     }
 
-    /// <summary>A page on the 110-page reference, scaled to the Beat Sheet's
-    /// target and kept on the grid.</summary>
-    public static int ScalePage(int referencePage, int targetPages)
-    {
-        targetPages = Math.Max(1, targetPages);
-        var scaled = (int)Math.Round(referencePage * (double)targetPages / ReferencePages, MidpointRounding.AwayFromZero);
-        return Math.Clamp(scaled, 1, targetPages);
-    }
-
-    /// <summary>
-    /// Adds a Beat Sheet beat for each node with a page. A node whose title is
-    /// already a beat is skipped and counted, so applying twice never doubles.
-    /// </summary>
-    public static (int Added, int Skipped) SeedBeats(StructureTemplate template, IList<Beat> beats, int targetPages, int columns)
-    {
-        var added = 0;
-        var skipped = 0;
-        foreach (var node in template.Nodes.Where(node => node.Page > 0))
-        {
-            if (beats.Any(beat => string.Equals(beat.Title.Trim(), node.Heading, StringComparison.OrdinalIgnoreCase)))
-            {
-                skipped++;
-                continue;
-            }
-
-            var (page, span) = BeatSheet.Clamp(ScalePage(node.Page, targetPages), 1, columns);
-            beats.Add(new Beat { Title = node.Heading, Page = page, Span = span });
-            added++;
-        }
-
-        return (added, skipped);
-    }
-
     /// <summary>The template that the script's current structure makes.</summary>
     public static StructureTemplate FromScript(string name, IEnumerable<string> scriptLines) =>
         new() { Name = name.Trim(), Nodes = ReadNodes(scriptLines) };
