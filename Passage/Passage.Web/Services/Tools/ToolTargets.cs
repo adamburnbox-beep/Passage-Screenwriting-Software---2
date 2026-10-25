@@ -31,6 +31,13 @@ public static class ToolTargets
         return new Beat { Title = title, Description = description == title ? string.Empty : description };
     }
 
+    /// <summary>The sequence card a turn sits on: the one whose synopsis lines carry that turn's slot line
+    /// (<c>= Pinch 1: …</c>, or its bracket). Null when no sequence in the script has it, so the caller says so
+    /// rather than guessing a sequence by position.</summary>
+    public static BoardCard? SequenceForTurn(IEnumerable<BoardCard> sequences, string turn) =>
+        sequences.FirstOrDefault(card => card.Description.Split('\n')
+            .Any(line => SplitScript.TryParse(line, out var label, out _) && label == turn.Trim()));
+
     /// <summary>Tags the beat with the character unless it already has it (ToggleTag alone would take it off).</summary>
     public static void TagBeat(StoryData story, Beat beat, string character)
     {

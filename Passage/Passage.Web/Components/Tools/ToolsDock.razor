@@ -72,11 +72,11 @@ else
     private static readonly Card[] Cards =
     {
         new(ClassicIdeation, "Ideation burst", "Loosen up with fast, throwaway lines", Shelf.Nothing, "⚡"),
-        new(ClassicBridge, "Bridge", "Connect two moments you know", Shelf.Nothing, "⇄"),
+        new(SlateMigration.BridgeId, "Bridge", "Connect two moments you know", Shelf.Nothing, "⇄"),
         new(SlateMigration.SplitId, "A→Z→Split", "Find the middle of the story", Shelf.Ending, "◇"),
         new(SlateMigration.BeliefId, "Belief Split", "Split on what a character believes", Shelf.Ending, "☺"),
         new(SlateMigration.ExtendId, "Extend Backward", "Work back from the ending", Shelf.Ending, "↶"),
-        new(ClassicPosition, "Position", "Try a scene in each story slot", Shelf.Moment, "◎"),
+        new(SlateMigration.PositionId, "Position", "Try a scene in each story slot", Shelf.Moment, "◎"),
         new(SlateMigration.FillId, "Fill", "Turn a [BRACKET] into the real event", Shelf.Moment, "[ ]"),
         new(SlateMigration.WoacId, "WOAC chain", "What happens next, round by round", Shelf.SceneGoing, "→"),
         new(SlateMigration.SceneDialsId, "Scene Dials", "The event is right; the scene is dead", Shelf.SceneGoing, "⚂"),
@@ -85,8 +85,6 @@ else
     };
 
     public const string ClassicIdeation = "ideation";
-    public const string ClassicBridge = "bridge";
-    public const string ClassicPosition = "position";
     public const string ClassicPushPull = "pushpull";
 
     [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
@@ -203,6 +201,13 @@ else
         if (suggestion.Anchor.Kind == AnchorKind.Shape && KeptShapeRun(suggestion.ExerciseId) is { } kept)
         {
             return OpenRunIdChanged.InvokeAsync(kept.Id);
+        }
+
+        // So does an inbox beat: Position on it again resumes the run kept for it.
+        if (suggestion.Anchor.Kind == AnchorKind.InboxBeat && Host.Slate.Exercises.LastOrDefault(entry => entry.ExerciseId == suggestion.ExerciseId
+                && entry.Anchor.Kind == AnchorKind.InboxBeat && entry.Anchor.TargetId == suggestion.Anchor.TargetId) is { } keptBeat)
+        {
+            return OpenRunIdChanged.InvokeAsync(keptBeat.Id);
         }
 
         var run = new ExerciseRun { ExerciseId = suggestion.ExerciseId, Anchor = suggestion.Anchor };

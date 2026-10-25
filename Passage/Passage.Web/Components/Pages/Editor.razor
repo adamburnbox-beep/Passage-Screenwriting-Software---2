@@ -11,7 +11,6 @@
 @inject ExportService Exports
 @inject GoalSettingsStore GoalStore
 @inject SlateStore Slate
-@inject IStoryPartner Partner
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -692,217 +691,6 @@ Open a .fountain file to see formatted pages.</div>
                 @if (_workshopView == WorkshopView.Tools)
                 {
                     <ToolsDock Host="_toolHost" OpenRunId="@_toolRunId" OpenRunIdChanged="SetToolRunAsync" OnOpenClassic="OpenClassicToolAsync" />
-                }
-                else if (_workshopView == WorkshopView.Bridges)
-                {
-                    <div class="workshop-nav">
-                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
-                        <span class="sidebar-heading">BRIDGE</span>
-                    </div>
-                    <p class="tool-note">Two fixed points — a planted detail and its payoff, an opening image and the climax, two characters who haven't met yet but will — and nothing between them. Bridge fixes both ends before anything else; that's the whole trick.</p>
-                    <button class="btn primary workshop-hand" @onclick="StartBridgeAsync">Start a new one</button>
-                    @if (_slate.Bridges.Count > 0)
-                    {
-                        <div class="sidebar-heading">KEPT FOR THIS SCRIPT</div>
-                        @foreach (var bridge in _slate.Bridges)
-                        {
-                            <div class="bracket-row">
-                                <button class="bracket-text chain-seed" title="Open — everything is as you left it" @onclick="() => OpenBridgeAsync(bridge)">@BridgeLabel(bridge)</button>
-                                <button class="icon-btn" title="Remove this bridge and its working-out" @onclick="() => RemoveBridge(bridge)">×</button>
-                            </div>
-                        }
-                    }
-                }
-                else if (_bridge is not null && _workshopView == WorkshopView.Bridge)
-                {
-                    <div class="workshop-nav">
-                        <button class="btn" title="Back — keeps what you've written" @onclick="CloseBridgeAsync">←</button>
-                        <span class="sidebar-heading">BRIDGE</span>
-                    </div>
-                    @if (_fileName.Length == 0)
-                    {
-                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
-                    }
-                    <p class="tool-note">Fix both ends first, then rounds of three candidate links between them. Stop after any round — a picked or half-picked link is a complete session.</p>
-
-                    <div class="rung-label">Fix the ends — don't skip this, the whole tool depends on it</div>
-                    <label class="fill-field">
-                        <span class="fill-label">A — the point you're starting from</span>
-                        <textarea rows="2" @bind="_bridge.A" @bind:after="SaveSlate"></textarea>
-                    </label>
-                    <label class="fill-field">
-                        <span class="fill-label">Z — the point you're building to</span>
-                        <textarea rows="2" @bind="_bridge.Z" @bind:after="SaveSlate"></textarea>
-                    </label>
-
-                    <div class="rung-label">Rounds — three candidates each</div>
-                    <p class="tool-note">Write three candidate links, then either pick the one that works, or half-pick one that's close but not quite right. Move to the next round only if the gap still needs more than one link.</p>
-                    <div class="burst-row">
-                        <label class="burst-toggle"><input type="checkbox" @bind="_slate.Burst.Enabled" @bind:after="BurstSettingChangedAsync" /> Time each candidate</label>
-                        @if (_slate.Burst.Enabled)
-                        {
-                            <input type="number" class="burst-seconds" min="5" max="600" @bind="_slate.Burst.Seconds" @bind:after="SaveSlate" />
-                            <span class="fill-meta">seconds</span>
-                            @if (_burstRunning)
-                            {
-                                <button class="btn" @onclick="StopBurstAsync">Stop</button>
-                            }
-                            else
-                            {
-                                <button class="btn primary" title="Starts at the first empty candidate" @onclick="() => StartBurstAsync(BridgeSlotsId)">Go</button>
-                            }
-                            <span class="burst-display" data-burst-display></span>
-                        }
-                    </div>
-                    @if (_slate.Burst.Enabled)
-                    {
-                        <div class="fill-hint">The worksheet gives a round 30 seconds for its three candidates — about 10 each. Five seconds to read, then the clock; Enter moves to the next candidate, and so does the clock running out. Whatever is there counts.</div>
-                    }
-                    <div id="@BridgeSlotsId">
-                        @for (var r = 0; r < _bridge.Rounds.Count; r++)
-                        {
-                            var roundIndex = r;
-                            var round = _bridge.Rounds[roundIndex];
-                            <div class="chain-round">
-                                <div class="chain-round-label">Round @(roundIndex + 1)</div>
-                                @for (var c = 0; c < round.Candidates.Count; c++)
-                                {
-                                    var candidateIndex = c;
-                                    <label class="fill-field">
-                                        <span class="fill-label">Candidate @(candidateIndex + 1)</span>
-                                        <textarea rows="2" data-slot @bind="round.Candidates[candidateIndex]" @bind:after="SaveSlate"></textarea>
-                                    </label>
-                                }
-                                <label class="fill-field">
-                                    <span class="fill-label">Picked / half-picked</span>
-                                    <textarea rows="2" @bind="round.Picked" @bind:after="SaveSlate"></textarea>
-                                </label>
-                            </div>
-                        }
-                    </div>
-                    <PartnerLines Lines="PartnerLinesFor(BridgePartnerKey)" OnAsk="() => AskPartnerAsync(BridgePartnerKey)" OnUse="UsePartnerLine" />
-                    <button class="btn" @onclick="AddBridgeRound">Another round — the gap still needs more than one link</button>
-                    <div class="fill-meta">No limit — but a gap that needs more than three or four links is probably a whole story's gap, not a scene-to-scene one.</div>
-
-                    <div class="rung-label">Close, whenever you stop</div>
-                    @if (_bridge.Rounds.Any(round => !string.IsNullOrWhiteSpace(round.Picked)))
-                    {
-                        <ol class="chain-forward">
-                            @if (!string.IsNullOrWhiteSpace(_bridge.A))
-                            {
-                                <li class="chain-z">@_bridge.A</li>
-                            }
-                            @foreach (var round in _bridge.Rounds.Where(round => !string.IsNullOrWhiteSpace(round.Picked)))
-                            {
-                                <li>@round.Picked</li>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(_bridge.Z))
-                            {
-                                <li class="chain-z">@_bridge.Z</li>
-                            }
-                        </ol>
-                    }
-                    <label class="fill-field">
-                        <span class="fill-label">The wire, read start to finish</span>
-                        <textarea rows="3" @bind="_bridge.Wire" @bind:after="SaveSlate"></textarea>
-                    </label>
-                    <div class="stop-callout">If it's a whole story's gap rather than a scene-to-scene one, this burst version isn't the right tool — that's the slower card version, which is Treatment-stage work, and it isn't built here. A→Z→Split is the tool for a whole story's shape.</div>
-                }
-                else if (_workshopView == WorkshopView.Positions)
-                {
-                    <div class="workshop-nav">
-                        <button class="btn" title="Back" @onclick="() => _workshopView = WorkshopView.Tools">←</button>
-                        <span class="sidebar-heading">POSITION</span>
-                    </div>
-                    <p class="tool-note">A scene, image or line you already have and love, with nowhere to put it yet. Try it in each of the story's seven slots and see where it comes alive.</p>
-                    <button class="btn primary workshop-hand" @onclick="StartPositionAsync">Start a new one</button>
-                    @if (_slate.Positions.Count > 0)
-                    {
-                        <div class="sidebar-heading">KEPT FOR THIS SCRIPT</div>
-                        @foreach (var position in _slate.Positions)
-                        {
-                            <div class="bracket-row">
-                                <button class="bracket-text chain-seed" title="Open — everything is as you left it" @onclick="() => OpenPositionAsync(position)">@(string.IsNullOrWhiteSpace(position.Moment) ? "(no moment written yet)" : position.Moment)</button>
-                                <button class="icon-btn" title="Remove this run and its working-out" @onclick="() => RemovePosition(position)">×</button>
-                            </div>
-                        }
-                    }
-                }
-                else if (_position is not null && _workshopView == WorkshopView.Position)
-                {
-                    <div class="workshop-nav">
-                        <button class="btn" title="Back — keeps what you've written" @onclick="ClosePositionAsync">←</button>
-                        <span class="sidebar-heading">POSITION</span>
-                    </div>
-                    @if (_fileName.Length == 0)
-                    {
-                        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
-                    }
-                    <p class="tool-note">Runs one turn at a time. Seven candidate slots exist — the story's seven turns. Do as few or as many as you want: stop after one, or work through all seven in a sitting.</p>
-                    <label class="fill-field">
-                        <span class="fill-label">The moment — the scene, image or line you already have and love, with nowhere to put it yet</span>
-                        <textarea rows="2" @bind="_position.Moment" @bind:after="SaveSlate"></textarea>
-                    </label>
-                    <p class="tool-note">Each turn: pick one of the seven slots and ask, <em>if this moment sat right here, what would it need to be true right before it, and what would it force to happen right after?</em> If an answer comes easily and feels like it belongs, that's alive. If you have to force it, or nothing comes, that's flat — not a failure, just proof this isn't the slot.</p>
-                    @for (var t = 0; t < _position.Turns.Count; t++)
-                    {
-                        var turnIndex = t;
-                        var turn = _position.Turns[turnIndex];
-                        <div class="chain-round">
-                            <div class="chain-round-label">Turn @(turnIndex + 1)</div>
-                            <label class="fill-field">
-                                <span class="fill-label">Slot</span>
-                                <select class="workshop-select" @bind="turn.Slot" @bind:after="SaveSlate">
-                                    <option value="">—</option>
-                                    @foreach (var slot in SplitScript.Turns)
-                                    {
-                                        <option value="@slot.Label">@slot.Label@(_position.Turns.Any(other => other != turn && other.Slot == slot.Label) ? " (tried)" : "")</option>
-                                    }
-                                </select>
-                                @if (ScriptTurnHintFor(turn.Slot) is { } inScript)
-                                {
-                                    <span class="fill-hint">In the script: @inScript</span>
-                                }
-                            </label>
-                            <label class="fill-field">
-                                <span class="fill-label">Needs before it</span>
-                                <textarea rows="2" @bind="turn.Before" @bind:after="SaveSlate"></textarea>
-                            </label>
-                            <label class="fill-field">
-                                <span class="fill-label">Forces after it</span>
-                                <textarea rows="2" @bind="turn.After" @bind:after="SaveSlate"></textarea>
-                            </label>
-                            <div class="stress-row">
-                                <span class="fill-hint">Alive or flat?</span>
-                                <AliveFlat @bind-Value="turn.Alive" @bind-Value:after="SaveSlate" />
-                            </div>
-                        </div>
-                    }
-                    @if (_position.Turns.Count < PositionRun.SlotCount)
-                    {
-                        <button class="btn" @onclick="AddPositionTurn">Another turn</button>
-                        <div class="fill-meta">There are only seven slots, so this is the one place in Slate where "keep going" has a natural ceiling.</div>
-                    }
-                    else
-                    {
-                        <div class="fill-meta">All seven slots tried — the one place in Slate where "keep going" has a natural ceiling.</div>
-                    }
-                    <div class="stop-callout">Flat is information — wrong slot, not a wasted turn. More than one alive isn't a problem either — it means you've found candidates, not committed to an answer.</div>
-
-                    <div class="rung-label">Stopping, any turn</div>
-                    <p class="tool-note">Shortlist the strongest one or two alive answers and stop there — Split or Fill picks the winner another day, not this worksheet.</p>
-                    @if (AliveSlots(_position) is { Count: > 0 } alive)
-                    {
-                        <div class="fill-hint">Alive so far: @string.Join(", ", alive)</div>
-                    }
-                    @for (var i = 0; i < _position.Shortlist.Count; i++)
-                    {
-                        var shortlistIndex = i;
-                        <label class="fill-field">
-                            <span class="fill-label">Shortlist @(shortlistIndex + 1)</span>
-                            <textarea rows="2" @bind="_position.Shortlist[shortlistIndex]" @bind:after="SaveSlate"></textarea>
-                        </label>
-                    }
                 }
                 else if (_workshopView == WorkshopView.Revisions)
                 {
@@ -1763,9 +1551,9 @@ Open a .fountain file to see formatted pages.</div>
     <div class="modal-backdrop">
         <div class="modal">
             <h3>Send to Board</h3>
-            <p>This turns the beat "@(_sendBeat.Title.Length > 0 ? _sendBeat.Title : "Untitled beat")" into a scene at the end of the script. Its page plan (page @_sendBeat.Page) is dropped and the script track takes over. Continue?</p>
+            <p>This turns the beat "@(_sendBeat.Title.Length > 0 ? _sendBeat.Title : "Untitled beat")" into a scene @(_sendBeatTarget is null ? "at the end of the script" : $"under {_sendBeatTarget.Value.Turn}"). Its page plan (page @_sendBeat.Page) is dropped and the script track takes over. Continue?</p>
             <div class="modal-actions">
-                <button class="btn" @onclick="() => _sendBeat = null">Cancel</button>
+                <button class="btn" @onclick="CancelSendToBoard">Cancel</button>
                 <button class="btn primary" @onclick="ConfirmSendToBoard">Send</button>
             </div>
         </div>
@@ -4060,14 +3848,38 @@ Open a .fountain file to see formatted pages.</div>
         _ = SendToBoardAsync(beat);
     }
 
+    // A beat Position is filing under a turn's sequence, waiting on the page-plan confirm.
+    private (Guid Card, string Turn)? _sendBeatTarget;
+
+    private void CancelSendToBoard()
+    {
+        _sendBeat = null;
+        _sendBeatTarget = null;
+    }
+
     private async Task ConfirmSendToBoard()
     {
         var beat = _sendBeat;
+        var target = _sendBeatTarget;
         _sendBeat = null;
-        if (beat is not null)
+        _sendBeatTarget = null;
+        if (beat is null)
         {
-            await SendToBoardAsync(beat);
+            return;
         }
+
+        if (target is { } under)
+        {
+            if (await ConvertBeatToCardAsync(beat, under.Card, true))
+            {
+                _statusMessage += $", under {under.Turn}";
+            }
+
+            StateHasChanged();
+            return;
+        }
+
+        await SendToBoardAsync(beat);
     }
 
     private async Task SendToBoardAsync(Beat beat)
@@ -4114,6 +3926,8 @@ Open a .fountain file to see formatted pages.</div>
             return false;
         }
 
+        // Mirror the insert so the next write sees it now, not after the editor's debounced change callback.
+        MirrorInsert(insertAt, text);
         BeatInbox.MoveTags(_slate.Story, beat.Id, cardId, BeatInbox.Heading(beat));
         _slate.Beats.Remove(beat);
         if (_editingBeat == beat)
@@ -4124,6 +3938,18 @@ Open a .fountain file to see formatted pages.</div>
         SaveSlate();
         _statusMessage = $"Sent \"{BeatInbox.Heading(beat)}\" to the Board as a scene";
         return true;
+    }
+
+    // After a successful ranged insert: the same lines in _content, re-analysed, so a second write in a row
+    // (a second link, a beat filed straight after) plans from what the editor holds.
+    private void MirrorInsert(int insertAt, string text)
+    {
+        var mirrored = _content.Split('\n').ToList();
+        mirrored.Insert(Math.Min(insertAt, mirrored.Count), text);
+        _content = string.Join('\n', mirrored);
+        _isDirty = true;
+        RunAnalysis();
+        UpdateCaretElementLabel();
     }
 
     private Beat? FindBeat(Guid id)
@@ -5249,7 +5075,7 @@ Open a .fountain file to see formatted pages.</div>
         await PersistSessionAsync();
     }
 
-    private enum WorkshopView { Tools, Bridges, Bridge, Positions, Position, Revisions, Revise }
+    private enum WorkshopView { Tools, Revisions, Revise }
 
     private WorkshopView _workshopView;
     private SlateDocument _slate = new();
@@ -5281,18 +5107,6 @@ Open a .fountain file to see formatted pages.</div>
 
         // The open exercise belongs to the script it was started in.
         _toolRunId = null;
-
-        _bridge = null;
-        _position = null;
-        if (_workshopView == WorkshopView.Bridge)
-        {
-            _workshopView = WorkshopView.Bridges;
-        }
-
-        if (_workshopView == WorkshopView.Position)
-        {
-            _workshopView = WorkshopView.Positions;
-        }
 
         _revision = null;
         if (_workshopView == WorkshopView.Revise)
@@ -5327,8 +5141,6 @@ Open a .fountain file to see formatted pages.</div>
     private void SaveSlate()
     {
         _slate.Exercises.RemoveAll(run => run.Id != _toolRunId && run.IsEmpty);
-        _slate.Bridges.RemoveAll(bridge => bridge != _bridge && bridge.IsEmpty);
-        _slate.Positions.RemoveAll(position => position != _position && position.IsEmpty);
         _slate.Revisions.RemoveAll(revision => revision != _revision && revision.IsEmpty);
         StoryItems.RefreshLabels(_slate.Story, CardLabels());
         if (_fileName.Length == 0)
@@ -5508,7 +5320,6 @@ Open a .fountain file to see formatted pages.</div>
     private bool _burstRunning;
 
     private const int BurstReadInSeconds = 5;
-    private const string BridgeSlotsId = "bridge-slots";
 
     // The dock body is one scroll container, so a runner opened from the
     // bottom of the tool list would otherwise open at its own bottom. The
@@ -5723,7 +5534,7 @@ Open a .fountain file to see formatted pages.</div>
             _editor.StateHasChanged();
         }
         public bool ScriptHasShape => _editor.ScriptHasShape;
-        public string? ScriptShapeValue(string label) => _editor.ScriptTurnHintFor(label);
+        public string? ScriptShapeValue(string label) => _editor.ScriptShapeValue(label);
         public async Task<bool> WriteShapeAsync(SplitRun run)
         {
             var wrote = await _editor.WriteShapeAsync(run);
@@ -5767,6 +5578,8 @@ Open a .fountain file to see formatted pages.</div>
         _slate.Exercises.Add(run);
         _workshopView = WorkshopView.Tools;
         _toolMenuFor = null;
+        // Started from the Cast dialog: close it so the dock is what the writer sees.
+        _libraryOpen = false;
         if (!_workshopOpen)
         {
             _workshopOpen = true;
@@ -5789,6 +5602,30 @@ Open a .fountain file to see formatted pages.</div>
 
     private void ToggleCardMenu(BoardCard card) => ToggleToolMenu("card:" + card.LineNumber);
 
+    // "Position this" on an inbox beat (the BEATS tray and the BOARD strip): the run kept for the beat, or a
+    // new one, opened with the beat as its anchor.
+    private async Task PositionBeatAsync(Beat beat)
+    {
+        var run = _slate.Exercises.FirstOrDefault(entry => entry.ExerciseId == SlateMigration.PositionId
+            && entry.Anchor.Kind == AnchorKind.InboxBeat && entry.Anchor.TargetId == beat.Id);
+        if (run is not null)
+        {
+            _workshopView = WorkshopView.Tools;
+            _toolMenuFor = null;
+            if (!_workshopOpen)
+            {
+                _workshopOpen = true;
+                await PersistSessionAsync();
+            }
+
+            await SetToolRunAsync(run.Id);
+            return;
+        }
+
+        await StartToolAsync(SlateMigration.PositionId,
+            new Anchor { Kind = AnchorKind.InboxBeat, TargetId = beat.Id, Text = beat.Title.Length > 0 ? beat.Title : "Untitled beat" });
+    }
+
     private Task StartCastToolAsync(string exerciseId, string character) =>
         StartToolAsync(exerciseId, new Anchor { Kind = AnchorKind.Character, Text = character });
 
@@ -5807,6 +5644,12 @@ Open a .fountain file to see formatted pages.</div>
         if (scene is not null && ExerciseCatalog.Find(exerciseId) is { Anchor: AnchorKind.Shape, SceneToo: true })
         {
             return StartToolAsync(exerciseId, new Anchor { Kind = AnchorKind.Shape, SceneId = scene.Id, SceneText = scene.Heading });
+        }
+
+        // Bridge from a card: this scene is A; Z is picked in the strip.
+        if (scene is not null && ExerciseCatalog.Find(exerciseId)?.Anchor == AnchorKind.TwoPoints)
+        {
+            return StartToolAsync(exerciseId, new Anchor { Kind = AnchorKind.TwoPoints, TargetId = scene.Id, Text = scene.Heading + " → ?", SceneId = scene.Id, SceneText = scene.Heading });
         }
 
         var speaker = scene is null ? string.Empty : host.SpeakersOf(scene).FirstOrDefault() ?? string.Empty;
@@ -5857,6 +5700,11 @@ Open a .fountain file to see formatted pages.</div>
 
     private async Task<bool> SendToolAsync(TargetKind target, ToolSend send)
     {
+        if (target == TargetKind.Board)
+        {
+            return await SendBeatUnderTurnAsync(send);
+        }
+
         var text = send.Text.Trim();
         if (text.Length == 0)
         {
@@ -5884,6 +5732,8 @@ Open a .fountain file to see formatted pages.</div>
                     ? $"Added to the Inbox, tagged {Characters.BareName(character)}"
                     : "Added to the Inbox";
                 return true;
+            case TargetKind.SceneCard:
+                return await SendSceneCardBetweenAsync(send with { Text = text });
             case TargetKind.NotePage:
                 if (character.Length == 0)
                 {
@@ -5914,6 +5764,113 @@ Open a .fountain file to see formatted pages.</div>
                 _statusMessage = "That target isn't available from here yet";
                 return false;
         }
+    }
+
+    // Position's target: the inbox beat becomes a scene card under the sequence its chosen turn sits on,
+    // through the same path as Send to Board (a beat still on the page plan asks first). send.Text is the turn.
+    private async Task<bool> SendBeatUnderTurnAsync(ToolSend send)
+    {
+        var turn = send.Text.Trim();
+        if (turn.Length == 0)
+        {
+            _statusMessage = "Pick which turn it goes in first — nothing sent";
+            return false;
+        }
+
+        if (send.Anchor.Kind != AnchorKind.InboxBeat || _slate.Beats.FirstOrDefault(entry => entry.Id == send.Anchor.TargetId) is not { } beat)
+        {
+            _statusMessage = "That beat is no longer in the inbox — nothing sent";
+            return false;
+        }
+
+        if (ToolTargets.SequenceForTurn(ScriptSequences, turn) is not { } sequence)
+        {
+            _statusMessage = $"No sequence in the script has {turn} — write the shape first (A→Z→Split). Nothing sent";
+            return false;
+        }
+
+        if (beat.Page > 0)
+        {
+            // Same confirm as Send to Board: the page plan is dropped.
+            _sendBeat = beat;
+            _sendBeatTarget = (sequence.Id, turn);
+            return false;
+        }
+
+        if (!await ConvertBeatToCardAsync(beat, sequence.Id, true))
+        {
+            return false;
+        }
+
+        _statusMessage += $", under {turn}";
+        return true;
+    }
+
+    // Bridge's optional target: a scene card between A and Z, in order, so each link sent lands after the last. It
+    // goes just before Z (or just after A when Z isn't named), by ranged insert so undo restores it exactly.
+    private async Task<bool> SendSceneCardBetweenAsync(ToolSend send)
+    {
+        var anchor = send.Anchor;
+        var scenes = ProjectContext.Scenes(_analysis.Elements);
+        var start = ProjectContext.Resolve(scenes, anchor);
+        var end = ProjectContext.ResolveEnd(scenes, anchor);
+        var namedStart = HasSceneAnchor(anchor);
+        var namedEnd = anchor.EndSceneId is not null || anchor.EndSceneText.Length > 0;
+        if (!namedStart && !namedEnd)
+        {
+            _statusMessage = "Name the two cards first — nothing inserted";
+            return false;
+        }
+
+        if (namedStart && start is null || namedEnd && end is null)
+        {
+            _statusMessage = $"{(namedStart && start is null ? "A" : "Z")} is no longer in the script — nothing inserted";
+            return false;
+        }
+
+        if (start is not null && end is not null && start.LineNumber >= end.LineNumber)
+        {
+            _statusMessage = "A doesn't come before Z in the script — nothing inserted";
+            return false;
+        }
+
+        var (anchorScene, after) = end is not null ? (end, false) : (start!, true);
+        var headings = _analysis.Elements.OfType<SceneHeadingElement>();
+        if (headings.FirstOrDefault(heading => heading.LineNumber == anchorScene.LineNumber) is not { } element)
+        {
+            _statusMessage = $"{anchorScene.Heading} is no longer in the script — nothing inserted";
+            return false;
+        }
+
+        var beat = ToolTargets.BuildBeat(send.Text);
+        var cardId = Guid.NewGuid();
+        var cardLines = BeatInbox.SceneLines(beat, cardId);
+        var scriptLines = _content.Replace("\r\n", "\n").Split('\n');
+        if (!BeatInbox.TryPlan(_analysis.Elements, scriptLines, element.Id, after, cardLines, out var insertAt, out var text))
+        {
+            _statusMessage = $"{anchorScene.Heading} is no longer in the script — nothing inserted";
+            return false;
+        }
+
+        bool inserted;
+        try
+        {
+            inserted = await JS.InvokeAsync<bool>("passage.insertLinesAt", insertAt, text);
+        }
+        catch (JSException)
+        {
+            inserted = false;
+        }
+
+        if (!inserted)
+        {
+            _statusMessage = "Could not add the scene card — nothing changed";
+            return false;
+        }
+
+        MirrorInsert(insertAt, text);
+        _statusMessage = $"Added a scene card \"{BeatInbox.Heading(beat)}\" {(after ? "after" : "before")} {anchorScene.Heading}";
+        return true;
     }
 
     private async Task JumpToToolAnchorAsync(Anchor anchor)
@@ -5960,8 +5917,6 @@ Open a .fountain file to see formatted pages.</div>
         switch (id)
         {
             case ToolsDock.ClassicIdeation: await OpenIdeationAsync(); break;
-            case ToolsDock.ClassicBridge: await OpenBridgesAsync(); break;
-            case ToolsDock.ClassicPosition: await OpenPositionsAsync(); break;
             case ToolsDock.ClassicPushPull: await OpenRevisionsAsync(); break;
         }
     }
@@ -5989,14 +5944,13 @@ Open a .fountain file to see formatted pages.</div>
 
     // What the script holds for a slot, when it is real text — shown under
     // the field so the runner and the script never silently disagree.
-    private string? ScriptTurnHint(int slotIndex)
+    private string? ScriptShapeValue(string label)
     {
-        var slot = SplitScript.Slots[slotIndex];
         foreach (var card in ScriptSequences)
         {
             foreach (var line in card.Description.Split('\n'))
             {
-                if (SplitScript.TryParse(line, out var label, out var value) && label == slot.Label)
+                if (SplitScript.TryParse(line, out var found, out var value) && found == label)
                 {
                     return SplitScript.IsKnown(value) ? value : null;
                 }
@@ -6141,154 +6095,6 @@ Open a .fountain file to see formatted pages.</div>
         _statusMessage = parts.Count == 0 ? "The script already has all of this" : string.Join("; ", parts);
         return updated.Count > 0;
     }
-
-    // ---- Bridge and Position (Phase 4) ----
-    //
-    // Two small runners, kept per script by what they are about, the same
-    // shape as the chains. Bridge's candidates are burst slots; Position's
-    // seven slots are the script's own seven turns.
-
-    private BridgeRun? _bridge;
-    private PositionRun? _position;
-
-    private static string BridgeLabel(BridgeRun bridge)
-    {
-        var a = string.IsNullOrWhiteSpace(bridge.A) ? "?" : bridge.A.Trim();
-        var z = string.IsNullOrWhiteSpace(bridge.Z) ? "?" : bridge.Z.Trim();
-        return a == "?" && z == "?" ? "(ends not fixed yet)" : $"{a} → {z}";
-    }
-
-    private async Task OpenBridgesAsync()
-    {
-        if (_slate.Bridges.Count == 0)
-        {
-            await StartBridgeAsync();
-            return;
-        }
-
-        _workshopView = WorkshopView.Bridges;
-        await ScrollWorkshopToTopAsync();
-    }
-
-    private async Task StartBridgeAsync()
-    {
-        var bridge = new BridgeRun();
-        _slate.Bridges.Add(bridge);
-        await OpenBridgeAsync(bridge);
-    }
-
-    private async Task OpenBridgeAsync(BridgeRun bridge)
-    {
-        if (bridge.Rounds.Count == 0)
-        {
-            bridge.Rounds.Add(new BridgeRound());
-        }
-
-        foreach (var round in bridge.Rounds)
-        {
-            while (round.Candidates.Count < 3)
-            {
-                round.Candidates.Add(string.Empty);
-            }
-        }
-
-        _bridge = bridge;
-        _workshopView = WorkshopView.Bridge;
-        await ScrollWorkshopToTopAsync();
-    }
-
-    private async Task CloseBridgeAsync()
-    {
-        await StopBurstAsync();
-        _bridge = null;
-        _workshopView = WorkshopView.Bridges;
-        SaveSlate();
-    }
-
-    private void RemoveBridge(BridgeRun bridge)
-    {
-        _slate.Bridges.Remove(bridge);
-        SaveSlate();
-        _statusMessage = "Removed the bridge";
-    }
-
-    // A round is the writer's call, not the form's: it is added only when the
-    // gap still needs more than one link.
-    private void AddBridgeRound()
-    {
-        _bridge?.Rounds.Add(new BridgeRound());
-        SaveSlate();
-    }
-
-    private async Task OpenPositionsAsync()
-    {
-        if (_slate.Positions.Count == 0)
-        {
-            await StartPositionAsync();
-            return;
-        }
-
-        _workshopView = WorkshopView.Positions;
-        await ScrollWorkshopToTopAsync();
-    }
-
-    private async Task StartPositionAsync()
-    {
-        var position = new PositionRun();
-        _slate.Positions.Add(position);
-        await OpenPositionAsync(position);
-    }
-
-    private async Task OpenPositionAsync(PositionRun position)
-    {
-        if (position.Turns.Count == 0)
-        {
-            position.Turns.Add(new PositionTurn());
-        }
-
-        while (position.Shortlist.Count < 2)
-        {
-            position.Shortlist.Add(string.Empty);
-        }
-
-        _position = position;
-        _workshopView = WorkshopView.Position;
-        await ScrollWorkshopToTopAsync();
-    }
-
-    private Task ClosePositionAsync()
-    {
-        _position = null;
-        _workshopView = WorkshopView.Positions;
-        SaveSlate();
-        return Task.CompletedTask;
-    }
-
-    private void RemovePosition(PositionRun position)
-    {
-        _slate.Positions.Remove(position);
-        SaveSlate();
-        _statusMessage = "Removed the run";
-    }
-
-    private void AddPositionTurn()
-    {
-        if (_position is not null && _position.Turns.Count < PositionRun.SlotCount)
-        {
-            _position.Turns.Add(new PositionTurn());
-        }
-
-        SaveSlate();
-    }
-
-    private string? ScriptTurnHintFor(string slotLabel)
-    {
-        var index = Array.FindIndex(SplitScript.Slots, slot => slot.Label == slotLabel);
-        return index < 0 ? null : ScriptTurnHint(index);
-    }
-
-    private static List<string> AliveSlots(PositionRun position) =>
-        position.Turns.Where(turn => turn.Alive == "alive" && !string.IsNullOrWhiteSpace(turn.Slot)).Select(turn => turn.Slot).ToList();
 
     // ---- Push/Pull and Lens (Phase 5) ----
     //
@@ -6613,88 +6419,6 @@ Open a .fountain file to see formatted pages.</div>
         }
     }
 
-    // ---- The assist seam (Phase 7) ----
-    //
-    // One ask at a time, keyed by the field it was for, so lines offered
-    // for one bracket or round never show under another. The partner only
-    // ever offers; a tap on a line puts it in the first empty target, and
-    // the writer can take none. With the null partner none of this renders.
-
-    private string _partnerKey = string.Empty;
-    private List<string> _partnerLines = new();
-    private CancellationTokenSource? _partnerCts;
-
-    private string BridgePartnerKey => $"bridge:{_bridge?.Rounds.Count}";
-
-    private IReadOnlyList<string> PartnerLinesFor(string key) => _partnerKey == key ? _partnerLines : Array.Empty<string>();
-
-    private SuggestionRequest? BuildPartnerRequest(string key)
-    {
-        if (key == BridgePartnerKey && _bridge is not null) return Suggestions.ForBridgeRound(_bridge);
-        return null;
-    }
-
-    private async Task AskPartnerAsync(string key)
-    {
-        var request = BuildPartnerRequest(key);
-        if (request is null)
-        {
-            _statusMessage = "Nothing left to ask for here — every answer is written";
-            return;
-        }
-
-        _partnerCts?.Cancel();
-        _partnerCts = new CancellationTokenSource();
-        var token = _partnerCts.Token;
-        _partnerKey = key;
-        _partnerLines = new List<string>();
-        _statusMessage = "Asking…";
-        try
-        {
-            var offered = await Partner.SuggestAsync(request, token);
-            if (token.IsCancellationRequested) return;
-            _partnerLines = offered.Where(line => !string.IsNullOrWhiteSpace(line)).Select(line => line.Trim()).Take(Suggestions.Count).ToList();
-            _statusMessage = _partnerLines.Count == 0 ? "Nothing came back" : "Offered — tap one to use it, or none";
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            _partnerLines = new List<string>();
-            _statusMessage = $"The partner didn't answer: {ex.Message}";
-        }
-    }
-
-    private void UsePartnerLine(string line)
-    {
-        var key = _partnerKey;
-        if (!PlacePartnerLine(key, line))
-        {
-            _statusMessage = "Every answer here is written — clear one to use this";
-            return;
-        }
-
-        _partnerLines.Remove(line);
-        SaveSlate();
-    }
-
-    // Writes the line into the first empty target of the field the ask was
-    // for. False when there is none — the writer filled them in the meantime.
-    private bool PlacePartnerLine(string key, string line)
-    {
-        if (key == BridgePartnerKey && _bridge is not null) return PlaceInFirstEmpty(_bridge.Rounds[^1].Candidates, line);
-        return false;
-    }
-
-    private static bool PlaceInFirstEmpty(List<string> targets, string line)
-    {
-        var index = targets.FindIndex(string.IsNullOrWhiteSpace);
-        if (index < 0) return false;
-        targets[index] = line;
-        return true;
-    }
-
     // ---- Go to Line ----
 
     private bool _goToLineOpen;
@@ -6828,6 +6552,8 @@ Open a .fountain file to see formatted pages.</div>
             {
                 <div class="beat-body">@beat.Description</div>
             }
+            <button class="icon-btn beat-position-btn" title="Try this beat in each of the story's seven turns"
+                    @onclick="() => PositionBeatAsync(beat)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">Position this</button>
         </div>
     };
 
@@ -6945,7 +6671,7 @@ Open a .fountain file to see formatted pages.</div>
                 @if (CardMenuOpen(card))
                 {
                     <div class="tool-menu" role="menu">
-                        @foreach (var exercise in ExerciseCatalog.All.Where(entry => entry.Anchor is AnchorKind.Character or AnchorKind.Scene || entry.Anchor == AnchorKind.Shape && entry.SceneToo))
+                        @foreach (var exercise in ExerciseCatalog.All.Where(entry => entry.Anchor is AnchorKind.Character or AnchorKind.Scene or AnchorKind.TwoPoints || entry.Anchor == AnchorKind.Shape && entry.SceneToo))
                         {
                             <button class="btn" role="menuitem" @onclick="() => StartCardToolAsync(exercise.Id, card)" @onclick:stopPropagation="true">@exercise.Name</button>
                         }
@@ -7200,7 +6926,6 @@ Open a .fountain file to see formatted pages.</div>
     {
         _autosaveCts?.Cancel();
         _noteSaveCts?.Cancel();
-        _partnerCts?.Cancel();
         _timerTick?.Stop();
         _timerTick?.Dispose();
         _selfRef?.Dispose();
