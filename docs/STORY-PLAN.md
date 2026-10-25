@@ -729,7 +729,7 @@ the bigger rows rely on them.
   Not done: the pane lists Board rows even when a filter dims them (dimmed
   the same way); location chips are hidden in the compact rows.
 
-### S2.4 Expand all / collapse all — `todo`
+### S2.4 Expand all / collapse all — `done`
 
 - **Read:** BOARD view 411–496. `_collapsedLanes` / `_collapsedGroups`
   `Editor.razor` ~3500–3530. Outline-filter persistence pattern.
@@ -744,6 +744,17 @@ the bigger rows rely on them.
 - **Tests:** collapse all collects every lane and group key (including the
   untitled ones).
 - **Budget:** ~30k.
+- **Landed:** BOARD toolbar gains "Descriptions: show/hide" and a single
+  "Collapse all / Expand all" button (it reads "Expand all" once every lane
+  and group is collapsed). `Services/BoardCollapse.cs` now owns the lane and
+  group keys and `AllKeys`, which collects every key including the untitled
+  lane and group. Descriptions are a `no-descriptions` class on
+  `.board-surface` hiding lane, group and card synopses; the flag rides the
+  session key (`passage.setBoardDescriptions`, `boardDescriptions`). Checked in
+  the running app: collapse all then expand all restored 5 lanes, 7 groups and
+  8 cards; hiding emptied every synopsis; the toggle read "show" after a
+  reload. Not done: collapsed state itself is not persisted (unchanged); the
+  lane synopsis stays visible on a collapsed lane when descriptions are shown.
 
 ---
 

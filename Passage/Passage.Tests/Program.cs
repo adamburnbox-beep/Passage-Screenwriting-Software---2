@@ -108,6 +108,7 @@ class Program
         failures += RunTest("Test BeatSheet Stacking", TestBeatSheetStacking);
         failures += RunTest("Test BeatSheet Scene Pages Match Preview", TestBeatSheetScenePagesMatchPreview);
         failures += RunTest("Test Beside List Order Matches Board", TestBesideListOrderMatchesBoard);
+        failures += RunTest("Test Collapse All Collects Every Key", TestCollapseAllCollectsEveryKey);
         failures += RunTest("Test Beside Caret Lookup", TestBesideCaretLookup);
         failures += RunTest("Test Inbox Conversion Lines", TestInboxConversionLines);
         failures += RunTest("Test Inbox Tag Transfer", TestInboxTagTransfer);
@@ -2436,6 +2437,18 @@ class Program
         var lines = rows.Where(row => row.Line > 0).Select(row => row.Line).ToList();
         Assert(lines.SequenceEqual(lines.OrderBy(line => line)), "Rows are in document order");
         Assert(rows.Count(row => row.Role == "card") >= 4, "The scenes are listed as cards");
+    }
+
+    static void TestCollapseAllCollectsEveryKey()
+    {
+        // The first scene sits before any heading, so it lives in the untitled lane and group.
+        var analysis = new DocumentAnalyzer().Analyze("Title: T\n\n.OPENER\n\nAction.\n\n# ACT ONE\n\n.FIRST\n\nAction.\n\n## RUN\n\n.SECOND\n\nAction.\n\n# ACT TWO\n\n.THIRD\n\nAction.\n");
+        var (lanes, groups) = Passage.Web.Services.BoardCollapse.AllKeys(analysis.BoardLanes);
+        var expectedGroups = analysis.BoardLanes.SelectMany(lane => lane.Groups.Select(group => Passage.Web.Services.BoardCollapse.GroupKey(Passage.Web.Services.BoardCollapse.LaneKey(lane), group))).ToHashSet();
+        Assert(lanes.Count == analysis.BoardLanes.Select(Passage.Web.Services.BoardCollapse.LaneKey).Distinct().Count() && lanes.Count >= 3, "Every lane has a key");
+        Assert(groups.SetEquals(expectedGroups) && groups.Count >= 3, "Every group has a key");
+        Assert(lanes.Contains("\u0000lane"), "The untitled lane is collected");
+        Assert(groups.Contains("\u0000lane/\u0000group"), "The untitled group is collected");
     }
 
     static void TestBesideCaretLookup()
