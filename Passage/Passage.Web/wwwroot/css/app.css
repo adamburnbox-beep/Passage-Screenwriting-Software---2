@@ -1991,6 +1991,13 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .key-only-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .templates-modal { max-height: 80vh; overflow-y: auto; }
 .template-item { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border, #8884); }
+.project-notes { margin-top: 16px; border-top: 1px solid var(--border, #8884); padding-top: 8px; }
+.project-notes-head { font-size: 11px; letter-spacing: .08em; opacity: .7; margin-bottom: 6px; }
+.project-notes-new { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.note-modal { width: min(720px, 94vw); }
+.note-title { width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.note-body { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; resize: vertical; }
+.note-template-save { display: flex; gap: 6px; margin-top: 8px; }
 .template-name { font-weight: bold; }
 .detached-list { padding: 8px 12px; border-bottom: 1px solid var(--border, #8884); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .detached-note { color: var(--muted-text); font-size: 0.9em; }

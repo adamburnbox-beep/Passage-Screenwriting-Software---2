@@ -199,6 +199,41 @@ Click New to start one — files are stored on the server volume.</div>
                             <span>@note.Text</span>
                         </div>
                     }
+                    <div class="project-notes">
+                        <div class="project-notes-head">PROJECT NOTES</div>
+                        @if (_fileName.Length == 0)
+                        {
+                            <div class="sidebar-empty">Save the script first; project notes are kept with it.</div>
+                        }
+                        else
+                        {
+                            @if (_slate.Story.Notes.Count == 0)
+                            {
+                                <div class="sidebar-empty">No project notes yet. Start one from a template or blank.</div>
+                            }
+                            @foreach (var page in _slate.Story.Notes)
+                            {
+                                <div class="outline-label" @onclick="() => OpenNote(page)">
+                                    <span class="outline-kind k-note">Page</span>
+                                    <span>@(page.Title.Length == 0 ? "Untitled" : page.Title)</span>
+                                </div>
+                            }
+                            <div class="project-notes-new">
+                                <select class="workshop-select" @bind="_newNoteTemplate">
+                                    <option value="">Blank page</option>
+                                    @foreach (var template in AllNoteTemplates)
+                                    {
+                                        <option value="@template.Id">@template.Name@(template.BuiltIn ? "" : " (mine)")</option>
+                                    }
+                                </select>
+                                <button class="btn" @onclick="NewNote">New page</button>
+                                @if (_slate.Story.Notes.Count > 0)
+                                {
+                                    <button class="btn" @onclick="DownloadAllNotesAsync">Download all</button>
+                                }
+                            </div>
+                        }
+                    </div>
                 }
                 else if (_sidebarTab == 3)
                 {
@@ -2325,6 +2360,40 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_openNote is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal note-modal">
+            <h3>Project note</h3>
+            <input class="note-title" placeholder="Title" @bind="_openNote.Title" @bind:event="oninput" @bind:after="QueueNoteSave" />
+            <textarea class="note-body" rows="18" spellcheck="true" @bind="_openNote.Body" @bind:event="oninput" @bind:after="QueueNoteSave"></textarea>
+            <div class="note-template-save">
+                <input placeholder="Template name" @bind="_saveNoteTemplateName" @bind:event="oninput" />
+                <button class="btn" disabled="@(_saveNoteTemplateName.Trim().Length == 0)" @onclick="SaveNoteAsTemplate">Save as template</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="DownloadNoteAsync">Download .md</button>
+                <button class="btn" @onclick="() => _deleteNote = _openNote">Delete…</button>
+                <button class="btn primary" @onclick="CloseNote">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteNote is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>Delete project note</h3>
+            <p>Delete "@(_deleteNote.Title.Length == 0 ? "Untitled" : _deleteNote.Title)"? It is kept only in this script's Slate data, so this cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _deleteNote = null">Cancel</button>
+                <button class="btn primary" @onclick="ConfirmDeleteNote">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_confirmDiscardAll)
 {
     <div class="modal-backdrop">
@@ -3964,10 +4033,12 @@ Open a .fountain file to see formatted pages.</div>
     {
         try
         {
-            Slate.SaveTemplates(new TemplatesDocument { Templates = _customTemplates });
+            var document = Slate.LoadTemplates() ?? new TemplatesDocument();
+            document.Templates = _customTemplates;
+            Slate.SaveTemplates(document);
             return true;
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or JsonException)
         {
             _statusMessage = $"Could not save templates: {ex.Message}";
             return false;
@@ -4057,6 +4128,154 @@ Open a .fountain file to see formatted pages.</div>
         {
             _customTemplates.Add(template);
         }
+    }
+
+    // ---- Project notes (docs/STORY-PLAN.md S4.2) ----
+
+    private NotePage? _openNote;
+    private NotePage? _deleteNote;
+    private string _newNoteTemplate = string.Empty;
+    private string _saveNoteTemplateName = string.Empty;
+    private List<NoteTemplate> _customNoteTemplates = new();
+    private CancellationTokenSource? _noteSaveCts;
+
+    private IEnumerable<NoteTemplate> AllNoteTemplates => NoteTemplates.BuiltIns.Concat(_customNoteTemplates);
+
+    private void LoadCustomNoteTemplates()
+    {
+        try
+        {
+            _customNoteTemplates = Slate.LoadTemplates()?.NoteTemplates ?? new List<NoteTemplate>();
+        }
+        catch (JsonException)
+        {
+            _customNoteTemplates = new List<NoteTemplate>();
+            _statusMessage = "Your saved templates could not be read, so custom note templates are not listed";
+        }
+    }
+
+    private void NewNote()
+    {
+        var template = AllNoteTemplates.FirstOrDefault(entry => entry.Id.ToString() == _newNoteTemplate);
+        var page = new NotePage
+        {
+            Title = template?.Name ?? "Untitled",
+            Body = template?.Body ?? string.Empty,
+            Template = template?.Name ?? string.Empty
+        };
+        _slate.Story.Notes.Add(page);
+        SaveSlate();
+        OpenNote(page);
+    }
+
+    private void OpenNote(NotePage page)
+    {
+        _openNote = page;
+        _saveNoteTemplateName = string.Empty;
+    }
+
+    // Saving is a debounce, not per keystroke: the text lives in the textarea.
+    private void QueueNoteSave()
+    {
+        _noteSaveCts?.Cancel();
+        var cts = _noteSaveCts = new CancellationTokenSource();
+        _ = SaveNoteAfterDelayAsync(cts.Token);
+    }
+
+    private async Task SaveNoteAfterDelayAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(800, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await InvokeAsync(() =>
+        {
+            SaveSlate();
+            StateHasChanged();
+        });
+    }
+
+    private void FlushNoteSave()
+    {
+        _noteSaveCts?.Cancel();
+        _noteSaveCts = null;
+        SaveSlate();
+    }
+
+    private void CloseNote()
+    {
+        FlushNoteSave();
+        _openNote = null;
+    }
+
+    private void ConfirmDeleteNote()
+    {
+        if (_deleteNote is not null)
+        {
+            _noteSaveCts?.Cancel();
+            _slate.Story.Notes.Remove(_deleteNote);
+            SaveSlate();
+            _statusMessage = "Project note deleted";
+        }
+
+        _deleteNote = null;
+        _openNote = null;
+    }
+
+    private void SaveNoteAsTemplate()
+    {
+        var name = _saveNoteTemplateName.Trim();
+        if (_openNote is null || name.Length == 0)
+        {
+            return;
+        }
+
+        var template = new NoteTemplate { Name = name, Body = _openNote.Body };
+        try
+        {
+            var document = Slate.LoadTemplates() ?? new TemplatesDocument();
+            document.NoteTemplates.Add(template);
+            Slate.SaveTemplates(document);
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            _statusMessage = $"Could not save the template: {exception.Message}";
+            return;
+        }
+
+        _customNoteTemplates.Add(template);
+        _saveNoteTemplateName = string.Empty;
+        _statusMessage = $"Saved \"{name}\" as a note template";
+    }
+
+    private string NotesBaseName()
+    {
+        var baseName = Path.GetFileNameWithoutExtension(DisplayName);
+        return string.IsNullOrWhiteSpace(baseName) ? "Untitled" : baseName;
+    }
+
+    private async Task DownloadNoteAsync()
+    {
+        if (_openNote is null)
+        {
+            return;
+        }
+
+        var fileName = NoteTemplates.FileName(_openNote.Title, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        await JS.InvokeVoidAsync("passage.downloadText", _openNote.Body, fileName);
+        _statusMessage = $"Downloaded {fileName}";
+    }
+
+    private async Task DownloadAllNotesAsync()
+    {
+        var zip = NoteTemplates.BuildZip(_slate.Story.Notes);
+        await JS.InvokeVoidAsync("passage.downloadBase64", Convert.ToBase64String(zip), NotesBaseName() + " notes.zip", "application/zip");
+        _statusMessage = $"Downloaded {_slate.Story.Notes.Count} project note{(_slate.Story.Notes.Count == 1 ? "" : "s")}";
     }
 
     // ---- Key beats and story items (docs/STORY-PLAN.md S1.1) ----
@@ -5820,6 +6039,10 @@ Open a .fountain file to see formatted pages.</div>
     {
         _slate = new SlateDocument();
         _slateLoadError = null;
+        _openNote = null;
+        _deleteNote = null;
+        _noteSaveCts?.Cancel();
+        LoadCustomNoteTemplates();
         _editingBeat = null;
         _deleteBeat = null;
         _renamingCharacter = null;
@@ -6984,10 +7207,10 @@ Open a .fountain file to see formatted pages.</div>
     // would find nothing to prune and lose the message.
     private void PruneSlateOrphans()
     {
-        IReadOnlyList<string> pruned;
+        IReadOnlyList<(string Script, int Notes)> pruned;
         try
         {
-            pruned = Slate.PruneOrphans(_files.Select(file => file.Name));
+            pruned = Slate.PruneOrphansCounted(_files.Select(file => file.Name));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -6997,7 +7220,7 @@ Open a .fountain file to see formatted pages.</div>
 
         if (pruned.Count > 0)
         {
-            _statusMessage = $"Removed Slate data for missing script{(pruned.Count == 1 ? "" : "s")}: {string.Join(", ", pruned)}";
+            _statusMessage = NoteTemplates.PruneMessage(pruned);
         }
     }
 
@@ -7628,6 +7851,7 @@ Open a .fountain file to see formatted pages.</div>
     public void Dispose()
     {
         _autosaveCts?.Cancel();
+        _noteSaveCts?.Cancel();
         _partnerCts?.Cancel();
         _timerTick?.Stop();
         _timerTick?.Dispose();

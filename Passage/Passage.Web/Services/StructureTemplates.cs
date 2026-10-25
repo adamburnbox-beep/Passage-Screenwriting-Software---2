@@ -29,6 +29,10 @@ public sealed class TemplatesDocument
 {
     public int SlateVersion { get; set; } = SlateStore.CurrentVersion;
     public List<StructureTemplate> Templates { get; set; } = new();
+
+    // S4.2: custom project-note templates, a sibling list so structure
+    // templates are untouched. An older file simply has none.
+    public List<NoteTemplate> NoteTemplates { get; set; } = new();
 }
 
 /// <summary>

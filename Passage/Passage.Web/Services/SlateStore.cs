@@ -61,6 +61,17 @@ public sealed class StoryData
     public List<LocationSettings> Locations { get; set; } = new(); // S1.3, keyed by normalised name
     public List<ItemTags> Items { get; set; } = new();
     public List<ArcPoint> Arc { get; set; } = new(); // S3.1: only dragged points are stored
+    public List<NotePage> Notes { get; set; } = new(); // S4.2: reference pages, never parsed or exported
+}
+
+/// <summary>A project note (S4.2): a titled page of Markdown the writer keeps
+/// beside the script. Template is the id it started from, informational only.</summary>
+public sealed class NotePage
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string Template { get; set; } = string.Empty;
 }
 
 /// <summary>A dragged value on one storyline's arc (S3.1), keyed by item rather
@@ -544,10 +555,15 @@ public sealed class SlateStore
     /// so rather than pruning silently. Scripts can be removed from the volume
     /// outside the app, so this runs on load, like the recent-files list.
     /// </summary>
-    public IReadOnlyList<string> PruneOrphans(IEnumerable<string> scriptNames)
+    public IReadOnlyList<string> PruneOrphans(IEnumerable<string> scriptNames) =>
+        PruneOrphansCounted(scriptNames).Select(entry => entry.Script).ToList();
+
+    /// <summary>As <see cref="PruneOrphans"/>, also reporting how many project
+    /// notes each deleted sidecar held (0 for one that cannot be read).</summary>
+    public IReadOnlyList<(string Script, int Notes)> PruneOrphansCounted(IEnumerable<string> scriptNames)
     {
         var present = scriptNames.ToHashSet(StringComparer.Ordinal);
-        var pruned = new List<string>();
+        var pruned = new List<(string, int)>();
         lock (_gate)
         {
             if (!Directory.Exists(_root))
@@ -568,8 +584,17 @@ public sealed class SlateStore
                     continue;
                 }
 
+                var notes = 0;
+                try
+                {
+                    notes = JsonSerializer.Deserialize<SlateDocument>(File.ReadAllText(path), JsonOptions)?.Story.Notes.Count ?? 0;
+                }
+                catch (JsonException)
+                {
+                }
+
                 File.Delete(path);
-                pruned.Add(scriptName);
+                pruned.Add((scriptName, notes));
             }
         }
 
