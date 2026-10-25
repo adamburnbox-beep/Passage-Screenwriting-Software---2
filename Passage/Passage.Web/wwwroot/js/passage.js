@@ -775,6 +775,7 @@ window.passage = (function () {
         cm.getWrapperElement().addEventListener("mousedown", () => { lastInputWasPointer = true; }, true);
         cm.getWrapperElement().addEventListener("keydown", () => { lastInputWasPointer = false; }, true);
         cm.on("changes", updatePageRules);
+        cm.on("changes", hideIdMarkersInChanges);
         cm.on("refresh", updatePageRules);
 
         // Close any open dropdown menu after a choice or an outside click.
@@ -1871,6 +1872,44 @@ window.passage = (function () {
         }
 
         document.body.appendChild(classifyMenu);
+    }
+
+    // Stable card/scene ids live in the text as " [[id:…]]" so they survive a
+    // save, but they are bookkeeping, not script. Fold them out of sight; the
+    // text itself (and so the saved file) is untouched.
+    const idMarkerPattern = /\s*\[\[id:[0-9a-fA-F-]+\]\]/g;
+
+    function hideIdMarkersOnLine(line) {
+        const text = cm.getLine(line);
+        if (text == null) return;
+        const lineEnd = { line, ch: text.length };
+        cm.findMarks({ line, ch: 0 }, lineEnd).forEach((mark) => {
+            if (mark.isIdMarker) mark.clear();
+        });
+        idMarkerPattern.lastIndex = 0;
+        let match;
+        while ((match = idMarkerPattern.exec(text)) !== null) {
+            const mark = cm.markText(
+                { line, ch: match.index },
+                { line, ch: match.index + match[0].length },
+                { collapsed: true });
+            mark.isIdMarker = true;
+        }
+    }
+
+    function hideIdMarkersInChanges(editor, changes) {
+        editor.operation(() => {
+            const seen = new Set();
+            for (const change of changes) {
+                const first = change.from.line;
+                const last = first + change.text.length - 1;
+                for (let line = first; line <= last; line++) {
+                    if (seen.has(line)) continue;
+                    seen.add(line);
+                    hideIdMarkersOnLine(line);
+                }
+            }
+        });
     }
 
     function setContent(text) {

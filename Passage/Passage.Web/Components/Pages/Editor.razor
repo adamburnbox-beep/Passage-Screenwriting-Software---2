@@ -358,6 +358,10 @@ Click New to start one — files are stored on the server volume.</div>
                         {
                             <div class="sidebar-empty">No storylines yet. Try "A Story", "B Story" or "Runner".</div>
                         }
+                        else
+                        {
+                            <div class="sidebar-empty">To use one: open BOARD or BEATS, click a card, press # and pick the storyline. Then ARC charts it.</div>
+                        }
                         @foreach (var line in _slate.Story.Storylines)
                         {
                             @if (_editingStoryline == line)
@@ -852,7 +856,7 @@ Open a .fountain file to chart storylines against its scenes.</div>
                         </svg>
                         @if (arc.Lines.Values.All(points => points.Count == 0))
                         {
-                            <div class="arc-note">No tagged scenes on a line yet. Tag a card or beat with a storyline to give it a point.</div>
+                            <div class="arc-note">No tagged scenes on a line yet. Go to BOARD or BEATS, click a card or beat and press # to tag it with a storyline; each tagged scene gets a point here.</div>
                         }
                         @if (arc.Unplaced.Count > 0)
                         {
