@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, besideOpen: false, besideBeats: false, besideWidth: 300, boardDescriptions: true, typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, besideOpen: false, besideBeats: false, besideWidth: 300, boardDescriptions: true, arcMode: "board", typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -196,6 +196,11 @@ window.passage = (function () {
     function setBeside(open, beats) {
         session.besideOpen = !!open;
         session.besideBeats = !!beats;
+        scheduleSessionSave();
+    }
+
+    function setArcMode(mode) {
+        session.arcMode = mode === "pages" ? "pages" : "board";
         scheduleSessionSave();
     }
 
@@ -783,6 +788,7 @@ window.passage = (function () {
 
         document.addEventListener("dragover", trackDropSide, true);
         document.addEventListener("pointerdown", startBeatGesture);
+        document.addEventListener("pointerdown", startArcDrag);
 
         cm.getWrapperElement().addEventListener("contextmenu", (event) => {
             event.preventDefault();
@@ -1260,6 +1266,69 @@ window.passage = (function () {
         card.addEventListener("pointermove", move);
         card.addEventListener("pointerup", up);
         card.addEventListener("pointercancel", up);
+    }
+
+    // ---- Arc view: drag a point vertically (S3.1) ----
+    //
+    // Runs entirely here. The point and its storyline's polyline follow the
+    // pointer; the server hears once, on release: OnArcPointMoved(storylineId,
+    // targetId, value). The clamp mirrors ArcLayout.Clamp; the server's is the
+    // truth. The svg carries data-top / data-height, the plot's vertical extent
+    // in viewBox units.
+    function startArcDrag(down) {
+        if (down.button !== 0 || !dotnetRef || !down.target.closest) return;
+        const point = down.target.closest(".arc-point");
+        const svg = point && point.ownerSVGElement;
+        if (!svg) return;
+        down.preventDefault();
+        const top = parseFloat(svg.dataset.top);
+        const height = parseFloat(svg.dataset.height);
+        const startY = point.getAttribute("cy");
+        const startFill = point.classList.contains("untouched");
+        let value = null;
+
+        const toValue = (event) => {
+            const ctm = svg.getScreenCTM();
+            if (!ctm) return null;
+            const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+            return Math.max(0, Math.min(100, Math.round(100 - ((local.y - top) / height) * 100)));
+        };
+
+        const redraw = () => {
+            const circles = Array.from(svg.querySelectorAll(".arc-point")).filter((c) => c.dataset.line === point.dataset.line);
+            const line = svg.querySelector('.arc-line[data-line="' + point.dataset.line + '"]');
+            if (line) line.setAttribute("points", circles.map((c) => c.getAttribute("cx") + "," + c.getAttribute("cy")).join(" "));
+        };
+
+        const move = (event) => {
+            const next = toValue(event);
+            if (next === null) return;
+            value = next;
+            point.setAttribute("cy", String(top + ((100 - value) / 100) * height));
+            point.classList.remove("untouched");
+            point.classList.add("dragging");
+            redraw();
+        };
+
+        const up = (event) => {
+            point.removeEventListener("pointermove", move);
+            point.removeEventListener("pointerup", up);
+            point.removeEventListener("pointercancel", up);
+            point.classList.remove("dragging");
+            if (value === null) return;
+            if (event.type === "pointercancel") {
+                point.setAttribute("cy", startY);
+                if (startFill) point.classList.add("untouched");
+                redraw();
+                return;
+            }
+            dotnetRef.invokeMethodAsync("OnArcPointMoved", point.dataset.line, point.dataset.target, value);
+        };
+
+        capturePointer(point, down);
+        point.addEventListener("pointermove", move);
+        point.addEventListener("pointerup", up);
+        point.addEventListener("pointercancel", up);
     }
 
     // ---- Board inbox: drop a beat onto a card ----
@@ -2046,7 +2115,7 @@ window.passage = (function () {
 
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
-        init, applyHighlights, setContent, setDirty, scrollToLine, setBeside, setBoardDescriptions,
+        init, applyHighlights, setContent, setDirty, scrollToLine, setBeside, setBoardDescriptions, setArcMode,
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,

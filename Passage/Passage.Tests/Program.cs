@@ -114,6 +114,11 @@ class Program
         failures += RunTest("Test Inbox Tag Transfer", TestInboxTagTransfer);
         failures += RunTest("Test Inbox Insert Points", TestInboxInsertPoints);
         failures += RunTest("Test Inbox Missing Target Is Reported", TestInboxMissingTarget);
+        failures += RunTest("Test Arc Point Ordering In Both Modes", TestArcPointOrderingInBothModes);
+        failures += RunTest("Test Arc Value Clamp And Set", TestArcValueClampAndSet);
+        failures += RunTest("Test Arc Unplaced Items Are Reported", TestArcUnplacedItemsAreReported);
+        failures += RunTest("Test Arc Beat Delete Cascades", TestArcBeatDeleteCascades);
+        failures += RunTest("Test Arc Detached Points Are Listed", TestArcDetachedPointsAreListed);
 
         Console.WriteLine("\n=== Test Run Completed ===");
         if (failures == 0)
@@ -2475,5 +2480,103 @@ class Program
         Assert(beats.Select(item => item.Line).SequenceEqual(new[] { 0, 3, 20 }), "A beat points at the scene on its page, else the one before");
         Assert(Passage.Web.Services.BesideList.BeatAt(beats, scenes, 12) == 1, "A caret in a scene on a spanned page finds the covering beat");
         Assert(Passage.Web.Services.BesideList.BeatAt(beats, scenes, 1) == -1, "Before the first scene no beat is current");
+    }
+
+    // Four scenes; line numbers are 1-based so ScenePlacement can point at them.
+    static (Passage.Web.Services.StoryData Story, DocumentAnalysis Analysis, Guid[] Ids, Guid Line, List<Passage.Web.Services.ScenePlacement> Scenes) ArcFixture()
+    {
+        var ids = Enumerable.Range(0, 4).Select(_ => Guid.NewGuid()).ToArray();
+        var text = string.Join("\n\n", ids.Select((id, i) => $".SCENE {i + 1} [[id:{id}]]\n\nAction {i + 1}."));
+        var analysis = new DocumentAnalyzer().Analyze(text);
+        var line = Guid.NewGuid();
+        var story = new Passage.Web.Services.StoryData();
+        story.Storylines.Add(new Passage.Web.Services.Storyline { Id = line, Name = "A Story" });
+        // Tagged out of script order on purpose: ordering must come from the layout.
+        foreach (var index in new[] { 3, 0, 2 })
+        {
+            Assert(Passage.Web.Services.StoryItems.ToggleTag(story, ids[index], "card", $"SCENE {index + 1}", "storyline:" + line), "Tag " + index);
+        }
+
+        var headings = analysis.Elements.OfType<SceneHeadingElement>().ToList();
+        // Scene 1 on page 1, scene 3 on page 7, scene 4 unplaced (page 0), scene 2 on page 4.
+        var scenes = new List<Passage.Web.Services.ScenePlacement>
+        {
+            new("SCENE 1", headings[0].LineNumber, 1), new("SCENE 2", headings[1].LineNumber, 4),
+            new("SCENE 3", headings[2].LineNumber, 7), new("SCENE 4", headings[3].LineNumber, 0)
+        };
+        return (story, analysis, ids, line, scenes);
+    }
+
+    static void TestArcPointOrderingInBothModes()
+    {
+        var (story, analysis, ids, line, scenes) = ArcFixture();
+        var beat = new Passage.Web.Services.Beat { Title = "Midpoint", Page = 5 };
+        Passage.Web.Services.StoryItems.ToggleTag(story, beat.Id, "beat", "Midpoint", "storyline:" + line);
+        Passage.Web.Services.ArcLayout.SetValue(story, line, ids[2], "card", "SCENE 3", 80);
+
+        var board = Passage.Web.Services.ArcLayout.Build(story, analysis.Elements, scenes, new[] { beat }, Passage.Web.Services.ArcAxisMode.Board);
+        var boardPoints = board.Lines[line];
+        Assert(boardPoints.Select(p => p.TargetId).SequenceEqual(new[] { ids[0], ids[2], ids[3] }), "Board order follows the script, not the tagging order");
+        Assert(boardPoints.Select(p => p.X).SequenceEqual(new[] { 0, 2, 3 }), "Board x is the card's index among all cards");
+        Assert(board.Unplaced.Single().TargetId == beat.Id && board.Unplaced.Single().Reason == "not on the Board", "A beat is not on the Board");
+
+        var pages = Passage.Web.Services.ArcLayout.Build(story, analysis.Elements, scenes, new[] { beat }, Passage.Web.Services.ArcAxisMode.Pages);
+        var pagePoints = pages.Lines[line];
+        Assert(pagePoints.Select(p => p.TargetId).SequenceEqual(new[] { ids[0], beat.Id, ids[2] }), "Pages order is by page, with the grid beat in it");
+        Assert(pagePoints.Select(p => p.X).SequenceEqual(new[] { 1, 5, 7 }), "Pages x is the page number");
+        Assert(board.Lines[line].Single(p => p.TargetId == ids[2]).Value == 80 && pagePoints.Single(p => p.TargetId == ids[2]).Value == 80, "The value is the same in both modes");
+        Assert(pagePoints.Single(p => p.TargetId == ids[0]).Touched == false && pagePoints.Single(p => p.TargetId == ids[0]).Value == 50, "An untouched point sits at 50");
+    }
+
+    static void TestArcValueClampAndSet()
+    {
+        var (story, _, ids, line, _) = ArcFixture();
+        Assert(Passage.Web.Services.ArcLayout.Clamp(-20) == 0 && Passage.Web.Services.ArcLayout.Clamp(250) == 100 && Passage.Web.Services.ArcLayout.Clamp(37) == 37, "Clamp is 0-100");
+        Assert(Passage.Web.Services.ArcLayout.SetValue(story, line, ids[0], "card", "SCENE 1", 400), "A tagged item takes a value");
+        Assert(story.Arc.Single().Value == 100, "An out-of-range value is clamped when stored");
+        Assert(Passage.Web.Services.ArcLayout.SetValue(story, line, ids[0], "card", "SCENE 1", 10) && story.Arc.Count == 1 && story.Arc[0].Value == 10, "A second drag updates the point, not adds one");
+        Assert(!Passage.Web.Services.ArcLayout.SetValue(story, line, ids[1], "card", "SCENE 2", 10), "An untagged item is refused");
+        Assert(!Passage.Web.Services.ArcLayout.SetValue(story, Guid.NewGuid(), ids[0], "card", "SCENE 1", 10), "An unknown storyline is refused");
+        Assert(story.Arc.Count == 1, "Refusals write nothing");
+        var json = System.Text.Json.JsonSerializer.Serialize(story);
+        Assert(System.Text.Json.JsonSerializer.Deserialize<Passage.Web.Services.StoryData>(json)!.Arc.Single().Value == 10, "Arc points round-trip");
+    }
+
+    static void TestArcUnplacedItemsAreReported()
+    {
+        var (story, analysis, ids, line, scenes) = ArcFixture();
+        var tray = new Passage.Web.Services.Beat { Title = "Loose", Page = 0 };
+        Passage.Web.Services.StoryItems.ToggleTag(story, tray.Id, "beat", "Loose", "storyline:" + line);
+        var pages = Passage.Web.Services.ArcLayout.Build(story, analysis.Elements, scenes, new[] { tray }, Passage.Web.Services.ArcAxisMode.Pages);
+        var unplaced = pages.Unplaced.Select(item => item.TargetId).ToHashSet();
+        Assert(unplaced.SetEquals(new[] { ids[3], tray.Id }), "A scene on page 0 and a tray beat are both listed, never placed");
+        Assert(pages.Lines[line].All(p => p.TargetId != ids[3] && p.TargetId != tray.Id), "Neither is drawn");
+        var untagged = Passage.Web.Services.ArcLayout.Build(new Passage.Web.Services.StoryData(), analysis.Elements, scenes, new[] { tray }, Passage.Web.Services.ArcAxisMode.Pages);
+        Assert(untagged.Unplaced.Count == 0, "Items on no storyline are not reported");
+    }
+
+    static void TestArcBeatDeleteCascades()
+    {
+        var (story, _, ids, line, _) = ArcFixture();
+        var beat = new Passage.Web.Services.Beat { Title = "Gone" };
+        Passage.Web.Services.StoryItems.ToggleTag(story, beat.Id, "beat", "Gone", "storyline:" + line);
+        Passage.Web.Services.ArcLayout.SetValue(story, line, beat.Id, "beat", "Gone", 70);
+        Passage.Web.Services.ArcLayout.SetValue(story, line, ids[0], "card", "SCENE 1", 20);
+        Passage.Web.Services.StoryItems.RemoveBeat(story, beat.Id);
+        Assert(story.Arc.Single().TargetId == ids[0], "The beat's point goes; the card's stays");
+        Assert(story.Items.All(item => item.TargetId != beat.Id), "The beat's tags go too");
+        Passage.Web.Services.StoryItems.DeleteStoryline(story, line);
+        Assert(story.Arc.Count == 0, "Deleting a storyline removes its points");
+    }
+
+    static void TestArcDetachedPointsAreListed()
+    {
+        var (story, analysis, ids, line, scenes) = ArcFixture();
+        Passage.Web.Services.ArcLayout.SetValue(story, line, ids[2], "card", "SCENE 3", 90);
+        var without = new DocumentAnalyzer().Analyze(".SCENE 1 [[id:" + ids[0] + "]]\n\nAction.");
+        var chart = Passage.Web.Services.ArcLayout.Build(story, without.Elements, new List<Passage.Web.Services.ScenePlacement>(), Array.Empty<Passage.Web.Services.Beat>(), Passage.Web.Services.ArcAxisMode.Board);
+        Assert(chart.Detached.Any(d => d.TargetId == ids[2] && d.Value == 90 && d.Label == "SCENE 3"), "A card that left the script is listed with its value");
+        Assert(story.Arc.Count == 1, "Nothing is dropped");
+        Assert(chart.Lines[line].Select(p => p.TargetId).SequenceEqual(new[] { ids[0] }), "Only the live card is drawn");
     }
 }

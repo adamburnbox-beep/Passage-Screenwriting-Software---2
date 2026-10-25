@@ -2084,3 +2084,18 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .beside-page { color: var(--muted-text); min-width: 18px; text-align: right; font-size: 11px; }
 .beside-row .tag-marks { margin-top: 0; flex-wrap: nowrap; }
 .beside-row .tag-chip { display: none; }
+
+/* Arc view (S3.1) */
+.arc-view { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; }
+.arc-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; padding-top: 8px; color: var(--secondary-text); }
+.arc-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.arc-swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+.arc-axis-name { color: var(--muted-text); font-size: 0.85em; }
+.arc-chart { width: 100%; max-width: 1100px; height: auto; background: var(--surface-background); border: 1px solid var(--surface-border); border-radius: 6px; touch-action: none; user-select: none; }
+.arc-grid { stroke: var(--surface-border); stroke-width: 1; }
+.arc-tick { fill: var(--muted-text); font-size: 12px; }
+.arc-line { stroke: var(--c); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.arc-point { stroke: var(--c); stroke-width: 2.5; fill: var(--c); cursor: ns-resize; }
+.arc-point.untouched { fill: var(--surface-background); }
+.arc-point.dragging { stroke-width: 4; }
+.arc-note { color: var(--secondary-text); }
