@@ -57,18 +57,27 @@ public static class ToolTargets
     }
 
     /// <summary>
-    /// Adds "- label: answer" to the character's note page, under a heading named after the exercise. The page is
-    /// made from the built-in Character template when the character has none. Returns the page and whether it was new.
+    /// Adds "- label: answer" to the note page titled <paramref name="name"/>, under a heading named after the exercise. A
+    /// character with no page gets one from the built-in Character template; anything else (a scene's revision note) gets a
+    /// blank one. Returns the page and whether it was new.
     /// </summary>
-    public static (NotePage Page, bool Created) AppendToNote(StoryData story, string character, string exercise, string label, string text)
+    public static (NotePage Page, bool Created) AppendToNote(StoryData story, string name, string exercise, string label, string text, bool character = true)
     {
-        var name = character.Trim();
+        name = name.Trim();
         var page = ProjectContext.NoteFor(story, name);
         var created = page is null;
         if (page is null)
         {
-            var template = NoteTemplates.BuiltIns[0];
-            page = new NotePage { Title = name, Body = template.Body, Template = template.Name };
+            if (character)
+            {
+                var template = NoteTemplates.BuiltIns[0];
+                page = new NotePage { Title = name, Body = template.Body, Template = template.Name };
+            }
+            else
+            {
+                page = new NotePage { Title = name };
+            }
+
             story.Notes.Add(page);
         }
 

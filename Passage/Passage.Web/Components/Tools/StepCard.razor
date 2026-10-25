@@ -11,6 +11,10 @@
         <p class="step-question">@step.Text</p>
         <div class="step-actions">
             <button class="btn" @onclick="OnStopHere">Stop here</button>
+            @if (step.Opens is { } opens && ExerciseCatalog.Find(opens) is { } other)
+            {
+                <button class="btn" title="Opens it on this scene; this run stays as it is" @onclick="() => Host.OpenOnSceneAsync(opens, Run.Anchor)">Open @other.Name on this scene</button>
+            }
             <button class="btn primary" @onclick="() => OnContinue.InvokeAsync(Slot)">Keep going</button>
         </div>
     </div>
@@ -68,9 +72,13 @@ else
                     {
                         var chosen = option;
                         var on = Engine.IsPicked(Run, Slot, chosen);
-                        <button class="pick-option @(on ? "on" : null)" aria-pressed="@on" @onclick="() => PickAsync(chosen)">@chosen</button>
+                        <button class="pick-option @(on ? "on" : null)" aria-pressed="@on" title="@(step.NameOnly ? chosen : null)" @onclick="() => PickAsync(chosen)">@(step.NameOnly ? Name(chosen) : chosen)</button>
                     }
                 </div>
+                @if (step.NameOnly && options.FirstOrDefault(option => Engine.IsPicked(Run, Slot, option)) is { } picked)
+                {
+                    <div class="step-hint">What you actually do: @Gloss(picked)</div>
+                }
             }
             <textarea rows="2" data-slot data-step-input data-held="@(Held ? "" : null)"
                       aria-label="@step.Question — or write it"
@@ -136,6 +144,17 @@ else
                 }
             }
             break;
+        case StepKind.Summary:
+            var note = Engine.Summary(Run);
+            @if (note.Length == 0)
+            {
+                <div class="step-hint">Nothing written yet.</div>
+            }
+            else
+            {
+                <pre class="step-summary">@note</pre>
+            }
+            break;
         case StepKind.Dice:
             var rolled = Engine.GetAnswer(Run, step.Key, Slot.Round);
             @if (rolled.Length > 0)
@@ -156,9 +175,9 @@ else
     {
         <label class="burst-toggle"><input type="checkbox" checked="@Engine.IsAlt(Run, Slot)" @onchange="AltToggledAsync" /> @step.AltLabel</label>
     }
-    @if ((step.Kind is StepKind.Text or StepKind.Lines or StepKind.Pick) && SendTargets.Count > 0)
+    @if ((step.Kind is StepKind.Text or StepKind.Lines or StepKind.Pick or StepKind.Summary) && !(step.Kind == StepKind.Pick && step.Source is not null) && SendTargets.Count > 0)
     {
-        <SendToMenu Targets="SendTargets" Character="@CharacterName" SynopsisLabel="@Host.SynopsisTargetLabel(SendAnchor)" OnSend="SendAsync" />
+        <SendToMenu Targets="SendTargets" Character="@CharacterName" SceneName="@SceneNoteName" SynopsisLabel="@Host.SynopsisTargetLabel(SendAnchor)" OnSend="SendAsync" />
     }
 }
 
@@ -185,6 +204,11 @@ else
 
         return OnChanged.InvokeAsync(Slot);
     }
+
+    // A "Name — gloss" option's two halves.
+    private static string Name(string option) => option.Contains(" — ") ? option[..option.IndexOf(" — ", StringComparison.Ordinal)] : option;
+
+    private static string Gloss(string option) => option.Contains(" — ") ? option[(option.IndexOf(" — ", StringComparison.Ordinal) + 3)..] : string.Empty;
 
     private Task PickAsync(string option)
     {
@@ -241,11 +265,14 @@ else
         ? new Anchor { Kind = AnchorKind.Character, Text = Engine.GetAnswer(Run, who, Slot.Round).Trim() }
         : Run.Anchor;
 
+    // A scene-anchored run's note page is named after the scene.
+    private string SceneNoteName => SendAnchor.Kind == AnchorKind.Scene ? SendAnchor.SceneText : string.Empty;
+
     private string CharacterName => SendAnchor.Kind == AnchorKind.Character ? Characters.BareName(SendAnchor.Text) : string.Empty;
 
     // The answer as it is now: the field's change event reaches the server
     // before this tap does, so reading the run is enough.
-    private string AnswerText() => Slot.Step.Kind == StepKind.Lines
+    private string AnswerText() => Slot.Step.Kind == StepKind.Summary ? Engine.Summary(Run) : Slot.Step.Kind == StepKind.Lines
         ? string.Join('\n', Enumerable.Range(0, Engine.LineCount(Run, Slot)).Select(i => Engine.GetLine(Run, Slot.Step.Key, Slot.Round, i)).Where(line => !string.IsNullOrWhiteSpace(line)))
         : Engine.GetAnswer(Run, Slot.Step.Key, Slot.Round);
 

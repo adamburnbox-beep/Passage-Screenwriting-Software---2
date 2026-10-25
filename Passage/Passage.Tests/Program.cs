@@ -82,6 +82,10 @@ class Program
         failures += RunTest("Test Catalog Position Turns And Ladder", TestCatalogPosition);
         failures += RunTest("Test Position Sequence For Turn", TestPositionSequenceForTurn);
         failures += RunTest("Test Slate Migration Bridges And Positions", TestSlateMigrationBridgeAndPosition);
+        failures += RunTest("Test Catalog Push/Pull", TestCatalogPushPull);
+        failures += RunTest("Test Catalog Understudy And Least Speaking", TestCatalogUnderstudy);
+        failures += RunTest("Test Slate Migration Revisions", TestSlateMigrationRevisions);
+        failures += RunTest("Test Scene Note Page Target", TestSceneNotePageTarget);
         failures += RunTest("Test Shape Prefill From The Script", TestShapePrefill);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
         failures += RunTest("Test Structure Template Passage Is The Shape", TestStructureTemplatePassageIsTheShape);
@@ -1143,11 +1147,11 @@ class Program
         var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks" };
         flaw.Answers[2] = "carries it alone";
         document.Chains.Add(flaw);
-        document.Revisions.Add(new ReviseRun());
+        document.IgnoredBrackets.Add("[x]");
 
         Assert(SlateMigration.Migrate(document) == 2, "Both chains are moved");
         Assert(document.Chains.Count == 0, "A move leaves the old list empty");
-        Assert(document.Revisions.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
+        Assert(document.IgnoredBrackets.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
 
         var run = document.Exercises[0];
         Assert(run.ExerciseId == "woac" && run.Rounds == 3 && run.Anchor.Text == "MARA wants the key", "A WOAC run keeps its seed and three rounds");
@@ -1167,8 +1171,8 @@ class Program
         Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
 
         var untouched = new SlateDocument();
-        untouched.Revisions.Add(new ReviseRun());
-        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.Revisions.Count == 1,
+        untouched.IgnoredBrackets.Add("[x]");
+        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.IgnoredBrackets.Count == 1,
             "A document with no old chains is unchanged");
     }
 
@@ -1813,6 +1817,152 @@ class Program
         Assert(positionEngine.GetLine(position, "shortlist", 0, 0) == "Midpoint" && !position.Answers.ContainsKey("shortlist[1]"), "The shortlist comes across without its blank second line");
     }
 
+
+    static ExerciseEngine PushPullEngine(params string[] speakers) =>
+        new(ExerciseCatalog.PushPull, source => source == ExerciseCatalog.SpeakersSource ? speakers : Array.Empty<string>());
+
+    static IEnumerable<string> Keys(ExerciseEngine engine, ExerciseRun run) => engine.Sequence(run).Select(slot => slot.Step.Key);
+
+    static void TestCatalogPushPull()
+    {
+        var engine = PushPullEngine("MARA", "TOM");
+        var run = new ExerciseRun { ExerciseId = "pushpull" };
+        var goal = new StepSlot(ExerciseCatalog.PushPull.Steps.First(step => step.Key == "gsu-goal"), 0);
+        Assert(engine.SlotItems(goal).SequenceEqual(new[] { "MARA", "TOM" }), "GSU asks each speaker in the scene");
+        engine.SetAnswer(run, "purpose", 0, "she decides to leave");
+        Assert(engine.Current(run)!.Value.Step.Key == "gsu-goal", "Purpose first, then GSU, goal before stakes before urgency");
+        Assert(!Keys(engine, run).Contains("gsu-stop"), "A clean GSU shows no pointer to Scene Dials");
+
+        engine.SetAnswer(run, "gsu", 0, "y");
+        var stop = engine.Sequence(run).Single(slot => slot.Step.Key == "gsu-stop").Step;
+        Assert(stop.Kind == StepKind.Stop && stop.Opens == "scenedials", "A Y on GSU points at Scene Dials");
+        Assert(!Keys(engine, run).Any(key => key.StartsWith("c1-") && key != "c1-if"), "...and not at a Lens");
+
+        Assert(!Keys(engine, run).Contains("c1-lens"), "A check with no flag has no Lens");
+        engine.SetAnswer(run, "c1", 0, "n");
+        Assert(!Keys(engine, run).Any(key => key.StartsWith("c1-")), "A clean check owes no Lens");
+        engine.SetAnswer(run, "c2", 0, "y");
+        Assert(Keys(engine, run).SkipWhile(key => key != "c2").Skip(1).Take(5).SequenceEqual(new[] { "c2-why", "c2-lens", "c2-frag", "c2-moved", "c2-movedwhy" }),
+            "A Y opens that check's Lens right after it and nowhere else");
+        Assert(!Keys(engine, run).Contains("c3-lens"), "Another check's Lens stays shut");
+        var fragment = engine.Sequence(run).Single(slot => slot.Step.Key == "c2-frag").Step;
+        Assert(fragment.Clock && ExerciseCatalog.PushPull.Steps.Count(step => step.Clock) == 7, "The fragment slots (six Lenses and the seam) run on the minutes clock");
+        var lens = new StepSlot(ExerciseCatalog.PushPull.Steps.First(step => step.Key == "c2-lens"), 0);
+        Assert(engine.PickOptions(run, lens).Count == 8, "The Lens is one of the worksheet's eight");
+        engine.Pick(run, lens, engine.PickOptions(run, lens)[1]);
+        Assert(engine.GetAnswer(run, "c2-lens") == "Tone swap, minimum edit", "A Lens pick stores its name, not its gloss");
+        engine.SetAnswer(run, "c2", 0, string.Empty);
+        Assert(!Keys(engine, run).Any(key => key.StartsWith("c2-")) && engine.GetAnswer(run, "c2-lens") == "Tone swap, minimum edit",
+            "Clearing the Y hides the Lens without losing what was written");
+
+        Assert(Keys(engine, run).Contains("skip") && Keys(engine, run).Contains("eavesdrop"), "The read-back carries the two Phase 8 questions");
+        Assert(!Keys(engine, run).Contains("diag-a"), "The diagnostic Belief Split is opt-in");
+        engine.SetAnswer(run, "diag", 0, "y");
+        Assert(Keys(engine, run).Contains("diag-a") && Keys(engine, run).Contains("diag-frag"), "...and opens on a yes");
+
+        engine.SetItem(run, "gsu-goal", 0, "MARA", "get the keys back");
+        engine.SetAnswer(run, "c3", 0, "y");
+        engine.SetAnswer(run, "c3-why", 0, "nothing changes by the end");
+        engine.SetAnswer(run, "working", 0, "the door");
+        var note = engine.Summary(run);
+        Assert(note.Contains("Goal: MARA: get the keys back") && note.Contains("Third rail flagged: yes") && note.Contains("Third rail: the problem: nothing changes by the end")
+            && note.Contains("Linkage flagged") == false && note.Contains("Working: the door"),
+            "The revision note lists what was answered, yes and no in words, and leaves out what wasn't");
+        Assert(ExerciseCatalog.PushPull.Steps.Last().Kind == StepKind.Summary && ExerciseCatalog.PushPull.Targets.SequenceEqual(new[] { TargetKind.NotePage, TargetKind.Copy }),
+            "The note step ends the exercise and goes to a note page or the clipboard");
+        Assert(engine.Trail(run).All(entry => entry.Slot.Step.Kind != StepKind.Summary), "A summary is never a trail entry");
+    }
+
+    static void TestCatalogUnderstudy()
+    {
+        var script = string.Join("\n", "INT. KITCHEN - DAY", "", "MARA", "Hello.", "", "TOM", "Hi.", "", "MARA", "Stay.", "", "TOM", "No.", "", "NEIGHBOUR", "Knock knock.",
+            "", "INT. HALL - NIGHT", "", "MARA", "Oh.", "");
+        var analysis = new DocumentAnalyzer().Analyze(script);
+        var scenes = ProjectContext.Scenes(analysis.Elements);
+        var counts = StoryFilter.SceneSpeechCounts(analysis.Elements);
+        var cast = ProjectContext.Cast(analysis.Characters, Array.Empty<CharacterSettings>());
+        var speakers = ProjectContext.SpeakersOf(scenes[0], StoryFilter.SceneSpeakers(analysis.Elements), cast);
+        Assert(counts[scenes[0].LineNumber]["MARA"] == 2 && counts[scenes[0].LineNumber]["NEIGHBOUR"] == 1 && counts[scenes[1].LineNumber]["MARA"] == 1, "Speeches are counted per scene");
+        Assert(ProjectContext.LeastSpeaking(scenes[0], counts, speakers) == "NEIGHBOUR", "The least important character is the one with the fewest lines in the scene");
+        Assert(ProjectContext.LeastSpeaking(scenes[1], counts, ProjectContext.SpeakersOf(scenes[1], StoryFilter.SceneSpeakers(analysis.Elements), cast)) == "MARA",
+            "A scene with one speaker has only that one");
+        Assert(ProjectContext.LeastSpeaking(scenes[0], counts, Array.Empty<string>()) is null, "Nobody speaking gives no default");
+        // Tied at the scene level: the one with fewer lines in the whole script is the lesser.
+        var tie = new Dictionary<int, Dictionary<string, int>> { [1] = new() { ["MARA"] = 1, ["TOM"] = 1 } };
+        Assert(ProjectContext.LeastSpeaking(new SceneChoice(null, "X", 1, string.Empty), tie, new[] { "MARA", "TOM" }) == "TOM", "A tie goes to the one lower in the Cast");
+
+        var engine = new ExerciseEngine(ExerciseCatalog.Understudy, source => source == ExerciseCatalog.SpeakersSource ? speakers : Array.Empty<string>());
+        var run = new ExerciseRun { ExerciseId = "understudy" };
+        var who = new StepSlot(ExerciseCatalog.Understudy.Steps.First(step => step.Key == "who"), 0);
+        Assert(engine.PickOptions(run, who).SequenceEqual(speakers), "The scene's speakers are the choices");
+        Assert(engine.Current(run)!.Value.Step.Key == "who", "It starts by asking whose movie");
+        engine.Pick(run, who, "NEIGHBOUR");
+        Assert(engine.GetAnswer(run, "who") == "NEIGHBOUR" && engine.Current(run)!.Value.Step.Key == "walkin", "A tap sets the character and moves on");
+        engine.SetAnswer(run, "who", 0, "TOM");
+        Assert(engine.IsPicked(run, who, "TOM"), "A changed pick is the pick");
+        Assert(Keys(engine, run).SequenceEqual(new[] { "who", "walkin", "before", "else", "freewrite" }), "Three questions, then the freewrite");
+        Assert(ExerciseCatalog.Understudy.Steps.Single(step => step.Clock).Key == "freewrite", "The freewrite is the timed step");
+        Assert(ExerciseCatalog.Understudy.Steps.Where(step => step.Key != "who").All(step => step.WhoKey == "who")
+            && ExerciseCatalog.Understudy.Targets.Contains(TargetKind.InboxBeat), "Every answer goes to the inbox about that character");
+        Assert(ExerciseCatalog.Find("understudy") is not null && ExerciseCatalog.Find("pushpull") is not null, "Both are in the deck");
+    }
+
+    static void TestSlateMigrationRevisions()
+    {
+        var document = new SlateDocument();
+        var revision = new ReviseRun { Scene = "INT. KITCHEN - DAY", Purpose = "she decides to leave" };
+        revision.Gsu[0].Character = "MARA";
+        revision.Gsu[0].Goal = "get the keys";
+        revision.Gsu[0].Urgency = "the bus";
+        revision.Gsu[1].Goal = "an orphan goal";
+        revision.GsuFlag = "Y";
+        var polarity = revision.Check("Polarity");
+        polarity.Answer = "warm to warm";
+        polarity.Flag = "Y";
+        polarity.Lens = "Tone swap, minimum edit";
+        polarity.Fragment = "line one\nline two";
+        polarity.Moved = "N";
+        polarity.MovedWhy = "still warm";
+        revision.Check("Linkage").Flag = "N";
+        revision.DiagA = "the lie";
+        revision.Working = "the door";
+        document.Revisions.Add(revision);
+        document.Revisions.Add(new ReviseRun());
+
+        Assert(SlateMigration.Migrate(document) == 1 && document.Revisions.Count == 0, "One run moves; the blank one is cleared; the old list ends empty");
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 1, "Running it twice adds nothing");
+
+        var run = document.Exercises.Single();
+        var engine = PushPullEngine("MARA");
+        Assert(run.ExerciseId == "pushpull" && run.Anchor.Kind == AnchorKind.Scene && run.Anchor.Text == "INT. KITCHEN - DAY" && run.Anchor.SceneText == "INT. KITCHEN - DAY",
+            "It is kept by the scene it checked");
+        Assert(engine.GetItem(run, "gsu-goal", 0, "MARA") == "get the keys" && engine.GetItem(run, "gsu-urgency", 0, "MARA") == "the bus" && !run.Answers.ContainsKey("gsu-stakes/MARA"),
+            "GSU rows sit under their character");
+        Assert(engine.GetAnswer(run, "purpose").Contains("she decides to leave") && engine.GetAnswer(run, "purpose").Contains("an orphan goal"),
+            "A GSU row with no character keeps its text on the purpose");
+        Assert(engine.GetAnswer(run, "gsu") == "y" && engine.GetAnswer(run, "c1") == "y" && engine.GetAnswer(run, "c2") == "n" && engine.GetAnswer(run, "c3") == string.Empty,
+            "Y / N flags become the engine's y / n, and an unset flag stays unset");
+        Assert(engine.GetAnswer(run, "c1-why") == "warm to warm" && engine.GetAnswer(run, "c1-lens") == "Tone swap, minimum edit" && engine.GetAnswer(run, "c1-frag") == "line one\nline two"
+            && engine.GetAnswer(run, "c1-moved") == "n" && engine.GetAnswer(run, "c1-movedwhy") == "still warm", "A flagged check keeps its Lens work in place");
+        Assert(Keys(engine, run).Contains("c1-frag") && !Keys(engine, run).Contains("c2-why"), "The Lens shows where the flag is Y and nowhere else");
+        Assert(engine.GetAnswer(run, "diag") == "y" && engine.GetAnswer(run, "diag-a") == "the lie" && engine.GetAnswer(run, "working") == "the door",
+            "The deeper sections come across, the diagnostic opened because it has text");
+        Assert(run.Passed.Contains("gsu-stop") && run.Passed.Contains("stop-checks") && run.Passed.Contains("stop-read"), "Stops above written answers are behind the writer");
+        Assert(!engine.Trail(run).Any(entry => entry.Slot.Step.Kind == StepKind.Summary) && engine.Summary(run).Contains("Working: the door"), "The revision note reads straight from a migrated run");
+    }
+
+    static void TestSceneNotePageTarget()
+    {
+        var story = new StoryData();
+        var (page, created) = ToolTargets.AppendToNote(story, "INT. KITCHEN - DAY", "Push/Pull", "Revision note", "Polarity flagged: yes\nWorking: the door", character: false);
+        Assert(created && page.Title == "INT. KITCHEN - DAY" && page.Template.Length == 0 && story.Notes.Count == 1, "A scene with no page gets a blank one named after it");
+        Assert(page.Body.StartsWith("## Push/Pull") && page.Body.Contains("- Revision note: Polarity flagged: yes\n  Working: the door"), "The note goes under the exercise's heading, lines indented");
+        var (again, createdAgain) = ToolTargets.AppendToNote(story, "int. kitchen - day", "Push/Pull", "Revision note", "second", character: false);
+        Assert(!createdAgain && again == page && story.Notes.Count == 1 && page.Body.Contains("- Revision note: second"), "A second note finds the page by name, whatever the case, and adds to it");
+        var (character, characterCreated) = ToolTargets.AppendToNote(story, "MARA", "Flaw", "Q1", "x");
+        Assert(characterCreated && character.Template == "Character", "A character's page still starts from the Character template");
+    }
+
     static void TestShapePrefill()
     {
         string? Script(string label) => label switch { "Starts" => "she arrives", "Ends" => "she leaves", _ => null };
@@ -2427,15 +2577,11 @@ class Program
             store.Save("draft", document);
 
             var loaded = store.Load("draft")!;
-            Assert(loaded.Revisions.Count == 1 && loaded.Revisions[0].Scene == "INT. KITCHEN - DAY", "Revise run round-trips by scene");
-            Assert(loaded.Revisions[0].Checks.Count == ReviseRun.CheckNames.Length, "All six checks are stored, unanswered ones included");
-            var polarity = loaded.Revisions[0].Check("Polarity");
-            Assert(polarity.Flag == "Y" && polarity.Lens == "Tone swap, minimum edit" && polarity.Fragment == "line one\nline two" && polarity.Moved == "Y", "A flagged check keeps its Lens, multi-line fragment and verdict");
-            Assert(loaded.Revisions[0].Check("Linkage").IsEmpty, "An untouched check is empty");
+            Assert(loaded.Revisions.Count == 0 && loaded.Exercises.Count == 1 && loaded.Exercises[0].ExerciseId == "pushpull"
+                && loaded.Exercises[0].Anchor.Text == "INT. KITCHEN - DAY", "Load moves a saved Push/Pull run into Exercises, kept by its scene");
             Assert(loaded.Burst.LensMinutes == 3, "Lens minutes round-trip");
-            var gsu = loaded.Revisions[0].Gsu;
-            Assert(gsu.Count == 3 && gsu[0].Character == "MARA" && gsu[0].Goal == "get the keys back" && gsu[1].IsEmpty && gsu[2].Urgency == "the bus leaves at six", "GSU rows round-trip in order, an empty row included");
-            Assert(loaded.Revisions[0].GsuFlag == "Y", "The GSU flag round-trips");
+            Assert(ReviseRun.CheckNames.SequenceEqual(ExerciseCatalog.CheckNames), "The old record and the exercise name the six checks alike");
+            Assert(revision.Check("Linkage").IsEmpty, "An untouched check is empty");
             Assert(new ReviseRun().Gsu.Count == 2, "A new run starts with two GSU rows");
             Assert(!new ReviseRun { GsuFlag = "N" }.IsEmpty && !new ReviseRun { Gsu = { new GsuRow { Stakes = "x" } } }.IsEmpty, "GSU content makes a run non-empty");
             Assert(new ReviseRun().IsEmpty && !revision.IsEmpty && !revision.HasDiagnostic && !revision.HasReadBack, "Emptiness and the deeper sections read the content");

@@ -464,7 +464,153 @@ public static class ExerciseCatalog
         }
     };
 
-    public static readonly IReadOnlyList<Exercise> All = new[] { Woac, Flaw, Fill, SceneDials, Split, Belief, Extend, Bridge, Position };
+    // ---- Push/Pull and Understudy (T7): the Revise worksheet and engines.md § Understudy ----
+
+    /// <summary>The Push/Pull Slots steps' source is the scene's speakers; the checks, in the worksheet's priority order.</summary>
+    public static readonly string[] CheckNames = { "Polarity", "Linkage", "Third rail", "Migration", "Escalation", "Two-test" };
+
+    private static readonly string[] CheckQuestions =
+    {
+        "Does the scene/sequence end in a different charge than it started?",
+        "Does it cause the next beat, or is it deletable?",
+        "What does the protagonist believe now that she didn't five minutes ago?",
+        "Where does the emotional/tactical centre of gravity move — who's in control at the start vs. the end?",
+        "Is the stakes/pressure higher at the end than the start, or just different?",
+        "External: can this escalate for the whole story, is there a real consequence, a clock? Internal: does it force the internal struggle, does it cost something regardless of outcome?"
+    };
+
+    // "Name — what you actually do", from the worksheet's Lens table. A pick stores the Name.
+    public static readonly string[] Lenses =
+    {
+        "Role inversion — Swap protagonist/antagonist, or relabel the hero as the villain.",
+        "Tone swap, minimum edit — Same scene, opposite tone, fewest possible changes.",
+        "Compression to breaking point — Cut it to ten words, or half the word count. What survives is what mattered.",
+        "Container swap — Same content, different form — a fortune cookie, a tabloid headline, a police statement, a personal ad.",
+        "Sequential relanguaging — Run the material through several tones in a row (e.g. grief, then comedy, then fairy tale), then translate it back to plain. Compare what came home with you.",
+        "Metaphorical-relationship overlay — Impose a behavioural template on the scene without the characters noticing — play it as noir, or play the roommates like a bickering married couple.",
+        "Expectation inversion — Name what the genre expects here, on the nose — then do the opposite on purpose.",
+        "Two-Camera — Write it twice — tight interior close-up (only what's in her head), then a locked-off master (no interiority at all). Compare what each version had to invent to compensate."
+    };
+
+    private const string LensWhy = "Pick one, apply it timed (3–5 minutes), to the flagged thing only — not the whole scene.";
+
+    // GSU is three questions asked of each speaker in the scene: the worksheet's table, a column at a time.
+    private static Step Gsu(string key, string label, string question) =>
+        new() { Key = key, Kind = StepKind.Slots, Source = SpeakersSource, Label = label, Question = question };
+
+    // One check: the question as a flag, and — only on a Y — the Lens on the flagged thing: why, the Lens, the fragment on
+    // the minutes clock, and whether it moved the problem. A clean check owes nothing more.
+    private static IEnumerable<Step> Check(int number)
+    {
+        var name = CheckNames[number - 1];
+        var key = "c" + number;
+        var group = "lens" + number;
+        return new[]
+        {
+            new Step { Key = key, Kind = StepKind.YesNo, Label = name + " flagged", Question = CheckQuestions[number - 1],
+                Hint = "Y if it's a problem. Only a flagged check owes you a Lens." },
+            new Step { Key = key + "-if", Kind = StepKind.Branch, BranchGroup = group, OnKey = key, OnValue = "y" },
+            new Step { Key = key + "-why", Group = group, Label = name + ": the problem", Question = "In a line — what's wrong with it?" },
+            new Step { Key = key + "-lens", Kind = StepKind.Pick, Options = Lenses, NameOnly = true, Group = group, Label = name + ": Lens",
+                Question = "Pick a Lens — on the flagged thing only, not the whole scene.", Why = LensWhy },
+            new Step { Key = key + "-frag", Group = group, Label = name + ": fragment", Multiline = true, Clock = true, Offer = true,
+                Question = "Rewrite / fragment.", Hint = "Apply the Lens to the flagged part only." },
+            new Step { Key = key + "-moved", Kind = StepKind.YesNo, Group = group, Label = name + ": moved it",
+                Question = "Did it move the flagged problem?" },
+            new Step { Key = key + "-movedwhy", Group = group, Label = name + ": why", Question = "One line why." }
+        };
+    }
+
+    public static readonly Exercise PushPull = new()
+    {
+        Id = SlateMigration.PushPullId,
+        Name = "Push/Pull",
+        Tagline = "Find why a scene is flat",
+        Shelf = Shelf.DeadScene,
+        Anchor = AnchorKind.Scene,
+        AnchorLabel = "Which scene?",
+        Targets = new[] { TargetKind.NotePage, TargetKind.Copy },
+        Why = "For a finished (or finished-enough) scene, sequence or draft that's gone dead or flat. Six checks find why; a Lens "
+            + "rewrites only the part that's flagged. This is one of the few worksheets where judging quality out loud is the point, "
+            + "not a distraction: closure beats quality on pass one, but a read-back and crit is the payout. Run the checks one at a "
+            + "time, top to bottom, or skip straight to whichever you already suspect. Stop after any single check — a clean or "
+            + "flagged check is a complete session. For a whole sequence rather than one scene, name the stretch and run the six checks "
+            + "against it as a whole.",
+        Steps = new[]
+        {
+            new Step { Key = "purpose", Label = "Purpose", Question = "What is it supposed to do in the story?" },
+            Gsu("gsu-goal", "Goal", "Goal — what do they want out of this scene, right now?"),
+            Gsu("gsu-stakes", "Stakes", "Stakes — what happens if they don't get it?"),
+            Gsu("gsu-urgency", "Urgency", "Urgency — why does it have to be now?"),
+            new Step { Key = "gsu", Kind = StepKind.YesNo, Label = "GSU flagged",
+                Question = "Flag it?",
+                Hint = "Anyone in the room wants nothing, or nothing happens if they fail, or it could happen next week.",
+                Why = "Checks 1–6 test whether the scene works. This one tests whether it plays: one line per character in the scene, not just the protagonist." },
+            new Step { Key = "gsu-if", Kind = StepKind.Branch, BranchGroup = "gsu-dials", OnKey = "gsu", OnValue = "y" },
+            new Step { Key = "gsu-stop", Kind = StepKind.Stop, Group = "gsu-dials", Opens = SlateMigration.SceneDialsId,
+                Text = "If this one flags, don't reach for a Lens. Roll a Scene Dial instead (opposed wants · pre-agitator · agitator · hidden thing · wrong room · collision ahead)." }
+        }
+        .Concat(Enumerable.Range(1, CheckNames.Length).SelectMany(Check))
+        .Concat(new[]
+        {
+            new Step { Key = "stop-checks", Kind = StepKind.Stop, Text = "That's a complete session, whether it was one check or all six." },
+            Gate("diag", "Going deeper still — check the belief arc already on the page?", "Optional. Not building a new arc: checking whether the one on the page holds.", "Belief check"),
+            IfYes("diag", "diag"),
+            new Step { Key = "diag-a", Group = "diag", Label = "A", Question = "Point A — the Lie, stable/wrong at the start of this stretch." },
+            new Step { Key = "diag-z", Group = "diag", Label = "Z", Question = "Point Z — where the protagonist's belief lands by the end." },
+            new Step { Key = "diag-shape", Kind = StepKind.Pick, Options = BeliefShapes, Group = "diag", Label = "Shape",
+                Question = "Which named shape does A→Z actually match?" },
+            new Step { Key = "diag-match", Group = "diag", Label = "Match", Question = "Does it match cleanly, or is it muddled between two?" },
+            new Step { Key = "diag-seam", Group = "diag", Label = "Seam", Question = "If muddled — which two, and where's the seam?" },
+            new Step { Key = "diag-lens", Kind = StepKind.Pick, Options = Lenses, NameOnly = true, Group = "diag", Label = "Seam Lens",
+                Question = "If muddled — pick a Lens, and apply it to the scene at the seam (not the whole stretch).", Why = LensWhy },
+            new Step { Key = "diag-frag", Group = "diag", Label = "Seam fragment", Multiline = true, Clock = true, Offer = true, Question = "Fragment." },
+            new Step { Key = "stop-read", Kind = StepKind.Stop,
+                Text = "Ready to close for real? Read the stretch back once, out loud if you can. A read-back and crit is the payout — the reason the diagnosis and the Lens work happened at all." },
+            new Step { Key = "working", Label = "Working", Question = "What's working — one line, no hedging." },
+            new Step { Key = "notsitting", Label = "Not sitting", Question = "What still doesn't sit right, even after the Lens passes above?" },
+            new Step { Key = "skip", Label = "Would skip", Question = "Plumbing aside: if you were reading this cold, which scene would you skip?" },
+            new Step { Key = "eavesdrop", Label = "Eavesdropper", Multiline = true,
+                Question = "One dialogue scene, eavesdropper test: a stranger at the next table — would you keep listening?",
+                Hint = "Cover the names: can you still tell who's talking?" },
+            new Step { Key = "ready", Label = "Ready?", Question = "Is this ready to move to Fill / Treatment, or does it need to sit another day?" },
+            new Step { Key = "note", Kind = StepKind.Summary, Label = "Revision note",
+                Question = "The revision note — everything above, ready to send.",
+                Hint = "Goes on a note page named after the scene." }
+        }).ToList()
+    };
+
+    public static readonly Exercise Understudy = new()
+    {
+        Id = SlateMigration.UnderstudyId,
+        Name = "Understudy",
+        Tagline = "The furniture is the hero of its own movie",
+        Shelf = Shelf.SceneGoing,
+        Anchor = AnchorKind.Scene,
+        AnchorLabel = "Which scene?",
+        Targets = new[] { TargetKind.InboxBeat, TargetKind.Copy },
+        Why = "For when you have a full scene already, and want material you didn't plan rather than material you already know you need. "
+            + "Pick its least important character — whoever has the fewest lines, the least at stake as far as the scene is concerned — "
+            + "and freewrite for a few minutes from the assumption that they're secretly the protagonist of their own movie, and this scene "
+            + "is only the bit that happened to overlap with the one you're telling. Different from Role Inversion: it doesn't invert "
+            + "anything, it just asks what the furniture is thinking. The best B-plot and world-thickening generator in the system.",
+        Steps = new[]
+        {
+            new Step { Key = "who", Kind = StepKind.Pick, Source = SpeakersSource, Label = "Who",
+                Question = "Whose movie is it?",
+                Hint = "Whoever has the fewest lines in the scene. Tap another, or type a name." },
+            new Step { Key = "walkin", Label = "Wanted walking in", Offer = true, WhoKey = "who", Question = "What did they want walking in?",
+                Hint = "For the character under Who above; tap Who to change them." },
+            new Step { Key = "before", Label = "Five minutes before", Offer = true, WhoKey = "who", Question = "What were they doing five minutes before they entered?" },
+            new Step { Key = "else", Label = "Nothing to do with the plot", Offer = true, WhoKey = "who",
+                Question = "What do they want that has nothing to do with your plot?" },
+            new Step { Key = "freewrite", Label = "Freewrite", Multiline = true, Clock = true, WhoKey = "who",
+                Question = "Freewrite from their side — a few minutes, as them.",
+                Hint = "The scene, or just the bit that overlaps. Don't plan it." }
+        }
+    };
+
+    public static readonly IReadOnlyList<Exercise> All = new[] { Woac, Flaw, Fill, SceneDials, Split, Belief, Extend, Bridge, Position, PushPull, Understudy };
 
     public static Exercise? Find(string id) => All.FirstOrDefault(exercise => exercise.Id == id);
 }

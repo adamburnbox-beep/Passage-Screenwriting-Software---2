@@ -37,6 +37,14 @@ public interface IToolHost
     /// named in, or the one a bracket sits in), most speeches first. Empty when there is none.</summary>
     IReadOnlyList<string> SpeakersFor(Anchor anchor);
 
+    /// <summary>The speaker with the fewest speeches in the scene the anchor is about (Understudy's default). Null when
+    /// the scene is gone or nobody speaks in it.</summary>
+    string? LeastSpeakingFor(Anchor anchor);
+
+    /// <summary>Opens another exercise on the same scene (GSU's flag points at Scene Dials): the run already kept for
+    /// that scene, or a new one.</summary>
+    Task OpenOnSceneAsync(string exerciseId, Anchor anchor);
+
     /// <summary>Every bracket in the script, ranked, with the ones the writer left out marked.</summary>
     IReadOnlyList<BracketChoice> Brackets { get; }
 
@@ -85,7 +93,9 @@ public interface IToolHost
     /// <summary>A burst timer is running (it lives in passage.js).</summary>
     bool BurstRunning { get; }
 
-    Task StartBurstAsync(string rootId);
+    /// <summary>Starts the timer over the inputs under <paramref name="rootId"/>. <paramref name="seconds"/> of 0 uses the
+    /// per-answer setting; the Lens and the freewrite pass their own, in minutes.</summary>
+    Task StartBurstAsync(string rootId, int seconds = 0);
 
     Task StopBurstAsync();
 }

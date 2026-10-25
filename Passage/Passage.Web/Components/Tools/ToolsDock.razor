@@ -81,11 +81,11 @@ else
         new(SlateMigration.WoacId, "WOAC chain", "What happens next, round by round", Shelf.SceneGoing, "→"),
         new(SlateMigration.SceneDialsId, "Scene Dials", "The event is right; the scene is dead", Shelf.SceneGoing, "⚂"),
         new(SlateMigration.FlawId, "Flaw Brainstorm", "One flaw, eight questions", Shelf.SceneGoing, "☹"),
-        new(ClassicPushPull, "Push/Pull", "Find why a scene is flat", Shelf.DeadScene, "⇅")
+        new(SlateMigration.PushPullId, "Push/Pull", "Find why a scene is flat", Shelf.DeadScene, "⇅"),
+        new(SlateMigration.UnderstudyId, "Understudy", "The furniture is the hero of its own movie", Shelf.SceneGoing, "🎭")
     };
 
     public const string ClassicIdeation = "ideation";
-    public const string ClassicPushPull = "pushpull";
 
     [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
     [Parameter] public string? OpenRunId { get; set; }

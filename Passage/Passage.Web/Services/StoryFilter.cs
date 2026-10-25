@@ -73,4 +73,29 @@ public sealed record StoryFilter
 
         return speakers;
     }
+
+    /// <summary>How many times each character speaks in each scene (cues, not words), keyed by the scene
+    /// heading's line number like <see cref="SceneSpeakers"/>.</summary>
+    public static Dictionary<int, Dictionary<string, int>> SceneSpeechCounts(IEnumerable<ScreenplayElement> elements)
+    {
+        var counts = new Dictionary<int, Dictionary<string, int>>();
+        Dictionary<string, int>? current = null;
+        foreach (var element in elements)
+        {
+            if (element is SceneHeadingElement scene)
+            {
+                counts[scene.LineNumber] = current = new Dictionary<string, int>(StringComparer.Ordinal);
+            }
+            else if (element is CharacterElement cue && current is not null)
+            {
+                var name = Passage.Web.Services.Characters.BareName(cue.CharacterName);
+                if (name.Length > 0)
+                {
+                    current[name] = current.GetValueOrDefault(name) + 1;
+                }
+            }
+        }
+
+        return counts;
+    }
 }
