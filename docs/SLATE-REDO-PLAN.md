@@ -435,7 +435,7 @@ for migration-on-load.
 - Screenshots are in `docs/screenshots/slate-redo-t2/` (the browser pane
   captures at reduced size; Playwright's Chrome isn't installed here).
 
-### T3 — Anchors, targets, Right now · `todo`
+### T3 — Anchors, targets, Right now · `done`
 
 - `ProjectContext`, `AnchorPicker`, anchor strip (with "no longer in the
   script"), `SendToMenu` with: inbox beat (tagged), synopsis under anchor,
@@ -449,6 +449,50 @@ for migration-on-load.
   questions, send to note: the character's note page exists with both
   answers; a WOAC consequence sent to the inbox shows on BEATS and BOARD
   strip tagged with the character; undo of any script write restores exactly.
+
+**Done:** `Services/Tools/{ProjectContext,ToolTargets,RightNow}.cs`,
+`Components/Tools/{AnchorPicker,SendToMenu}.razor`. `Anchor` gained `SceneId` /
+`SceneText` (a scene by id where its heading carries `[[id:…]]`, otherwise by
+unique heading text; ambiguous or missing resolves to nothing and the status
+line says so). `IToolHost` gained `Cast`, `Scenes`, `SceneUnderCaret`,
+`SpeakersOf`, `ResolveScene`, `RightNow()`, `SendAsync(target, ToolSend)`,
+`SynopsisTargetLabel(anchor)`, `JumpToAsync`; `PutSynopsisAsync` and
+`Step.Send` are gone. The runner's anchor is a strip (colour dot, scene,
+"not speaking in the script" / "no longer in the script", ↗, change) over a
+picker (Cast chips in colour, typed name, scene select for WOAC, "use the scene
+I'm in"). Send to ▾ sits under any Text/Lines step and offers the exercise's
+`Targets`: Beat inbox (tagged with the character, title = first line, the rest
+in the description), Synopsis (under the anchored scene, or the caret's when the
+run names none), the character's note page (made from the Character template if
+absent; answers go under a "## <exercise>" heading as `- label: answer`), Copy.
+Sent marks show on the trail ("→ note, Inbox"). Right now sits above the chips
+(≤ 3, recomputed on each open, rotating the scene suggestion). Cast rows and
+Board scene cards have a Tools menu listing WOAC and Flaw; it opens the dock
+into a new anchored run. Tests: 4 new (123 total, all pass).
+
+**Deviations:**
+- An answered Text step now holds the card until Next (Enter still does answer +
+  Next in one press), because otherwise the step moved on the instant it was
+  answered and Send to was unreachable on it. Timed rounds still advance by
+  themselves. `passage.js`'s Enter now always taps Next.
+- Send to is under the answer, not in the action row, and acts on one step's
+  answer; there is no "send the whole run" yet.
+- `RightNow` offers WOAC (on the scene's busiest speaker, keeping the scene) in
+  the caret-in-a-scene rotation: with Push/Pull, Scene Dials and Understudy not
+  yet ported that rule would otherwise never fire. Bracket-under-caret is "a
+  live bracket on the caret's line" (the editor reports a line, not a column).
+  Fill, Position and A→Z→Split rules are written and tested but stay quiet until
+  their exercises exist (suggestions only offer ids in the catalog).
+- Flaw from a Board card takes the scene's busiest speaker as its character and
+  does not keep the scene; WOAC keeps both.
+- `SetStatus` now re-renders the page: the dock's own events don't re-render the
+  status bar, so T2's status lines were not showing. `TargetKind` is stored by
+  name in the sidecar.
+- Verified in the browser on a scratch copy (§8 steps 1–7 at desktop and 375px,
+  keyboard-only WOAC round, undo restores the script exactly, anchored scene
+  deleted underneath → status line, nothing inserted); the screenshot pane was
+  unreliable at phone width, so 375px was checked by layout metrics (no
+  horizontal overflow) and a partial screenshot.
 
 ### T4 — Fill and Scene Dials · `todo`
 

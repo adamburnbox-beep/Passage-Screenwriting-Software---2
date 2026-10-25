@@ -12,6 +12,19 @@
 }
 else
 {
+    @if (_rightNow.Count > 0)
+    {
+        <div class="right-now" role="group" aria-label="Right now">
+            <span class="tools-chips-label">Right now</span>
+            @foreach (var suggestion in _rightNow)
+            {
+                <button class="right-now-item" @onclick="() => StartSuggestionAsync(suggestion)">
+                    <span class="right-now-name">@suggestion.Title</span>
+                    <span class="right-now-detail">@suggestion.Detail</span>
+                </button>
+            }
+        </div>
+    }
     <div class="tools-chips" role="group" aria-label="What have you got?">
         <span class="tools-chips-label">What have you got?</span>
         <button class="tools-chip @(_shelf is null ? "on" : null)" aria-pressed="@(_shelf is null)" @onclick="() => SetShelfAsync(null)">All</button>
@@ -87,6 +100,10 @@ else
     [Parameter] public EventCallback<string> OnOpenClassic { get; set; }
 
     private Shelf? _shelf;
+    private IReadOnlyList<RightNowSuggestion> _rightNow = Array.Empty<RightNowSuggestion>();
+
+    // Worked out when the launcher is drawn, from where the caret is now.
+    protected override void OnParametersSet() => _rightNow = OpenRunId is null ? Host.RightNow() : Array.Empty<RightNowSuggestion>();
 
     private ExerciseRun? OpenRun => OpenRunId is null ? null : Host.Slate.Exercises.FirstOrDefault(run => run.Id == OpenRunId);
 
@@ -156,6 +173,13 @@ else
         var run = new ExerciseRun { ExerciseId = exercise.Id };
         Host.Slate.Exercises.Add(run);
         await OpenRunIdChanged.InvokeAsync(run.Id);
+    }
+
+    private Task StartSuggestionAsync(RightNowSuggestion suggestion)
+    {
+        var run = new ExerciseRun { ExerciseId = suggestion.ExerciseId, Anchor = suggestion.Anchor };
+        Host.Slate.Exercises.Add(run);
+        return OpenRunIdChanged.InvokeAsync(run.Id);
     }
 
     private Task ResumeRunAsync(ExerciseRun run) => OpenRunIdChanged.InvokeAsync(run.Id);

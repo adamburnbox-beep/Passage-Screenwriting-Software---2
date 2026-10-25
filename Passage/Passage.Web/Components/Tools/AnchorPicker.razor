@@ -1,0 +1,97 @@
+@* Picks what a run is about (docs/SLATE-REDO-PLAN.md §4.4): a character from
+   the Cast in their colour, most speeches first, or a name typed in; and, for
+   exercises that take one, a scene from the script. Nothing is required (rule 0). *@
+@using Passage.Web.Services.Tools
+
+<div class="anchor-picker">
+    <div class="anchor-chips" role="group" aria-label="Characters in the Cast">
+        @foreach (var character in Host.Cast)
+        {
+            <button class="anchor-chip @(Same(character.Name, Anchor.Text) ? "on" : null)" aria-pressed="@Same(character.Name, Anchor.Text)"
+                    @onclick="() => PickCharacterAsync(character.Name)">
+                <span class="anchor-dot @(character.Colour.Length == 0 ? "none" : null)" style="@(character.Colour.Length > 0 ? $"background:{character.Colour}" : null)"></span>@character.Name
+            </button>
+        }
+    </div>
+    <label class="anchor-else">
+        <span class="step-hint">Or someone who isn't speaking yet</span>
+        <input type="text" data-anchor-input value="@Anchor.Text" @onchange="TypedAsync" />
+    </label>
+    @if (SceneToo)
+    {
+        <label class="anchor-else">
+            <span class="step-hint">A scene it happens in (optional)</span>
+            <select @onchange="SceneChosenAsync" aria-label="Scene">
+                <option value="" selected="@(!HasScene)">No particular scene</option>
+                @if (HasScene && _chosen is null)
+                {
+                    <option value="" selected>@Anchor.SceneText — no longer in the script</option>
+                }
+                @for (var i = 0; i < _scenes.Count; i++)
+                {
+                    <option value="@i" selected="@IsChosen(_scenes[i])">@_scenes[i].Heading</option>
+                }
+            </select>
+        </label>
+        @if (Host.SceneUnderCaret is { } here && !IsChosen(here))
+        {
+            <button class="btn" @onclick="() => ChooseSceneAsync(here)">Use the scene I'm in: @here.Heading</button>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
+    [Parameter, EditorRequired] public Anchor Anchor { get; set; } = default!;
+    [Parameter] public bool SceneToo { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private IReadOnlyList<SceneChoice> _scenes = Array.Empty<SceneChoice>();
+
+    private SceneChoice? _chosen;
+
+    protected override void OnParametersSet()
+    {
+        _scenes = Host.Scenes;
+        _chosen = Host.ResolveScene(Anchor);
+    }
+
+    private bool HasScene => Anchor.SceneId is not null || Anchor.SceneText.Length > 0;
+
+    private static bool Same(string a, string b) => string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private bool IsChosen(SceneChoice scene) => _chosen is { } chosen && chosen.LineNumber == scene.LineNumber;
+
+    private Task PickCharacterAsync(string name)
+    {
+        Anchor.Kind = AnchorKind.Character;
+        Anchor.Text = name;
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task TypedAsync(ChangeEventArgs args)
+    {
+        Anchor.Kind = AnchorKind.Character;
+        Anchor.Text = args.Value?.ToString()?.Trim() ?? string.Empty;
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task SceneChosenAsync(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var index) && index >= 0 && index < _scenes.Count)
+        {
+            return ChooseSceneAsync(_scenes[index]);
+        }
+
+        Anchor.SceneId = null;
+        Anchor.SceneText = string.Empty;
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task ChooseSceneAsync(SceneChoice scene)
+    {
+        Anchor.SceneId = scene.Id;
+        Anchor.SceneText = scene.Heading;
+        return OnChanged.InvokeAsync();
+    }
+}

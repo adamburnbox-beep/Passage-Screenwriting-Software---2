@@ -17,10 +17,36 @@
     {
         <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
     }
-    <label class="runner-anchor">
-        <span class="runner-anchor-label">@Exercise.AnchorLabel</span>
-        <input type="text" data-anchor-input value="@Run.Anchor.Text" @onchange="AnchorChanged" />
-    </label>
+    <div class="anchor-strip">
+        <span class="anchor-glyph" aria-hidden="true">👤</span>
+        <div class="anchor-main">
+            @if (Run.Anchor.Text.Length > 0)
+            {
+                <span class="anchor-name"><span class="anchor-dot @(AnchorColour.Length == 0 ? "none" : null)" style="@(AnchorColour.Length > 0 ? $"background:{AnchorColour}" : null)"></span>@Run.Anchor.Text</span>
+                @if (!InCast)
+                {
+                    <span class="anchor-gone">not speaking in the script</span>
+                }
+            }
+            else
+            {
+                <span class="anchor-name anchor-empty">@Exercise.AnchorLabel</span>
+            }
+            @if (HasScene)
+            {
+                <span class="anchor-scene">@Run.Anchor.SceneText@(SceneFound ? null : " — no longer in the script")</span>
+            }
+        </div>
+        @if (Run.Anchor.Text.Length > 0 || SceneFound)
+        {
+            <button class="icon-btn" title="Show it in the script" aria-label="Show it in the script" @onclick="JumpAsync">↗</button>
+        }
+        <button class="icon-btn anchor-change" aria-expanded="@_changing" @onclick="ToggleChange">@(_changing ? "done" : "change")</button>
+    </div>
+    @if (_changing || Run.Anchor.Text.Length == 0 && !_dismissedPicker)
+    {
+        <AnchorPicker Host="Host" Anchor="Run.Anchor" SceneToo="Exercise.SceneToo" OnChanged="AnchorChangedAsync" />
+    }
     @if (Exercise.Why.Length > 0)
     {
         <details class="why" data-why>
@@ -53,8 +79,8 @@
         @if (_shown is { } slot)
         {
             <div class="step-card" @key="slot.Id">
-                <StepCard Engine="_engine" Run="Run" Slot="slot" Host="Host" Held="@(_editingId is not null || _holdId is not null)" OnChanged="StepChangedAsync"
-                          OnContinue="ContinueAsync" OnStopHere="CloseAsync" OnPutSynopsis="PutSynopsisAsync" />
+                <StepCard Engine="_engine" Run="Run" Exercise="Exercise" Slot="slot" Host="Host" Held="@(_editingId is not null || _holdId is not null)" OnChanged="StepChangedAsync"
+                          OnContinue="ContinueAsync" OnStopHere="CloseAsync" />
                 @if (slot.Step.Offer)
                 {
                     <PartnerLines Lines="_partnerFor == slot.Id ? _partnerLines : Array.Empty<string>()"
@@ -198,8 +224,11 @@
 
     private bool CanEdit(TrailEntry entry) => !_engine.IsCarried(entry.Slot);
 
-    private string? SentTag(TrailEntry entry) =>
-        Run.Sent.FirstOrDefault(mark => mark.Key == entry.Slot.Id) is { } sent ? SendLabel(sent.Target) : null;
+    private string? SentTag(TrailEntry entry)
+    {
+        var labels = Run.Sent.Where(mark => mark.Key == entry.Slot.Id).Select(mark => SendLabel(mark.Target)).Distinct().ToList();
+        return labels.Count == 0 ? null : string.Join(", ", labels);
+    }
 
     private static string SendLabel(TargetKind target) => target switch
     {
@@ -212,16 +241,44 @@
         _ => "copied"
     };
 
-    private void AnchorChanged(ChangeEventArgs args)
+    // The picker opens by itself while nobody is named; once the writer has
+    // looked at it and closed it, it stays closed (nothing is required).
+    private bool _changing;
+    private bool _dismissedPicker;
+
+    private string AnchorColour => Host.Cast.FirstOrDefault(character => string.Equals(character.Name, Run.Anchor.Text.Trim(), StringComparison.OrdinalIgnoreCase))?.Colour ?? string.Empty;
+
+    private bool InCast => Host.Cast.Any(character => string.Equals(character.Name, Run.Anchor.Text.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private bool HasScene => Run.Anchor.SceneId is not null || Run.Anchor.SceneText.Length > 0;
+
+    private bool SceneFound => HasScene && Host.ResolveScene(Run.Anchor) is not null;
+
+    private void ToggleChange()
     {
-        Run.Anchor.Text = args.Value?.ToString() ?? string.Empty;
-        Host.Save();
+        _changing = !_changing;
+        _dismissedPicker = true;
     }
+
+    private Task AnchorChangedAsync()
+    {
+        Host.Save();
+        return Task.CompletedTask;
+    }
+
+    private Task JumpAsync() => Host.JumpToAsync(Run.Anchor);
 
     private Task StepChangedAsync(StepSlot slot)
     {
         if (slot.Step.Kind is StepKind.Lines or StepKind.Slots)
         {
+            _holdId = slot.Id;
+        }
+        else if (slot.Step.Kind == StepKind.Text && Exercise.Targets.Count > 0 && !Host.BurstRunning
+                 && !string.IsNullOrWhiteSpace(_engine.GetAnswer(Run, slot.Step.Key, slot.Round)))
+        {
+            // Hold an answered step until Next, so Send to is reachable on it. A timed
+            // round still moves on by itself (the burst waits for the next slot to render).
             _holdId = slot.Id;
         }
 
@@ -291,8 +348,6 @@
         _focusPending = true;
         return Task.CompletedTask;
     }
-
-    private Task PutSynopsisAsync(string text) => Host.PutSynopsisAsync(text);
 
     private async Task CloseAsync()
     {

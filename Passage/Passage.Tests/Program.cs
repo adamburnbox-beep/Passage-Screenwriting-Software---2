@@ -64,6 +64,10 @@ class Program
         failures += RunTest("Test Catalog Woac Three Rounds", TestCatalogWoacThreeRounds);
         failures += RunTest("Test Catalog Flaw And Migrated Chains", TestCatalogFlawAndMigratedChains);
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
+        failures += RunTest("Test Project Context Scenes And Resolve", TestProjectContextScenesAndResolve);
+        failures += RunTest("Test Tool Targets Note Append", TestToolTargetsNoteAppend);
+        failures += RunTest("Test Tool Targets Beat And Tag", TestToolTargetsBeatAndTag);
+        failures += RunTest("Test Right Now Suggest", TestRightNowSuggest);
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
         failures += RunTest("Test Structure Template Passage Is The Shape", TestStructureTemplatePassageIsTheShape);
@@ -2127,6 +2131,124 @@ class Program
 
             Assert(threw, "a bundle with no script text must throw, not return empty text");
         }
+    }
+
+    static void TestProjectContextScenesAndResolve()
+    {
+        var id = Guid.NewGuid();
+        var text = $"INT. KITCHEN - DAY [[id:{id}]]\n= Maggie says no.\n\nMAGGIE\nNo.\n\nINT. HALL - NIGHT\n\nBOB\nHi.\n\nBOB\nHi.\n\nINT. HALL - NIGHT\n\nANN\nHey.\n";
+        var parsed = new FountainParser().Parse(text);
+        var scenes = ProjectContext.Scenes(parsed.Elements);
+        Assert(scenes.Count == 3, "Every scene heading is listed");
+        Assert(scenes[0].Id == id && scenes[0].Synopsis == "Maggie says no.", "A marked heading keeps its id and its synopsis line");
+        Assert(scenes[1].Id is null, "An unmarked heading has no id to anchor on");
+        Assert(ProjectContext.SceneAt(scenes, 1)!.Heading == scenes[0].Heading, "The caret on a heading is in that scene");
+        Assert(ProjectContext.SceneAt(scenes, scenes[1].LineNumber + 2) == scenes[1], "The caret below a heading is in that scene");
+
+        var byId = new Anchor { SceneId = id, SceneText = "INT. KITCHEN - DAY" };
+        Assert(ProjectContext.Resolve(scenes, byId) == scenes[0], "An id finds the scene");
+        // Gone: the id matches nothing and the text is not in the script.
+        var gone = new Anchor { SceneId = Guid.NewGuid(), SceneText = "INT. CELLAR - DAY" };
+        Assert(ProjectContext.Resolve(scenes, gone) is null, "A deleted scene resolves to nothing");
+        // Edited heading: the id still finds it.
+        var renamed = new Anchor { SceneId = id, SceneText = "INT. OLD NAME - DAY" };
+        Assert(ProjectContext.Resolve(scenes, renamed) == scenes[0], "A renamed marked scene is still found by id");
+        // Unmarked: found by text only when exactly one scene has it.
+        Assert(ProjectContext.Resolve(scenes, new Anchor { SceneText = "int. kitchen - day" }) == scenes[0], "Text finds a unique heading, ignoring case");
+        Assert(ProjectContext.Resolve(scenes, new Anchor { SceneText = scenes[1].Heading }) is null, "Two scenes with the same heading are ambiguous, so nothing is guessed");
+        Assert(ProjectContext.Resolve(scenes, new Anchor()) is null && ProjectContext.Resolve(scenes, null) is null, "No scene named resolves to nothing");
+
+        var cast = ProjectContext.Cast(
+            new[] { new CharacterStat("ANN", 1, 1), new CharacterStat("BOB", 5, 5), new CharacterStat("MAGGIE", 1, 1) },
+            new[] { new CharacterSettings { Name = "bob", Colour = "#ff0000" } });
+        Assert(cast.Select(c => c.Name).SequenceEqual(new[] { "BOB", "ANN", "MAGGIE" }), "Most speeches first, then by name");
+        Assert(cast[0].Colour == "#ff0000" && cast[1].Colour.Length == 0, "Colours come from the sidecar, case-insensitively");
+
+        var speakers = StoryFilter.SceneSpeakers(parsed.Elements);
+        var inHall = ProjectContext.SpeakersOf(scenes[1], speakers, cast);
+        Assert(inHall.SequenceEqual(new[] { "BOB" }), "A scene's speakers come from the script, in Cast order");
+
+        var story = new StoryData { Notes = { new NotePage { Title = " maggie " } } };
+        Assert(ProjectContext.NoteFor(story, "MAGGIE") is not null && ProjectContext.NoteFor(story, "BOB") is null, "A character's note is the page titled with their name");
+    }
+
+    static void TestToolTargetsNoteAppend()
+    {
+        var story = new StoryData();
+        var (page, created) = ToolTargets.AppendToNote(story, "Maggie", "Flaw Brainstorm", "Worst situation the flaw causes", "She sells the lighthouse");
+        Assert(created && story.Notes.Count == 1 && page.Title == "Maggie" && page.Template == "Character", "A character with no page gets one from the Character template");
+        Assert(page.Body.Contains("## Who they are"), "The new page starts from the template");
+
+        var (same, createdAgain) = ToolTargets.AppendToNote(story, "MAGGIE", "Flaw Brainstorm", "How that backfires", "Her brother\ncomes home");
+        Assert(!createdAgain && same == page && story.Notes.Count == 1, "A second send finds the same page");
+        Assert(page.Body.Contains("- Worst situation the flaw causes: She sells the lighthouse"), "The first answer is on the page");
+        Assert(page.Body.Contains("- How that backfires: Her brother\n  comes home"), "The second answer is on the page, continuation lines indented");
+        var heading = page.Body.IndexOf("## Flaw Brainstorm", StringComparison.Ordinal);
+        Assert(heading >= 0 && page.Body.IndexOf("## Flaw Brainstorm", heading + 1, StringComparison.Ordinal) < 0, "Both sit under one heading");
+        Assert(page.Body.IndexOf("- Worst", StringComparison.Ordinal) < page.Body.IndexOf("- How", StringComparison.Ordinal), "Answers keep the order they were sent in");
+
+        // The section is in the middle of a hand-edited page: the answer goes at the end of it, not the end of the page.
+        var hand = new NotePage { Title = "Bob", Body = "# Bob\n\n## Flaw Brainstorm\n- one\n\n## Arc\nstart\n" };
+        var other = new StoryData { Notes = { hand } };
+        ToolTargets.AppendToNote(other, "Bob", "Flaw Brainstorm", "Two", "two");
+        var lines = hand.Body.Split('\n').ToList();
+        Assert(lines.IndexOf("- Two: two") == lines.IndexOf("- one") + 1, "A new answer lands right after the section's last bullet");
+        Assert(lines.IndexOf("## Arc") > lines.IndexOf("- Two: two"), "Other sections stay where they were");
+    }
+
+    static void TestToolTargetsBeatAndTag()
+    {
+        var long80 = string.Join(' ', Enumerable.Repeat("lighthouse", 12));
+        var beat = ToolTargets.BuildBeat(long80);
+        Assert(beat.Title.Length <= 80 && beat.Title.EndsWith('…'), "A long first line is cut for the title");
+        Assert(beat.Description == long80, "Nothing sent is lost: the full text is the description");
+        var plain = ToolTargets.BuildBeat("She signs.");
+        Assert(plain.Title == "She signs." && plain.Description.Length == 0, "A short answer is only a title");
+        var multi = ToolTargets.BuildBeat("She signs.\nHe leaves.");
+        Assert(multi.Title == "She signs." && multi.Description == "She signs.\nHe leaves.", "More lines go in the description");
+        Assert(ToolTargets.SynopsisLine("a\n b \n") == "= a b", "A synopsis is one line");
+
+        var story = new StoryData();
+        ToolTargets.TagBeat(story, plain, "MAGGIE (V.O.)");
+        ToolTargets.TagBeat(story, plain, "Maggie");
+        var item = story.Items.Single(entry => entry.TargetId == plain.Id);
+        Assert(item.Kind == StoryItems.BeatKind && item.Characters.SequenceEqual(new[] { "MAGGIE" }), "Tagging twice leaves the character on, not toggled off");
+        ToolTargets.TagBeat(story, multi, "  ");
+        Assert(story.Items.Count == 1, "No character, no tag");
+    }
+
+    static void TestRightNowSuggest()
+    {
+        var all = new HashSet<string> { "fill", "pushpull", "scenedials", "understudy", "position", "split", "woac", "flaw" };
+        var scene = new SceneChoice(Guid.NewGuid(), "INT. KITCHEN - DAY", 4, string.Empty);
+        var beat = new Beat { Title = "The keeper's letter" };
+        var full = new RightNowInput
+        {
+            BracketUnderCaret = "[SOMETHING forces her to leave]",
+            SceneUnderCaret = scene,
+            SceneSpeakers = new[] { "MAGGIE", "BOB" },
+            NewestInboxBeat = beat,
+            NoStructure = true,
+            CastWithoutNote = new[] { new CharacterChoice("MAGGIE", string.Empty, 9) }
+        };
+        var suggestions = RightNow.Suggest(full, all);
+        Assert(suggestions.Count == 3, "At most three");
+        Assert(suggestions[0].ExerciseId == "fill" && suggestions[0].Anchor.Kind == AnchorKind.Bracket, "A bracket under the caret leads");
+        Assert(suggestions[1].Anchor.SceneText == scene.Heading && suggestions[1].Anchor.SceneId == scene.Id, "A scene under the caret is next, anchored on the scene");
+
+        // Rotation walks the scene candidates.
+        var picks = Enumerable.Range(0, 4).Select(n => RightNow.Suggest(full with { Rotation = n, BracketUnderCaret = null }, all)[0].ExerciseId).ToList();
+        Assert(picks.Distinct().Count() == 4, "The scene suggestion rotates through its candidates on each open");
+
+        // Only what is ported: WOAC (anchored to the scene's busiest speaker) and Flaw.
+        var ported = new HashSet<string> { "woac", "flaw" };
+        var some = RightNow.Suggest(full, ported);
+        Assert(some.Count == 2 && some[0].ExerciseId == "woac" && some[1].ExerciseId == "flaw", "Rules whose exercise isn't ported stay quiet");
+        Assert(some[0].Anchor.Kind == AnchorKind.Character && some[0].Anchor.Text == "MAGGIE" && some[0].Anchor.SceneId == scene.Id, "WOAC from a scene takes the scene's busiest speaker and keeps the scene");
+        Assert(some[1].Anchor.Text == "MAGGIE", "Flaw goes to the Cast member with most lines and no note");
+
+        Assert(RightNow.Suggest(new RightNowInput(), all).Count == 0, "Nothing to say, nothing shown");
+        Assert(RightNow.Suggest(full, new HashSet<string>()).Count == 0, "Nothing is offered that can't open");
     }
 
     static void Assert(bool condition, string message)

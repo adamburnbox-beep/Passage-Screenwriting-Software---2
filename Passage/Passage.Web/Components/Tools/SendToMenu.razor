@@ -1,0 +1,53 @@
+@* "Send to" (docs/SLATE-REDO-PLAN.md §4.4): the targets an exercise allows for
+   an answer. Picking one hands the text to the host, which writes it and says
+   on the status line what it did. Always enabled: a button disabled until the
+   field has text needs two taps (the field's change and this tap arrive
+   together), so an empty answer is reported instead. *@
+@using Passage.Web.Services.Tools
+
+<div class="send-to">
+    <button class="btn" aria-haspopup="menu" aria-expanded="@_open" @onclick="Toggle">Send to ▾</button>
+    @if (_open)
+    {
+        <div class="send-menu" role="menu">
+            @foreach (var target in Targets)
+            {
+                <button class="btn" role="menuitem" @onclick="() => PickAsync(target)">@LabelFor(target)</button>
+            }
+            @if (Targets.Contains(TargetKind.Synopsis) && SynopsisLabel.Length > 0)
+            {
+                <div class="fill-meta">@SynopsisLabel</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TargetKind> Targets { get; set; } = Array.Empty<TargetKind>();
+    // Whose note page, when the run names someone.
+    [Parameter] public string Character { get; set; } = string.Empty;
+    [Parameter] public string SynopsisLabel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<TargetKind> OnSend { get; set; }
+
+    private bool _open;
+
+    private void Toggle() => _open = !_open;
+
+    private string LabelFor(TargetKind target) => target switch
+    {
+        TargetKind.InboxBeat => Character.Length > 0 ? $"Beat inbox, tagged {Character}" : "Beat inbox",
+        TargetKind.Synopsis => "Synopsis in the script",
+        TargetKind.NotePage => Character.Length > 0 ? $"{Character}'s note page" : "Character note page",
+        TargetKind.Copy => "Copy",
+        TargetKind.Bracket => "The bracket",
+        TargetKind.SceneCard => "A new scene card",
+        TargetKind.Shape => "The Shape",
+        _ => target.ToString()
+    };
+
+    private async Task PickAsync(TargetKind target)
+    {
+        _open = false;
+        await OnSend.InvokeAsync(target);
+    }
+}

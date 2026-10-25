@@ -11,6 +11,11 @@ public sealed class Anchor
     public AnchorKind Kind { get; set; }
     public Guid? TargetId { get; set; }
     public string Text { get; set; } = string.Empty;
+
+    // The scene a character-anchored run is about, when the writer named one.
+    // By id where the heading has a marker, otherwise by heading text.
+    public Guid? SceneId { get; set; }
+    public string SceneText { get; set; } = string.Empty;
 }
 
 /// <summary>An answer that was sent somewhere, so the trail can tag it.</summary>

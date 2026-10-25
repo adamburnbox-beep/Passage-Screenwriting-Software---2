@@ -9,7 +9,8 @@ public enum Shelf { Nothing, Ending, Moment, SceneGoing, DeadScene }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AnchorKind { None, Character, Scene, Bracket, InboxBeat, TwoPoints, Shape }
 
-/// <summary>Where an answer can be sent (§4.4).</summary>
+/// <summary>Where an answer can be sent (§4.4). Stored by name in the sidecar.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TargetKind { Bracket, Synopsis, InboxBeat, SceneCard, NotePage, Shape, Copy }
 
 /// <summary>The whole step vocabulary (§4.3). New behaviour means a new kind with a test.</summary>
@@ -74,9 +75,6 @@ public sealed record Step
     // Stop: the stop-callout's words, shown with Stop here / Keep going.
     public string Text { get; init; } = string.Empty;
 
-    // Where an answer to this step can be put in the script, if anywhere.
-    public TargetKind? Send { get; init; }
-
     // Partner seam (§4.2): a site where PartnerLines may render.
     public bool Offer { get; init; }
 
@@ -97,8 +95,10 @@ public sealed record Exercise
     public string Why { get; init; } = string.Empty;
     public Shelf Shelf { get; init; }
     public AnchorKind Anchor { get; init; }
-    // What the free-text anchor asks for, until T3 adds real pickers.
+    // What the anchor strip asks for ("Character + starting want").
     public string AnchorLabel { get; init; } = string.Empty;
+    // A character-anchored exercise that may also name the scene it is about.
+    public bool SceneToo { get; init; }
     public IReadOnlyList<TargetKind> Targets { get; init; } = Array.Empty<TargetKind>();
     public required IReadOnlyList<Step> Steps { get; init; }
 }
