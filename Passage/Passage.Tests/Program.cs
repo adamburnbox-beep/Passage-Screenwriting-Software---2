@@ -73,6 +73,12 @@ class Program
         failures += RunTest("Test Tool Targets Beat And Tag", TestToolTargetsBeatAndTag);
         failures += RunTest("Test Right Now Suggest", TestRightNowSuggest);
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
+        failures += RunTest("Test Exercise Engine Pick Alt Echo And Read Forward", TestExerciseEnginePickAltEcho);
+        failures += RunTest("Test Catalog Split Walks To Rung One", TestCatalogSplitRungOne);
+        failures += RunTest("Test Split Adapter Matches The Old Shape Write", TestSplitAdapter);
+        failures += RunTest("Test Catalog Belief And Extend", TestCatalogBeliefAndExtend);
+        failures += RunTest("Test Slate Migration Split Family", TestSlateMigrationSplitFamily);
+        failures += RunTest("Test Shape Prefill From The Script", TestShapePrefill);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
         failures += RunTest("Test Structure Template Passage Is The Shape", TestStructureTemplatePassageIsTheShape);
         failures += RunTest("Test Structure Template Page Scaling", TestStructureTemplatePageScaling);
@@ -1431,6 +1437,270 @@ class Program
         Assert(SynopsisPlacement.Find(Array.Empty<string>(), 0) == (0, -1), "An empty document inserts at line 0");
     }
 
+    static void TestExerciseEnginePickAltEcho()
+    {
+        var exercise = new Exercise
+        {
+            Id = "p",
+            Name = "P",
+            Steps = new Step[]
+            {
+                new() { Key = "shape", Kind = StepKind.Pick, Options = new[] { "Fall — Lie → clings", "Flat — Truth held" } },
+                new() { Key = "z", Label = "Z" },
+                new() { Key = "link", Group = "g", Echo = true, EndKeys = new[] { "z" }, Question = "Why?", AltQuestion = "What would a detective find?", AltHint = "Not the cause." },
+                new() { Key = "loop", Kind = StepKind.Loop, LoopGroup = "g" },
+                new() { Key = "chain", Kind = StepKind.AliveFlat, ReadForwardKey = "link", EndKeys = new[] { "z" } }
+            }
+        };
+        var engine = new ExerciseEngine(exercise);
+        var run = new ExerciseRun();
+        var pick = engine.Current(run)!.Value;
+
+        Assert(engine.PickOptions(run, pick).Count == 2, "A Pick with no source offers its fixed options");
+        engine.Pick(run, pick, "Fall — Lie → clings");
+        Assert(engine.GetAnswer(run, "shape") == "Fall" && engine.IsPicked(run, pick, "Fall — Lie → clings") && !engine.IsPicked(run, pick, "Flat — Truth held"),
+            "A fixed option stores its name, and only that option reads as picked");
+        engine.SetAnswer(run, "shape", 0, "my own shape");
+        Assert(engine.Current(run)!.Value.Step.Key == "z" && !engine.IsPicked(run, pick, "Fall — Lie → clings"), "Writing over a pick is allowed");
+
+        engine.SetAnswer(run, "z", 0, "she leaves");
+        var link0 = engine.Current(run)!.Value;
+        Assert(engine.EchoOf(run, link0) == "she leaves", "The first link echoes the chain's end");
+        engine.SetAlt(run, link0, true);
+        Assert(engine.Question(run, link0) == "What would a detective find?" && engine.Hint(run, link0) == "Not the cause.", "The mystery lens swaps the question");
+        Assert(!engine.IsAnswered(run, link0), "The lens is not an answer");
+        engine.SetAnswer(run, "link", 0, "the letter arrived");
+        var link1 = engine.Current(run)!.Value;
+        Assert(link1.Round == 1 && engine.Question(run, link1) == "Why?", "The lens is for that link only; the next link asks the usual question");
+        Assert(engine.EchoOf(run, link1) == "the letter arrived", "Later links echo the previous one");
+        engine.SetAnswer(run, "link", 0, "the letter was opened");
+        Assert(engine.EchoOf(run, link1) == "the letter was opened", "The echo is read live, never copied");
+        engine.SetAlt(run, link0, false);
+        Assert(engine.Question(run, link0) == "Why?" && !run.Answers.ContainsKey("link~alt"), "Switching it off leaves nothing behind");
+
+        engine.SetAnswer(run, "link", 1, "she hid it");
+        var chain = new StepSlot(exercise.Steps[4], 0);
+        Assert(engine.ReadForward(run, chain).SequenceEqual(new[] { "she hid it", "the letter was opened", "she leaves" }),
+            "The chain reads forward: last link first, Z last");
+    }
+
+    static void TestCatalogSplitRungOne()
+    {
+        var engine = new ExerciseEngine(ExerciseCatalog.Split);
+        var run = new ExerciseRun { ExerciseId = "split", Anchor = new Anchor { Kind = AnchorKind.Shape } };
+        string Now() => engine.Current(run)!.Value.Step.Key;
+
+        Assert(Now() == "a", "A→Z→Split opens on A");
+        engine.SetAnswer(run, "a", 0, "she inherits the lighthouse");
+        engine.SetAnswer(run, "z", 0, "she sells it");
+        Assert(Now() == "checks", "The optional end checks are offered after the ends");
+        engine.SetAnswer(run, "checks", 0, "y");
+        Assert(Now() == "irony", "Yes opens the checks");
+        engine.SetAnswer(run, "irony", 0, "a haunted skeptic");
+        engine.SetAnswer(run, "objection", 0, "who cares");
+        engine.SetAnswer(run, "answer", 0, "she does");
+        Assert(Now() == "mirror", "Then Mirror Z");
+        engine.SetAnswer(run, "mirror", 0, "n");
+        Assert(Now() == "cands", "No skips the mirror group");
+        engine.SetAnswer(run, "mirror", 0, "y");
+        Assert(engine.Sequence(run).Any(slot => slot.Step.Key == "opp"), "Yes shows the mirror steps");
+        engine.SetAnswer(run, "mirror", 0, string.Empty);
+        Assert(!engine.Sequence(run).Any(slot => slot.Step.Key == "opp") && Now() == "mirror", "Clearing the answer hides them again");
+        engine.Skip(run, engine.Current(run)!.Value);
+        Assert(Now() == "cands", "Skipping a gate moves on");
+
+        engine.SetLine(run, "cands", 0, 0, "the lighthouse floods");
+        engine.SetLine(run, "cands", 0, 1, "her brother arrives");
+        Assert(Now() == "mid", "Candidates lead to the pick");
+        var pick = engine.Current(run)!.Value;
+        Assert(engine.PickOptions(run, pick).SequenceEqual(new[] { "the lighthouse floods", "her brother arrives" }), "The pick offers the candidates");
+        engine.Pick(run, pick, "her brother arrives");
+        Assert(Now() == "stress", "Then the stress test");
+        engine.SetAnswer(run, "stress", 0, "alive");
+        Assert(Now() == "layer", "Then the optional belief layer");
+        engine.Skip(run, engine.Current(run)!.Value);
+        Assert(Now() == "stop1" && engine.Current(run)!.Value.Step.Kind == StepKind.Stop, "The first stop-callout is next; the belief cuts are not asked");
+        engine.Continue(run, engine.Current(run)!.Value);
+        Assert(Now() == "pp1", "Keep going reaches rung 2");
+
+        // Rung 1 written: the adapter hands SplitScript exactly the turns that are set.
+        var split = ShapeAnswers.ToSplitRun(run);
+        Assert(split.A == "she inherits the lighthouse" && split.Z == "she sells it" && split.Midpoint == "her brother arrives" && split.MidpointAlive == "alive",
+            "Rung 1 reaches the Shape write");
+        var lines = SplitScript.BuildLines(split).Select(StripIds).ToList();
+        Assert(lines.Count(line => line.StartsWith("# ")) == 4 && lines.Count(line => line.StartsWith("## ")) == 8, "Four acts and eight sequences");
+        Assert(lines.Contains("= Midpoint: her brother arrives") && lines.Contains("= Plot point 1: [PLOT POINT 1]") && lines.Contains("= Pinch 2: [PINCH 2]"),
+            "The midpoint is written, the other turns are brackets");
+    }
+
+    static void TestSplitAdapter()
+    {
+        var old = new SplitRun
+        {
+            A = "start", Z = "end", Midpoint = "mid", MidpointAlive = "flat", PP1 = "pp1", Crisis = "crisis", Inciting = "inc",
+            Pinch1 = "p1", Pinch2 = "p2", LastObstacle = "last", BeliefLayer = true, Pinch1ThirdRail = "r1", Pinch2ThirdRail = "r2",
+            Candidates = { [0] = "c0", [2] = "c2" }
+        };
+        var back = ShapeAnswers.ToSplitRun(SlateMigration.FromSplit(old, new BeliefRun(), "r"));
+        Assert(SplitScript.Values(back).SequenceEqual(SplitScript.Values(old)), "Every turn survives the move");
+        Assert(back.Candidates.SequenceEqual(old.Candidates) && back.MidpointAlive == "flat" && back.BeliefLayer
+            && back.Pinch1ThirdRail == "r1" && back.Pinch2ThirdRail == "r2", "Candidates, the stress mark and the belief layer survive too");
+        Assert(SplitScript.BuildLines(back).Select(StripIds).SequenceEqual(SplitScript.BuildLines(old).Select(StripIds)),
+            "The Shape the adapter writes is the Shape the old record wrote");
+
+        // The update path reads the same values: a turn the run leaves blank stays a bracket.
+        var sparse = ShapeAnswers.ToSplitRun(new ExerciseRun { Answers = { ["a"] = "x", ["mid"] = "y" } });
+        Assert(SplitScript.Values(sparse).Count(value => value.Length > 0) == 2 && sparse.Candidates.Count == 3, "A sparse run is mostly blank, with three candidate rows");
+        Assert(SplitScript.Line(SplitScript.Slots[7], sparse.LastObstacle) == "= Last obstacle: [LAST OBSTACLE]", "A blank turn is written as its bracket");
+
+        var belief = new BeliefRun { Shape = "Fall", A = "a", Z = "z", Ghost = "g", GhostSize = "7", GhostCommensurate = "n", GhostMismatch = "m", Cut50Change = "c" };
+        belief.Cut(50).Text = "fifty";
+        belief.Cut(50).Alive = "alive";
+        belief.Cut(88).Text = "eighty-eight";
+        var round = ShapeAnswers.ToBeliefRun(SlateMigration.FromBelief(belief, "b"));
+        Assert(round.Shape == "Fall" && round.A == "a" && round.Z == "z" && round.Ghost == "g" && round.GhostSize == "7" && round.GhostCommensurate == "n"
+            && round.GhostMismatch == "m" && round.Cut50Change == "c", "Belief's ends and origin survive");
+        Assert(round.Cut(50).Text == "fifty" && round.Cut(50).Alive == "alive" && round.Cut(88).Text == "eighty-eight" && round.Cut(12).Text == string.Empty, "The cuts keep their ratios");
+
+        var slate = new SlateDocument();
+        slate.Exercises.Add(SlateMigration.FromSplit(old, new BeliefRun(), "s"));
+        Assert(ShapeAnswers.SplitTurn(slate, "Midpoint") == "mid" && ShapeAnswers.SplitTurn(slate, "Pinch 1") == "p1" && ShapeAnswers.SplitTurn(slate, "nope") is null,
+            "A belief cut finds its matched plot turn in the Split run");
+        Assert(ShapeAnswers.SplitTurn(new SlateDocument(), "Midpoint") is null, "No Split run, no matched turn");
+    }
+
+    static void TestCatalogBeliefAndExtend()
+    {
+        // Belief: the shape pick, ends, origin, the gut check that opens "resize" only on no, the stops, then the Cast card loop.
+        var belief = new ExerciseEngine(ExerciseCatalog.Belief);
+        var run = new ExerciseRun { ExerciseId = "belief", Anchor = new Anchor { Kind = AnchorKind.Character, Text = "MAGGIE" } };
+        string Now() => belief.Current(run)!.Value.Step.Key;
+        belief.Pick(run, belief.Current(run)!.Value, ExerciseCatalog.BeliefShapes[0]);
+        Assert(belief.GetAnswer(run, "shape") == "Positive Change", "The shape stores its name");
+        belief.SetAnswer(run, "a", 0, "Lie");
+        belief.SetAnswer(run, "z", 0, "Truth");
+        belief.SetAnswer(run, "ghost", 0, "a drowned brother");
+        belief.SetAnswer(run, "size", 0, "6");
+        belief.SetAnswer(run, "fits", 0, "n");
+        Assert(Now() == "resize", "No on the gut check asks to resize it");
+        belief.SetAnswer(run, "resize", 0, "make it smaller");
+        Assert(belief.Current(run)!.Value.Step.Kind == StepKind.Stop, "The origin rung ends in a stop");
+        belief.Continue(run, belief.Current(run)!.Value);
+        Assert(Now() == "cut50", "Then the 50% cut");
+        belief.SetAnswer(run, "cut50", 0, "she believes money fixes it");
+        belief.SetAnswer(run, "chg50", 0, "the sale fell through");
+        belief.SetAnswer(run, "al50", 0, "alive");
+        belief.Continue(run, belief.Current(run)!.Value);
+        foreach (var key in new[] { "cut25", "al25", "cut75", "al75", "cut12", "al12", "cut88", "al88" })
+        {
+            Assert(Now() == key, $"{key} follows in order");
+            belief.Skip(run, belief.Current(run)!.Value);
+        }
+
+        Assert(belief.Current(run)!.Value.Step.Key == "stop-cuts", "The five-cuts note is a stop");
+        belief.Continue(run, belief.Current(run)!.Value);
+        Assert(belief.Current(run)!.Value.Step.Key == "stop-cast", "The Cast card is behind its own stop");
+        belief.Continue(run, belief.Current(run)!.Value);
+        Assert(Now() == "who", "Keep going asks who");
+        belief.SetAnswer(run, "who", 0, "BOB");
+        foreach (var key in new[] { "now", "life", "secret", "resolve", "trait", "risk", "edge" })
+        {
+            belief.Skip(run, belief.Current(run)!.Value);
+        }
+
+        Assert(Now() == "watch", "The opponent-only questions can be skipped");
+        belief.SetAnswer(run, "watch", 0, "he lies well");
+        Assert(run.Rounds == 2 && belief.Current(run)!.Value is { Round: 1 } next && next.Step.Key == "who", "Answering the last question asks about the next character");
+        Assert(ExerciseCatalog.Belief.Steps.Where(step => step.Group == "cast" && step.Key != "who").All(step => step.WhoKey == "who"),
+            "Every Cast card answer knows whose it is for Send to");
+
+        // Extend: Z, the optional Obituary Z, then links backward until the writer stops.
+        var extend = new ExerciseEngine(ExerciseCatalog.Extend);
+        var erun = new ExerciseRun { ExerciseId = "extend", Anchor = new Anchor { Kind = AnchorKind.Shape } };
+        string Next() => extend.Current(erun)!.Value.Step.Key;
+        extend.SetAnswer(erun, "z", 0, "the lighthouse goes dark");
+        Assert(Next() == "obit", "Obituary Z is offered after Z");
+        extend.SetAnswer(erun, "obit", 0, "y");
+        Assert(Next() == "eulogy", "Yes asks for the eulogy");
+        extend.SetAnswer(erun, "eulogy", 0, "She never said where she went.");
+        var link = extend.Current(erun)!.Value;
+        Assert(link.Step.Key == "link" && extend.EchoOf(erun, link) == "She never said where she went.", "The first link is right before the eulogy, which stands in for Z");
+        extend.SetAnswer(erun, "link", 0, "she packed in the night");
+        extend.SetAnswer(erun, "link", 1, "the letter came");
+        Assert(erun.Rounds == 3 && extend.Current(erun)!.Value.Round == 2, "Only the latest link opens the next one");
+        var chain = new StepSlot(ExerciseCatalog.Extend.Steps.First(step => step.Key == "chain"), 0);
+        Assert(extend.ReadForward(erun, chain).SequenceEqual(new[] { "the letter came", "she packed in the night", "She never said where she went." }),
+            "Read forward, the eulogy is the end of the chain");
+        Assert(extend.Current(erun)!.Value.Step.Key == "link", "The closing steps wait until the writer asks for them");
+    }
+
+    static void TestSlateMigrationSplitFamily()
+    {
+        var document = new SlateDocument();
+        document.Split.A = "start";
+        document.Split.Midpoint = "mid";
+        document.Split.Candidates[1] = "a candidate";
+        document.Split.BeliefLayer = true;
+        document.Split.Pinch1ThirdRail = "rail";
+        document.Belief.Shape = "Flat";
+        document.Belief.Cut(50).Text = "fifty";
+        document.Belief.Cut(25).Text = "twenty-five";
+        document.Extend.Z = "end";
+        document.Extend.Links = new List<ExtendLink> { new() { Text = "one" }, new() { Text = "two", Mystery = true }, new() };
+        document.Extend.WeakestLink = "two";
+
+        Assert(SlateMigration.Migrate(document) == 3, "Split, Belief and Extend are each moved");
+        Assert(document.Split.A == string.Empty && document.Belief.Shape == string.Empty && document.Extend.Z == string.Empty && document.Extend.Links.Count == 1
+            && document.Belief.Cuts.All(cut => cut.Text.Length == 0), "A move leaves the old records empty");
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 3, "Running it twice adds nothing");
+
+        var split = document.Exercises.Single(run => run.ExerciseId == "split");
+        var engine = new ExerciseEngine(ExerciseCatalog.Split);
+        Assert(split.Anchor.Kind == AnchorKind.Shape && engine.GetAnswer(split, "a") == "start" && engine.GetLine(split, "cands", 0, 1) == "a candidate"
+            && engine.GetAnswer(split, "mid") == "mid", "The Split run keeps its ends, candidates and midpoint");
+        Assert(engine.GetAnswer(split, "layer") == "y" && engine.GetAnswer(split, "rail1") == "rail" && engine.GetAnswer(split, "b50") == "fifty" && engine.GetAnswer(split, "b25") == "twenty-five",
+            "The belief layer comes with its third rail and the cuts it asked");
+
+        var beliefRun = document.Exercises.Single(run => run.ExerciseId == "belief");
+        Assert(new ExerciseEngine(ExerciseCatalog.Belief).GetAnswer(beliefRun, "cut50") == "fifty" && ShapeAnswers.ToBeliefRun(beliefRun).Cut(25).Text == "twenty-five",
+            "Belief Split keeps its cuts too (the layer's copy is separate)");
+
+        var extendRun = document.Exercises.Single(run => run.ExerciseId == "extend");
+        var extend = new ExerciseEngine(ExerciseCatalog.Extend);
+        Assert(extendRun.Rounds == 3 && extend.GetAnswer(extendRun, "link", 1) == "two" && extend.IsAlt(extendRun, new StepSlot(ExerciseCatalog.Extend.Steps.First(step => step.Key == "link"), 1))
+            && extend.GetAnswer(extendRun, "weak") == "two", "Extend's links are the loop's rounds, the mystery mark on the right one");
+        Assert(extend.Current(extendRun)!.Value is { Round: 2 } open && open.Step.Key == "link", "The waiting blank link is the open round, not the new optional questions");
+        Assert(engine.Current(split)!.Value.Step.Key == "z", "A migrated Split run asks for the end it lacks, not the new optional questions");
+        Assert(engine.Sequence(split).All(slot => slot.Step.Key != "stop1" || split.Passed.Contains("stop1")), "A stop above written text is behind the writer");
+
+        // Untouched records are not worth a kept run, but they are cleared.
+        var blank = new SlateDocument();
+        blank.Belief.Cut(50).Alive = string.Empty;
+        Assert(SlateMigration.Migrate(blank) == 0 && blank.Exercises.Count == 0, "Blank records add nothing");
+
+        // The saved file round-trips: a sidecar written by the old build loads into runs on the next Load.
+        var json = System.Text.Json.JsonSerializer.Serialize(new SlateDocument { Split = new SplitRun { A = "from disk" } });
+        var loaded = System.Text.Json.JsonSerializer.Deserialize<SlateDocument>(json)!;
+        SlateMigration.Migrate(loaded);
+        Assert(loaded.Exercises.Single().Answers["a"] == "from disk", "An old sidecar's Split shows up as a run");
+    }
+
+    static void TestShapePrefill()
+    {
+        string? Script(string label) => label switch { "Starts" => "she arrives", "Ends" => "she leaves", _ => null };
+        var run = new ExerciseRun { ExerciseId = "split" };
+        Assert(ShapeAnswers.Prefill(ExerciseCatalog.Split, run, Script) && run.Answers["a"] == "she arrives" && run.Answers["z"] == "she leaves",
+            "A fresh Split run starts from the script's Starts / Ends lines");
+        run.Answers["z"] = string.Empty;
+        Assert(!ShapeAnswers.Prefill(ExerciseCatalog.Split, run, Script) && run.Answers["z"] == string.Empty, "A run the writer has touched is never refilled");
+        var none = new ExerciseRun { ExerciseId = "split" };
+        Assert(!ShapeAnswers.Prefill(ExerciseCatalog.Split, none, _ => null) && none.Answers.Count == 0, "Nothing real in the script, nothing filled");
+        var scene = new ExerciseRun { ExerciseId = "extend", Anchor = new Anchor { Kind = AnchorKind.Shape, SceneText = "INT. KITCHEN - DAY" } };
+        Assert(!ShapeAnswers.Prefill(ExerciseCatalog.Extend, scene, Script), "A run about a scene is not given the Shape's ending");
+        var extend = new ExerciseRun { ExerciseId = "extend" };
+        Assert(ShapeAnswers.Prefill(ExerciseCatalog.Extend, extend, Script) && extend.Answers["z"] == "she leaves" && !extend.Answers.ContainsKey("a"), "Extend starts from the Shape's end only");
+    }
+
     static void TestSplitScriptLinesAndParse()
     {
         var run = new SplitRun { A = "She arrives at the lighthouse", Z = "She leaves it burning", Midpoint = "The keeper\nconfesses" };
@@ -1982,13 +2252,17 @@ class Program
             document.Extend.Links.Add(new ExtendLink { Text = "she lit it", Mystery = true });
             store.Save("draft", document);
 
+            // Load moves the Split family into runs (the file is rewritten on the next save).
             var loaded = store.Load("draft")!;
-            Assert(loaded.Split.Midpoint == "confesses" && loaded.Split.MidpointAlive == "alive" && loaded.Split.BeliefLayer, "Split run round-trips");
-            Assert(loaded.Split.Candidates.Count == 3, "Three candidate rows round-trip, empty included");
-            Assert(loaded.Belief.Shape == "Fall" && loaded.Belief.Cut(50).Text == "she thinks she can leave" && loaded.Belief.Cut(50).Alive == "flat", "Belief cuts round-trip by ratio");
-            Assert(loaded.Belief.Cuts.Count == 5, "All five named cuts, no more");
-            Assert(loaded.Extend.Links.Count == 2 && loaded.Extend.Links[1].Mystery, "Extend links round-trip with the mystery lens");
-            Assert(!loaded.Split.HasRung2 && !loaded.Belief.HasRung3, "Rung flags read the content, nothing stored");
+            var split = ShapeAnswers.ToSplitRun(loaded.Exercises.Single(run => run.ExerciseId == "split"));
+            Assert(split.Midpoint == "confesses" && split.MidpointAlive == "alive" && split.BeliefLayer, "Split run round-trips");
+            Assert(split.Candidates.Count == 3, "Three candidate rows round-trip, empty included");
+            var belief = ShapeAnswers.ToBeliefRun(loaded.Exercises.Single(run => run.ExerciseId == "belief"));
+            Assert(belief.Shape == "Fall" && belief.Cut(50).Text == "she thinks she can leave" && belief.Cut(50).Alive == "flat", "Belief cuts round-trip by ratio");
+            Assert(belief.Cuts.Count == 5, "All five named cuts, no more");
+            var extend = loaded.Exercises.Single(run => run.ExerciseId == "extend");
+            Assert(extend.Rounds == 3 && extend.Answers["link#1"] == "she lit it" && extend.Answers["link#1~alt"] == "y", "Extend links become rounds, the mystery lens kept");
+            Assert(loaded.Split.A.Length == 0 && loaded.Belief.Shape.Length == 0 && loaded.Extend.Z.Length == 0, "The old records are empty once moved");
         }
         finally
         {

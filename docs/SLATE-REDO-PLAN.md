@@ -560,7 +560,7 @@ new tests (127 total, all pass).
   slots and steps; keystrokes sent faster than the round trip can race the
   re-render, as before.
 
-### T5 — Split family · `todo`
+### T5 — Split family · `done`
 
 - A→Z→Split (with optional end checks and Mirror Z), Belief Split (with Cast
   card group), Extend Backward (with Obituary Z and mystery lens).
@@ -570,6 +570,69 @@ new tests (127 total, all pass).
 - Success: a fresh script, Split to rung 1, write the Shape: Board shows the
   four acts / eight sequences with the midpoint; update after rung 2 fills
   only bracketed turns.
+
+**Done:** `ExerciseCatalog.Split`, `.Belief` and `.Extend`; `Services/Tools/ShapeAnswers.cs`
+is the adapter (`ToSplitRun`, `ToBeliefRun`, `SplitTurn`, `Prefill`), so the Shape
+write is still `SplitScript.BuildLines` / the ranged fill-in of bracketed turns,
+now `Editor.WriteShapeAsync(SplitRun)` behind `IToolHost.WriteShapeAsync`. New step
+rendering in `StepCard`: `Pick` (tap a candidate, or a fixed "Name — gloss" list, or
+write it), `YesNo` and `AliveFlat` (the `AliveFlat` pills), and `Branch` groups
+through the engine as before. Engine additions, each tested: fixed `Options` on a
+`Pick`, `Pick` / `IsPicked`, a per-round second wording (`AltQuestion`, switched by a
+toggle, stored as `key~alt`, never an answer) for Extend's mystery lens, `Echo` (what
+the link is "right before": Z, then the previous link, read live) and `ReadForward`
+(the chain, last link first, Z last). Split: A, Z (prefilled from the script's
+`= Starts:` / `= Ends:` when the run is fresh), optional end checks (irony, worst-case
+pitch) and Mirror Z behind yes/no gates, candidates → Pick → stress, the optional
+belief layer, then the three stop-callouts in the worksheet's words. Belief: shape,
+A/Z, origin with size and the gut check (resize on *n*), the five cuts each with its
+matched plot turn from the Split run, alive/flat per cut, then the Cast card as a loop
+behind its own stop. Extend: Z, optional Obituary Z, a loop of links with the mystery
+toggle and "Right before" line, "Read it forward" → alive/flat → weakest link. The
+Split strip has **Write the shape into the script / Update the shape in the script**
+(any rung). Launcher: Split and Extend pick up the run already kept for the Shape
+rather than start a second; Right now's A→Z→Split rule is live. The Board card Tools
+menu lists Extend with the scene named. `SlateMigration.Migrate` moves Split, Belief
+and Extend (blank ones are cleared, not moved); old views, handlers, `WorkshopView`
+members and the Split/Extend partner keys are deleted. 6 new tests, 1 updated (134
+total, all pass).
+
+**Deviations:**
+- Shape targets: the write is a button in the Split strip (like Fill's *Fill it*), not a
+  Send to entry; Split's Send to offers Copy only. Belief sends to the character's note
+  page and Copy, not "turns' synopses" (the old tool never wrote cuts into the script, and
+  a turn's synopsis is the script's once promoted — SLATE-PLAN decision B). Extend sends to
+  inbox beats, one link at a time; "scene cards before Z" is not built (`SceneCard` has no
+  host target yet).
+- The Split belief layer keeps working as an optional branch inside Split. It and Belief
+  Split used to share one record of five cuts; they are two exercises now, so on migration
+  the cuts are copied into the Split run when the layer was on. A migrated run is not
+  asked the new optional gates again, and stops above text already written are passed.
+- The optional gates (end checks, Mirror Z, belief layer) are yes/no steps that Enter
+  skips; the Cast card sits after Belief's cuts behind a stop (the worksheet puts it
+  after the origin) because a loop must be last in the exercise. Its two opponent-only
+  questions are skippable steps, and the last question ("why we'd watch") is the one
+  that opens the next character.
+- Turns, A and Z are single-line fields (Enter moves on); only the opposite ending and the
+  eulogy are multiline, where Ctrl+Enter moves on.
+- Belief's anchor is a character (one run per character); the old tool had one per script, so
+  a migrated Belief run has no character until one is picked in the strip.
+- Left for T6 / T7 / T8: `Position`'s `ScriptTurnHint`, Push/Pull's `BeliefShapes`, and
+  `Suggestions.ForSplitMidpoint` / `ForExtendLink` and the `SplitRun` / `BeliefRun` /
+  `ExtendRun` types (migration reads them) stay until those rows or T8's cleanup.
+- Verified in the browser on a scratch copy of the dev data (§8): `split-test`'s Split and
+  Extend runs show on their cards after migration (its Belief was empty, so none); on a fresh
+  script Right now → A→Z→Split, keyboard through A, Z, the end checks gate (yes, one answer,
+  Enter-skip the rest), Mirror Z skipped, three candidates, Pick, stress, belief layer skipped,
+  stop-callout; *Write the shape* put in four acts and eight sequences with the midpoint and
+  the Board showed them; status-bar Undo restored the empty script exactly and Redo the
+  structure; Update after PP1 / PP2 filled only those two bracketed lines and left the
+  midpoint alone, and two Undos restored it with the caret on the line; a line removed
+  underneath → "no line in the script for Plot point 1", no exception. Extend's Z was
+  prefilled from `= Ends:`, the echo and mystery toggle behaved, Read it forward listed the
+  chain. Belief showed the matched plot turn from the Split run. 375px has no horizontal
+  overflow; no counters or dates; `.partner` count 0; no server errors. Not exercised by
+  hand: the Cast card's Send to, and a Belief run started from a Cast row.
 
 ### T6 — Bridge and Position · `todo`
 
