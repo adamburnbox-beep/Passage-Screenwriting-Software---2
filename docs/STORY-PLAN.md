@@ -921,7 +921,7 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
 
 ## Tier S4 — Notes
 
-### S4.1 Project notes — `todo` · needs a design decision first
+### S4.1 Project notes — `partial` · design note written, awaiting approval
 
 - **Read:** `docs/SLATE-PLAN.md` lines 1–20 and decision B (~92–112) only.
   `Slate` 352–380 (`IdeationDocument`, the precedent for non-script data).
@@ -947,6 +947,128 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
     sheet are built in. Custom templates live in `.slate/templates.json` (from
     S2.2). The built-ins must be Passage's own wording.
 - **Budget:** ~30k (design note only).
+
+#### S4.1 design note (2026-10-25) — awaiting Adam's approval
+
+**Recommendation in one line:** yes, add notes, as a small per-script area
+stored in the sidecar (`Story.Notes`), edited in the existing Markdown editor,
+with three built-in templates and an export-to-`.md` button. Nothing is built
+until this is approved.
+
+**1. Scope (rule 7).** SLATE-PLAN's scope line keeps "Seeds, stages…
+next-move notes, briefs" in Obsidian: "Passage gets the tools, not the
+practice". Those are *project-management* artefacts: where a story is in its
+life, what to do next. A world sheet or a character worksheet is *reference
+material for one script*. It's closer to Cast colours and the Beat Sheet, which
+decision A (settled 2026-10-25) already moved into the sidecar, than to a
+story pipeline. So notes don't contradict the line, but they do lean on it.
+The honest cost is a second place a writer might keep this material, next to
+Obsidian. Two guard rails keep it small:
+
+- Notes are **per script**. No cross-script board, no stages, no status, no
+  last-touched, no "next move" field. Those stay in Obsidian.
+- Notes are **plain Markdown pages with a title**. No linking between notes,
+  backlinks, tags or search across scripts. A writer who wants a graph has one.
+
+**Adam decides:** whether Passage has notes at all. If not, delete S4.1; nothing
+else in the plan depends on it. If yes, the line above is the proposed edge,
+and it's worth one sentence in SLATE-PLAN's scope paragraph, as S1.1 did for
+decision B.
+
+**2. Where notes live.**
+
+| | (a) Sidecar `Story.Notes` | (b) Companion `.md` files |
+| --- | --- | --- |
+| Link to the script | By construction: same sidecar, same lifetime | Name convention only (`Heist.notes.md`); breaks on rename |
+| Library list | Untouched. `ScriptLibrary.List()` filters `.fountain/.md/.txt` in the root, so every companion shows up as a "script" | One extra entry per note unless `List()` learns to hide them (a change to a shared list) |
+| Opening one | New small page editor reusing CodeMirror in Markdown mode | Free: it is already a Markdown document, with the full editor, but also page counts, goals, Board and Beats built for scripts |
+| Save | `SaveSlate` (whole-sidecar, last-write-wins, like everything else in it) | `ScriptLibrary.Save`, one file per note |
+| Obsidian compatibility | Export button writes `.md` (or a zip) | Native, files sit in the data volume |
+| Rename/delete a script | Notes follow the sidecar. `PruneOrphans` deletes them with it (the existing risk, below) | Notes are orphaned, never deleted, never reconnected |
+| Slate revamp | Inside `StoryData`, so the revamp moves it with everything else (decision A) | Unaffected, but a second storage convention to remember |
+
+**Recommend (a).** The decisive points are the library list and the link. (b)
+looks free but isn't: every note appears in the file list beside the scripts,
+the editor treats it as a script, and the only tie to its script is a filename
+that nothing keeps in sync. (a) keeps one home for "everything about this
+script", which is what decision A already says.
+
+(a)'s real weakness is **`PruneOrphans`**. Notes are prose, so losing them to a
+rename outside the app hurts more than losing a tag. Mitigations, none of which
+change `PruneOrphans` itself:
+
+- Every notes page has **Download .md**, and the notes list has **Download all**
+  (zip). This is also the Obsidian path.
+- The existing prune report (rule 12) already names what was removed; S4.2
+  adds the note count to that message when a pruned sidecar held notes.
+
+Size is not a concern: notes are kilobytes and `SaveSlate` already rewrites the
+sidecar whole. The editor saves on a debounce, not per keystroke, which stays
+server-side because it is save, not per-keystroke logic (trap 4).
+
+```csharp
+// Added to StoryData (decision A). No new top-level SlateDocument property.
+public List<NotePage> Notes { get; set; } = new();
+
+public sealed class NotePage
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";        // Markdown
+    public string Template { get; set; } = "";    // built-in/custom id it started from, informational only
+}
+```
+
+New properties with defaults need no `SlateVersion` bump (decision A).
+
+**3. What belongs where.**
+
+| Material | Home | Why |
+| --- | --- | --- |
+| Fills, chains, runs, rungs, scores (WOAC, Split, Position, Push/Pull, Lens) | **Slate**, unchanged | Working-out with one promotion path into the script |
+| Ideation `Kept` lines | **Ideation**, unchanged | Deliberately disposable, library-wide, not tied to a script |
+| World sheet, character worksheet, premise/logline sheet, research, reference | **Notes** | Never promoted into the script text |
+| Character name, colour, tags | **Cast / ItemTags**, unchanged | Structured, drives the Board and Arc |
+| Storyline names/colours | **Storylines**, unchanged | Structured |
+
+Rule for the grey zone: *if it ends up as a line in the script, it is Slate; if
+it only informs the writer, it is a note.* Notes never feed the parser, the
+Board, exports or page counts. There is no promotion path and no "send to
+script" button. (A later row could offer copy-to-clipboard; not part of S4.2.)
+A note may be about a character by name, but it does not link to `Cast`:
+renaming a character (`RenameCharacterAsync`) does not touch notes.
+
+**4. Templates.** Three built-ins, in Passage's own wording, written as short
+Markdown prompts (headings plus one-line questions), not copied from any
+published worksheet: **Character** (who they are, want vs need, flaw, how they
+talk, relationships, arc), **Location** (what it looks like and sounds like,
+who owns it, what it means to the story, what can happen there only), and
+**Logline & premise** (the one sentence, the question the story asks, the
+protagonist, the pressure, the ending it is pointed at). Templates seed a new
+page's `Body`. They are not a live link; editing the page never changes the
+template.
+
+Custom templates reuse **`.slate/templates.json`** (S2.2), which already
+exempts itself from `PruneOrphans`. S2.2's file holds structure templates, so
+S4.2 must read S2.2's schema first and add a sibling list (`NoteTemplates`)
+rather than overload the structure entries; if S2.2's shape can't take it, flag
+the mismatch before coding (rule 7). Built-ins live in a `NoteTemplates.cs`
+service in `Passage.Web`, as `StructureTemplates.cs` does. "Save as template"
+from an open page stores the title and body.
+
+**5. UI sketch (for S4.2 to confirm against `Editor.razor`).** A **NOTES** entry
+in the sidebar (a tab or a section of an existing one; S4.2 chooses after
+reading the tab code), a list of pages with new/rename/delete, and a plain
+Markdown editor on the selected page. Delete is confirmed (sidecar-owned data,
+as with beats). No second CodeMirror configuration beyond switching the mode.
+
+**Not in S4.2:** note-to-note links, search across notes, images, sharing,
+per-note history, and any bridge to the Slate runners.
+
+**Open for Adam:**
+1. Notes at all, yes or no.
+2. Sidecar (recommended) or companion files.
+3. Whether the three built-in templates are the right set.
 
 ---
 
