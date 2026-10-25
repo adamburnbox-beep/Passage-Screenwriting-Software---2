@@ -19,7 +19,7 @@ S0 ─ S1.1 ─┬─ S1.2 ─┬─ S1.4 ─ S1.5 ─┬─ S2.1
            ├─ S2.2   (independent of S1.2–S1.5)
            ├─ S2.3   (draws S1.4's bars/dots if present)
            └─ S2.4   (independent; can run any time)
-S4.1 (design note) any time; implementation only after approval
+S4.1 (design note, done) ─ S4.2   (needs S2.2 for custom templates)
 ```
 
 ---
@@ -313,4 +313,23 @@ implementation row and a matching session prompt here.
 Only file you may change: docs/STORY-PLAN.md (and this file, on approval).
 Branch: docs/story-s4-1-notes-design. Commit, push, open a PR.
 Budget: ~30k tokens.
+```
+
+### Session S4.2 — project notes implementation
+
+```
+Read CLAUDE.md, PROJECT_RULES.md and row S4.2 of docs/STORY-PLAN.md, the
+S4.1 design note under S4.1, and standing decision A. Read only the ranges
+S4.2 names.
+
+Implement the row as approved: sidecar StoryData.Notes, three built-in
+templates, NOTES entry, downloads, custom templates, prune message. If
+.slate/templates.json from S2.2 can't take a NoteTemplates list, stop and
+tell me.
+
+Success: the row's success list in the running app. Tests: the row's list.
+`dotnet build Passage.Web.slnf` passes.
+Then set S4.2's status, add a **Landed:** note, commit.
+Branch: feat/story-s4-2-notes. Push, open a PR.
+Budget: ~80k tokens.
 ```
