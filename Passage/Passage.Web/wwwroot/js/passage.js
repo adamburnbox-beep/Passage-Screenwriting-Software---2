@@ -1082,6 +1082,10 @@ window.passage = (function () {
     function startBeatGesture(down) {
         if (down.button !== 0 || !dotnetRef || !down.target.closest) return;
         const card = down.target.closest(".beat-card");
+        if (card && card.closest(".board-inbox")) {
+            moveInboxBeat(down, card, card.dataset.beatId);
+            return;
+        }
         const grid = document.querySelector(".beats-grid");
         if (!card || !grid) return;
 
@@ -1208,6 +1212,73 @@ window.passage = (function () {
         card.addEventListener("pointermove", move);
         card.addEventListener("pointerup", up);
         card.addEventListener("pointercancel", up);
+    }
+
+    // ---- Board inbox: drop a beat onto a card ----
+    //
+    // The same pointer gesture as moveBeat, but the target is a Board card or
+    // an act / sequence header (anything carrying data-drop-id). Before or after
+    // is the vertical midpoint, as dropIsAfter. The highlight is a class toggle;
+    // the server hears once, on release: OnInboxBeatPlaced(beatId, targetId, after).
+    function moveInboxBeat(down, card, id) {
+        let ghost = null;
+        let target = null;
+        let after = false;
+
+        const mark = (element, isAfter) => {
+            if (target) target.classList.remove("inbox-drop-before", "inbox-drop-after");
+            target = element;
+            if (target) target.classList.add(isAfter ? "inbox-drop-after" : "inbox-drop-before");
+        };
+
+        const move = (event) => {
+            if (!ghost) {
+                if (Math.abs(event.clientX - down.clientX) < BEAT_DRAG_THRESHOLD
+                    && Math.abs(event.clientY - down.clientY) < BEAT_DRAG_THRESHOLD) return;
+                const rect = card.getBoundingClientRect();
+                ghost = card.cloneNode(true);
+                ghost.classList.add("beat-ghost");
+                ghost.style.width = rect.width + "px";
+                ghost.dataset.dx = String(down.clientX - rect.left);
+                ghost.dataset.dy = String(down.clientY - rect.top);
+                document.body.appendChild(ghost);
+                card.classList.add("dragging");
+            }
+
+            ghost.style.left = (event.clientX - Number(ghost.dataset.dx)) + "px";
+            ghost.style.top = (event.clientY - Number(ghost.dataset.dy)) + "px";
+
+            const under = document.elementFromPoint(event.clientX, event.clientY);
+            const drop = under && under.closest ? under.closest("[data-drop-id]") : null;
+            if (!drop || !drop.dataset.dropId) {
+                mark(null, false);
+                return;
+            }
+            const rect = drop.getBoundingClientRect();
+            after = rect.height > 0 && (event.clientY - rect.top) > rect.height / 2;
+            mark(drop, after);
+        };
+
+        const up = (event) => {
+            document.removeEventListener("pointermove", move);
+            document.removeEventListener("pointerup", up);
+            document.removeEventListener("pointercancel", up);
+            const dragged = !!ghost;
+            const dropId = target ? target.dataset.dropId : "";
+            mark(null, false);
+            if (ghost) ghost.remove();
+            card.classList.remove("dragging");
+            if (!dragged) return;
+            swallowNextClick();
+            if (event.type === "pointercancel" || !dropId) return;
+            dotnetRef.invokeMethodAsync("OnInboxBeatPlaced", id, dropId, after);
+        };
+
+        // Listening on the document, with no pointer capture, so a click on the
+        // beat's star still reaches the star.
+        document.addEventListener("pointermove", move);
+        document.addEventListener("pointerup", up);
+        document.addEventListener("pointercancel", up);
     }
 
     // ---- Page-break rules ----

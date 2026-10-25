@@ -1814,6 +1814,10 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .beats-tray.drop-target { border-color: var(--control-accent); background: var(--drag-over-background); }
 
+.board-inbox { margin: 10px 0 0; }
+.inbox-drop-before { box-shadow: 0 -3px 0 0 var(--control-accent); }
+.inbox-drop-after { box-shadow: 0 3px 0 0 var(--control-accent); }
+
 .beat-resize {
     position: absolute;
     top: 0;
