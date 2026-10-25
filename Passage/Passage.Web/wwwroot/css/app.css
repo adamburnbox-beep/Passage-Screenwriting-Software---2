@@ -1096,7 +1096,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .workshop {
     position: relative;
     flex-shrink: 0;
-    width: var(--workshop-width, 340px);
+    width: var(--workshop-width, 400px);
     min-width: 260px;
     background: var(--surface-background);
     border-left: 1px solid var(--surface-border);
@@ -1160,28 +1160,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .tool-name { font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 
-.tool-desc { font-weight: 400; line-height: 1.5; color: var(--secondary-text); }
-
-.tool-soon {
-    font-weight: 400;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted-text);
-}
-
-/* The dock's top level is the worksheets' own question — what have you
-   got — so each group is a "you have" line and the paths that answer it. */
-.tool-group { margin-bottom: 8px; }
-
-.tool-have {
-    font-size: 12.5px;
-    font-weight: 600;
-    line-height: 1.5;
-    color: var(--header-text);
-    padding: 6px 2px;
-}
-
 .tool-paths { display: flex; flex-direction: column; gap: 4px; }
 
 .tool-note {
@@ -1198,12 +1176,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     font-size: 11.5px;
     line-height: 1.5;
     color: var(--muted-text);
-}
-
-.workshop-count {
-    font-weight: 400;
-    color: var(--muted-text);
-    font-size: 11px;
 }
 
 .workshop-nav { display: flex; align-items: center; gap: 10px; }
@@ -1307,22 +1279,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--header-text);
     font-weight: 600;
 }
-
-/* The carried Want: the previous consequence, read live, so it is text
-   rather than a field. */
-.chain-carried {
-    padding: 8px 10px;
-    border: 1px dashed var(--control-border);
-    border-radius: var(--radius);
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--control-foreground);
-    white-space: pre-wrap;
-}
-
-.chain-carried.empty { color: var(--muted-text); font-style: italic; }
-
-.chain-readback { margin-top: 12px; }
 
 .burst-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
 
@@ -1473,6 +1429,187 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     font-size: 13px;
     color: var(--secondary-text);
 }
+
+/* ---- The tools dock, redone (docs/SLATE-REDO-PLAN.md §4) ---- */
+
+.tools-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.tools-chips-label {
+    flex-basis: 100%;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--header-text);
+    font-weight: 600;
+}
+
+.tools-chip {
+    background: var(--control-background);
+    color: var(--secondary-text);
+    border: 1px solid var(--control-border);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.tools-chip:hover { border-color: var(--muted-text); }
+.tools-chip.on { background: var(--control-accent); border-color: var(--control-accent); color: var(--control-pressed-foreground); }
+
+/* Two cards across at the dock's default width, one below ~360px. */
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.tool-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.tool-card-open {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+    text-align: left;
+    background: var(--control-background);
+    color: var(--control-foreground);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.tool-card-open:hover { border-color: var(--muted-text); }
+.tool-card-glyph { font-size: 15px; color: var(--secondary-text); line-height: 1.2; }
+.tool-card-name { font-weight: 600; font-size: 13px; }
+.tool-card-line { color: var(--secondary-text); line-height: 1.4; }
+
+/* A kept run, listed by what it is about. */
+.tool-card-run { display: flex; align-items: center; gap: 2px; min-width: 0; }
+
+.tool-card-run-open {
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    border-bottom: 1px dotted var(--control-border);
+    color: var(--secondary-text);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    padding: 4px 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.tool-card-run-open:hover { color: var(--control-foreground); }
+
+.runner { display: flex; flex-direction: column; gap: 10px; }
+
+.runner-head { display: flex; align-items: center; gap: 10px; }
+
+.runner-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--header-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.runner-anchor {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 10px;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+}
+
+.runner-anchor-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+}
+
+.runner-anchor input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--control-foreground);
+    font: inherit;
+    font-size: 14px;
+    padding: 2px 0;
+    min-width: 0;
+}
+
+/* "Why?" and the "Earlier" fold share one look: muted, collapsed. */
+.why, .trail-earlier { font-size: 12px; color: var(--secondary-text); }
+.why summary, .trail-earlier summary { cursor: pointer; color: var(--muted-text); padding: 2px 0; width: fit-content; }
+.why p { margin: 6px 0 0; line-height: 1.55; }
+
+.trail { display: flex; flex-direction: column; gap: 2px; }
+
+.trail-line {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--control-foreground);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    padding: 5px 2px;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.trail-line:hover { background: var(--control-background); }
+.trail-line.carried { cursor: default; color: var(--secondary-text); }
+.trail-line.carried:hover { background: none; }
+
+.trail-label {
+    flex: 0 0 auto;
+    max-width: 38%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+}
+
+.trail-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trail-sent { flex: 0 0 auto; font-size: 11px; color: var(--muted-text); }
+
+.step-wrap { display: flex; flex-direction: column; gap: 10px; }
+
+.step-card { display: flex; flex-direction: column; gap: 8px; }
+
+.step-question { margin: 0; font-size: 17px; line-height: 1.4; color: var(--control-foreground); }
+
+.step-hint { font-size: 12px; line-height: 1.5; color: var(--muted-text); }
+
+.step-card textarea { font-size: 15px; }
+
+.step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.step-send { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px; }
 
 /* On a phone the dock takes the whole main area rather than squeezing the
    editor: the engines are meant to be usable from there (SLATE-PLAN Phase 1). */

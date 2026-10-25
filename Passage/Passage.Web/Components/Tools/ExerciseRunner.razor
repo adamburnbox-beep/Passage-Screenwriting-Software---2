@@ -1,0 +1,359 @@
+@* One runner for every exercise (docs/SLATE-REDO-PLAN.md §4.2): the anchor,
+   the answers so far as one-line trail entries, and the one question the
+   engine says is next. No step counter, no progress mark (rule 0); every
+   step can be skipped and the run closed at any point without a prompt. *@
+@using Passage.Core.Extensibility
+@using Passage.Web.Services.Tools
+@inject IJSRuntime JS
+@inject IStoryPartner Partner
+
+<div class="runner">
+    <div class="runner-head">
+        <button class="btn" title="Back — keeps what you've written" @onclick="CloseAsync">←</button>
+        <span class="runner-title">@Exercise.Name</span>
+        <button class="btn runner-done" title="Closes this and keeps everything as it is" @onclick="CloseAsync">Done for now</button>
+    </div>
+    @if (!Host.HasScript)
+    {
+        <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
+    }
+    <label class="runner-anchor">
+        <span class="runner-anchor-label">@Exercise.AnchorLabel</span>
+        <input type="text" data-anchor-input value="@Run.Anchor.Text" @onchange="AnchorChanged" />
+    </label>
+    @if (Exercise.Why.Length > 0)
+    {
+        <details class="why" data-why>
+            <summary>Why?</summary>
+            <p>@Exercise.Why</p>
+        </details>
+    }
+
+    @if (_trail.Count > 0)
+    {
+        <div class="trail">
+            @if (_earlier.Count > 0)
+            {
+                <details class="trail-earlier">
+                    <summary>Earlier</summary>
+                    @foreach (var entry in _earlier)
+                    {
+                        <TrailLine Entry="entry" Editable="@CanEdit(entry)" Sent="@SentTag(entry)" OnEdit="EditAsync" />
+                    }
+                </details>
+            }
+            @foreach (var entry in _recent)
+            {
+                <TrailLine Entry="entry" Editable="@CanEdit(entry)" Sent="@SentTag(entry)" OnEdit="EditAsync" />
+            }
+        </div>
+    }
+
+    <div id="@RootId" class="step-wrap">
+        @if (_shown is { } slot)
+        {
+            <div class="step-card" @key="slot.Id">
+                <StepCard Engine="_engine" Run="Run" Slot="slot" Host="Host" Held="@(_editingId is not null || _holdId is not null)" OnChanged="StepChangedAsync"
+                          OnContinue="ContinueAsync" OnStopHere="CloseAsync" OnPutSynopsis="PutSynopsisAsync" />
+                @if (slot.Step.Offer)
+                {
+                    <PartnerLines Lines="_partnerFor == slot.Id ? _partnerLines : Array.Empty<string>()"
+                                  OnAsk="() => AskPartnerAsync(slot)" OnUse="line => UsePartnerLine(slot, line)" />
+                }
+            </div>
+        }
+        else
+        {
+            <div class="step-card step-rest">
+                <p class="step-question">That's every question.</p>
+                <div class="step-hint">Tap any answer above to change it, or close this whenever you like.</div>
+                @if (_engine.Sequence(Run).Any(s => Run.Passed.Contains(s.Id) && s.Step.Kind != StepKind.Stop))
+                {
+                    <button class="btn" @onclick="ReopenSkipped">Go back to the ones I skipped</button>
+                }
+            </div>
+        }
+
+        <div class="step-actions">
+            @if (_shown is { } shown && shown.Step.Kind != StepKind.Stop)
+            {
+                <button class="btn primary" data-next title="Enter does the same" @onclick="() => NextAsync(shown.Id)">Next ⏎</button>
+                @if (!_engine.IsCarried(shown) && _editingId is null && _holdId is null)
+                {
+                    <button class="btn" @onclick="() => SkipAsync(shown.Id)">Skip</button>
+                }
+            }
+            @if (_finish is { } finish && _shown is { } now && now.Step.Key != finish.Step.Key)
+            {
+                <button class="btn" @onclick="() => EditAsync(finish)">@finish.Step.Label</button>
+            }
+            <label class="burst-toggle" title="Time each answer — five seconds to read it, then the clock">
+                <input type="checkbox" checked="@Host.Slate.Burst.Enabled" @onchange="BurstToggledAsync" /> ⏱
+            </label>
+            @if (Host.Slate.Burst.Enabled)
+            {
+                <input type="number" class="burst-seconds" min="5" max="600" value="@Host.Slate.Burst.Seconds" @onchange="BurstSecondsAsync" aria-label="Seconds per answer" />
+                @if (Host.BurstRunning)
+                {
+                    <button class="btn" @onclick="Host.StopBurstAsync">Stop</button>
+                }
+                else
+                {
+                    <button class="btn" title="Starts on this question" @onclick="StartBurstAsync">Go</button>
+                }
+                <span class="burst-display" data-burst-display></span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string RootId = "tools-step";
+
+    [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
+    [Parameter, EditorRequired] public Exercise Exercise { get; set; } = default!;
+    [Parameter, EditorRequired] public ExerciseRun Run { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private ExerciseEngine _engine = default!;
+    private StepSlot? _shown;
+    private StepSlot? _finish;
+    private List<TrailEntry> _trail = new();
+    private List<TrailEntry> _earlier = new();
+    private List<TrailEntry> _recent = new();
+
+    // A slot the writer reopened from the trail or the "read it back" button,
+    // and a multi-slot step they are mid-way through. Both hold the card until
+    // Next, so it doesn't change under them (the engine counts one line as an
+    // answer).
+    private string? _editingId;
+    private string? _holdId;
+
+    private string? _focusedId;
+    private bool _focusPending = true;
+
+    private string _partnerFor = string.Empty;
+    private List<string> _partnerLines = new();
+
+    protected override void OnParametersSet()
+    {
+        _engine = new ExerciseEngine(Exercise);
+        Refresh();
+    }
+
+    // The loop's closing steps (the read-back) sit after the Loop marker, so
+    // they never become current while the loop is still handing out rounds.
+    private void Refresh()
+    {
+        var sequence = _engine.Sequence(Run);
+        var heldId = _editingId ?? _holdId;
+        _shown = heldId is not null && sequence.Any(slot => slot.Id == heldId)
+            ? sequence.First(slot => slot.Id == heldId)
+            : _engine.Current(Run);
+
+        var loopIndex = Exercise.Steps.ToList().FindIndex(step => step.Kind == StepKind.Loop);
+        _finish = null;
+        if (loopIndex >= 0 && Exercise.Steps.Skip(loopIndex + 1).FirstOrDefault(step => step.Group is null && step.Kind != StepKind.Loop) is { } last)
+        {
+            _finish = sequence.FirstOrDefault(slot => slot.Step.Key == last.Key);
+        }
+
+        _trail = _engine.Trail(Run).ToList();
+        var loopGroup = loopIndex >= 0 ? Exercise.Steps[loopIndex].LoopGroup : null;
+        // The round the writer is in: the shown step's, or the last one when
+        // they are on a closing step such as the read-back.
+        var currentRound = _shown is { } shownSlot && shownSlot.Step.Group == loopGroup
+            ? shownSlot.Round
+            : Math.Max(0, Run.Rounds - 1);
+        bool IsEarlier(TrailEntry entry) => loopGroup is not null && entry.Slot.Step.Group == loopGroup && entry.Slot.Round < currentRound;
+        _earlier = _trail.Where(IsEarlier).ToList();
+        _recent = _trail.Where(entry => !IsEarlier(entry)).ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var id = _shown?.Id;
+        if (id != _focusedId)
+        {
+            _focusedId = id;
+            _focusPending = true;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("passage.restoreWhy");
+            if (_focusPending)
+            {
+                _focusPending = false;
+                if (!Host.BurstRunning)
+                {
+                    await JS.InvokeVoidAsync("passage.focusStep", RootId);
+                }
+            }
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private bool CanEdit(TrailEntry entry) => !_engine.IsCarried(entry.Slot);
+
+    private string? SentTag(TrailEntry entry) =>
+        Run.Sent.FirstOrDefault(mark => mark.Key == entry.Slot.Id) is { } sent ? SendLabel(sent.Target) : null;
+
+    private static string SendLabel(TargetKind target) => target switch
+    {
+        TargetKind.Synopsis => "synopsis",
+        TargetKind.InboxBeat => "Inbox",
+        TargetKind.NotePage => "note",
+        TargetKind.Bracket => "bracket",
+        TargetKind.SceneCard => "scene card",
+        TargetKind.Shape => "Shape",
+        _ => "copied"
+    };
+
+    private void AnchorChanged(ChangeEventArgs args)
+    {
+        Run.Anchor.Text = args.Value?.ToString() ?? string.Empty;
+        Host.Save();
+    }
+
+    private Task StepChangedAsync(StepSlot slot)
+    {
+        if (slot.Step.Kind is StepKind.Lines or StepKind.Slots)
+        {
+            _holdId = slot.Id;
+        }
+
+        Host.Save();
+        Refresh();
+        return Task.CompletedTask;
+    }
+
+    private Task EditAsync(StepSlot slot)
+    {
+        _editingId = slot.Id;
+        _holdId = null;
+        Refresh();
+        _focusPending = true;
+        return Task.CompletedTask;
+    }
+
+    // Next and Skip carry the id of the step they were drawn for. A click that
+    // lands just after the answer's change event (the answer already moved the
+    // run on) must not skip the step that followed.
+    private Task NextAsync(string shownId)
+    {
+        var held = _editingId ?? _holdId;
+        _editingId = null;
+        _holdId = null;
+        // Next on an empty question is a skip: Enter between steps always moves on.
+        if (held is null)
+        {
+            SkipIfCurrent(shownId);
+        }
+
+        Refresh();
+        return Task.CompletedTask;
+    }
+
+    private Task SkipAsync(string shownId)
+    {
+        SkipIfCurrent(shownId);
+        Refresh();
+        return Task.CompletedTask;
+    }
+
+    private void SkipIfCurrent(string shownId)
+    {
+        if (_engine.Current(Run) is { } current && current.Id == shownId && current.Step.Kind != StepKind.Stop
+            && !_engine.IsAnswered(Run, current) && !_engine.IsCarried(current))
+        {
+            _engine.Skip(Run, current);
+            Host.Save();
+        }
+    }
+
+    private Task ContinueAsync(StepSlot stop)
+    {
+        _engine.Continue(Run, stop);
+        Host.Save();
+        Refresh();
+        return Task.CompletedTask;
+    }
+
+    private Task ReopenSkipped()
+    {
+        var stops = _engine.Sequence(Run).Where(slot => slot.Step.Kind == StepKind.Stop).Select(slot => slot.Id).ToHashSet();
+        Run.Passed.RemoveAll(id => !stops.Contains(id));
+        Host.Save();
+        Refresh();
+        _focusPending = true;
+        return Task.CompletedTask;
+    }
+
+    private Task PutSynopsisAsync(string text) => Host.PutSynopsisAsync(text);
+
+    private async Task CloseAsync()
+    {
+        await Host.StopBurstAsync();
+        Host.Save();
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task BurstToggledAsync(ChangeEventArgs args)
+    {
+        Host.Slate.Burst.Enabled = args.Value is true;
+        if (!Host.Slate.Burst.Enabled)
+        {
+            await Host.StopBurstAsync();
+        }
+
+        Host.Save();
+    }
+
+    private Task BurstSecondsAsync(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var seconds))
+        {
+            Host.Slate.Burst.Seconds = Math.Clamp(seconds, 5, 600);
+            Host.Save();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task StartBurstAsync() => Host.StartBurstAsync(RootId);
+
+    private async Task AskPartnerAsync(StepSlot slot)
+    {
+        var trail = _engine.Trail(Run).Select(entry => (entry.Slot.Step.Label, entry.Summary));
+        var request = Suggestions.ForStep(Exercise.Name, slot.Step.Question, trail);
+        _partnerFor = slot.Id;
+        _partnerLines = new List<string>();
+        Host.SetStatus("Asking…");
+        try
+        {
+            var offered = await Partner.SuggestAsync(request, CancellationToken.None);
+            _partnerLines = offered.Where(line => !string.IsNullOrWhiteSpace(line)).Select(line => line.Trim()).Take(Suggestions.Count).ToList();
+            Host.SetStatus(_partnerLines.Count == 0 ? "Nothing came back" : "Offered — tap one to use it, or none");
+        }
+        catch (Exception ex)
+        {
+            Host.SetStatus($"The partner didn't answer: {ex.Message}");
+        }
+    }
+
+    private void UsePartnerLine(StepSlot slot, string line)
+    {
+        if (!string.IsNullOrWhiteSpace(_engine.GetAnswer(Run, slot.Step.Key, slot.Round)) || !_engine.SetAnswer(Run, slot.Step.Key, slot.Round, line))
+        {
+            Host.SetStatus("That one already has an answer — clear it to use this");
+            return;
+        }
+
+        _partnerLines.Clear();
+        Host.Save();
+        Refresh();
+    }
+}

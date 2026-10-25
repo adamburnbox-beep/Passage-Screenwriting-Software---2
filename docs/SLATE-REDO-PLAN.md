@@ -384,7 +384,7 @@ WOAC keys `want/obstacle/action/consequence/readback`; Flaw `q0..q7`,
   the group's steps tagged `Group`; `AllSlots` covers Position's "flat
   everywhere".
 
-### T2 — Launcher, runner shell, WOAC and Flaw ported · `todo`
+### T2 — Launcher, runner shell, WOAC and Flaw ported · `done`
 
 - `IToolHost` + Editor's implementation; `ToolsDock`, `ExerciseRunner`,
   `StepCard` for `Text`, `Lines`, `Loop`, `Stop`; trail; Done for now; *Why?*
@@ -399,6 +399,41 @@ WOAC keys `want/obstacle/action/consequence/readback`; Flaw `q0..q7`,
 - Success: a WOAC chain of three rounds by keyboard only (Enter between
   steps), carry visible, close and reopen keeps it, reload keeps it; phone
   width readable; verification checklist (§8) passes.
+
+**Done:** `Components/Tools/{ToolsDock,ExerciseRunner,StepCard,TrailLine}.razor`,
+`Services/Tools/{IToolHost,ExerciseCatalog}.cs`; Editor implements `IToolHost`
+through a nested `EditorToolHost`. `SlateStore.Load` calls
+`SlateMigration.Migrate` (in memory; the file is rewritten on the next save).
+WOAC and Flaw are catalog entries; old Chains / Chain views, handlers and the
+chain partner wiring are deleted. `Exercise` gained `Why`, `AnchorLabel`;
+`Step` gained `Label`, `Send`; engine gained `IsCarried`, `LineCount`;
+`Suggestions.ForStep` serves any `Offer` step (null partner renders nothing).
+Runner: anchor is a free-text strip, trail with older rounds folded under
+"Earlier", carried wants shown as "↓ carried", Enter = answer + next (client-side
+in `passage.js`, no per-keystroke traffic), Enter or Next on a blank step skips,
+a "Read it back" button reaches the closing step, "Put it in the script"
+inserts a synopsis (the old promotion, until T3's Send to menu). Timer: ⏱ toggle
+with seconds and Go/Stop on the step wrapper, which survives step changes.
+Launcher: five-shelf chip row (remembered in `passage.session.v1`), cards, kept
+runs under their card by anchor text (first answer if unnamed) with a remove ×.
+"Why?" open state is one per-browser flag. Dock default width 340 → 400.
+Tests: 2 new (119 total, all pass); the Load/Chain round-trip test was updated
+for migration-on-load.
+
+**Deviations:**
+- The launcher has ten cards, not twelve, and eight "Classic" ones, not ten:
+  Scene Dials and Understudy don't exist until T4/T7, and a card that opens
+  nothing would fail visibly the wrong way. They get cards in their rows.
+- `Lines` and the other kinds beyond `Text`/`Stop`/`Loop` render, but nothing
+  in the catalog uses `Lines` yet, so it was not exercised in the browser;
+  `Pick`, `YesNo`, `AliveFlat`, `Branch`, `Dice`, `Slots` show "isn't in the
+  runner yet" until their rows.
+- Added a minimal "Put it in the script" on the read-back so the Chain view's
+  one output path survives T2; T3 replaces it with the Send to menu.
+- Verification step 5 (anchor deleted underneath) doesn't apply yet: the anchor
+  is free text until T3. Step 4 undo checked via the status-bar Undo only.
+- Screenshots are in `docs/screenshots/slate-redo-t2/` (the browser pane
+  captures at reduced size; Playwright's Chrome isn't installed here).
 
 ### T3 — Anchors, targets, Right now · `todo`
 

@@ -61,6 +61,8 @@ class Program
         failures += RunTest("Test Exercise Engine Step Kinds", TestExerciseEngineStepKinds);
         failures += RunTest("Test Slate Migration Chains", TestSlateMigrationChains);
         failures += RunTest("Test Slate Migration Loads Old And New Sidecars", TestSlateMigrationLoadsSidecars);
+        failures += RunTest("Test Catalog Woac Three Rounds", TestCatalogWoacThreeRounds);
+        failures += RunTest("Test Catalog Flaw And Migrated Chains", TestCatalogFlawAndMigratedChains);
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
         failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
@@ -924,13 +926,15 @@ class Program
             var json = File.ReadAllText(Path.Combine(root, ".slate", "draft.fountain.json"));
             Assert(json.Contains("\"Woac\"") && json.Contains("\"Flaw\""), "The path is stored by name, not by enum number");
 
+            // Load now moves chains into Exercises (T2), so what comes back is the moved form.
             var loaded = store.Load("draft")!;
-            Assert(loaded.Chains.Count == 2, "Both chains round-trip");
-            Assert(loaded.Chains[0].Path == ChainPath.Woac && loaded.Chains[0].Rounds.Count == 2
-                && loaded.Chains[0].Rounds[1].Obstacle == "the dog", "WOAC rounds round-trip in order");
-            Assert(loaded.Chains[0].Rounds[1].Want == string.Empty, "A later round stores no Want: it is read from the consequence above");
-            Assert(loaded.Chains[1].Path == ChainPath.Flaw && loaded.Chains[1].Answers.Count == ChainRun.FlawQuestionCount
-                && loaded.Chains[1].Answers[2] == "she carries it alone and drops it", "All eight flaw answers round-trip, empty ones included");
+            Assert(loaded.Chains.Count == 0 && loaded.Exercises.Count == 2, "Both chains load as exercise runs");
+            var woacRun = loaded.Exercises[0];
+            Assert(woacRun.ExerciseId == "woac" && woacRun.Rounds == 2 && woacRun.Answers["obstacle#1"] == "the dog",
+                "WOAC rounds load in order");
+            Assert(!woacRun.Answers.ContainsKey("want#1"), "A later round stores no Want: it is read from the consequence above");
+            Assert(loaded.Exercises[1].ExerciseId == "flaw" && loaded.Exercises[1].Answers["q2"] == "she carries it alone and drops it",
+                "The flaw answer loads under its question key");
             Assert(loaded.Burst.Enabled && loaded.Burst.Seconds == 10, "Burst settings round-trip");
 
             Assert(new ChainRun().IsEmpty, "A fresh chain is empty");
@@ -1164,14 +1168,13 @@ class Program
                 "{ \"SlateVersion\": 1, \"IgnoredBrackets\": [\"[x]\"], \"Chains\": [ { \"Path\": \"Woac\", \"Seed\": \"S\", \"Rounds\": [ { \"Want\": \"w\" } ] } ] }");
 
             var old = store.Load("old")!;
-            Assert(old.SlateVersion == 1 && old.Chains.Count == 1 && old.Exercises.Count == 0,
-                "Load does not migrate yet: the dock still edits Chains");
+            Assert(old.SlateVersion == 1 && old.Chains.Count == 0 && old.Exercises.Count == 1 && old.Exercises[0].Answers["want"] == "w"
+                && old.IgnoredBrackets.Count == 1, "Load moves the old chains into Exercises and leaves the rest alone");
 
-            SlateMigration.Migrate(old);
             store.Save("old", old);
             var moved = store.Load("old")!;
-            Assert(moved.Chains.Count == 0 && moved.Exercises.Count == 1 && moved.Exercises[0].Answers["want"] == "w",
-                "A moved run round-trips through the sidecar");
+            Assert(moved.Chains.Count == 0 && moved.Exercises.Count == 1 && moved.Exercises[0].Id == old.Exercises[0].Id,
+                "A moved run round-trips through the sidecar and loading again adds nothing");
 
             File.WriteAllText(Path.Combine(dir, "new.fountain.json"),
                 "{ \"SlateVersion\": 2, \"Exercises\": [ { \"Id\": \"r1\", \"ExerciseId\": \"woac\", \"Anchor\": { \"Kind\": \"Character\", \"Text\": \"MARA\" }, \"Answers\": { \"want\": \"x\" }, \"Rounds\": 1 } ] }");
@@ -1183,6 +1186,74 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestCatalogWoacThreeRounds()
+    {
+        var engine = new ExerciseEngine(ExerciseCatalog.Woac);
+        var run = new ExerciseRun { ExerciseId = "woac" };
+        var asked = new List<string>();
+        for (var i = 0; i < 12; i++)
+        {
+            var slot = engine.Current(run)!.Value;
+            asked.Add(slot.Id);
+            Assert(engine.SetAnswer(run, slot.Step.Key, slot.Round, $"a{i}"), "Every asked step takes an answer");
+        }
+
+        Assert(run.Rounds == 4, "Answering the third consequence opens a fourth round");
+        Assert(asked.SequenceEqual(new[] { "want", "obstacle", "action", "consequence", "obstacle#1", "action#1", "consequence#1",
+            "obstacle#2", "action#2", "consequence#2", "obstacle#3", "action#3" }),
+            "Later rounds skip the want: it is the carry");
+        Assert(engine.GetAnswer(run, "want", 3) == "a9", "Round four's want is round three's consequence");
+        var carried = engine.Trail(run).Where(entry => entry.Slot.Step.Key == "want" && engine.IsCarried(entry.Slot)).ToList();
+        Assert(carried.Count == 3 && carried[0].Summary == "a3", "The trail shows each carried want");
+        Assert(!engine.SetAnswer(run, "want", 1, "typed over"), "A carried want can't be typed over");
+
+        engine.SetAnswer(run, "consequence", 0, "changed");
+        Assert(engine.GetAnswer(run, "want", 1) == "changed", "Editing an earlier consequence moves the carry");
+        Assert(run.Answers.Keys.All(key => !key.StartsWith("want#")), "No carried want is ever stored");
+
+        var finish = engine.Sequence(run).First(slot => slot.Step.Key == "readback");
+        engine.SetAnswer(run, "readback", 0, "the scene");
+        Assert(engine.Current(run)!.Value.Id == "consequence#3", "The read-back doesn't take the loop's place");
+        Assert(engine.Trail(run).Last().Slot.Id == finish.Id, "The read-back is the last line of the trail");
+    }
+
+    static void TestCatalogFlawAndMigratedChains()
+    {
+        Assert(ExerciseCatalog.Flaw.Steps.Count(step => step.Key.StartsWith('q')) == 8, "Flaw has its eight questions");
+        Assert(ExerciseCatalog.Find("woac") == ExerciseCatalog.Woac && ExerciseCatalog.Find("nothing") is null, "Exercises are found by id");
+
+        var chain = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks", ReadBack = "she asks" };
+        chain.Answers[0] = "the flood";
+        chain.Answers[3] = "the neighbour";
+        var run = SlateMigration.FromChain(chain, "r");
+        var engine = new ExerciseEngine(ExerciseCatalog.Flaw);
+        Assert(engine.Trail(run).Select(entry => entry.Summary).SequenceEqual(new[] { "the flood", "the neighbour", "she asks" }),
+            "A migrated Flaw run reads back through the catalog's step keys");
+        Assert(engine.Current(run)!.Value.Step.Key == "q1", "The first unanswered question is next");
+
+        var woac = new ChainRun { Path = ChainPath.Woac, Seed = "MARA wants the key" };
+        woac.Rounds[0].Want = "the key";
+        woac.Rounds[0].Obstacle = "the dog";
+        woac.Rounds[0].Action = "feeds it";
+        woac.Rounds[0].Consequence = "it follows her";
+        woac.Rounds.Add(new ChainRound());
+        var woacRun = SlateMigration.FromChain(woac, "w");
+        var woacEngine = new ExerciseEngine(ExerciseCatalog.Woac);
+        Assert(woacEngine.Current(woacRun)!.Value.Id == "obstacle#1", "A migrated chain resumes at its open round");
+        Assert(woacEngine.Trail(woacRun).Any(entry => entry.Slot.Id == "want#1" && entry.Summary == "it follows her"), "with the carry visible");
+
+        var lines = new Exercise { Id = "l", Name = "l", Steps = new[] { new Step { Key = "c", Kind = StepKind.Lines, Count = 2, Open = true } } };
+        var linesEngine = new ExerciseEngine(lines);
+        var linesRun = new ExerciseRun();
+        var slot = linesEngine.Current(linesRun)!.Value;
+        Assert(linesEngine.LineCount(linesRun, slot) == 2, "A Lines step shows its declared slots");
+        linesEngine.SetLine(linesRun, "c", 0, 2, string.Empty);
+        Assert(linesEngine.LineCount(linesRun, slot) == 3, "An Open step shows one more once asked for another");
+
+        var request = Suggestions.ForStep("WOAC chain", "What's in their way?", new[] { ("Want", "the key"), ("Blank", " ") });
+        Assert(request.Context.Count == 1 && request.Count == Suggestions.Count, "A step ask carries the trail, minus blanks");
     }
 
     static void TestSynopsisPlacement()

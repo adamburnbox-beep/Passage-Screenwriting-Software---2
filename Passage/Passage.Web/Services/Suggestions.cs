@@ -31,6 +31,16 @@ public static class Suggestions
         return new SuggestionRequest("Fill", "Candidate — what could happen here", context, Count);
     }
 
+    /// <summary>
+    /// Any exercise step flagged Offer (docs/SLATE-REDO-PLAN.md §4.2): the
+    /// trail so far as context, the step's own question as the ask.
+    /// </summary>
+    public static SuggestionRequest ForStep(string tool, string ask, IEnumerable<(string Label, string Text)> trail)
+    {
+        var context = trail.Where(entry => Has(entry.Text)).Select(entry => Line(entry.Label, entry.Text)).ToList();
+        return new SuggestionRequest(tool, ask, context, Count);
+    }
+
     /// <summary>A→Z→Split, rung 1: candidate midpoints between the fixed ends.</summary>
     public static SuggestionRequest ForSplitMidpoint(SplitRun run)
     {

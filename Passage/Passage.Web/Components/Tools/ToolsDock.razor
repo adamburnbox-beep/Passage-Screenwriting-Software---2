@@ -1,0 +1,171 @@
+@* The Writer's Tools dock's top level (docs/SLATE-REDO-PLAN.md §4.1): a grid
+   of small cards under one chip row, and the runner once a run is open.
+   Exercises in the catalog open in the runner; the rest still open their
+   old view until the row that ports them ("Classic"). No counts, ticks or
+   dates anywhere (rule 0). *@
+@using Passage.Web.Services.Tools
+@inject IJSRuntime JS
+
+@if (OpenRun is not null && OpenExercise is not null)
+{
+    <ExerciseRunner @key="OpenRun.Id" Host="Host" Exercise="OpenExercise" Run="OpenRun" OnClose="CloseRunAsync" />
+}
+else
+{
+    <div class="tools-chips" role="group" aria-label="What have you got?">
+        <span class="tools-chips-label">What have you got?</span>
+        <button class="tools-chip @(_shelf is null ? "on" : null)" aria-pressed="@(_shelf is null)" @onclick="() => SetShelfAsync(null)">All</button>
+        @foreach (var (shelf, label) in Shelves)
+        {
+            <button class="tools-chip @(_shelf == shelf ? "on" : null)" aria-pressed="@(_shelf == shelf)" @onclick="() => SetShelfAsync(shelf)">@label</button>
+        }
+    </div>
+    <div class="tools-grid">
+        @foreach (var card in VisibleCards)
+        {
+            <div class="tool-card">
+                <button class="tool-card-open" @onclick="() => OpenCardAsync(card)">
+                    <span class="tool-card-glyph" aria-hidden="true">@card.Glyph</span>
+                    <span class="tool-card-name">@card.Name</span>
+                    <span class="tool-card-line">@card.Tagline</span>
+                </button>
+                @foreach (var run in RunsFor(card))
+                {
+                    <div class="tool-card-run">
+                        <button class="tool-card-run-open" title="Open — everything is as you left it" @onclick="() => ResumeRunAsync(run)">@RunLabel(run)</button>
+                        <button class="icon-btn" title="Remove this one and its working-out" @onclick="() => RemoveRun(run)">×</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private sealed record Card(string Id, string Name, string Tagline, Shelf Shelf, string Glyph);
+
+    // The five "what have you got?" rows of the vault's 0 — Which Worksheet.
+    private static readonly (Shelf Shelf, string Label)[] Shelves =
+    {
+        (Shelf.Nothing, "Nothing yet"),
+        (Shelf.Ending, "An ending"),
+        (Shelf.Moment, "A moment"),
+        (Shelf.SceneGoing, "A scene going"),
+        (Shelf.DeadScene, "A dead scene")
+    };
+
+    // Exercises in the catalog and the old-view tools, in launcher order. A
+    // tool leaves the Classic list when the row that ports it lands.
+    private static readonly Card[] Cards =
+    {
+        new(ClassicIdeation, "Ideation burst", "Loosen up with fast, throwaway lines", Shelf.Nothing, "⚡"),
+        new(ClassicBridge, "Bridge", "Connect two moments you know", Shelf.Nothing, "⇄"),
+        new(ClassicSplit, "A→Z→Split", "Find the middle of the story", Shelf.Ending, "◇"),
+        new(ClassicBelief, "Belief Split", "Split on what a character believes", Shelf.Ending, "☺"),
+        new(ClassicExtend, "Extend Backward", "Work back from the ending", Shelf.Ending, "↶"),
+        new(ClassicPosition, "Position", "Try a scene in each story slot", Shelf.Moment, "◎"),
+        new(ClassicFill, "Fill", "Turn a [BRACKET] into the real event", Shelf.Moment, "[ ]"),
+        new(SlateMigration.WoacId, "WOAC chain", "What happens next, round by round", Shelf.SceneGoing, "→"),
+        new(SlateMigration.FlawId, "Flaw Brainstorm", "One flaw, eight questions", Shelf.SceneGoing, "☹"),
+        new(ClassicPushPull, "Push/Pull", "Find why a scene is flat", Shelf.DeadScene, "⇅")
+    };
+
+    public const string ClassicIdeation = "ideation";
+    public const string ClassicBridge = "bridge";
+    public const string ClassicSplit = "split";
+    public const string ClassicBelief = "belief";
+    public const string ClassicExtend = "extend";
+    public const string ClassicPosition = "position";
+    public const string ClassicFill = "fill";
+    public const string ClassicPushPull = "pushpull";
+
+    [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
+    [Parameter] public string? OpenRunId { get; set; }
+    [Parameter] public EventCallback<string?> OpenRunIdChanged { get; set; }
+
+    // A tool without an exercise yet: the host opens its old view.
+    [Parameter] public EventCallback<string> OnOpenClassic { get; set; }
+
+    private Shelf? _shelf;
+
+    private ExerciseRun? OpenRun => OpenRunId is null ? null : Host.Slate.Exercises.FirstOrDefault(run => run.Id == OpenRunId);
+
+    private Exercise? OpenExercise => OpenRun is null ? null : ExerciseCatalog.Find(OpenRun.ExerciseId);
+
+    private IEnumerable<Card> VisibleCards => Cards.Where(card => _shelf is null || card.Shelf == _shelf);
+
+    private IEnumerable<ExerciseRun> RunsFor(Card card) =>
+        Host.Slate.Exercises.Where(run => run.ExerciseId == card.Id && !run.IsEmpty);
+
+    private static string RunLabel(ExerciseRun run)
+    {
+        // By what it is about; an unnamed run falls back to its first answer.
+        var about = string.IsNullOrWhiteSpace(run.Anchor.Text)
+            ? run.Answers.Values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty
+            : run.Anchor.Text;
+        var text = string.Join(' ', about.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+        if (text.Length == 0)
+        {
+            return "(not named yet)";
+        }
+
+        return text.Length <= 32 ? text : text[..31].TrimEnd() + "…";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var stored = await JS.InvokeAsync<string?>("passage.getToolsPref", "shelf");
+            if (Enum.TryParse<Shelf>(stored, out var shelf) && Shelves.Any(s => s.Shelf == shelf))
+            {
+                _shelf = shelf;
+                StateHasChanged();
+            }
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task SetShelfAsync(Shelf? shelf)
+    {
+        _shelf = shelf;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setToolsPref", "shelf", shelf?.ToString() ?? string.Empty);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task OpenCardAsync(Card card)
+    {
+        if (ExerciseCatalog.Find(card.Id) is not { } exercise)
+        {
+            await OnOpenClassic.InvokeAsync(card.Id);
+            return;
+        }
+
+        var run = new ExerciseRun { ExerciseId = exercise.Id };
+        Host.Slate.Exercises.Add(run);
+        await OpenRunIdChanged.InvokeAsync(run.Id);
+    }
+
+    private Task ResumeRunAsync(ExerciseRun run) => OpenRunIdChanged.InvokeAsync(run.Id);
+
+    private Task CloseRunAsync() => OpenRunIdChanged.InvokeAsync(null);
+
+    private void RemoveRun(ExerciseRun run)
+    {
+        Host.Slate.Exercises.Remove(run);
+        Host.Save();
+        Host.SetStatus("Removed it");
+    }
+}

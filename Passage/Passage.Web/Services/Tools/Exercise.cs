@@ -39,6 +39,8 @@ public sealed record Step
 
     // The worksheet's own words, a muted hint, and the folded "Why?" (R-B).
     public string Question { get; init; } = string.Empty;
+    // The short name the trail shows for an answered step ("Want", "Q1").
+    public string Label { get; init; } = string.Empty;
     public string Hint { get; init; } = string.Empty;
     public string Why { get; init; } = string.Empty;
     public bool Multiline { get; init; }
@@ -72,6 +74,9 @@ public sealed record Step
     // Stop: the stop-callout's words, shown with Stop here / Keep going.
     public string Text { get; init; } = string.Empty;
 
+    // Where an answer to this step can be put in the script, if anywhere.
+    public TargetKind? Send { get; init; }
+
     // Partner seam (§4.2): a site where PartnerLines may render.
     public bool Offer { get; init; }
 
@@ -88,8 +93,12 @@ public sealed record Exercise
     public required string Id { get; init; }
     public required string Name { get; init; }
     public string Tagline { get; init; } = string.Empty;
+    // The long description, folded behind the intro's "Why?" (R-B).
+    public string Why { get; init; } = string.Empty;
     public Shelf Shelf { get; init; }
     public AnchorKind Anchor { get; init; }
+    // What the free-text anchor asks for, until T3 adds real pickers.
+    public string AnchorLabel { get; init; } = string.Empty;
     public IReadOnlyList<TargetKind> Targets { get; init; } = Array.Empty<TargetKind>();
     public required IReadOnlyList<Step> Steps { get; init; }
 }

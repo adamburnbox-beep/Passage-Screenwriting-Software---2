@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, besideOpen: false, besideBeats: false, besideWidth: 300, boardDescriptions: true, arcMode: "board", typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 400, besideOpen: false, besideBeats: false, besideWidth: 300, boardDescriptions: true, arcMode: "board", typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -129,7 +129,7 @@ window.passage = (function () {
     // variable directly and the session key remembers it. Whether the dock is
     // open is Blazor's, since it renders the dock; only the width lives here.
     function applyWorkshopWidth() {
-        const width = Math.min(WORKSHOP_MAX_WIDTH, Math.max(WORKSHOP_MIN_WIDTH, Number(session.workshopWidth) || 340));
+        const width = Math.min(WORKSHOP_MAX_WIDTH, Math.max(WORKSHOP_MIN_WIDTH, Number(session.workshopWidth) || 400));
         session.workshopWidth = width;
         document.documentElement.style.setProperty("--workshop-width", width + "px");
     }
@@ -2122,10 +2122,85 @@ window.passage = (function () {
         burst.waitTimer = setTimeout(stopBurst, 2000);
     }
 
+    // ---- The tools dock's runner (docs/SLATE-REDO-PLAN.md §4.2) ----
+    //
+    // Per-browser preferences that never need a server round-trip live in the
+    // session key: the launcher's chip, and whether "Why?" is left open.
+    // Enter moves a runner on without a per-keystroke event (CLAUDE.md trap 4):
+    // it blurs the answer, which fires the change event that saves it, and
+    // taps Next only where nothing else will move the run on.
+    // Read from storage when the session hasn't been loaded yet: the dock can
+    // render before Blazor asks for the session.
+    function getToolsPref(key) {
+        let tools = session.tools;
+        if (!sessionReady) {
+            try {
+                tools = JSON.parse(window.localStorage.getItem(SESSION_KEY) || "{}").tools;
+            } catch (e) {
+                tools = null;
+            }
+        }
+        return tools && typeof tools[key] === "string" ? tools[key] : null;
+    }
+
+    function setToolsPref(key, value) {
+        session.tools = Object.assign(session.tools || {}, { [key]: value });
+        scheduleSessionSave();
+    }
+
+    function restoreWhy() {
+        const open = !!(session.tools && session.tools.whyOpen === "1");
+        document.querySelectorAll("details[data-why]").forEach(el => {
+            if (el.open !== open && !el.dataset.whyTouched) el.open = open;
+        });
+    }
+
+    document.addEventListener("toggle", event => {
+        const el = event.target;
+        if (!(el instanceof HTMLElement) || !el.matches("details[data-why]")) return;
+        el.dataset.whyTouched = "1";
+        if (session.tools && (session.tools.whyOpen === "1") === el.open) return;
+        setToolsPref("whyOpen", el.open ? "1" : "0");
+    }, true);
+
+    function focusStep(rootId) {
+        const root = document.getElementById(rootId);
+        const slots = root ? Array.from(root.querySelectorAll("textarea[data-slot]")) : [];
+        const target = slots.find(slot => slot.value.trim() === "") || slots[0];
+        if (target) target.focus({ preventScroll: false });
+    }
+
+    document.addEventListener("keydown", event => {
+        if (event.key !== "Enter" || event.isComposing) return;
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.matches("input[data-anchor-input]")) {
+            event.preventDefault();
+            focusStep("tools-step");
+            return;
+        }
+        if (burst || !target.matches("#tools-step textarea[data-slot]")) return;
+        const multiline = "slotMultiline" in target.dataset;
+        if (multiline ? !(event.ctrlKey || event.metaKey) : event.shiftKey) return;
+        const root = document.getElementById("tools-step");
+        const slots = Array.from(root.querySelectorAll("textarea[data-slot]"));
+        const at = slots.indexOf(target);
+        event.preventDefault();
+        if (at >= 0 && at < slots.length - 1) {
+            slots[at + 1].focus();
+            return;
+        }
+        const next = root.querySelector("[data-next]");
+        const blank = target.value.trim() === "";
+        const held = target.hasAttribute("data-held");
+        target.blur();
+        if (next && (blank || held)) next.click();
+    });
+
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
         init, applyHighlights, setContent, setDirty, scrollToLine, setBeside, setBoardDescriptions, setArcMode,
-        exportDocument, downloadText, downloadBase64, focusEditor, startBurst, stopBurst,
+        exportDocument, downloadText, downloadBase64, focusEditor, startBurst, stopBurst, getToolsPref, setToolsPref, restoreWhy, focusStep,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
         refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setJumpTargets, setTagTargets, openJumpPalette, setCharacterHighlights, restoreLineOverrides,

@@ -1,0 +1,30 @@
+@* One answered step, one line, no number. Tap to reopen it; a carried value
+   is shown but edited at its source. *@
+@using Passage.Web.Services.Tools
+
+@if (Editable)
+{
+    <button class="trail-line" title="Change this answer" @onclick="() => OnEdit.InvokeAsync(Entry.Slot)">
+        <span class="trail-label">@Entry.Slot.Step.Label</span>
+        <span class="trail-text">@Entry.Summary</span>
+        @if (Sent is not null)
+        {
+            <span class="trail-sent">→ @Sent</span>
+        }
+    </button>
+}
+else
+{
+    <div class="trail-line carried" title="Carried from the answer above — change it there">
+        <span class="trail-label">@Entry.Slot.Step.Label</span>
+        <span class="trail-text">@Entry.Summary</span>
+        <span class="trail-sent">↓ carried</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public TrailEntry Entry { get; set; } = default!;
+    [Parameter] public bool Editable { get; set; } = true;
+    [Parameter] public string? Sent { get; set; }
+    [Parameter] public EventCallback<StepSlot> OnEdit { get; set; }
+}
