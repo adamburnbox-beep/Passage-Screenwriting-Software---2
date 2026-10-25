@@ -1828,7 +1828,11 @@ window.passage = (function () {
     }
 
     function focusEditor() {
-        if (cm) cm.focus();
+        if (!cm) return;
+        cm.focus();
+        // Lines written while the editor was hidden (a template or inbox
+        // insert from BOARD) are unmeasured until it is visible again.
+        requestAnimationFrame(() => cm.refresh());
     }
 
     // ---- Burst timer for the Writer's Tools runners (SLATE-PLAN decision E) ----
