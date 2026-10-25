@@ -20,7 +20,19 @@
     <div class="anchor-strip">
         <span class="anchor-glyph" aria-hidden="true">@AnchorGlyph</span>
         <div class="anchor-main">
-            @if (Run.Anchor.Text.Length > 0)
+            @if (Exercise.Anchor == AnchorKind.Shape)
+            {
+                <span class="anchor-name">@ShapeName</span>
+                @if (HasScene)
+                {
+                    <span class="anchor-scene">@(SceneFound ? "A scene" : "That scene is no longer in the script")</span>
+                }
+                else
+                {
+                    <span class="anchor-scene">@(Host.ScriptHasShape ? "In the script" : "Not in the script yet")</span>
+                }
+            }
+            else if (Run.Anchor.Text.Length > 0)
             {
                 @if (Exercise.Anchor == AnchorKind.Character)
                 {
@@ -52,12 +64,24 @@
                 <span class="anchor-scene">@Run.Anchor.SceneText@(SceneFound ? null : " — no longer in the script")</span>
             }
         </div>
-        @if (Run.Anchor.Text.Length > 0 && AnchorFound || Exercise.Anchor == AnchorKind.Character && SceneFound)
+        @if (Exercise.Anchor == AnchorKind.Shape ? (HasScene ? SceneFound : Host.ScriptHasShape) : Run.Anchor.Text.Length > 0 && AnchorFound || Exercise.Anchor == AnchorKind.Character && SceneFound)
         {
             <button class="icon-btn" title="Show it in the script" aria-label="Show it in the script" @onclick="JumpAsync">↗</button>
         }
-        <button class="icon-btn anchor-change" aria-expanded="@_changing" @onclick="ToggleChange">@(_changing ? "done" : "change")</button>
+        @if (Exercise.Anchor != AnchorKind.Shape || Exercise.SceneToo)
+        {
+            <button class="icon-btn anchor-change" aria-expanded="@_changing" @onclick="ToggleChange">@(_changing ? "done" : "change")</button>
+        }
     </div>
+    @if (Exercise.Id == SlateMigration.SplitId)
+    {
+        <div class="bracket-actions">
+            <button class="btn primary" title="Eight sequences on the Board, each turn as its synopsis" @onclick="WriteShapeAsync">@(Host.ScriptHasShape ? "Update the shape in the script" : "Write the shape into the script")</button>
+        </div>
+        <div class="fill-meta">@(Host.ScriptHasShape
+            ? "Fills in any turn the script still has as a bracket. A turn that already has text in the script is left alone — edit it there."
+            : "Goes in at the end of the script as four acts and eight sequences, each turn as a synopsis line. A turn you haven't found yet goes in as a bracket, so Fill hands it back to you.")</div>
+    }
     @if (Exercise.Anchor == AnchorKind.Bracket)
     {
         <div class="bracket-actions">
@@ -66,7 +90,7 @@
             <button class="btn" title="Put this one back and hand me another" @onclick="NextBracketAsync">Next bracket</button>
         </div>
     }
-    @if (_changing || Run.Anchor.Text.Length == 0 && !_dismissedPicker)
+    @if (_changing || Run.Anchor.Text.Length == 0 && !_dismissedPicker && Exercise.Anchor != AnchorKind.Shape)
     {
         <AnchorPicker Host="Host" Anchor="Run.Anchor" Kind="Exercise.Anchor" SceneToo="Exercise.SceneToo" OnChanged="AnchorChangedAsync" />
     }
@@ -184,6 +208,8 @@
     private string _partnerFor = string.Empty;
     private List<string> _partnerLines = new();
 
+    protected override void OnInitialized() => ShapeAnswers.Prefill(Exercise, Run, Host.ScriptShapeValue);
+
     protected override void OnParametersSet()
     {
         _engine = new ExerciseEngine(Exercise, source => source == ExerciseCatalog.SpeakersSource ? Host.SpeakersFor(Run.Anchor) : Array.Empty<string>());
@@ -277,8 +303,16 @@
     {
         AnchorKind.Scene => "🎬",
         AnchorKind.Bracket => "[ ]",
+        AnchorKind.Shape => "◇",
         _ => "👤"
     };
+
+    // Split works on the whole Shape; Extend on its end, or on the scene the writer names.
+    private string ShapeName => Exercise.SceneToo
+        ? (HasScene ? Run.Anchor.SceneText : "The Shape's end")
+        : "The Shape";
+
+    private Task WriteShapeAsync() => Host.WriteShapeAsync(ShapeAnswers.ToSplitRun(Run));
 
     private BracketChoice? ThisBracket => Host.Brackets.FirstOrDefault(bracket => bracket.Text == Run.Anchor.Text);
 
@@ -332,7 +366,7 @@
 
     private Task StepChangedAsync(StepSlot slot)
     {
-        if (slot.Step.Kind is StepKind.Lines or StepKind.Slots or StepKind.Dice)
+        if (slot.Step.Kind is StepKind.Lines or StepKind.Slots or StepKind.Dice or StepKind.Pick)
         {
             _holdId = slot.Id;
         }

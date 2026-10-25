@@ -1661,6 +1661,23 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 
 .step-card textarea { font-size: 15px; }
 
+.step-echo { font-size: 13px; line-height: 1.5; color: var(--secondary-text); border-left: 2px solid var(--control-border); padding-left: 8px; }
+.step-echo-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-text); margin-right: 4px; }
+
+.pick-options { display: flex; flex-direction: column; gap: 4px; }
+.pick-option {
+    text-align: left;
+    background: var(--control-background);
+    color: var(--secondary-text);
+    border: 1px solid var(--control-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.pick-option.on { background: var(--control-accent); border-color: var(--control-accent); color: var(--control-pressed-foreground); }
+
 .step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
 .slot-row { display: flex; flex-direction: column; gap: 3px; }

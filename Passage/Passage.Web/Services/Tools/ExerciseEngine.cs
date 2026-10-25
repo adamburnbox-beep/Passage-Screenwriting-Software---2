@@ -193,13 +193,16 @@ public sealed class ExerciseEngine
         }
     }
 
-    /// <summary>The options a Pick offers: the non-blank slots of its Lines step, same round.</summary>
+    /// <summary>
+    /// The options a Pick offers: the non-blank slots of its Lines step in the same round, or
+    /// its fixed list.
+    /// </summary>
     public IReadOnlyList<string> PickOptions(ExerciseRun run, StepSlot slot)
     {
         var from = slot.Step.FromKey is { } key ? Find(key) : null;
         if (from is null)
         {
-            return Array.Empty<string>();
+            return slot.Step.Options;
         }
 
         var options = new List<string>();
@@ -213,6 +216,96 @@ public sealed class ExerciseEngine
         }
 
         return options;
+    }
+
+    // A fixed option is "Name — gloss" and stores its Name; a line from a Lines step stores as written.
+    private static string PickValue(Step step, string option)
+    {
+        if (step.FromKey is not null)
+        {
+            return option;
+        }
+
+        var at = option.IndexOf(" — ", StringComparison.Ordinal);
+        return at < 0 ? option : option[..at];
+    }
+
+    /// <summary>Taps an option of a Pick: its text becomes the answer (the writer can still edit it).</summary>
+    public void Pick(ExerciseRun run, StepSlot slot, string option) =>
+        SetAnswer(run, slot.Step.Key, slot.Round, PickValue(slot.Step, option));
+
+    /// <summary>True when the Pick's answer is this option.</summary>
+    public bool IsPicked(ExerciseRun run, StepSlot slot, string option) =>
+        GetAnswer(run, slot.Step.Key, slot.Round) is { Length: > 0 } answer
+        && string.Equals(answer, PickValue(slot.Step, option), StringComparison.Ordinal);
+
+    private static string AltKey(StepSlot slot) => slot.Id + "~alt";
+
+    /// <summary>True while a step's second wording is on for this round (Extend's mystery lens).</summary>
+    public bool IsAlt(ExerciseRun run, StepSlot slot) =>
+        slot.Step.AltQuestion is not null && Read(run, AltKey(slot)) == "y";
+
+    /// <summary>Switches a step's second wording on or off for this round only. Not an answer.</summary>
+    public void SetAlt(ExerciseRun run, StepSlot slot, bool on)
+    {
+        if (slot.Step.AltQuestion is null)
+        {
+            return;
+        }
+
+        if (on)
+        {
+            run.Answers[AltKey(slot)] = "y";
+        }
+        else
+        {
+            run.Answers.Remove(AltKey(slot));
+        }
+    }
+
+    /// <summary>The question as asked this round: the second wording while it is on.</summary>
+    public string Question(ExerciseRun run, StepSlot slot) =>
+        IsAlt(run, slot) && slot.Step.AltQuestion is { } alt ? alt : slot.Step.Question;
+
+    public string Hint(ExerciseRun run, StepSlot slot) =>
+        IsAlt(run, slot) ? slot.Step.AltHint : slot.Step.Hint;
+
+    private string FirstEnd(ExerciseRun run, Step step) =>
+        step.EndKeys.Select(key => GetAnswer(run, key)).FirstOrDefault(text => !Blank(text)) ?? string.Empty;
+
+    /// <summary>
+    /// What an Echo step is asking about: the chain's end in the first round, then the previous
+    /// round's answer to the same step. Read at call time, never stored. Empty when there is none.
+    /// </summary>
+    public string EchoOf(ExerciseRun run, StepSlot slot)
+    {
+        if (!slot.Step.Echo)
+        {
+            return string.Empty;
+        }
+
+        return slot.Round == 0 ? FirstEnd(run, slot.Step) : GetAnswer(run, slot.Step.Key, slot.Round - 1);
+    }
+
+    /// <summary>
+    /// A chain written backward, read forward: the loop's answers from the last round to the
+    /// first, then the chain's end. Blank links are left out.
+    /// </summary>
+    public IReadOnlyList<string> ReadForward(ExerciseRun run, StepSlot slot)
+    {
+        if (slot.Step.ReadForwardKey is not { } key)
+        {
+            return Array.Empty<string>();
+        }
+
+        var chain = Enumerable.Range(0, Math.Max(1, run.Rounds)).Reverse()
+            .Select(round => GetAnswer(run, key, round)).Where(text => !Blank(text)).ToList();
+        if (FirstEnd(run, slot.Step) is { Length: > 0 } end)
+        {
+            chain.Add(end);
+        }
+
+        return chain;
     }
 
     /// <summary>Slots a Lines step shows: declared, or more when an Open step has been given more.</summary>

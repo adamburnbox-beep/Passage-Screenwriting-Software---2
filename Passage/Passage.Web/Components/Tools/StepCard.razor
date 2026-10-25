@@ -17,10 +17,22 @@
 }
 else
 {
-    <p class="step-question">@step.Question</p>
-    @if (step.Hint.Length > 0)
+    @if (Engine.EchoOf(Run, Slot) is { Length: > 0 } echo)
     {
-        <div class="step-hint">@step.Hint</div>
+        <div class="step-echo"><span class="step-echo-label">Right before</span> @echo</div>
+    }
+    <p class="step-question">@Engine.Question(Run, Slot)</p>
+    @if (Engine.Hint(Run, Slot) is { Length: > 0 } hint)
+    {
+        <div class="step-hint">@hint</div>
+    }
+    @if (step.ScriptSlot is { } scriptSlot && Host.ScriptShapeValue(scriptSlot) is { } inScript)
+    {
+        <div class="fill-hint">In the script: @inScript</div>
+    }
+    @if (step.PlotTurn is { } plotTurn && ShapeAnswers.SplitTurn(Host.Slate, plotTurn) is { } matched)
+    {
+        <div class="fill-hint">Matched plot turn — @plotTurn: @matched</div>
     }
     @if (step.Why.Length > 0)
     {
@@ -37,6 +49,39 @@ else
                       aria-label="@step.Question"
                       value="@Engine.GetAnswer(Run, step.Key, Slot.Round)"
                       @onchange="args => SetAnswerAsync(args.Value?.ToString() ?? string.Empty)"></textarea>
+            break;
+        case StepKind.Pick:
+            var options = Engine.PickOptions(Run, Slot);
+            @if (options.Count > 0)
+            {
+                <div class="pick-options" role="group" aria-label="Options">
+                    @foreach (var option in options)
+                    {
+                        var chosen = option;
+                        var on = Engine.IsPicked(Run, Slot, chosen);
+                        <button class="pick-option @(on ? "on" : null)" aria-pressed="@on" @onclick="() => PickAsync(chosen)">@chosen</button>
+                    }
+                </div>
+            }
+            <textarea rows="2" data-slot data-step-input data-held="@(Held ? "" : null)"
+                      aria-label="@step.Question — or write it"
+                      value="@Engine.GetAnswer(Run, step.Key, Slot.Round)"
+                      @onchange="args => SetAnswerAsync(args.Value?.ToString() ?? string.Empty)"></textarea>
+            break;
+        case StepKind.YesNo:
+            <AliveFlat Left="y" Right="n" Value="@Engine.GetAnswer(Run, step.Key, Slot.Round)" ValueChanged="SetAnswerAsync" />
+            break;
+        case StepKind.AliveFlat:
+            @if (step.ReadForwardKey is not null && Engine.ReadForward(Run, Slot) is { Count: > 0 } chain)
+            {
+                <ol class="chain-forward">
+                    @for (var i = 0; i < chain.Count; i++)
+                    {
+                        <li class="@(i == chain.Count - 1 ? "chain-z" : null)">@chain[i]</li>
+                    }
+                </ol>
+            }
+            <AliveFlat Value="@Engine.GetAnswer(Run, step.Key, Slot.Round)" ValueChanged="SetAnswerAsync" />
             break;
         case StepKind.Lines:
             @for (var i = 0; i < Engine.LineCount(Run, Slot); i++)
@@ -84,9 +129,13 @@ else
             <div class="step-hint">This kind of question isn't in the runner yet.</div>
             break;
     }
+    @if (step.AltQuestion is not null)
+    {
+        <label class="burst-toggle"><input type="checkbox" checked="@Engine.IsAlt(Run, Slot)" @onchange="AltToggledAsync" /> @step.AltLabel</label>
+    }
     @if ((step.Kind is StepKind.Text or StepKind.Lines) && Exercise.Targets.Count > 0)
     {
-        <SendToMenu Targets="Exercise.Targets" Character="@CharacterName" SynopsisLabel="@Host.SynopsisTargetLabel(Run.Anchor)" OnSend="SendAsync" />
+        <SendToMenu Targets="Exercise.Targets" Character="@CharacterName" SynopsisLabel="@Host.SynopsisTargetLabel(SendAnchor)" OnSend="SendAsync" />
     }
 }
 
@@ -111,6 +160,18 @@ else
             return Task.CompletedTask;
         }
 
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    private Task PickAsync(string option)
+    {
+        Engine.Pick(Run, Slot, option);
+        return OnChanged.InvokeAsync(Slot);
+    }
+
+    private Task AltToggledAsync(ChangeEventArgs args)
+    {
+        Engine.SetAlt(Run, Slot, args.Value is true);
         return OnChanged.InvokeAsync(Slot);
     }
 
@@ -151,7 +212,13 @@ else
         return OnChanged.InvokeAsync(Slot);
     }
 
-    private string CharacterName => Run.Anchor.Kind == AnchorKind.Character ? Characters.BareName(Run.Anchor.Text) : string.Empty;
+    // Whose note page or inbox tag an answer goes to: the run's character, or for a step about someone
+    // else (the Cast card) whoever the step's WhoKey names in the same round.
+    private Anchor SendAnchor => Slot.Step.WhoKey is { } who
+        ? new Anchor { Kind = AnchorKind.Character, Text = Engine.GetAnswer(Run, who, Slot.Round).Trim() }
+        : Run.Anchor;
+
+    private string CharacterName => SendAnchor.Kind == AnchorKind.Character ? Characters.BareName(SendAnchor.Text) : string.Empty;
 
     // The answer as it is now: the field's change event reaches the server
     // before this tap does, so reading the run is enough.
@@ -162,7 +229,7 @@ else
     private async Task SendAsync(TargetKind target)
     {
         var label = string.IsNullOrWhiteSpace(Slot.Step.Label) ? Slot.Step.Question : Slot.Step.Label;
-        var landed = await Host.SendAsync(target, new ToolSend(Run.Anchor, Exercise.Name, label, AnswerText()));
+        var landed = await Host.SendAsync(target, new ToolSend(SendAnchor, Exercise.Name, label, AnswerText()));
         if (landed && !Run.Sent.Any(mark => mark.Key == Slot.Id && mark.Target == target))
         {
             Run.Sent.Add(new SentMark { Key = Slot.Id, Target = target });

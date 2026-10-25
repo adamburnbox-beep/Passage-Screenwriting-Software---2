@@ -54,8 +54,10 @@ public sealed record Step
     public int Count { get; init; } = 1;
     public bool Open { get; init; }
 
-    // Pick: the Lines step whose slots become the options.
+    // Pick: the Lines step whose slots become the options, or a fixed list of
+    // "Name — gloss" options (the stored answer is the Name).
     public string? FromKey { get; init; }
+    public IReadOnlyList<string> Options { get; init; } = Array.Empty<string>();
 
     // Branch: show BranchGroup only while the step OnKey (same round) holds
     // OnValue. With AllSlots, OnKey names a Slots step and every one of its
@@ -74,6 +76,31 @@ public sealed record Step
 
     // Stop: the stop-callout's words, shown with Stop here / Keep going.
     public string Text { get; init; } = string.Empty;
+
+    // The label of the Shape line this step is about (SplitScript.Slots): its text in the
+    // script is shown under the question, and a fresh run starts from it (A and Z).
+    public string? ScriptSlot { get; init; }
+
+    // The Split turn a belief cut is matched to: that turn in the Split run is shown as a hint.
+    public string? PlotTurn { get; init; }
+
+    // A second wording of the question, switched on per round by a toggle (Extend's mystery lens).
+    public string? AltQuestion { get; init; }
+    public string AltHint { get; init; } = string.Empty;
+    public string AltLabel { get; init; } = string.Empty;
+
+    // Echo: show what this step is asking about — the chain's end in round one, then the
+    // previous round's answer to this step, read live.
+    public bool Echo { get; init; }
+    public IReadOnlyList<string> EndKeys { get; init; } = Array.Empty<string>();
+
+    // Reads a loop's answers to ReadForwardKey back from the first round to the last, then
+    // the first non-blank of EndKeys (a chain written backward, read forward).
+    public string? ReadForwardKey { get; init; }
+
+    // A step whose answer is about someone other than the run's character: the step (same
+    // round) that holds their name, used when the answer is sent to a note page or the inbox.
+    public string? WhoKey { get; init; }
 
     // Partner seam (§4.2): a site where PartnerLines may render.
     public bool Offer { get; init; }

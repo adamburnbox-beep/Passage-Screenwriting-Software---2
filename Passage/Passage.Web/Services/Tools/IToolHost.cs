@@ -68,6 +68,17 @@ public interface IToolHost
     /// <summary>Where a synopsis would land for this anchor, for the Send to menu's label.</summary>
     string SynopsisTargetLabel(Anchor anchor);
 
+    /// <summary>The script already holds a Shape (a sequence with a Starts / Midpoint / … line).</summary>
+    bool ScriptHasShape { get; }
+
+    /// <summary>What the script holds for a Shape line (a <see cref="SplitScript.Slot"/> label) when it is real
+    /// text: not empty, not a bracket, not a dropped turn. Null otherwise.</summary>
+    string? ScriptShapeValue(string label);
+
+    /// <summary>Writes a Split run into the script: the whole structure the first time (a ranged insert), then
+    /// only the turns still held as brackets. Reports what it did on the status line. True when the script changed.</summary>
+    Task<bool> WriteShapeAsync(SplitRun run);
+
     /// <summary>Scrolls the script to the anchor without taking focus from the runner.</summary>
     Task JumpToAsync(Anchor anchor);
 

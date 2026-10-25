@@ -73,9 +73,9 @@ else
     {
         new(ClassicIdeation, "Ideation burst", "Loosen up with fast, throwaway lines", Shelf.Nothing, "⚡"),
         new(ClassicBridge, "Bridge", "Connect two moments you know", Shelf.Nothing, "⇄"),
-        new(ClassicSplit, "A→Z→Split", "Find the middle of the story", Shelf.Ending, "◇"),
-        new(ClassicBelief, "Belief Split", "Split on what a character believes", Shelf.Ending, "☺"),
-        new(ClassicExtend, "Extend Backward", "Work back from the ending", Shelf.Ending, "↶"),
+        new(SlateMigration.SplitId, "A→Z→Split", "Find the middle of the story", Shelf.Ending, "◇"),
+        new(SlateMigration.BeliefId, "Belief Split", "Split on what a character believes", Shelf.Ending, "☺"),
+        new(SlateMigration.ExtendId, "Extend Backward", "Work back from the ending", Shelf.Ending, "↶"),
         new(ClassicPosition, "Position", "Try a scene in each story slot", Shelf.Moment, "◎"),
         new(SlateMigration.FillId, "Fill", "Turn a [BRACKET] into the real event", Shelf.Moment, "[ ]"),
         new(SlateMigration.WoacId, "WOAC chain", "What happens next, round by round", Shelf.SceneGoing, "→"),
@@ -86,9 +86,6 @@ else
 
     public const string ClassicIdeation = "ideation";
     public const string ClassicBridge = "bridge";
-    public const string ClassicSplit = "split";
-    public const string ClassicBelief = "belief";
-    public const string ClassicExtend = "extend";
     public const string ClassicPosition = "position";
     public const string ClassicPushPull = "pushpull";
 
@@ -172,6 +169,13 @@ else
 
         // One thing, not a menu (rule 0.5): a bracket exercise is handed a bracket, a scene
         // exercise starts on the scene the caret is in. Either can be changed in the strip.
+        // One Shape per script: Split and Extend pick up the run already kept rather than start a second.
+        if (KeptShapeRun(exercise.Id) is { } kept)
+        {
+            await OpenRunIdChanged.InvokeAsync(kept.Id);
+            return;
+        }
+
         var run = new ExerciseRun { ExerciseId = exercise.Id };
         if (exercise.Anchor == AnchorKind.Bracket && Host.HandBracket() is { } bracket)
         {
@@ -196,10 +200,21 @@ else
             return Host.OpenBracketAsync(suggestion.Anchor.Text);
         }
 
+        if (suggestion.Anchor.Kind == AnchorKind.Shape && KeptShapeRun(suggestion.ExerciseId) is { } kept)
+        {
+            return OpenRunIdChanged.InvokeAsync(kept.Id);
+        }
+
         var run = new ExerciseRun { ExerciseId = suggestion.ExerciseId, Anchor = suggestion.Anchor };
         Host.Slate.Exercises.Add(run);
         return OpenRunIdChanged.InvokeAsync(run.Id);
     }
+
+    // The Shape-anchored run already kept for this exercise, if it is about the script's Shape (not a scene).
+    private ExerciseRun? KeptShapeRun(string exerciseId) =>
+        ExerciseCatalog.Find(exerciseId)?.Anchor == AnchorKind.Shape
+            ? Host.Slate.Exercises.LastOrDefault(run => run.ExerciseId == exerciseId && run.Anchor.SceneId is null && run.Anchor.SceneText.Length == 0)
+            : null;
 
     private Task ResumeRunAsync(ExerciseRun run) => OpenRunIdChanged.InvokeAsync(run.Id);
 
