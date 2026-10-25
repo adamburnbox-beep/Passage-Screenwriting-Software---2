@@ -67,9 +67,8 @@ Click New to start one — files are stored on the server volume.</div>
         <nav class="view-tabs">
             <button class="@(_mainViewIndex == 0 ? "active" : null)" @onclick="() => SetMainView(0)">SCRIPT</button>
             <button class="@(_mainViewIndex == 1 ? "active" : null)" @onclick="() => SetMainView(1)">BOARD</button>
-            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">BEATS</button>
-            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">ARC</button>
-            <button class="@(_mainViewIndex == 4 ? "active" : null)" @onclick="() => SetMainView(4)">PREVIEW</button>
+            <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">ARC</button>
+            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">PREVIEW</button>
         </nav>
 
         <div class="topbar-actions">
@@ -80,7 +79,7 @@ Click New to start one — files are stored on the server volume.</div>
             @if (_mainViewIndex == 0)
             {
                 <button class="btn @(_besideOpen ? "on" : null)"
-                        title="Show the Board or Beats beside the script" @onclick="ToggleBesideAsync">Beside</button>
+                        title="Show the Board beside the script" @onclick="ToggleBesideAsync">Beside</button>
             }
             <button class="btn theme-toggle @(_syntaxPanelOpen ? "on" : null)"
                     title="Syntax reference (F1)" @onclick="ToggleSyntaxPanel">?</button>
@@ -109,6 +108,13 @@ Click New to start one — files are stored on the server volume.</div>
                     <button @onclick='() => ExportAsync("highland")'>Highland 2 (.highland)</button>
                     <button @onclick='() => ExportAsync("fdx")'>Final Draft (.fdx)</button>
                     <button @onclick="() => _outlineExportOpen = true">Export outline…</button>
+                </div>
+            </details>
+            <details class="menu">
+                <summary class="btn" title="Cast colours and balance, storylines and locations">Cast &amp; Elements ▾</summary>
+                <div class="menu-items">
+                    <button @onclick="() => OpenLibrary(0)">Cast…</button>
+                    <button @onclick="() => OpenLibrary(1)">Elements…</button>
                 </div>
             </details>
         </div>
@@ -160,8 +166,6 @@ Click New to start one — files are stored on the server volume.</div>
                 <button class="@(_sidebarTab == 0 ? "active" : null)" @onclick="() => _sidebarTab = 0">OUTLINE</button>
                 <button class="@(_sidebarTab == 1 ? "active" : null)" @onclick="() => _sidebarTab = 1">NOTES</button>
                 <button class="@(_sidebarTab == 2 ? "active" : null)" @onclick="() => _sidebarTab = 2">GOALS</button>
-                <button class="@(_sidebarTab == 3 ? "active" : null)" @onclick="() => _sidebarTab = 3">CAST</button>
-                <button class="@(_sidebarTab == 4 ? "active" : null)" @onclick="() => _sidebarTab = 4">ELEMENTS</button>
             </div>
             <div class="sidebar-body">
                 @if (_sidebarTab == 0)
@@ -234,243 +238,6 @@ Click New to start one — files are stored on the server volume.</div>
                                 }
                             </div>
                         }
-                    </div>
-                }
-                else if (_sidebarTab == 3)
-                {
-                    @if (_analysis.Characters.Count == 0)
-                    {
-                        <div class="sidebar-empty">No characters in this script yet.</div>
-                    }
-                    else
-                    {
-                        <div class="character-view-toggle">
-                            <button class="@(_showGenderReport ? null : "active")" @onclick="() => _showGenderReport = false">LIST</button>
-                            <button class="@(_showGenderReport ? "active" : null)" @onclick="() => _showGenderReport = true">BALANCE</button>
-                        </div>
-                    }
-                    @if (_showGenderReport && _analysis.Characters.Count > 0)
-                    {
-                        var report = Characters.Report(_analysis.Elements, _analysis.Characters, CharacterGenders());
-                        <div class="goal-panel">
-                            @foreach (var (title, value) in GenderMetrics)
-                            {
-                                var total = report.Totals.Sum(value);
-                                <div class="goal-card">
-                                    <div class="goal-card-title">@title</div>
-                                    <div class="gender-bar">
-                                        @foreach (var tagTotal in report.Totals.Where(t => value(t) > 0))
-                                        {
-                                            <span class="gender-@tagTotal.Tag.ToLowerInvariant()" style="flex-grow:@value(tagTotal)"></span>
-                                        }
-                                    </div>
-                                    @foreach (var tagTotal in report.Totals)
-                                    {
-                                        <div class="gender-line">
-                                            <span class="gender-dot gender-@tagTotal.Tag.ToLowerInvariant()"></span>
-                                            <span>@tagTotal.Tag</span>
-                                            <span class="character-count">@value(tagTotal)</span>
-                                            <span class="character-count">@(total == 0 ? "–" : $"{Math.Round(100.0 * value(tagTotal) / total)}%")</span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            <div class="goal-card">
-                                <div class="goal-card-title">SCENES SHARED</div>
-                                @foreach (var pair in report.Pairs)
-                                {
-                                    <div class="gender-line gender-pair">
-                                        <span><span class="gender-dot gender-@pair.First.ToLowerInvariant()"></span><span class="gender-dot gender-@pair.Second.ToLowerInvariant()"></span></span>
-                                        <span>@pair.First + @pair.Second</span>
-                                        <span class="character-count">@pair.Scenes</span>
-                                    </div>
-                                }
-                            </div>
-                            <div class="goal-card">
-                                <div class="goal-card-title">BY CHARACTER</div>
-                                @foreach (var row in report.Rows)
-                                {
-                                    <div class="gender-line">
-                                        <span class="gender-dot gender-@row.Tag.ToLowerInvariant()" title="@row.Tag"></span>
-                                        <span class="character-name">@row.Name</span>
-                                        <span class="character-count">@row.Lines</span>
-                                        <span class="character-count">@row.Words</span>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                    else if (_analysis.Characters.Count > 0)
-                    {
-                        <div class="character-row character-head">
-                            <span class="character-name">NAME</span>
-                            <span class="character-count">LINES</span>
-                            <span class="character-count">WORDS</span>
-                            <span class="character-actions"></span>
-                        </div>
-                    }
-                    @foreach (var character in _showGenderReport ? Array.Empty<CharacterStat>() : _analysis.Characters)
-                    {
-                        var colour = CharacterColour(character.Name);
-                        var gender = Characters.Tag(CharacterSetting(character.Name)?.Gender);
-                        <div class="character-row">
-                            <button class="character-swatch @(colour.Length == 0 ? "none" : null)"
-                                    style="@(colour.Length > 0 ? $"background:{colour}" : null)"
-                                    title="Highlight colour"
-                                    @onclick="() => ToggleColourPicker(character.Name)"></button>
-                            <button class="character-gender gender-text-@gender.ToLowerInvariant()" title="@gender — click to change"
-                                    @onclick="() => CycleGender(character.Name)">@(gender == "Unspecified" ? "–" : gender[..1])</button>
-                            @if (_renamingCharacter == character.Name)
-                            {
-                                <input class="character-rename" @ref="_renameInput" @bind="_renameText" @bind:event="oninput"
-                                       @onkeydown="OnRenameKeyDown" />
-                            }
-                            else
-                            {
-                                <span class="character-name">@character.Name</span>
-                                <span class="character-count">@character.Lines</span>
-                                <span class="character-count">@character.Words</span>
-                                <button class="icon-btn character-actions" title="Rename everywhere"
-                                        @onclick="() => StartRename(character.Name)">✎</button>
-                                <button class="icon-btn character-tools" title="Writer's tools for @character.Name"
-                                        aria-expanded="@CastMenuOpen(character.Name)"
-                                        @onclick="() => ToggleCastMenu(character.Name)">Tools</button>
-                            }
-                        </div>
-                        @if (CastMenuOpen(character.Name))
-                        {
-                            <div class="tool-menu" role="menu">
-                                @foreach (var exercise in ExerciseCatalog.All.Where(entry => entry.Anchor == AnchorKind.Character))
-                                {
-                                    <button class="btn" role="menuitem" @onclick="() => StartCastToolAsync(exercise.Id, character.Name)">@exercise.Name</button>
-                                }
-                            </div>
-                        }
-                        @if (_colourPickerFor == character.Name)
-                        {
-                            <div class="character-palette">
-                                @foreach (var swatch in Characters.Palette)
-                                {
-                                    <button class="character-swatch @(swatch == colour ? "picked" : null)" style="background:@swatch"
-                                            title="@swatch" @onclick="() => SetCharacterColourAsync(character.Name, swatch)"></button>
-                                }
-                                <button class="character-swatch none @(colour.Length == 0 ? "picked" : null)" title="No highlight"
-                                        @onclick="() => SetCharacterColourAsync(character.Name, string.Empty)"></button>
-                            </div>
-                        }
-                    }
-                }
-                else if (_sidebarTab == 4)
-                {
-                    <div class="elements-section">
-                        <div class="elements-head">
-                            <span class="goal-card-title">STORYLINES</span>
-                            <button class="btn" @onclick="AddStoryline">+ Add</button>
-                        </div>
-                        @if (_slate.Story.Storylines.Count == 0)
-                        {
-                            <div class="sidebar-empty">No storylines yet. Try "A Story", "B Story" or "Runner".</div>
-                        }
-                        @foreach (var line in _slate.Story.Storylines)
-                        {
-                            @if (_editingStoryline == line)
-                            {
-                                <div class="storyline-edit">
-                                    <input class="character-rename" @ref="_storylineNameInput" @bind="_storylineEditName" @bind:event="oninput"
-                                           placeholder="@StorylineHint(line)" @onkeydown="OnStorylineKeyDown" />
-                                    <input class="character-rename" @bind="_storylineEditAxis" @bind:event="oninput"
-                                           placeholder="Arc axis, e.g. Tension" title="What the Arc's vertical axis measures for this storyline" />
-                                    <textarea class="card-body-input" rows="3" placeholder="What is this storyline about?"
-                                              @bind="_storylineEditDescription" @bind:event="oninput"></textarea>
-                                    <div class="character-palette">
-                                        @foreach (var swatch in Characters.Palette)
-                                        {
-                                            <button class="character-swatch @(swatch == _storylineEditColour ? "picked" : null)" style="background:@swatch"
-                                                    title="@swatch" @onclick="() => _storylineEditColour = swatch"></button>
-                                        }
-                                        <button class="character-swatch none @(_storylineEditColour.Length == 0 ? "picked" : null)" title="No colour"
-                                                @onclick="() => _storylineEditColour = string.Empty"></button>
-                                    </div>
-                                    <div class="modal-actions">
-                                        <button class="btn" @onclick="() => RequestDeleteStoryline(line)">Delete</button>
-                                        <button class="btn" @onclick="CancelStorylineEdit">Cancel</button>
-                                        <button class="btn primary" @onclick="SaveStorylineEdit">Save</button>
-                                    </div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="character-row storyline-row">
-                                    <span class="character-swatch @(line.Colour.Length == 0 ? "none" : null)"
-                                          style="@(line.Colour.Length > 0 ? $"background:{line.Colour}" : null)"></span>
-                                    <span class="character-name" title="@line.Description">@(line.Name.Length > 0 ? line.Name : "Untitled storyline")</span>
-                                    <button class="icon-btn character-actions" title="Edit storyline"
-                                            @onclick="() => StartStorylineEdit(line)">✎</button>
-                                </div>
-                                @if (line.Description.Length > 0)
-                                {
-                                    <div class="storyline-description">@line.Description</div>
-                                }
-                            }
-                        }
-                    </div>
-                    <div class="elements-section">
-                        <div class="elements-head"><span class="goal-card-title">LOCATIONS</span></div>
-                        @{
-                            var locations = _analysis.Locations ?? Array.Empty<LocationEntry>();
-                            var missing = _slate.Story.Locations.Where(saved => !locations.Any(place => place.Name == saved.Name)).ToList();
-                        }
-                        @if (locations.Count == 0)
-                        {
-                            <div class="sidebar-empty">No locations yet. They come from your scene headings.</div>
-                        }
-                        @foreach (var place in locations)
-                        {
-                            var placeColour = LocationColour(place.Name);
-                            <div class="character-row storyline-row">
-                                <button class="character-swatch @(placeColour.Length == 0 ? "none" : null)"
-                                        style="@(placeColour.Length > 0 ? $"background:{placeColour}" : null)"
-                                        title="Set colour" @onclick="() => _locationPickerFor = _locationPickerFor == place.Name ? null : place.Name"></button>
-                                <button class="location-name" title="Show scenes"
-                                        @onclick="() => ToggleLocation(place.Name)">@place.Name</button>
-                                <span class="character-count">@place.Scenes.Count</span>
-                            </div>
-                            @if (_locationPickerFor == place.Name)
-                            {
-                                <div class="character-palette">
-                                    @foreach (var swatch in Characters.Palette)
-                                    {
-                                        <button class="character-swatch @(swatch == placeColour ? "picked" : null)" style="background:@swatch"
-                                                title="@swatch" @onclick="() => SetLocationColour(place.Name, swatch)"></button>
-                                    }
-                                    <button class="character-swatch none @(placeColour.Length == 0 ? "picked" : null)" title="No colour"
-                                            @onclick="() => SetLocationColour(place.Name, string.Empty)"></button>
-                                </div>
-                            }
-                            @if (_expandedLocations.Contains(place.Name))
-                            {
-                                @foreach (var scene in place.Scenes)
-                                {
-                                    <button class="location-scene" title="Line @scene.LineNumber"
-                                            @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
-                                }
-                            }
-                        }
-                        @if (missing.Count > 0)
-                        {
-                            <div class="goal-card-title">NOT IN THE SCRIPT</div>
-                            @foreach (var gone in missing)
-                            {
-                                <div class="character-row storyline-row location-gone">
-                                    <span class="character-swatch" style="background:@gone.Colour"></span>
-                                    <span class="character-name">@gone.Name</span>
-                                    <button class="btn" title="Forget this colour" @onclick="() => DiscardLocation(gone)">Discard</button>
-                                </div>
-                            }
-                        }
-                    </div>
-                    <div class="elements-section">
-                        <button class="btn" @onclick="() => _sidebarTab = 3">Characters: colours are set in CAST →</button>
                     </div>
                 }
                 else
@@ -612,12 +379,12 @@ Click New to start one — files are stored on the server volume.</div>
                         @RenderBeatEditor(_editingBeat)
                     }
                     <div class="beats-tray board-inbox" title="Double-click to jot down an unassigned beat. Drag a beat onto a card to turn it into a scene."
-                         @ondblclick="() => AddBeat(0)">
-                        @foreach (var beat in _slate.Beats.Where(beat => beat.Page == 0))
+                         @ondblclick="() => AddBeat()">
+                        @foreach (var beat in _slate.Beats)
                         {
-                            @RenderBeat((beat, null))
+                            @RenderBeat(beat)
                         }
-                        @if (!_slate.Beats.Any(beat => beat.Page == 0))
+                        @if (_slate.Beats.Count == 0)
                         {
                             <span class="beats-tray-hint">Inbox: double-click to jot a beat, drag it onto a card to make it a scene</span>
                         }
@@ -710,85 +477,6 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                 }
             }
             else if (_mainViewIndex == 2)
-            {
-                @if (!IsScreenplayMode)
-                {
-                    <div class="board-empty">The Beat Sheet works in Screenplay mode.
-Open a .fountain file to plan beats against its pages.</div>
-                }
-                else
-                {
-                    var beatColumns = BeatColumns;
-                    var beatStack = BeatSheet.Stack(_slate.Beats);
-                    var beatRows = beatStack.Select(item => item.Row + 1).DefaultIfEmpty(0).Max() + 1;
-                    var scenes = BeatScenes;
-                    var actPages = _beatActs.ToLookup(act => act.Page);
-                    var unplacedScenes = scenes.Count(scene => scene.Page == 0);
-                    <div class="beats-view">
-                    <div class="preview-toolbar beats-toolbar">
-                        <span>@_analysis.PageCount page@(_analysis.PageCount == 1 ? "" : "s") written</span>
-                        <label class="beats-target">Target
-                            <input type="number" class="burst-seconds" min="1" max="@BeatSheet.MaxTargetPages"
-                                   @bind="_slate.BeatSheetPages" @bind:after="SetBeatTarget" /> pages</label>
-                        @RenderFilterBar
-                        <span>Double-click a page to add a beat</span>
-                        @if (unplacedScenes > 0)
-                        {
-                            <span class="beats-warning">@unplacedScenes scene@(unplacedScenes == 1 ? "" : "s") could not be placed on a page</span>
-                        }
-                    </div>
-                    @if (_editingBeat is not null)
-                    {
-                        @RenderBeatEditor(_editingBeat)
-                    }
-                    <div class="beats-tray" title="Double-click to jot down an unassigned beat"
-                         @ondblclick="() => AddBeat(0)">
-                        @foreach (var beat in _slate.Beats.Where(beat => beat.Page == 0))
-                        {
-                            @RenderBeat((beat, null))
-                        }
-                        @if (!_slate.Beats.Any(beat => beat.Page == 0))
-                        {
-                            <span class="beats-tray-hint">Unassigned beats</span>
-                        }
-                    </div>
-                    <div class="beats-surface">
-                        <div class="beats-grid" data-columns="@beatColumns"
-                             style="grid-template-columns:repeat(@beatColumns, var(--beat-col));grid-template-rows:auto repeat(@beatRows, minmax(64px, auto)) auto">
-                            @for (var column = 1; column <= beatColumns; column++)
-                            {
-                                var acts = actPages[column].ToList();
-                                var columnPage = column;
-                                <div class="beat-column @(column % 10 == 0 ? "tenth" : null) @(acts.Count > 0 ? "act-break" : null) @(column > _analysis.PageCount ? "unwritten" : null)"
-                                     style="grid-column:@column;grid-row:1 / -1" data-page="@column"
-                                     @ondblclick="() => AddBeat(columnPage)">
-                                    <div class="beat-page-number">@column</div>
-                                    @foreach (var act in acts)
-                                    {
-                                        <div class="beat-act" title="@act.Heading">@act.Heading</div>
-                                    }
-                                </div>
-                            }
-                            @foreach (var (beat, row) in beatStack)
-                            {
-                                @RenderBeat((beat, row))
-                            }
-                            @foreach (var pageScenes in scenes.Where(scene => scene.Page > 0 && scene.Page <= beatColumns).GroupBy(scene => scene.Page))
-                            {
-                                <div class="beat-track" style="grid-column:@pageScenes.Key;grid-row:-2 / -1">
-                                    @foreach (var scene in pageScenes)
-                                    {
-                                        <button class="beat-scene @DimScene(scene)" title="@scene.Heading (line @scene.LineNumber)"
-                                                @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                    </div>
-                }
-            }
-            else if (_mainViewIndex == 3)
             {
                 @if (!IsScreenplayMode)
                 {
@@ -891,7 +579,7 @@ Open a .fountain file to chart storylines against its scenes.</div>
                     </div>
                 }
             }
-            else if (_mainViewIndex == 4)
+            else if (_mainViewIndex == 3)
             {
                 @if (!IsScreenplayMode)
                 {
@@ -947,18 +635,14 @@ Open a .fountain file to see formatted pages.</div>
         @{ var besideShown = _besideOpen && _mainViewIndex == 0; }
         <aside class="beside" hidden="@(!besideShown)">
             <div id="beside-resize" class="beside-resize" title="Drag to resize"></div>
-            <div class="beside-head">
-                <button class="@(!_besideBeats ? "active" : null)" @onclick="() => SetBesideAsync(false)">Board</button>
-                <button class="@(_besideBeats ? "active" : null)" @onclick="() => SetBesideAsync(true)">Beats</button>
-            </div>
             @if (besideShown)
             {
                 <div class="beside-body">
                     @if (!IsScreenplayMode)
                     {
-                        <div class="beside-empty">Board and Beats work in Screenplay mode.</div>
+                        <div class="beside-empty">The Board works in Screenplay mode.</div>
                     }
-                    else if (!_besideBeats)
+                    else
                     {
                         var rows = BesideRows;
                         var current = BesideList.RowAt(rows, _caretLine);
@@ -986,32 +670,6 @@ Open a .fountain file to see formatted pages.</div>
                                 {
                                     @RenderTagMarks(marked.Id)
                                 }
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        var beats = BesideList.Beats(_slate.Beats, BeatScenes);
-                        var current = BesideList.BeatAt(beats, BeatScenes, _caretLine);
-                        @if (beats.Count == 0)
-                        {
-                            <div class="beside-empty">No beats yet. Add them in BEATS.</div>
-                        }
-                        @for (var i = 0; i < beats.Count; i++)
-                        {
-                            var item = beats[i];
-                            var line = item.Line;
-                            <div class="beside-row card @(i == current ? "current" : null) @(line == 0 ? "inert" : null) @DimBeat(item.Beat)"
-                                 title="@(item.Beat.Page > 0 ? "Page " + item.Beat.Page : "Unassigned")"
-                                 @onclick="() => JumpBesideAsync(line)">
-                                @RenderTagBars(item.Beat.Id)
-                                <span class="beside-page">@(item.Beat.Page > 0 ? item.Beat.Page.ToString() : "–")</span>
-                                <span class="beside-text">@(item.Beat.Title.Length > 0 ? item.Beat.Title : "Untitled beat")</span>
-                                @if (StoryItems.IsKey(_slate.Story, item.Beat.Id))
-                                {
-                                    <span class="beside-star">★</span>
-                                }
-                                @RenderTagMarks(item.Beat.Id)
                             </div>
                         }
                     }
@@ -1474,6 +1132,260 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_libraryOpen)
+{
+    <div class="modal-backdrop" @onclick="() => _libraryOpen = false">
+        <div class="modal library-modal" @onclick:stopPropagation="true">
+            <div class="sidebar-tabs">
+                <button class="@(_libraryTab == 0 ? "active" : null)" @onclick="() => _libraryTab = 0">CAST</button>
+                <button class="@(_libraryTab == 1 ? "active" : null)" @onclick="() => _libraryTab = 1">ELEMENTS</button>
+            </div>
+            <div class="sidebar-body">
+                @if (_libraryTab == 0)
+                {
+                    @if (_analysis.Characters.Count == 0)
+                    {
+                        <div class="sidebar-empty">No characters in this script yet.</div>
+                    }
+                    else
+                    {
+                        <div class="character-view-toggle">
+                            <button class="@(_showGenderReport ? null : "active")" @onclick="() => _showGenderReport = false">LIST</button>
+                            <button class="@(_showGenderReport ? "active" : null)" @onclick="() => _showGenderReport = true">BALANCE</button>
+                        </div>
+                    }
+                    @if (_showGenderReport && _analysis.Characters.Count > 0)
+                    {
+                        var report = Characters.Report(_analysis.Elements, _analysis.Characters, CharacterGenders());
+                        <div class="goal-panel">
+                            @foreach (var (title, value) in GenderMetrics)
+                            {
+                                var total = report.Totals.Sum(value);
+                                <div class="goal-card">
+                                    <div class="goal-card-title">@title</div>
+                                    <div class="gender-bar">
+                                        @foreach (var tagTotal in report.Totals.Where(t => value(t) > 0))
+                                        {
+                                            <span class="gender-@tagTotal.Tag.ToLowerInvariant()" style="flex-grow:@value(tagTotal)"></span>
+                                        }
+                                    </div>
+                                    @foreach (var tagTotal in report.Totals)
+                                    {
+                                        <div class="gender-line">
+                                            <span class="gender-dot gender-@tagTotal.Tag.ToLowerInvariant()"></span>
+                                            <span>@tagTotal.Tag</span>
+                                            <span class="character-count">@value(tagTotal)</span>
+                                            <span class="character-count">@(total == 0 ? "–" : $"{Math.Round(100.0 * value(tagTotal) / total)}%")</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <div class="goal-card">
+                                <div class="goal-card-title">SCENES SHARED</div>
+                                @foreach (var pair in report.Pairs)
+                                {
+                                    <div class="gender-line gender-pair">
+                                        <span><span class="gender-dot gender-@pair.First.ToLowerInvariant()"></span><span class="gender-dot gender-@pair.Second.ToLowerInvariant()"></span></span>
+                                        <span>@pair.First + @pair.Second</span>
+                                        <span class="character-count">@pair.Scenes</span>
+                                    </div>
+                                }
+                            </div>
+                            <div class="goal-card">
+                                <div class="goal-card-title">BY CHARACTER</div>
+                                @foreach (var row in report.Rows)
+                                {
+                                    <div class="gender-line">
+                                        <span class="gender-dot gender-@row.Tag.ToLowerInvariant()" title="@row.Tag"></span>
+                                        <span class="character-name">@row.Name</span>
+                                        <span class="character-count">@row.Lines</span>
+                                        <span class="character-count">@row.Words</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (_analysis.Characters.Count > 0)
+                    {
+                        <div class="character-row character-head">
+                            <span class="character-name">NAME</span>
+                            <span class="character-count">LINES</span>
+                            <span class="character-count">WORDS</span>
+                            <span class="character-actions"></span>
+                        </div>
+                    }
+                    @foreach (var character in _showGenderReport ? Array.Empty<CharacterStat>() : _analysis.Characters)
+                    {
+                        var colour = CharacterColour(character.Name);
+                        var gender = Characters.Tag(CharacterSetting(character.Name)?.Gender);
+                        <div class="character-row">
+                            <button class="character-swatch @(colour.Length == 0 ? "none" : null)"
+                                    style="@(colour.Length > 0 ? $"background:{colour}" : null)"
+                                    title="Highlight colour"
+                                    @onclick="() => ToggleColourPicker(character.Name)"></button>
+                            <button class="character-gender gender-text-@gender.ToLowerInvariant()" title="@gender — click to change"
+                                    @onclick="() => CycleGender(character.Name)">@(gender == "Unspecified" ? "–" : gender[..1])</button>
+                            @if (_renamingCharacter == character.Name)
+                            {
+                                <input class="character-rename" @ref="_renameInput" @bind="_renameText" @bind:event="oninput"
+                                       @onkeydown="OnRenameKeyDown" />
+                            }
+                            else
+                            {
+                                <span class="character-name">@character.Name</span>
+                                <span class="character-count">@character.Lines</span>
+                                <span class="character-count">@character.Words</span>
+                                <button class="icon-btn character-actions" title="Rename everywhere"
+                                        @onclick="() => StartRename(character.Name)">✎</button>
+                                <button class="icon-btn character-tools" title="Writer's tools for @character.Name"
+                                        aria-expanded="@CastMenuOpen(character.Name)"
+                                        @onclick="() => ToggleCastMenu(character.Name)">Tools</button>
+                            }
+                        </div>
+                        @if (CastMenuOpen(character.Name))
+                        {
+                            <div class="tool-menu" role="menu">
+                                @foreach (var exercise in ExerciseCatalog.All.Where(entry => entry.Anchor == AnchorKind.Character))
+                                {
+                                    <button class="btn" role="menuitem" @onclick="() => StartCastToolAsync(exercise.Id, character.Name)">@exercise.Name</button>
+                                }
+                            </div>
+                        }
+                        @if (_colourPickerFor == character.Name)
+                        {
+                            <div class="character-palette">
+                                @foreach (var swatch in Characters.Palette)
+                                {
+                                    <button class="character-swatch @(swatch == colour ? "picked" : null)" style="background:@swatch"
+                                            title="@swatch" @onclick="() => SetCharacterColourAsync(character.Name, swatch)"></button>
+                                }
+                                <button class="character-swatch none @(colour.Length == 0 ? "picked" : null)" title="No highlight"
+                                        @onclick="() => SetCharacterColourAsync(character.Name, string.Empty)"></button>
+                            </div>
+                        }
+                    }
+                }
+                else
+                {
+                    <div class="elements-section">
+                        <div class="elements-head">
+                            <span class="goal-card-title">STORYLINES</span>
+                            <button class="btn" @onclick="AddStoryline">+ Add</button>
+                        </div>
+                        @if (_slate.Story.Storylines.Count == 0)
+                        {
+                            <div class="sidebar-empty">No storylines yet. Try "A Story", "B Story" or "Runner".</div>
+                        }
+                        @foreach (var line in _slate.Story.Storylines)
+                        {
+                            @if (_editingStoryline == line)
+                            {
+                                <div class="storyline-edit">
+                                    <input class="character-rename" @ref="_storylineNameInput" @bind="_storylineEditName" @bind:event="oninput"
+                                           placeholder="@StorylineHint(line)" @onkeydown="OnStorylineKeyDown" />
+                                    <input class="character-rename" @bind="_storylineEditAxis" @bind:event="oninput"
+                                           placeholder="Arc axis, e.g. Tension" title="What the Arc's vertical axis measures for this storyline" />
+                                    <textarea class="card-body-input" rows="3" placeholder="What is this storyline about?"
+                                              @bind="_storylineEditDescription" @bind:event="oninput"></textarea>
+                                    <div class="character-palette">
+                                        @foreach (var swatch in Characters.Palette)
+                                        {
+                                            <button class="character-swatch @(swatch == _storylineEditColour ? "picked" : null)" style="background:@swatch"
+                                                    title="@swatch" @onclick="() => _storylineEditColour = swatch"></button>
+                                        }
+                                        <button class="character-swatch none @(_storylineEditColour.Length == 0 ? "picked" : null)" title="No colour"
+                                                @onclick="() => _storylineEditColour = string.Empty"></button>
+                                    </div>
+                                    <div class="modal-actions">
+                                        <button class="btn" @onclick="() => RequestDeleteStoryline(line)">Delete</button>
+                                        <button class="btn" @onclick="CancelStorylineEdit">Cancel</button>
+                                        <button class="btn primary" @onclick="SaveStorylineEdit">Save</button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="character-row storyline-row">
+                                    <span class="character-swatch @(line.Colour.Length == 0 ? "none" : null)"
+                                          style="@(line.Colour.Length > 0 ? $"background:{line.Colour}" : null)"></span>
+                                    <span class="character-name" title="@line.Description">@(line.Name.Length > 0 ? line.Name : "Untitled storyline")</span>
+                                    <button class="icon-btn character-actions" title="Edit storyline"
+                                            @onclick="() => StartStorylineEdit(line)">✎</button>
+                                </div>
+                                @if (line.Description.Length > 0)
+                                {
+                                    <div class="storyline-description">@line.Description</div>
+                                }
+                            }
+                        }
+                    </div>
+                    <div class="elements-section">
+                        <div class="elements-head"><span class="goal-card-title">LOCATIONS</span></div>
+                        @{
+                            var locations = _analysis.Locations ?? Array.Empty<LocationEntry>();
+                            var missing = _slate.Story.Locations.Where(saved => !locations.Any(place => place.Name == saved.Name)).ToList();
+                        }
+                        @if (locations.Count == 0)
+                        {
+                            <div class="sidebar-empty">No locations yet. They come from your scene headings.</div>
+                        }
+                        @foreach (var place in locations)
+                        {
+                            var placeColour = LocationColour(place.Name);
+                            <div class="character-row storyline-row">
+                                <button class="character-swatch @(placeColour.Length == 0 ? "none" : null)"
+                                        style="@(placeColour.Length > 0 ? $"background:{placeColour}" : null)"
+                                        title="Set colour" @onclick="() => _locationPickerFor = _locationPickerFor == place.Name ? null : place.Name"></button>
+                                <button class="location-name" title="Show scenes"
+                                        @onclick="() => ToggleLocation(place.Name)">@place.Name</button>
+                                <span class="character-count">@place.Scenes.Count</span>
+                            </div>
+                            @if (_locationPickerFor == place.Name)
+                            {
+                                <div class="character-palette">
+                                    @foreach (var swatch in Characters.Palette)
+                                    {
+                                        <button class="character-swatch @(swatch == placeColour ? "picked" : null)" style="background:@swatch"
+                                                title="@swatch" @onclick="() => SetLocationColour(place.Name, swatch)"></button>
+                                    }
+                                    <button class="character-swatch none @(placeColour.Length == 0 ? "picked" : null)" title="No colour"
+                                            @onclick="() => SetLocationColour(place.Name, string.Empty)"></button>
+                                </div>
+                            }
+                            @if (_expandedLocations.Contains(place.Name))
+                            {
+                                @foreach (var scene in place.Scenes)
+                                {
+                                    <button class="location-scene" title="Line @scene.LineNumber"
+                                            @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
+                                }
+                            }
+                        }
+                        @if (missing.Count > 0)
+                        {
+                            <div class="goal-card-title">NOT IN THE SCRIPT</div>
+                            @foreach (var gone in missing)
+                            {
+                                <div class="character-row storyline-row location-gone">
+                                    <span class="character-swatch" style="background:@gone.Colour"></span>
+                                    <span class="character-name">@gone.Name</span>
+                                    <button class="btn" title="Forget this colour" @onclick="() => DiscardLocation(gone)">Discard</button>
+                                </div>
+                            }
+                        }
+                    </div>
+                    <div class="elements-section">
+                        <button class="btn" @onclick="() => _libraryTab = 0">Characters: colours are set in Cast →</button>
+                    </div>
+                }
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _libraryOpen = false">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_outlineExportOpen)
 {
     <div class="modal-backdrop">
@@ -1485,7 +1397,7 @@ Open a .fountain file to see formatted pages.</div>
             <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Characters" /> Characters</label>
             <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.Locations" /> Locations</label>
             <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.KeyOnly" /> Key beats only</label>
-            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.BeatSheet" /> Include the Beat Sheet</label>
+            <label class="key-only-toggle"><input type="checkbox" @bind="_outlineOptions.BeatSheet" /> Include the Board inbox beats</label>
             @if (DetachedItems.Count > 0)
             {
                 <p class="detached-note">@DetachedItems.Count detached item@(DetachedItems.Count == 1 ? "" : "s") (tags whose heading is gone) will not be exported.</p>
@@ -1512,7 +1424,6 @@ Open a .fountain file to see formatted pages.</div>
             else
             {
                 <p class="tool-note">Writes headings and prompts only, nothing that prints, so the page count does not change.</p>
-                <label class="key-only-toggle"><input type="checkbox" @bind="_seedBeats" /> Seed the Beat Sheet too</label>
             }
             @foreach (var template in AllTemplates)
             {
@@ -1787,6 +1698,14 @@ Open a .fountain file to see formatted pages.</div>
     private bool _autosaveEnabled;
     private int _mainViewIndex;
     private int _sidebarTab;
+    private bool _libraryOpen;
+    private int _libraryTab;
+
+    private void OpenLibrary(int tab)
+    {
+        _libraryTab = tab;
+        _libraryOpen = true;
+    }
     private int _caretLine = 1;
     private string _caretElementLabel = "Action";
     private string _statusMessage = "Ready";
@@ -2079,8 +1998,6 @@ Open a .fountain file to see formatted pages.</div>
 
         public bool BesideOpen { get; init; }
 
-        public bool BesideBeats { get; init; }
-
         public bool BoardDescriptions { get; init; } = true;
 
         public string ArcMode { get; init; } = "board";
@@ -2094,8 +2011,6 @@ Open a .fountain file to see formatted pages.</div>
         public OutlineFilters? OutlineFilters { get; init; }
 
         public StoryFilter? BoardFilter { get; init; }
-
-        public StoryFilter? BeatFilter { get; init; }
 
         // "Classify As" overrides ride in the session key, per row 3.2's note
         // that they are session state rather than file content.
@@ -2164,7 +2079,6 @@ Open a .fountain file to see formatted pages.</div>
         _previewZoom = Math.Clamp(snapshot.PreviewZoom, MinPreviewZoom, MaxPreviewZoom);
         _workshopOpen = snapshot.WorkshopOpen;
         _besideOpen = snapshot.BesideOpen;
-        _besideBeats = snapshot.BesideBeats;
         _boardDescriptions = snapshot.BoardDescriptions;
         _arcPages = snapshot.ArcMode == "pages";
         _typewriterScrolling = snapshot.TypewriterScrolling;
@@ -2172,7 +2086,6 @@ Open a .fountain file to see formatted pages.</div>
         _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
         _outlineFilters = snapshot.OutlineFilters ?? new OutlineFilters();
         _boardFilter = snapshot.BoardFilter ?? new StoryFilter();
-        _beatFilter = snapshot.BeatFilter ?? new StoryFilter();
 
         // Prune entries the server no longer has rather than erroring on click.
         _recentFiles.Clear();
@@ -2781,12 +2694,11 @@ Open a .fountain file to see formatted pages.</div>
 
     // ---- Beside pane (S2.3) ----
     //
-    // A compact Board or Beats list next to the script. The rows are rebuilt
+    // A compact Board list next to the script. The rows are rebuilt
     // only when a parse produces a new analysis; the highlight is looked up
     // from the caret line the caret callback already keeps.
 
     private bool _besideOpen;
-    private bool _besideBeats;
     private DocumentAnalysis? _besideRowsFor;
     private List<BesideRow> _besideRows = new();
 
@@ -2810,17 +2722,11 @@ Open a .fountain file to see formatted pages.</div>
         await PersistBesideAsync();
     }
 
-    private async Task SetBesideAsync(bool beats)
-    {
-        _besideBeats = beats;
-        await PersistBesideAsync();
-    }
-
     private async Task PersistBesideAsync()
     {
         try
         {
-            await JS.InvokeVoidAsync("passage.setBeside", _besideOpen, _besideBeats);
+            await JS.InvokeVoidAsync("passage.setBeside", _besideOpen);
         }
         catch (JSException)
         {
@@ -2858,19 +2764,6 @@ Open a .fountain file to see formatted pages.</div>
 
     private DocumentAnalysis? _beatScenesFor;
     private IReadOnlyList<ScenePlacement> _beatScenes = Array.Empty<ScenePlacement>();
-    private IReadOnlyList<ActBreak> _beatActs = Array.Empty<ActBreak>();
-
-    // The grid never shrinks under a placed beat: trimming the script or the
-    // target must not hide planning that is still saved.
-    private int BeatColumns => Math.Max(
-        BeatSheet.Columns(_analysis.PageCount, _slate.BeatSheetPages),
-        BeatSheet.LastBeatPage(_slate.Beats));
-
-    private static string BeatStyle(Beat beat, int? row)
-    {
-        var style = row is { } gridRow ? $"grid-column:{beat.Page} / span {beat.Span};grid-row:{gridRow + 2};" : string.Empty;
-        return beat.Colour.Length > 0 ? style + $"--beat-colour:{beat.Colour}" : style;
-    }
 
     private IReadOnlyList<ScenePlacement> BeatScenes
     {
@@ -2880,7 +2773,6 @@ Open a .fountain file to see formatted pages.</div>
             {
                 _beatScenesFor = _analysis;
                 _beatScenes = BeatSheet.MapScenes(_analysis.Elements, _analysis.PreviewPages);
-                _beatActs = BeatSheet.ActBreaks(_analysis.Elements, _beatScenes);
             }
 
             return _beatScenes;
@@ -2900,15 +2792,9 @@ Open a .fountain file to see formatted pages.</div>
     private bool _focusBeatTitle;
     private Beat? _deleteBeat;
 
-    // Page 0 adds to the tray.
-    private void AddBeat(int page)
+    private void AddBeat()
     {
         var beat = new Beat();
-        if (page > 0)
-        {
-            (beat.Page, beat.Span) = BeatSheet.Clamp(page, 1, BeatColumns);
-        }
-
         _slate.Beats.Add(beat);
         SaveSlate();
         StartBeatEdit(beat);
@@ -3199,7 +3085,6 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     private bool _templatesOpen;
-    private bool _seedBeats;
     private string _saveTemplateName = string.Empty;
     private Guid? _renamingTemplate;
     private string _renameTemplateName = string.Empty;
@@ -3258,15 +3143,6 @@ Open a .fountain file to see formatted pages.</div>
         }
 
         var message = $"Wrote {template.Name} from line {insertAt + 1} — see BOARD";
-        if (_seedBeats)
-        {
-            var columns = BeatSheet.Columns(_analysis.PageCount, _slate.BeatSheetPages);
-            var (added, skipped) = StructureTemplates.SeedBeats(template, _slate.Beats, _slate.BeatSheetPages, columns);
-            SaveSlate();
-            message += $"; {added} beat{(added == 1 ? "" : "s")} added to the Beat Sheet"
-                + (skipped > 0 ? $", {skipped} beat{(skipped == 1 ? "" : "s")} already there" : string.Empty);
-        }
-
         _statusMessage = message;
         _templatesOpen = false;
     }
@@ -3492,16 +3368,14 @@ Open a .fountain file to see formatted pages.</div>
     // ---- Filters (S1.5): dim, never hide. One set per view, per browser. ----
 
     private StoryFilter _boardFilter = new();
-    private StoryFilter _beatFilter = new();
-    private StoryFilter ActiveFilter => _mainViewIndex == 2 ? _beatFilter : _boardFilter;
+    private StoryFilter ActiveFilter => _boardFilter;
 
     private async Task SetStoryFilterAsync(StoryFilter filter)
     {
-        var view = _mainViewIndex == 2 ? "beats" : "board";
-        if (view == "beats") _beatFilter = filter; else _boardFilter = filter;
+        _boardFilter = filter;
         try
         {
-            await JS.InvokeVoidAsync("passage.setStoryFilter", view, filter);
+            await JS.InvokeVoidAsync("passage.setStoryFilter", "board", filter);
         }
         catch (JSException)
         {
@@ -3554,16 +3428,7 @@ Open a .fountain file to see formatted pages.</div>
         _boardFilter.IsActive && !StoryFilter.LaneMatches(lane.ActCard is { } act && CardMatches(_boardFilter, act), lane.Groups.Select(group => GroupMatches(_boardFilter, group))) ? "dimmed" : null;
 
     private string? DimBeat(Beat beat) =>
-        _beatFilter.IsActive && !ItemMatches(_beatFilter, beat.Id, null, 0) ? "dimmed" : null;
-
-    private string? DimScene(ScenePlacement scene)
-    {
-        if (!_beatFilter.IsActive) return null;
-        EnsureFilterCaches();
-        if (!_filterScenes.TryGetValue(scene.LineNumber, out var element)) return "dimmed";
-        var id = element.Id != Guid.Empty && _analysis.DuplicateIdLines?.Contains(scene.LineNumber) != true ? element.Id : Guid.Empty;
-        return ItemMatches(_beatFilter, id, scene.Heading, scene.LineNumber) ? null : "dimmed";
-    }
+        _boardFilter.IsActive && !ItemMatches(_boardFilter, beat.Id, null, 0) ? "dimmed" : null;
 
     private RenderFragment RenderFilterBar => __builder =>
     {
@@ -4087,65 +3952,16 @@ Open a .fountain file to see formatted pages.</div>
         UpdateCaretElementLabel();
     }
 
-    // ---- Beat Sheet: drag-move and resize ----
-    //
-    // The gesture runs in passage.js (trap 4); these receive only the result.
-    // The browser clamps the same way, but the server's clamp is the truth.
-
-    [JSInvokable]
-    public void OnBeatMoved(Guid id, int page)
-    {
-        if (FindBeat(id) is not { } beat)
-        {
-            return;
-        }
-
-        if (page <= 0)
-        {
-            // Into the tray, at the end of it, keeping its span for when it
-            // goes back on the grid.
-            beat.Page = 0;
-            _slate.Beats.Remove(beat);
-            _slate.Beats.Add(beat);
-        }
-        else
-        {
-            (beat.Page, beat.Span) = BeatSheet.ClampMove(page, beat.Span, BeatColumns);
-        }
-
-        SaveSlate();
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void OnBeatResized(Guid id, int span)
-    {
-        if (FindBeat(id) is not { Page: > 0 } beat)
-        {
-            return;
-        }
-
-        (beat.Page, beat.Span) = BeatSheet.Clamp(beat.Page, span, BeatColumns);
-        SaveSlate();
-        StateHasChanged();
-    }
-
     private Beat? FindBeat(Guid id)
     {
         var beat = _slate.Beats.FirstOrDefault(candidate => candidate.Id == id);
         if (beat is null)
         {
-            _statusMessage = "That beat is no longer on the beat sheet";
+            _statusMessage = "That beat is no longer in the inbox";
             StateHasChanged();
         }
 
         return beat;
-    }
-
-    private void SetBeatTarget()
-    {
-        _slate.BeatSheetPages = Math.Clamp(_slate.BeatSheetPages, 1, BeatSheet.MaxTargetPages);
-        SaveSlate();
     }
 
     // ---- Beat Board: drag to reorder ----
@@ -5762,6 +5578,8 @@ Open a .fountain file to see formatted pages.</div>
         _slate.Exercises.Add(run);
         _workshopView = WorkshopView.Tools;
         _toolMenuFor = null;
+        // Started from the Cast dialog: close it so the dock is what the writer sees.
+        _libraryOpen = false;
         if (!_workshopOpen)
         {
             _workshopOpen = true;
@@ -6716,16 +6534,12 @@ Open a .fountain file to see formatted pages.</div>
         return local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("d MMM");
     }
 
-    // A beat on the grid (Row set) or in the tray (Row null). Placement is
-    // CSS grid lines, so the browser can move and resize it without a round
-    // trip; only the result is sent back (trap 4).
-    private RenderFragment<(Beat Beat, int? Row)> RenderBeat => item => __builder =>
+    // A beat in the Board inbox.
+    private RenderFragment<Beat> RenderBeat => beat => __builder =>
     {
-        var beat = item.Beat;
         <div class="beat-card @(_editingBeat == beat ? "selected" : null) @DimBeat(beat)"
-             data-beat-id="@beat.Id" data-page="@beat.Page" data-span="@beat.Span"
-             data-item-kind="beat" data-item-id="@beat.Id"
-             style="@BeatStyle(beat, item.Row)"
+             data-beat-id="@beat.Id" data-item-kind="beat" data-item-id="@beat.Id"
+             style="@(beat.Colour.Length > 0 ? $"--beat-colour:{beat.Colour}" : null)"
              @ondblclick:stopPropagation="true">
             @RenderTagBars(beat.Id)
             <div class="beat-title">
@@ -6738,15 +6552,8 @@ Open a .fountain file to see formatted pages.</div>
             {
                 <div class="beat-body">@beat.Description</div>
             }
-            @if (beat.Page == 0)
-            {
-                <button class="icon-btn beat-position-btn" title="Try this beat in each of the story's seven turns"
-                        @onclick="() => PositionBeatAsync(beat)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">Position this</button>
-            }
-            @if (item.Row is not null)
-            {
-                <div class="beat-resize" title="Drag to change how many pages this beat spans"></div>
-            }
+            <button class="icon-btn beat-position-btn" title="Try this beat in each of the story's seven turns"
+                    @onclick="() => PositionBeatAsync(beat)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">Position this</button>
         </div>
     };
 
@@ -6755,7 +6562,7 @@ Open a .fountain file to see formatted pages.</div>
     private RenderFragment<Beat> RenderBeatEditor => beat => __builder =>
     {
         <div class="board-card editing beat-editor">
-            <div class="card-kind">@(beat.Page > 0 ? (beat.Span > 1 ? $"Pages {beat.Page}–{beat.Page + beat.Span - 1}" : $"Page {beat.Page}") : "Unassigned")</div>
+            <div class="card-kind">Unassigned</div>
             <input class="card-heading-input" @ref="_beatTitleInput" @bind="_beatEditTitle" @bind:event="oninput"
                    @onkeydown="OnBeatEditKeyDown" placeholder="Beat" />
             <textarea class="card-body-input" rows="3" @bind="_beatEditDescription" @bind:event="oninput"

@@ -657,12 +657,12 @@ all seven turns are flat, a two-line shortlist and a `Pick` of the turn over the
 marked). Its target `TargetKind.Board` files the inbox beat as a scene under the sequence whose synopsis carries the
 chosen turn's line (`ToolTargets.SequenceForTurn`), through `ConvertBeatToCardAsync`, the Send-to-Board path; a beat
 still on the page plan asks first with the same modal, which now says "under <turn>". "Position this" is a button on
-every inbox beat (BEATS tray and BOARD strip share `RenderBeat`) and Right now's Position rule is live; both resume
+every inbox beat (the BOARD strip; the BEATS tray went in #68) and Right now's Position rule is live; both resume
 the run kept for that beat. `ScriptTurnHint` is folded into the host's `ScriptShapeValue`. The Bridge card is in the
 Board card Tools menu (that scene as A). `SlateMigration.Migrate` moves Bridges and Positions (blank ones are cleared,
 not moved; trailing empty rounds and turns are not carried; a turn with text but no slot named keeps its text on the
 moment). Old views, handlers, `WorkshopView` members, `BridgeSlotsId`, and (now unused) the Editor's whole partner
-block and `IStoryPartner` injection are deleted. Tests: 4 new, 2 updated for load-time migration (138 total, all pass).
+block and `IStoryPartner` injection are deleted. Tests: 4 new, 2 updated for load-time migration (134 total after the merge with main, all pass).
 
 **Deviations:**
 - Bridge's cards are scenes (a Board scene card), not sequence or act cards; Z can't be "the end of the Shape" (type
@@ -676,8 +676,11 @@ block and `IStoryPartner` injection are deleted. Tests: 4 new, 2 updated for loa
   all-seven rule, so the Ladder opens only after every turn is marked flat.
 - Position's three questions are three `Slots` steps over the seven turns, not one row per turn: before, then after,
   then the marks. A turn left blank is a turn not tried.
-- Beats on the page plan (Page > 0) can't be the anchor from "Position this" (inbox beats only), so the confirm
-  modal is reached only if a beat is moved onto the plan after its run began. It was checked by reading, not by hand.
+- Merged with main after #68 (Beats panel removed) and #69 (Cast and Elements in a dialog). The inbox now lives
+  only in the BOARD strip, so "Position this" is reachable there (the BEATS tray entry point no longer exists and
+  needs no code; the shared beat render carries the button). The Cast row's Tools menu survived #69 inside the Cast
+  dialog; starting a tool from it now closes the dialog (`_libraryOpen = false` in `StartToolAsync`) so the dock is
+  what the writer sees. Beats with a leftover `Page` > 0 still get the page-plan confirm, by reading only.
 - Verified in the browser on a scratch copy of the dev data (§8): `split-test`'s Bridge and Position runs show on
   their cards after migration; "Position this" on a BOARD-strip beat, Right now → Position, moment prefilled, a
   turn marked alive, the pick, Send to → under Plot point 1 / Pinch 1 (a scene under Sequence 2 / 3, beat out of the

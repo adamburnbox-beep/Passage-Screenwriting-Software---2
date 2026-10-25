@@ -3,7 +3,7 @@ using Passage.Parser;
 namespace Passage.Web.Services;
 
 /// <summary>
-/// The BOARD / BEATS filter bar (docs/STORY-PLAN.md S1.5). Per browser, one set
+/// The BOARD / ARC filter bar (docs/STORY-PLAN.md S1.5). Per browser, one set
 /// per view, in the session key like <see cref="OutlineFilters"/>. Choices
 /// combine as OR within a kind and AND across kinds; an empty kind is not
 /// constrained, so an empty filter matches everything. Characters are bare
