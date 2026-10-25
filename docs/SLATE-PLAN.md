@@ -1,5 +1,13 @@
 # Slate in Passage — implementation plan
 
+> **Superseded in part (2026-10-25).** The UI and run model this plan describes —
+> the per-tool worksheets, record types, dock views and the Ideation overlay's old
+> markup, in Phases 1–6 and 8 — were replaced by the exercise deck in
+> `docs/SLATE-REDO-PLAN.md`, rows T1–T8. The sections still in force are *Rule 0*,
+> decisions *B*, *D* and *E*, and Phase 7's seam (`IStoryPartner`). Everything else
+> is history: its Done notes are useful for finding why something is the way it is,
+> not for design. The current structure is in `docs/SLATE-HANDOVER.md`.
+
 Bringing the Slate engines and the bracket queue into `Passage.Web`.
 
 **Scope, as decided:** engines and brackets only. The multi-story board,
@@ -665,45 +673,28 @@ meantime.
 
 ---
 
-### Phase 8 — Worksheet refresh (vault edits of 2026-09-26) · `todo`
+### Phase 8 — Worksheet refresh (vault edits of 2026-09-26) · `superseded`
 
-Four worksheets and `engines.md` changed in the vault on 2026-09-26. A
-side-by-side check on 2026-09-27 found these missing from the dock. The
-Two-Camera lens is already in (the eighth lens). Everything else is still
-to build, in the worksheets' own words (decision A):
+Four worksheets and `engines.md` changed in the vault on 2026-09-26. The items
+below were being built into the old dock, one per session; the redo
+(`docs/SLATE-REDO-PLAN.md`) rebuilt every tool as an exercise and absorbed the
+rest. Nothing here is still to do:
 
-- `done` **Revise, check 0 — GSU.** Goal / stakes / urgency, one row per
-  character in the scene, before checks 1–6. A flag on GSU does *not*
-  open a Lens; it points at a Scene Dial instead.
-  *Done (2026-09-27):* `ReviseRun.Gsu` (`List<GsuRow>`: Character, Goal,
-  Stakes, Urgency; two rows to start, as printed) and `ReviseRun.GsuFlag`,
-  both counted by `IsEmpty`. "Another character" appends a row. A **Y**
-  shows the worksheet's callout and the six dials with their meanings
-  from `SceneDials` in `Editor.razor` — the array Stage it should reuse.
-  Older sidecars load with two empty rows. *Deviation:* GSU is not in
-  `CheckNames` — it has no answer, Lens or fragment, so it is its own
-  table rather than a seventh `ReviseCheck`.
-- `todo` **Fill, optional — Stage it (Scene Dials).** After the real answer: one
-  "wants out of this scene" line per character, then a d6 roll across six
-  dials (opposed wants · pre-agitator · agitator · hidden thing · wrong
-  room · collision ahead) and a fragment slot. Source: *Place or Build —
-  Position or Fill*, Path B; `engines.md` § Scene Dials.
-- `todo` **Position, fallback — Time-Skip Ladder.** "At it / One year later / One
-  minute later", then *Still structural? Y/N*. Offered when turns come up
-  flat.
-- `todo` **Read-back, two more questions.** *Plumbing aside: which scene would you
-  skip?* and the eavesdropper test (would a stranger keep listening; cover
-  the names, can you tell who's talking).
-- `todo` **Split, Path A — optional checks on the ends** (the two ten-second
-  checks after Rung 0) and **Mirror Z** (write the opposite ending in full).
-- `todo` **Belief, Path B — Cast card** for the opponent and main supporting
-  characters, once per story, with the opponent's two extra questions
-  (the strawman test).
-- `todo` **Extend Backward — Obituary Z**, the second way to fix Z.
-
-One item per session, top to bottom; flip its `todo` to `done` in the
-same commit. Read the worksheet section for each before building it; the labels above
-are summaries, not copy.
+- `done` **Revise, check 0 — GSU.** Built in the old view, then rebuilt in T7 as
+  three `Slots(speakers)` steps in Push/Pull, prefilled from the scene's speakers;
+  a **Y** on the GSU flag points at Scene Dials on the same scene (no Lens).
+- **Fill, optional — Stage it (Scene Dials).** Absorbed by **T4**: Scene Dials is
+  its own exercise (`Slots(speakers)` → `Dice` → fragment) and Fill's optional
+  *Stage it* group asks the same three questions.
+- **Position, fallback — Time-Skip Ladder.** Absorbed by **T6**: a `Branch` that
+  opens when all seven turns are marked flat.
+- **Read-back, two more questions** (*Plumbing aside: which scene would you
+  skip?*, the eavesdropper test). Absorbed by **T7**: Push/Pull's read-back.
+- **Split, Path A — optional checks on the ends and Mirror Z.** Absorbed by **T5**:
+  yes/no gates in A→Z→Split.
+- **Belief, Path B — Cast card.** Absorbed by **T5**: a loop behind its own stop at
+  the end of Belief Split.
+- **Extend Backward — Obituary Z.** Absorbed by **T5**: an optional branch in Extend.
 
 ## Not going in
 

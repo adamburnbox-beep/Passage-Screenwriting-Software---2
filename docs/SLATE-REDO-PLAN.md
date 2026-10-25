@@ -758,7 +758,7 @@ card link is gone. Tests: 4 new, 2 updated (138 total, all pass).
   Not exercised by hand: Copy, the belief check's Lens fragment, a Push/Pull started from a Board card, and 375px on
   Push/Pull itself.
 
-### T8 — Ideation overlay, cleanup, docs · `todo`
+### T8 — Ideation overlay, cleanup, docs · `done`
 
 - Move the overlay to `IdeationOverlay.razor`, restyle into the step-card
   look; keep it full-screen and project-free (vault `writing-practice` rule).
@@ -769,6 +769,50 @@ card link is gone. Tests: 4 new, 2 updated (138 total, all pass).
 - Update `SLATE-HANDOVER.md` to describe the new structure; mark SLATE-PLAN
   Phase 8 `superseded` with a pointer to the rows here that absorbed each
   item.
+
+**Done:** `Components/Tools/IdeationOverlay.razor` replaces the overlay markup and all of its handlers in `Editor.razor`
+(which keeps only `_ideationOpen` and `<IdeationOverlay>`). It is full screen, in the step-card look (the runner's head, an
+anchor-strip-style lane line, a question, one hint, **Why?**, the trail of earlier rounds as one-line buttons, `step-card`s),
+and it still reads no project data. It loads and saves `.slate/ideation.json` itself (the file and its exemption from the
+orphan sweep are as they were), deals through `IdeationDealer`, and runs the timer through `IToolHost.StartBurstAsync`. New:
+**Send to the Beat inbox** on the kept line (an untagged inbox beat through `IToolHost.SendAsync(TargetKind.InboxBeat, …)`, then
+the sitting is filed) and *Send to Inbox* on each line in the kept list. Offered only when a script has a name. The launcher's
+Ideation card calls `OnOpenIdeation`; `OnOpenClassic`, `ClassicIdeation`, `OpenClassicToolAsync`, `WorkshopView`,
+`_workshopView`, `BurstSettingChangedAsync` and 22 dead CSS rules from the old views are gone. `SlateStore.cs` no longer has
+`FillRun`, `ChainRun`, `BridgeRun`, `PositionRun`, `ReviseRun`, `BeliefRun` and their parts, nor the matching `SlateDocument`
+lists; `SlateMigration.Migrate(document, rawJson)` reads them from the raw JSON into private DTOs. `SplitRun` stays (now nine
+strings, in `SplitScript.cs`): the Shape write is built from it. `Suggestions.ForFill`, `ForSplitMidpoint`, `ForBridgeRound`,
+`ForChain` and `ForExtendLink` are deleted; `ForStep` is the only builder left. `SlateStore.CurrentVersion` is 2; `Load` always
+calls `Migrate`, which converts a sidecar whose raw `slateVersion` is below 2 and leaves a version 2 one alone; every save
+stamps 2. Tests: 136 total, all pass: `TestSlateMigrationRealSidecars` loads copies of the dev data's `fill-test` and
+`split-test` sidecars (`Passage.Tests/Fixtures/slate-v1/`), `TestSlateMigrationEveryOldRecordType` migrates one sidecar holding
+every old record type, and the earlier per-type migration tests now feed raw v1 JSON. `docs/SLATE-HANDOVER.md` is rewritten for
+this structure; `SLATE-PLAN.md` has a note at the top and Phase 8 is `superseded` with a pointer to the row that absorbed
+each item. `Editor.razor` lost 295 lines (6,583 → 6,288).
+
+**Deviations:**
+- Migration stays in memory: `Load` converts and stamps version 2, but the file on disk is rewritten at the next save, as
+  in T2–T7. Until then a v1 file is re-migrated on each load (run ids are new each time). Opening any run saves.
+- `Load` reads the version from the raw text rather than `SlateDocument.SlateVersion`: the dev data's `a.fountain.json` has
+  `"slateVersion":1` in lower case, and the property defaults to the current version, so the deserialised value would have passed
+  for current.
+- `ShapeAnswers.ToBeliefRun` and `BeliefRun` are gone: nothing outside tests read them. `SplitRun` is kept, trimmed to the
+  nine lines `SplitScript` writes (the candidates, stress mark and belief fields were only for the old view).
+- The ideation overlay's rounds are one at a time (earlier ones are trail lines, tap to reopen) rather than all on screen, and
+  round numbers are not shown (R-A: no step counter). *Why?* holds the worksheet's long notes. The sent-to-inbox mark is for
+  the session only: closing the overlay forgets it, so *Send to Inbox* is offered again on an old line. Storing it would make a
+  log of what was sent (Rule 0).
+- `.slate/ideation.json` and `templates.json` also stamp `slateVersion: 2` now (they share `CurrentVersion`); neither is migrated.
+- The "Classic" links were already gone except Ideation's; no other old dock view remained to delete.
+- Verified in the browser on a scratch copy of the dev data (§8): every launcher card opens (eleven runners and the overlay,
+  no "Classic" anywhere); `fill-test`'s and `split-test`'s runs show on their cards after migration and open with their answers;
+  all five sidecars are written at `SlateVersion` 2 with no old lists after opening a run in each script; the overlay at 1440px and
+  375px (no horizontal overflow); a sitting survives a reload with its lane locked; Start the round starts the read-in and
+  focuses the output, Stop stops it; Keep a line, then Send to the Beat inbox added an untagged beat (`split-test`'s sidecar, and
+  the status bar says so) and filed the line in `ideation.json`; Next round leaves a one-line trail entry, Deal another re-deals;
+  no counters, dates or "done" marks; `.partner` count 0. Not applicable: undo (the overlay never writes to the script) and
+  step 5 (it has no anchor). Built once on SDK 9.0.317 (the Razor trap).
+
 
 ### T9 — A real partner · `blocked on Adam`
 

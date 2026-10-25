@@ -1,0 +1,175 @@
+{
+  "SlateVersion": 1,
+  "IgnoredBrackets": [],
+  "Fills": [],
+  "Chains": [],
+  "Burst": {
+    "Enabled": true,
+    "Seconds": 30
+  },
+  "Split": {
+    "A": "A stowaway is found hiding in the lighthouse",
+    "Z": "The keeper rows the stowaway to the mainland himself and does not come back",
+    "Candidates": [
+      "",
+      "",
+      ""
+    ],
+    "Midpoint": "The keeper finds out who the stowaway is running from, and it\u0027s someone he owes. Changed.",
+    "MidpointAlive": "",
+    "PP1": "",
+    "Crisis": "",
+    "Inciting": "",
+    "Pinch1": "",
+    "Pinch2": "",
+    "LastObstacle": "",
+    "BeliefLayer": false,
+    "Pinch1ThirdRail": "",
+    "Pinch2ThirdRail": "",
+    "HasRung2": false,
+    "HasRung3": false
+  },
+  "Belief": {
+    "Shape": "",
+    "A": "",
+    "Z": "",
+    "Ghost": "",
+    "GhostSize": "",
+    "GhostCommensurate": "",
+    "GhostMismatch": "",
+    "Cut50Change": "",
+    "Cuts": [
+      {
+        "Ratio": 12,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 25,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 50,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 75,
+        "Text": "",
+        "Alive": ""
+      },
+      {
+        "Ratio": 88,
+        "Text": "",
+        "Alive": ""
+      }
+    ],
+    "HasRung3": false,
+    "HasRung4": false
+  },
+  "Extend": {
+    "Z": "The lighthouse burns",
+    "Links": [
+      {
+        "Text": "Someone knocked over the lamp",
+        "Mystery": false
+      },
+      {
+        "Text": "",
+        "Mystery": false
+      }
+    ],
+    "ChainAlive": "",
+    "WeakestLink": ""
+  },
+  "Bridges": [
+    {
+      "A": "The ring is planted in the drawer",
+      "Z": "The ring turns up at the pawnshop",
+      "Rounds": [
+        {
+          "Candidates": [
+            "She finds it while looking for the passport",
+            "She gives it back",
+            ""
+          ],
+          "Picked": "She finds it while looking for the passport (half)",
+          "IsEmpty": false
+        },
+        {
+          "Candidates": [
+            "",
+            "",
+            ""
+          ],
+          "Picked": "",
+          "IsEmpty": true
+        }
+      ],
+      "Wire": "",
+      "IsEmpty": false
+    }
+  ],
+  "Positions": [
+    {
+      "Moment": "The keeper reading the stowaway\u0027s letter aloud to the gulls",
+      "Turns": [
+        {
+          "Slot": "Midpoint",
+          "Before": "He has to have found the letter without her knowing",
+          "After": "",
+          "Alive": "alive",
+          "IsEmpty": false
+        },
+        {
+          "Slot": "",
+          "Before": "",
+          "After": "",
+          "Alive": "",
+          "IsEmpty": true
+        },
+        {
+          "Slot": "",
+          "Before": "",
+          "After": "",
+          "Alive": "",
+          "IsEmpty": true
+        },
+        {
+          "Slot": "",
+          "Before": "",
+          "After": "",
+          "Alive": "",
+          "IsEmpty": true
+        },
+        {
+          "Slot": "",
+          "Before": "",
+          "After": "",
+          "Alive": "",
+          "IsEmpty": true
+        },
+        {
+          "Slot": "",
+          "Before": "",
+          "After": "",
+          "Alive": "",
+          "IsEmpty": true
+        },
+        {
+          "Slot": "",
+          "Before": "",
+          "After": "",
+          "Alive": "",
+          "IsEmpty": true
+        }
+      ],
+      "Shortlist": [
+        "",
+        ""
+      ],
+      "IsEmpty": false
+    }
+  ]
+}
