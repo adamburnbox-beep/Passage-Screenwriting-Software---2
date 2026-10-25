@@ -17,6 +17,10 @@ public static class StoryItems
 
     public static bool HasIdMarker(string line) => IdMarker.IsMatch(line);
 
+    /// <summary>Whether tagging this heading line must stamp it first: it has no
+    /// marker, or its marker is a copy of an earlier heading's.</summary>
+    public static bool NeedsStamp(string line, bool duplicate) => duplicate || !HasIdMarker(line);
+
     /// <summary>Appends the marker to the line; the parser strips it wherever it
     /// sits and then reads a trailing #12#, so the scene number survives. A
     /// marker already on the line (a duplicate) is swapped for the new id.</summary>
@@ -73,7 +77,7 @@ public static class StoryItems
             if (item is not null)
             {
                 item.Key = false;
-                story.Items.RemoveAll(existing => existing.TargetId == targetId && !existing.Key && existing.Storylines.Count == 0);
+                story.Items.RemoveAll(existing => existing.TargetId == targetId && existing.IsEmpty);
             }
 
             return;
@@ -112,10 +116,118 @@ public static class StoryItems
 
         if (removed > 0)
         {
-            story.Items.RemoveAll(item => !item.Key && item.Storylines.Count == 0);
+            story.Items.RemoveAll(item => item.IsEmpty);
         }
 
         return untagged;
+    }
+
+    /// <summary>Tag keys are "storyline:&lt;guid&gt;", "character:&lt;name&gt;" or
+    /// "location:&lt;name&gt;" (S1.4). Returns false for anything else.</summary>
+    public static bool TryParseTag(string key, out string type, out string value)
+    {
+        type = value = string.Empty;
+        var colon = key.IndexOf(':');
+        if (colon <= 0)
+        {
+            return false;
+        }
+
+        type = key[..colon];
+        value = key[(colon + 1)..];
+        return type is "storyline" or "character" or "location" && value.Length > 0;
+    }
+
+    /// <summary>Adds the tag if the item lacks it, removes it if it has it.
+    /// Characters are stored as bare cue names. Returns true when the tag is on
+    /// afterwards, false when it was removed or the key was rejected. An item
+    /// left carrying nothing is dropped.</summary>
+    public static bool ToggleTag(StoryData story, Guid targetId, string kind, string label, string key)
+    {
+        if (!TryParseTag(key, out var type, out var value))
+        {
+            return false;
+        }
+
+        if (type == "character")
+        {
+            value = Characters.BareName(value);
+            if (value.Length == 0)
+            {
+                return false;
+            }
+        }
+        else if (type == "storyline" && !Guid.TryParse(value, out _))
+        {
+            return false;
+        }
+
+        var item = story.Items.FirstOrDefault(existing => existing.TargetId == targetId);
+        if (item is null)
+        {
+            item = new ItemTags { TargetId = targetId, Kind = kind };
+            story.Items.Add(item);
+        }
+
+        item.Label = label;
+        bool on;
+        switch (type)
+        {
+            case "storyline":
+                var line = Guid.Parse(value);
+                on = !item.Storylines.Remove(line);
+                if (on) item.Storylines.Add(line);
+                break;
+            case "character":
+                on = !item.Characters.Remove(value);
+                if (on) item.Characters.Add(value);
+                break;
+            default:
+                on = !item.Locations.Remove(value);
+                if (on) item.Locations.Add(value);
+                break;
+        }
+
+        if (item.IsEmpty)
+        {
+            story.Items.Remove(item);
+        }
+
+        return on;
+    }
+
+    /// <summary>The keys the popover shows as ticked for an item.</summary>
+    public static List<string> TagKeys(ItemTags item) =>
+        item.Storylines.Select(id => "storyline:" + id)
+            .Concat(item.Characters.Select(name => "character:" + name))
+            .Concat(item.Locations.Select(name => "location:" + name))
+            .ToList();
+
+    /// <summary>Rewrites a character name on every item, merging an item that
+    /// already carries the new name. Returns how many items changed.</summary>
+    public static int RenameCharacter(StoryData story, string oldName, string newName)
+    {
+        var changed = 0;
+        foreach (var item in story.Items)
+        {
+            var index = item.Characters.IndexOf(oldName);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            changed++;
+            if (item.Characters.Contains(newName))
+            {
+                item.Characters.RemoveAt(index);
+            }
+            else
+            {
+                item.Characters[index] = newName;
+            }
+        }
+
+        return changed;
     }
 
     /// <summary>Deleting a beat is explicit and the beat is sidecar-owned, so its

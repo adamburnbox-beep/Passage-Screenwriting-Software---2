@@ -72,6 +72,12 @@ public sealed class ItemTags
     public string Label { get; set; } = string.Empty;
     public bool Key { get; set; }
     public List<Guid> Storylines { get; set; } = new();
+    /// <summary>Bare cue names, as <see cref="CharacterSettings"/> (S1.4).</summary>
+    public List<string> Characters { get; set; } = new();
+    /// <summary>Normalised location names, decision C (S1.4).</summary>
+    public List<string> Locations { get; set; } = new();
+
+    public bool IsEmpty => !Key && Storylines.Count == 0 && Characters.Count == 0 && Locations.Count == 0;
 }
 
 /// <summary>A location's optional colour (S1.3), keyed by normalised name

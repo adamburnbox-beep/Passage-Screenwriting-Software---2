@@ -60,6 +60,10 @@ class Program
         failures += RunTest("Test Story Duplicate Id Flags Second Only", TestStoryDuplicateIdFlagsSecondOnly);
         failures += RunTest("Test Story Detached Is Computed Never Removed", TestStoryDetachedIsComputedNeverRemoved);
         failures += RunTest("Test Story Delete Beat Removes Tags", TestStoryDeleteBeatRemovesTags);
+        failures += RunTest("Test Tag Toggle Adds Then Removes", TestTagToggleAddsThenRemoves);
+        failures += RunTest("Test Tag Stamps Unstamped Card Once", TestTagStampsUnstampedCardOnce);
+        failures += RunTest("Test Tag Rename Rewrites And Merges", TestTagRenameRewritesAndMerges);
+        failures += RunTest("Test Tag Characters Are Bare Names", TestTagCharactersAreBareNames);
         failures += RunTest("Test Locations Normalise Prefixes", TestLocationsNormalisePrefixes);
         failures += RunTest("Test Locations Normalise Times Of Day", TestLocationsNormaliseTimesOfDay);
         failures += RunTest("Test Locations Normalise Edge Cases", TestLocationsNormaliseEdgeCases);
@@ -678,6 +682,67 @@ class Program
         Assert(story.Items.Count == 1 && story.Items[0].TargetId == card, "Deleting a beat removes its tags and leaves cards alone");
         StoryItems.SetKey(story, card, "card", "Scene", false);
         Assert(story.Items.Count == 0, "Un-starring an item that carries nothing removes it");
+    }
+
+    static void TestTagToggleAddsThenRemoves()
+    {
+        var story = new StoryData();
+        var target = Guid.NewGuid();
+        var line = Guid.NewGuid();
+        var storyKey = "storyline:" + line;
+        Assert(StoryItems.ToggleTag(story, target, "card", "Scene", storyKey), "First toggle turns the tag on");
+        Assert(story.Items.Single().Storylines.Single() == line, "The storyline is on the item");
+        Assert(StoryItems.ToggleTag(story, target, "card", "Scene", "location:KITCHEN"), "A location toggles on");
+        Assert(!StoryItems.ToggleTag(story, target, "card", "Scene", storyKey), "Second toggle turns the tag off");
+        Assert(story.Items.Single().Storylines.Count == 0 && story.Items.Single().Locations.Single() == "KITCHEN", "Only that tag is removed");
+        StoryItems.ToggleTag(story, target, "card", "Scene", "location:KITCHEN");
+        Assert(story.Items.Count == 0, "An item left carrying nothing is dropped");
+        Assert(!StoryItems.ToggleTag(story, target, "card", "Scene", "storyline:not-a-guid") && story.Items.Count == 0,
+            "A malformed key is rejected and creates nothing");
+        StoryItems.SetKey(story, target, "card", "Scene", true);
+        StoryItems.ToggleTag(story, target, "card", "Scene", "character:BOB");
+        StoryItems.ToggleTag(story, target, "card", "Scene", "character:BOB");
+        Assert(story.Items.Single().Key, "Untagging the last tag keeps a starred item");
+    }
+
+    static void TestTagStampsUnstampedCardOnce()
+    {
+        var line = "INT. HOUSE - DAY #12#";
+        Assert(StoryItems.NeedsStamp(line, false), "An unmarked heading needs a stamp");
+        var id = Guid.NewGuid();
+        var stamped = StoryItems.StampLine(line, id);
+        Assert(!StoryItems.NeedsStamp(stamped, false), "A stamped heading is not stamped again");
+        Assert(StoryItems.NeedsStamp(stamped, true), "A copied marker counts as unstamped");
+        var scene = new FountainParser().Parse(stamped + "\n\nOne.\n").Elements.OfType<SceneHeadingElement>().Single();
+        Assert(scene.Id == id, "The stamp parses back to the same id");
+        Assert(StoryItems.StampLine(stamped, Guid.NewGuid()).Split("[[id:").Length == 2, "Restamping never leaves two markers");
+    }
+
+    static void TestTagRenameRewritesAndMerges()
+    {
+        var story = new StoryData();
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var c = Guid.NewGuid();
+        StoryItems.ToggleTag(story, a, "card", "A", "character:BOB");
+        StoryItems.ToggleTag(story, b, "beat", "B", "character:BOB");
+        StoryItems.ToggleTag(story, b, "beat", "B", "character:ROBERT");
+        StoryItems.ToggleTag(story, c, "beat", "C", "character:MARA");
+        var changed = StoryItems.RenameCharacter(story, "BOB", "ROBERT");
+        Assert(changed == 2, "Two items carried BOB");
+        Assert(story.Items.First(i => i.TargetId == a).Characters.Single() == "ROBERT", "BOB is rewritten to ROBERT");
+        Assert(story.Items.First(i => i.TargetId == b).Characters.Single() == "ROBERT", "An item with both names merges to one");
+        Assert(story.Items.First(i => i.TargetId == c).Characters.Single() == "MARA", "Other characters are untouched");
+    }
+
+    static void TestTagCharactersAreBareNames()
+    {
+        var story = new StoryData();
+        var target = Guid.NewGuid();
+        StoryItems.ToggleTag(story, target, "card", "Scene", "character:BOB (V.O.)");
+        Assert(story.Items.Single().Characters.Single() == "BOB", "BOB (V.O.) is stored as BOB");
+        Assert(!StoryItems.ToggleTag(story, target, "card", "Scene", "character:BOB (O.S.)") && story.Items.Count == 0,
+            "A different extension toggles the same character off");
     }
 
     static void TestStorylinesRoundTrip()
