@@ -2226,3 +2226,6 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .arc-point.untouched { fill: var(--surface-background); }
 .arc-point.dragging { stroke-width: 4; }
 .arc-note { color: var(--secondary-text); }
+
+.library-modal { width: min(560px, 92vw); max-height: 80vh; display: flex; flex-direction: column; }
+.library-modal .sidebar-body { overflow-y: auto; min-height: 0; }

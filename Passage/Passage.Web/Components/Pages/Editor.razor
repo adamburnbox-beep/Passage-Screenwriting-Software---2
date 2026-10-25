@@ -111,6 +111,13 @@ Click New to start one — files are stored on the server volume.</div>
                     <button @onclick="() => _outlineExportOpen = true">Export outline…</button>
                 </div>
             </details>
+            <details class="menu">
+                <summary class="btn" title="Cast colours and balance, storylines and locations">Cast &amp; Elements ▾</summary>
+                <div class="menu-items">
+                    <button @onclick="() => OpenLibrary(0)">Cast…</button>
+                    <button @onclick="() => OpenLibrary(1)">Elements…</button>
+                </div>
+            </details>
         </div>
     </header>
 
@@ -160,8 +167,6 @@ Click New to start one — files are stored on the server volume.</div>
                 <button class="@(_sidebarTab == 0 ? "active" : null)" @onclick="() => _sidebarTab = 0">OUTLINE</button>
                 <button class="@(_sidebarTab == 1 ? "active" : null)" @onclick="() => _sidebarTab = 1">NOTES</button>
                 <button class="@(_sidebarTab == 2 ? "active" : null)" @onclick="() => _sidebarTab = 2">GOALS</button>
-                <button class="@(_sidebarTab == 3 ? "active" : null)" @onclick="() => _sidebarTab = 3">CAST</button>
-                <button class="@(_sidebarTab == 4 ? "active" : null)" @onclick="() => _sidebarTab = 4">ELEMENTS</button>
             </div>
             <div class="sidebar-body">
                 @if (_sidebarTab == 0)
@@ -234,243 +239,6 @@ Click New to start one — files are stored on the server volume.</div>
                                 }
                             </div>
                         }
-                    </div>
-                }
-                else if (_sidebarTab == 3)
-                {
-                    @if (_analysis.Characters.Count == 0)
-                    {
-                        <div class="sidebar-empty">No characters in this script yet.</div>
-                    }
-                    else
-                    {
-                        <div class="character-view-toggle">
-                            <button class="@(_showGenderReport ? null : "active")" @onclick="() => _showGenderReport = false">LIST</button>
-                            <button class="@(_showGenderReport ? "active" : null)" @onclick="() => _showGenderReport = true">BALANCE</button>
-                        </div>
-                    }
-                    @if (_showGenderReport && _analysis.Characters.Count > 0)
-                    {
-                        var report = Characters.Report(_analysis.Elements, _analysis.Characters, CharacterGenders());
-                        <div class="goal-panel">
-                            @foreach (var (title, value) in GenderMetrics)
-                            {
-                                var total = report.Totals.Sum(value);
-                                <div class="goal-card">
-                                    <div class="goal-card-title">@title</div>
-                                    <div class="gender-bar">
-                                        @foreach (var tagTotal in report.Totals.Where(t => value(t) > 0))
-                                        {
-                                            <span class="gender-@tagTotal.Tag.ToLowerInvariant()" style="flex-grow:@value(tagTotal)"></span>
-                                        }
-                                    </div>
-                                    @foreach (var tagTotal in report.Totals)
-                                    {
-                                        <div class="gender-line">
-                                            <span class="gender-dot gender-@tagTotal.Tag.ToLowerInvariant()"></span>
-                                            <span>@tagTotal.Tag</span>
-                                            <span class="character-count">@value(tagTotal)</span>
-                                            <span class="character-count">@(total == 0 ? "–" : $"{Math.Round(100.0 * value(tagTotal) / total)}%")</span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            <div class="goal-card">
-                                <div class="goal-card-title">SCENES SHARED</div>
-                                @foreach (var pair in report.Pairs)
-                                {
-                                    <div class="gender-line gender-pair">
-                                        <span><span class="gender-dot gender-@pair.First.ToLowerInvariant()"></span><span class="gender-dot gender-@pair.Second.ToLowerInvariant()"></span></span>
-                                        <span>@pair.First + @pair.Second</span>
-                                        <span class="character-count">@pair.Scenes</span>
-                                    </div>
-                                }
-                            </div>
-                            <div class="goal-card">
-                                <div class="goal-card-title">BY CHARACTER</div>
-                                @foreach (var row in report.Rows)
-                                {
-                                    <div class="gender-line">
-                                        <span class="gender-dot gender-@row.Tag.ToLowerInvariant()" title="@row.Tag"></span>
-                                        <span class="character-name">@row.Name</span>
-                                        <span class="character-count">@row.Lines</span>
-                                        <span class="character-count">@row.Words</span>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                    else if (_analysis.Characters.Count > 0)
-                    {
-                        <div class="character-row character-head">
-                            <span class="character-name">NAME</span>
-                            <span class="character-count">LINES</span>
-                            <span class="character-count">WORDS</span>
-                            <span class="character-actions"></span>
-                        </div>
-                    }
-                    @foreach (var character in _showGenderReport ? Array.Empty<CharacterStat>() : _analysis.Characters)
-                    {
-                        var colour = CharacterColour(character.Name);
-                        var gender = Characters.Tag(CharacterSetting(character.Name)?.Gender);
-                        <div class="character-row">
-                            <button class="character-swatch @(colour.Length == 0 ? "none" : null)"
-                                    style="@(colour.Length > 0 ? $"background:{colour}" : null)"
-                                    title="Highlight colour"
-                                    @onclick="() => ToggleColourPicker(character.Name)"></button>
-                            <button class="character-gender gender-text-@gender.ToLowerInvariant()" title="@gender — click to change"
-                                    @onclick="() => CycleGender(character.Name)">@(gender == "Unspecified" ? "–" : gender[..1])</button>
-                            @if (_renamingCharacter == character.Name)
-                            {
-                                <input class="character-rename" @ref="_renameInput" @bind="_renameText" @bind:event="oninput"
-                                       @onkeydown="OnRenameKeyDown" />
-                            }
-                            else
-                            {
-                                <span class="character-name">@character.Name</span>
-                                <span class="character-count">@character.Lines</span>
-                                <span class="character-count">@character.Words</span>
-                                <button class="icon-btn character-actions" title="Rename everywhere"
-                                        @onclick="() => StartRename(character.Name)">✎</button>
-                                <button class="icon-btn character-tools" title="Writer's tools for @character.Name"
-                                        aria-expanded="@CastMenuOpen(character.Name)"
-                                        @onclick="() => ToggleCastMenu(character.Name)">Tools</button>
-                            }
-                        </div>
-                        @if (CastMenuOpen(character.Name))
-                        {
-                            <div class="tool-menu" role="menu">
-                                @foreach (var exercise in ExerciseCatalog.All.Where(entry => entry.Anchor == AnchorKind.Character))
-                                {
-                                    <button class="btn" role="menuitem" @onclick="() => StartCastToolAsync(exercise.Id, character.Name)">@exercise.Name</button>
-                                }
-                            </div>
-                        }
-                        @if (_colourPickerFor == character.Name)
-                        {
-                            <div class="character-palette">
-                                @foreach (var swatch in Characters.Palette)
-                                {
-                                    <button class="character-swatch @(swatch == colour ? "picked" : null)" style="background:@swatch"
-                                            title="@swatch" @onclick="() => SetCharacterColourAsync(character.Name, swatch)"></button>
-                                }
-                                <button class="character-swatch none @(colour.Length == 0 ? "picked" : null)" title="No highlight"
-                                        @onclick="() => SetCharacterColourAsync(character.Name, string.Empty)"></button>
-                            </div>
-                        }
-                    }
-                }
-                else if (_sidebarTab == 4)
-                {
-                    <div class="elements-section">
-                        <div class="elements-head">
-                            <span class="goal-card-title">STORYLINES</span>
-                            <button class="btn" @onclick="AddStoryline">+ Add</button>
-                        </div>
-                        @if (_slate.Story.Storylines.Count == 0)
-                        {
-                            <div class="sidebar-empty">No storylines yet. Try "A Story", "B Story" or "Runner".</div>
-                        }
-                        @foreach (var line in _slate.Story.Storylines)
-                        {
-                            @if (_editingStoryline == line)
-                            {
-                                <div class="storyline-edit">
-                                    <input class="character-rename" @ref="_storylineNameInput" @bind="_storylineEditName" @bind:event="oninput"
-                                           placeholder="@StorylineHint(line)" @onkeydown="OnStorylineKeyDown" />
-                                    <input class="character-rename" @bind="_storylineEditAxis" @bind:event="oninput"
-                                           placeholder="Arc axis, e.g. Tension" title="What the Arc's vertical axis measures for this storyline" />
-                                    <textarea class="card-body-input" rows="3" placeholder="What is this storyline about?"
-                                              @bind="_storylineEditDescription" @bind:event="oninput"></textarea>
-                                    <div class="character-palette">
-                                        @foreach (var swatch in Characters.Palette)
-                                        {
-                                            <button class="character-swatch @(swatch == _storylineEditColour ? "picked" : null)" style="background:@swatch"
-                                                    title="@swatch" @onclick="() => _storylineEditColour = swatch"></button>
-                                        }
-                                        <button class="character-swatch none @(_storylineEditColour.Length == 0 ? "picked" : null)" title="No colour"
-                                                @onclick="() => _storylineEditColour = string.Empty"></button>
-                                    </div>
-                                    <div class="modal-actions">
-                                        <button class="btn" @onclick="() => RequestDeleteStoryline(line)">Delete</button>
-                                        <button class="btn" @onclick="CancelStorylineEdit">Cancel</button>
-                                        <button class="btn primary" @onclick="SaveStorylineEdit">Save</button>
-                                    </div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="character-row storyline-row">
-                                    <span class="character-swatch @(line.Colour.Length == 0 ? "none" : null)"
-                                          style="@(line.Colour.Length > 0 ? $"background:{line.Colour}" : null)"></span>
-                                    <span class="character-name" title="@line.Description">@(line.Name.Length > 0 ? line.Name : "Untitled storyline")</span>
-                                    <button class="icon-btn character-actions" title="Edit storyline"
-                                            @onclick="() => StartStorylineEdit(line)">✎</button>
-                                </div>
-                                @if (line.Description.Length > 0)
-                                {
-                                    <div class="storyline-description">@line.Description</div>
-                                }
-                            }
-                        }
-                    </div>
-                    <div class="elements-section">
-                        <div class="elements-head"><span class="goal-card-title">LOCATIONS</span></div>
-                        @{
-                            var locations = _analysis.Locations ?? Array.Empty<LocationEntry>();
-                            var missing = _slate.Story.Locations.Where(saved => !locations.Any(place => place.Name == saved.Name)).ToList();
-                        }
-                        @if (locations.Count == 0)
-                        {
-                            <div class="sidebar-empty">No locations yet. They come from your scene headings.</div>
-                        }
-                        @foreach (var place in locations)
-                        {
-                            var placeColour = LocationColour(place.Name);
-                            <div class="character-row storyline-row">
-                                <button class="character-swatch @(placeColour.Length == 0 ? "none" : null)"
-                                        style="@(placeColour.Length > 0 ? $"background:{placeColour}" : null)"
-                                        title="Set colour" @onclick="() => _locationPickerFor = _locationPickerFor == place.Name ? null : place.Name"></button>
-                                <button class="location-name" title="Show scenes"
-                                        @onclick="() => ToggleLocation(place.Name)">@place.Name</button>
-                                <span class="character-count">@place.Scenes.Count</span>
-                            </div>
-                            @if (_locationPickerFor == place.Name)
-                            {
-                                <div class="character-palette">
-                                    @foreach (var swatch in Characters.Palette)
-                                    {
-                                        <button class="character-swatch @(swatch == placeColour ? "picked" : null)" style="background:@swatch"
-                                                title="@swatch" @onclick="() => SetLocationColour(place.Name, swatch)"></button>
-                                    }
-                                    <button class="character-swatch none @(placeColour.Length == 0 ? "picked" : null)" title="No colour"
-                                            @onclick="() => SetLocationColour(place.Name, string.Empty)"></button>
-                                </div>
-                            }
-                            @if (_expandedLocations.Contains(place.Name))
-                            {
-                                @foreach (var scene in place.Scenes)
-                                {
-                                    <button class="location-scene" title="Line @scene.LineNumber"
-                                            @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
-                                }
-                            }
-                        }
-                        @if (missing.Count > 0)
-                        {
-                            <div class="goal-card-title">NOT IN THE SCRIPT</div>
-                            @foreach (var gone in missing)
-                            {
-                                <div class="character-row storyline-row location-gone">
-                                    <span class="character-swatch" style="background:@gone.Colour"></span>
-                                    <span class="character-name">@gone.Name</span>
-                                    <button class="btn" title="Forget this colour" @onclick="() => DiscardLocation(gone)">Discard</button>
-                                </div>
-                            }
-                        }
-                    </div>
-                    <div class="elements-section">
-                        <button class="btn" @onclick="() => _sidebarTab = 3">Characters: colours are set in CAST →</button>
                     </div>
                 }
                 else
@@ -1576,6 +1344,260 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_libraryOpen)
+{
+    <div class="modal-backdrop" @onclick="() => _libraryOpen = false">
+        <div class="modal library-modal" @onclick:stopPropagation="true">
+            <div class="sidebar-tabs">
+                <button class="@(_libraryTab == 0 ? "active" : null)" @onclick="() => _libraryTab = 0">CAST</button>
+                <button class="@(_libraryTab == 1 ? "active" : null)" @onclick="() => _libraryTab = 1">ELEMENTS</button>
+            </div>
+            <div class="sidebar-body">
+                @if (_libraryTab == 0)
+                {
+                    @if (_analysis.Characters.Count == 0)
+                    {
+                        <div class="sidebar-empty">No characters in this script yet.</div>
+                    }
+                    else
+                    {
+                        <div class="character-view-toggle">
+                            <button class="@(_showGenderReport ? null : "active")" @onclick="() => _showGenderReport = false">LIST</button>
+                            <button class="@(_showGenderReport ? "active" : null)" @onclick="() => _showGenderReport = true">BALANCE</button>
+                        </div>
+                    }
+                    @if (_showGenderReport && _analysis.Characters.Count > 0)
+                    {
+                        var report = Characters.Report(_analysis.Elements, _analysis.Characters, CharacterGenders());
+                        <div class="goal-panel">
+                            @foreach (var (title, value) in GenderMetrics)
+                            {
+                                var total = report.Totals.Sum(value);
+                                <div class="goal-card">
+                                    <div class="goal-card-title">@title</div>
+                                    <div class="gender-bar">
+                                        @foreach (var tagTotal in report.Totals.Where(t => value(t) > 0))
+                                        {
+                                            <span class="gender-@tagTotal.Tag.ToLowerInvariant()" style="flex-grow:@value(tagTotal)"></span>
+                                        }
+                                    </div>
+                                    @foreach (var tagTotal in report.Totals)
+                                    {
+                                        <div class="gender-line">
+                                            <span class="gender-dot gender-@tagTotal.Tag.ToLowerInvariant()"></span>
+                                            <span>@tagTotal.Tag</span>
+                                            <span class="character-count">@value(tagTotal)</span>
+                                            <span class="character-count">@(total == 0 ? "–" : $"{Math.Round(100.0 * value(tagTotal) / total)}%")</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <div class="goal-card">
+                                <div class="goal-card-title">SCENES SHARED</div>
+                                @foreach (var pair in report.Pairs)
+                                {
+                                    <div class="gender-line gender-pair">
+                                        <span><span class="gender-dot gender-@pair.First.ToLowerInvariant()"></span><span class="gender-dot gender-@pair.Second.ToLowerInvariant()"></span></span>
+                                        <span>@pair.First + @pair.Second</span>
+                                        <span class="character-count">@pair.Scenes</span>
+                                    </div>
+                                }
+                            </div>
+                            <div class="goal-card">
+                                <div class="goal-card-title">BY CHARACTER</div>
+                                @foreach (var row in report.Rows)
+                                {
+                                    <div class="gender-line">
+                                        <span class="gender-dot gender-@row.Tag.ToLowerInvariant()" title="@row.Tag"></span>
+                                        <span class="character-name">@row.Name</span>
+                                        <span class="character-count">@row.Lines</span>
+                                        <span class="character-count">@row.Words</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (_analysis.Characters.Count > 0)
+                    {
+                        <div class="character-row character-head">
+                            <span class="character-name">NAME</span>
+                            <span class="character-count">LINES</span>
+                            <span class="character-count">WORDS</span>
+                            <span class="character-actions"></span>
+                        </div>
+                    }
+                    @foreach (var character in _showGenderReport ? Array.Empty<CharacterStat>() : _analysis.Characters)
+                    {
+                        var colour = CharacterColour(character.Name);
+                        var gender = Characters.Tag(CharacterSetting(character.Name)?.Gender);
+                        <div class="character-row">
+                            <button class="character-swatch @(colour.Length == 0 ? "none" : null)"
+                                    style="@(colour.Length > 0 ? $"background:{colour}" : null)"
+                                    title="Highlight colour"
+                                    @onclick="() => ToggleColourPicker(character.Name)"></button>
+                            <button class="character-gender gender-text-@gender.ToLowerInvariant()" title="@gender — click to change"
+                                    @onclick="() => CycleGender(character.Name)">@(gender == "Unspecified" ? "–" : gender[..1])</button>
+                            @if (_renamingCharacter == character.Name)
+                            {
+                                <input class="character-rename" @ref="_renameInput" @bind="_renameText" @bind:event="oninput"
+                                       @onkeydown="OnRenameKeyDown" />
+                            }
+                            else
+                            {
+                                <span class="character-name">@character.Name</span>
+                                <span class="character-count">@character.Lines</span>
+                                <span class="character-count">@character.Words</span>
+                                <button class="icon-btn character-actions" title="Rename everywhere"
+                                        @onclick="() => StartRename(character.Name)">✎</button>
+                                <button class="icon-btn character-tools" title="Writer's tools for @character.Name"
+                                        aria-expanded="@CastMenuOpen(character.Name)"
+                                        @onclick="() => ToggleCastMenu(character.Name)">Tools</button>
+                            }
+                        </div>
+                        @if (CastMenuOpen(character.Name))
+                        {
+                            <div class="tool-menu" role="menu">
+                                @foreach (var exercise in ExerciseCatalog.All.Where(entry => entry.Anchor == AnchorKind.Character))
+                                {
+                                    <button class="btn" role="menuitem" @onclick="() => StartCastToolAsync(exercise.Id, character.Name)">@exercise.Name</button>
+                                }
+                            </div>
+                        }
+                        @if (_colourPickerFor == character.Name)
+                        {
+                            <div class="character-palette">
+                                @foreach (var swatch in Characters.Palette)
+                                {
+                                    <button class="character-swatch @(swatch == colour ? "picked" : null)" style="background:@swatch"
+                                            title="@swatch" @onclick="() => SetCharacterColourAsync(character.Name, swatch)"></button>
+                                }
+                                <button class="character-swatch none @(colour.Length == 0 ? "picked" : null)" title="No highlight"
+                                        @onclick="() => SetCharacterColourAsync(character.Name, string.Empty)"></button>
+                            </div>
+                        }
+                    }
+                }
+                else
+                {
+                    <div class="elements-section">
+                        <div class="elements-head">
+                            <span class="goal-card-title">STORYLINES</span>
+                            <button class="btn" @onclick="AddStoryline">+ Add</button>
+                        </div>
+                        @if (_slate.Story.Storylines.Count == 0)
+                        {
+                            <div class="sidebar-empty">No storylines yet. Try "A Story", "B Story" or "Runner".</div>
+                        }
+                        @foreach (var line in _slate.Story.Storylines)
+                        {
+                            @if (_editingStoryline == line)
+                            {
+                                <div class="storyline-edit">
+                                    <input class="character-rename" @ref="_storylineNameInput" @bind="_storylineEditName" @bind:event="oninput"
+                                           placeholder="@StorylineHint(line)" @onkeydown="OnStorylineKeyDown" />
+                                    <input class="character-rename" @bind="_storylineEditAxis" @bind:event="oninput"
+                                           placeholder="Arc axis, e.g. Tension" title="What the Arc's vertical axis measures for this storyline" />
+                                    <textarea class="card-body-input" rows="3" placeholder="What is this storyline about?"
+                                              @bind="_storylineEditDescription" @bind:event="oninput"></textarea>
+                                    <div class="character-palette">
+                                        @foreach (var swatch in Characters.Palette)
+                                        {
+                                            <button class="character-swatch @(swatch == _storylineEditColour ? "picked" : null)" style="background:@swatch"
+                                                    title="@swatch" @onclick="() => _storylineEditColour = swatch"></button>
+                                        }
+                                        <button class="character-swatch none @(_storylineEditColour.Length == 0 ? "picked" : null)" title="No colour"
+                                                @onclick="() => _storylineEditColour = string.Empty"></button>
+                                    </div>
+                                    <div class="modal-actions">
+                                        <button class="btn" @onclick="() => RequestDeleteStoryline(line)">Delete</button>
+                                        <button class="btn" @onclick="CancelStorylineEdit">Cancel</button>
+                                        <button class="btn primary" @onclick="SaveStorylineEdit">Save</button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="character-row storyline-row">
+                                    <span class="character-swatch @(line.Colour.Length == 0 ? "none" : null)"
+                                          style="@(line.Colour.Length > 0 ? $"background:{line.Colour}" : null)"></span>
+                                    <span class="character-name" title="@line.Description">@(line.Name.Length > 0 ? line.Name : "Untitled storyline")</span>
+                                    <button class="icon-btn character-actions" title="Edit storyline"
+                                            @onclick="() => StartStorylineEdit(line)">✎</button>
+                                </div>
+                                @if (line.Description.Length > 0)
+                                {
+                                    <div class="storyline-description">@line.Description</div>
+                                }
+                            }
+                        }
+                    </div>
+                    <div class="elements-section">
+                        <div class="elements-head"><span class="goal-card-title">LOCATIONS</span></div>
+                        @{
+                            var locations = _analysis.Locations ?? Array.Empty<LocationEntry>();
+                            var missing = _slate.Story.Locations.Where(saved => !locations.Any(place => place.Name == saved.Name)).ToList();
+                        }
+                        @if (locations.Count == 0)
+                        {
+                            <div class="sidebar-empty">No locations yet. They come from your scene headings.</div>
+                        }
+                        @foreach (var place in locations)
+                        {
+                            var placeColour = LocationColour(place.Name);
+                            <div class="character-row storyline-row">
+                                <button class="character-swatch @(placeColour.Length == 0 ? "none" : null)"
+                                        style="@(placeColour.Length > 0 ? $"background:{placeColour}" : null)"
+                                        title="Set colour" @onclick="() => _locationPickerFor = _locationPickerFor == place.Name ? null : place.Name"></button>
+                                <button class="location-name" title="Show scenes"
+                                        @onclick="() => ToggleLocation(place.Name)">@place.Name</button>
+                                <span class="character-count">@place.Scenes.Count</span>
+                            </div>
+                            @if (_locationPickerFor == place.Name)
+                            {
+                                <div class="character-palette">
+                                    @foreach (var swatch in Characters.Palette)
+                                    {
+                                        <button class="character-swatch @(swatch == placeColour ? "picked" : null)" style="background:@swatch"
+                                                title="@swatch" @onclick="() => SetLocationColour(place.Name, swatch)"></button>
+                                    }
+                                    <button class="character-swatch none @(placeColour.Length == 0 ? "picked" : null)" title="No colour"
+                                            @onclick="() => SetLocationColour(place.Name, string.Empty)"></button>
+                                </div>
+                            }
+                            @if (_expandedLocations.Contains(place.Name))
+                            {
+                                @foreach (var scene in place.Scenes)
+                                {
+                                    <button class="location-scene" title="Line @scene.LineNumber"
+                                            @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
+                                }
+                            }
+                        }
+                        @if (missing.Count > 0)
+                        {
+                            <div class="goal-card-title">NOT IN THE SCRIPT</div>
+                            @foreach (var gone in missing)
+                            {
+                                <div class="character-row storyline-row location-gone">
+                                    <span class="character-swatch" style="background:@gone.Colour"></span>
+                                    <span class="character-name">@gone.Name</span>
+                                    <button class="btn" title="Forget this colour" @onclick="() => DiscardLocation(gone)">Discard</button>
+                                </div>
+                            }
+                        }
+                    </div>
+                    <div class="elements-section">
+                        <button class="btn" @onclick="() => _libraryTab = 0">Characters: colours are set in Cast →</button>
+                    </div>
+                }
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _libraryOpen = false">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_outlineExportOpen)
 {
     <div class="modal-backdrop">
@@ -1888,6 +1910,14 @@ Open a .fountain file to see formatted pages.</div>
     private bool _autosaveEnabled;
     private int _mainViewIndex;
     private int _sidebarTab;
+    private bool _libraryOpen;
+    private int _libraryTab;
+
+    private void OpenLibrary(int tab)
+    {
+        _libraryTab = tab;
+        _libraryOpen = true;
+    }
     private int _caretLine = 1;
     private string _caretElementLabel = "Action";
     private string _statusMessage = "Ready";
