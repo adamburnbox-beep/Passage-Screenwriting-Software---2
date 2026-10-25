@@ -107,6 +107,8 @@ class Program
         failures += RunTest("Test BeatSheet Clamping", TestBeatSheetClamping);
         failures += RunTest("Test BeatSheet Stacking", TestBeatSheetStacking);
         failures += RunTest("Test BeatSheet Scene Pages Match Preview", TestBeatSheetScenePagesMatchPreview);
+        failures += RunTest("Test Beside List Order Matches Board", TestBesideListOrderMatchesBoard);
+        failures += RunTest("Test Beside Caret Lookup", TestBesideCaretLookup);
         failures += RunTest("Test Inbox Conversion Lines", TestInboxConversionLines);
         failures += RunTest("Test Inbox Tag Transfer", TestInboxTagTransfer);
         failures += RunTest("Test Inbox Insert Points", TestInboxInsertPoints);
@@ -2411,5 +2413,54 @@ class Program
         var withOrphan = BeatSheet.MapScenes(orphan, analysis.PreviewPages);
         Assert(withOrphan[^1].Page == 0 && withOrphan.Take(30).Select(scene => scene.Page).SequenceEqual(scenes.Select(scene => scene.Page)),
             "An unplaceable heading gets page 0 and does not disturb the others");
+    }
+
+    const string BesideScript = "Title: T\n\n# ACT ONE\n\n= Setup.\n\n## RUN\n\n.FIRST\n\nAction one.\n\n.SECOND\n\nAction two.\n\n.THIRD\n\nAction three.\n\n# ACT TWO\n\n.FOURTH\n\nAction.\n";
+
+    static void TestBesideListOrderMatchesBoard()
+    {
+        var analysis = new DocumentAnalyzer().Analyze(BesideScript);
+        var rows = Passage.Web.Services.BesideList.Rows(analysis.BoardLanes);
+        var board = new List<string>();
+        foreach (var lane in analysis.BoardLanes)
+        {
+            board.Add(lane.ActCard?.Heading ?? "Script");
+            foreach (var group in lane.Groups)
+            {
+                if (group.SequenceCard is { } sequence) board.Add(sequence.Heading);
+                foreach (var card in group.Cards) board.Add(card.Heading);
+            }
+        }
+
+        Assert(rows.Count > 4 && rows.Select(row => row.Text).SequenceEqual(board), "The list is the Board's lanes, groups and cards in order");
+        var lines = rows.Where(row => row.Line > 0).Select(row => row.Line).ToList();
+        Assert(lines.SequenceEqual(lines.OrderBy(line => line)), "Rows are in document order");
+        Assert(rows.Count(row => row.Role == "card") >= 4, "The scenes are listed as cards");
+    }
+
+    static void TestBesideCaretLookup()
+    {
+        var analysis = new DocumentAnalyzer().Analyze(BesideScript);
+        var rows = Passage.Web.Services.BesideList.Rows(analysis.BoardLanes);
+        var script = BesideScript.Split('\n');
+        int RowOf(string heading) => rows.FindIndex(row => row.Text == heading);
+        int LineOf(string text) => Array.FindIndex(script, line => line.Contains(text)) + 1;
+
+        Assert(Passage.Web.Services.BesideList.RowAt(rows, 1) == -1, "Before any card the lookup finds none");
+        var second = RowOf("SECOND");
+        Assert(second >= 0, "Fixture has SECOND");
+        Assert(Passage.Web.Services.BesideList.RowAt(rows, LineOf(".SECOND")) == second, "On a heading it finds that card");
+        Assert(Passage.Web.Services.BesideList.RowAt(rows, LineOf("Action two")) == second, "Inside a scene it finds that scene");
+        Assert(Passage.Web.Services.BesideList.RowAt(rows, 9999) == rows.Count - 1, "Past the end it finds the last card");
+
+        var scenes = new List<Passage.Web.Services.ScenePlacement> { new("A", 3, 1), new("B", 10, 4), new("C", 20, 9) };
+        var beats = Passage.Web.Services.BesideList.Beats(new List<Passage.Web.Services.Beat>
+        {
+            new() { Title = "late", Page = 9 }, new() { Title = "loose", Page = 0 }, new() { Title = "mid", Page = 3, Span = 3 }
+        }, scenes);
+        Assert(beats.Select(item => item.Beat.Title).SequenceEqual(new[] { "loose", "mid", "late" }), "Beats are in page order, unassigned first");
+        Assert(beats.Select(item => item.Line).SequenceEqual(new[] { 0, 3, 20 }), "A beat points at the scene on its page, else the one before");
+        Assert(Passage.Web.Services.BesideList.BeatAt(beats, scenes, 12) == 1, "A caret in a scene on a spanned page finds the covering beat");
+        Assert(Passage.Web.Services.BesideList.BeatAt(beats, scenes, 1) == -1, "Before the first scene no beat is current");
     }
 }

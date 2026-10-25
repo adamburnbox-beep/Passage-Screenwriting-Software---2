@@ -20,7 +20,7 @@ window.passage = (function () {
     let appliedClasses = [];
     let sessionReady = false;
     let sessionTimer = null;
-    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
+    let session = { fileName: "", caretLine: 1, editorFontPx: 15, previewZoom: 1.25, recentFiles: [], lineOverrides: {}, workshopOpen: false, workshopWidth: 340, besideOpen: false, besideBeats: false, besideWidth: 300, typewriterScrolling: false, focusLine: false, wordsPerMinute: 230 };
 
     const INPUT_DEBOUNCE_MS = 200;
     const SESSION_KEY = "passage.session.v1";
@@ -32,6 +32,8 @@ window.passage = (function () {
     const AUTO_CONTD_KEY = "passage.autoContd.v1";
     const WORKSHOP_MIN_WIDTH = 260;
     const WORKSHOP_MAX_WIDTH = 720;
+    const BESIDE_MIN_WIDTH = 200;
+    const BESIDE_MAX_WIDTH = 560;
     const LINE_CLASSES = [
         "sx-scene", "sx-character", "sx-dialogue", "sx-paren", "sx-transition",
         "sx-section", "sx-synopsis", "sx-note", "sx-boneyard", "sx-centered",
@@ -105,6 +107,7 @@ window.passage = (function () {
             if (!stored || typeof stored !== "object") return null;
             session = Object.assign(session, stored);
             applyWorkshopWidth();
+            applyBesideWidth();
             applyViewToggles();
             return session;
         } catch (e) {
@@ -155,6 +158,45 @@ window.passage = (function () {
             handle.addEventListener("pointerup", up);
             handle.addEventListener("pointercancel", up);
         });
+    }
+
+    // SCRIPT's Beside pane (STORY-PLAN S2.3): width is dragged here and kept in
+    // the session key, like the dock's; open/mode are Blazor's to render.
+    function applyBesideWidth() {
+        const width = Math.min(BESIDE_MAX_WIDTH, Math.max(BESIDE_MIN_WIDTH, Number(session.besideWidth) || 300));
+        session.besideWidth = width;
+        document.documentElement.style.setProperty("--beside-width", width + "px");
+    }
+
+    function initBesideResize() {
+        const handle = document.getElementById("beside-resize");
+        if (!handle) return;
+        applyBesideWidth();
+        handle.addEventListener("pointerdown", (down) => {
+            down.preventDefault();
+            const startX = down.clientX;
+            const startWidth = session.besideWidth;
+            handle.setPointerCapture(down.pointerId);
+            const move = (e) => {
+                session.besideWidth = startWidth + (startX - e.clientX);
+                applyBesideWidth();
+            };
+            const up = () => {
+                handle.removeEventListener("pointermove", move);
+                handle.removeEventListener("pointerup", up);
+                handle.removeEventListener("pointercancel", up);
+                scheduleSessionSave();
+            };
+            handle.addEventListener("pointermove", move);
+            handle.addEventListener("pointerup", up);
+            handle.addEventListener("pointercancel", up);
+        });
+    }
+
+    function setBeside(open, beats) {
+        session.besideOpen = !!open;
+        session.besideBeats = !!beats;
+        scheduleSessionSave();
     }
 
     // Crash recovery. Distinct from the file autosave in Editor.razor, which
@@ -707,6 +749,7 @@ window.passage = (function () {
         });
 
         initWorkshopResize();
+        initBesideResize();
 
         cm.on("change", (_, changeObj) => {
             if (changeObj.origin !== "setValue") {
@@ -1998,7 +2041,7 @@ window.passage = (function () {
 
     // The CodeMirror instance is exposed for end-to-end tests.
     return {
-        init, applyHighlights, setContent, setDirty, scrollToLine,
+        init, applyHighlights, setContent, setDirty, scrollToLine, setBeside,
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
