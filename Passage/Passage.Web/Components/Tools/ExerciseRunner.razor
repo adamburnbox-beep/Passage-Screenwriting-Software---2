@@ -18,34 +18,57 @@
         <div class="fill-meta">Untitled — the working-out is kept once the script has a name.</div>
     }
     <div class="anchor-strip">
-        <span class="anchor-glyph" aria-hidden="true">👤</span>
+        <span class="anchor-glyph" aria-hidden="true">@AnchorGlyph</span>
         <div class="anchor-main">
             @if (Run.Anchor.Text.Length > 0)
             {
-                <span class="anchor-name"><span class="anchor-dot @(AnchorColour.Length == 0 ? "none" : null)" style="@(AnchorColour.Length > 0 ? $"background:{AnchorColour}" : null)"></span>@Run.Anchor.Text</span>
-                @if (!InCast)
+                @if (Exercise.Anchor == AnchorKind.Character)
                 {
-                    <span class="anchor-gone">not speaking in the script</span>
+                    <span class="anchor-name"><span class="anchor-dot @(AnchorColour.Length == 0 ? "none" : null)" style="@(AnchorColour.Length > 0 ? $"background:{AnchorColour}" : null)"></span>@Run.Anchor.Text</span>
+                    @if (!InCast)
+                    {
+                        <span class="anchor-gone">not speaking in the script</span>
+                    }
+                }
+                else
+                {
+                    <span class="anchor-name @(Exercise.Anchor == AnchorKind.Bracket ? "anchor-bracket" : null)">@Run.Anchor.Text</span>
+                    @if (Exercise.Anchor == AnchorKind.Bracket && ThisBracket is { } bracket)
+                    {
+                        <span class="anchor-scene">Line @bracket.LineNumber@(bracket.Prose ? " · reads like prose" : null)</span>
+                    }
+                    else if (!AnchorFound)
+                    {
+                        <span class="anchor-gone">no longer in the script</span>
+                    }
                 }
             }
             else
             {
                 <span class="anchor-name anchor-empty">@Exercise.AnchorLabel</span>
             }
-            @if (HasScene)
+            @if (Exercise.Anchor == AnchorKind.Character && HasScene)
             {
                 <span class="anchor-scene">@Run.Anchor.SceneText@(SceneFound ? null : " — no longer in the script")</span>
             }
         </div>
-        @if (Run.Anchor.Text.Length > 0 || SceneFound)
+        @if (Run.Anchor.Text.Length > 0 && AnchorFound || Exercise.Anchor == AnchorKind.Character && SceneFound)
         {
             <button class="icon-btn" title="Show it in the script" aria-label="Show it in the script" @onclick="JumpAsync">↗</button>
         }
         <button class="icon-btn anchor-change" aria-expanded="@_changing" @onclick="ToggleChange">@(_changing ? "done" : "change")</button>
     </div>
+    @if (Exercise.Anchor == AnchorKind.Bracket)
+    {
+        <div class="bracket-actions">
+            <button class="btn primary" title="Swap the bracket in the script for the real answer" @onclick="FillItAsync">Fill it</button>
+            <button class="btn" title="Prose, not a placeholder — leave it out" @onclick="NotABracketAsync">Not a bracket</button>
+            <button class="btn" title="Put this one back and hand me another" @onclick="NextBracketAsync">Next bracket</button>
+        </div>
+    }
     @if (_changing || Run.Anchor.Text.Length == 0 && !_dismissedPicker)
     {
-        <AnchorPicker Host="Host" Anchor="Run.Anchor" SceneToo="Exercise.SceneToo" OnChanged="AnchorChangedAsync" />
+        <AnchorPicker Host="Host" Anchor="Run.Anchor" Kind="Exercise.Anchor" SceneToo="Exercise.SceneToo" OnChanged="AnchorChangedAsync" />
     }
     @if (Exercise.Why.Length > 0)
     {
@@ -111,7 +134,7 @@
             }
             @if (_finish is { } finish && _shown is { } now && now.Step.Key != finish.Step.Key)
             {
-                <button class="btn" @onclick="() => EditAsync(finish)">@finish.Step.Label</button>
+                <button class="btn" @onclick="() => JumpToFinishAsync(finish)">@finish.Step.Label</button>
             }
             <label class="burst-toggle" title="Time each answer — five seconds to read it, then the clock">
                 <input type="checkbox" checked="@Host.Slate.Burst.Enabled" @onchange="BurstToggledAsync" /> ⏱
@@ -163,7 +186,7 @@
 
     protected override void OnParametersSet()
     {
-        _engine = new ExerciseEngine(Exercise);
+        _engine = new ExerciseEngine(Exercise, source => source == ExerciseCatalog.SpeakersSource ? Host.SpeakersFor(Run.Anchor) : Array.Empty<string>());
         Refresh();
     }
 
@@ -179,7 +202,11 @@
 
         var loopIndex = Exercise.Steps.ToList().FindIndex(step => step.Kind == StepKind.Loop);
         _finish = null;
-        if (loopIndex >= 0 && Exercise.Steps.Skip(loopIndex + 1).FirstOrDefault(step => step.Group is null && step.Kind != StepKind.Loop) is { } last)
+        if (Exercise.ShortcutKey is { } shortcut)
+        {
+            _finish = sequence.FirstOrDefault(slot => slot.Step.Key == shortcut);
+        }
+        else if (loopIndex >= 0 && Exercise.Steps.Skip(loopIndex + 1).FirstOrDefault(step => step.Group is null && step.Kind != StepKind.Loop) is { } last)
         {
             _finish = sequence.FirstOrDefault(slot => slot.Step.Key == last.Key);
         }
@@ -246,6 +273,41 @@
     private bool _changing;
     private bool _dismissedPicker;
 
+    private string AnchorGlyph => Exercise.Anchor switch
+    {
+        AnchorKind.Scene => "🎬",
+        AnchorKind.Bracket => "[ ]",
+        _ => "👤"
+    };
+
+    private BracketChoice? ThisBracket => Host.Brackets.FirstOrDefault(bracket => bracket.Text == Run.Anchor.Text);
+
+    // A scene or bracket anchor that can still be found in the script.
+    private bool AnchorFound => Exercise.Anchor switch
+    {
+        AnchorKind.Scene => Host.ResolveScene(Run.Anchor) is not null,
+        AnchorKind.Bracket => ThisBracket is not null,
+        _ => true
+    };
+
+    private async Task FillItAsync()
+    {
+        var answer = _engine.GetAnswer(Run, ExerciseCatalog.FillAnswerKey);
+        // Not a disabled button: the answer's change event and this tap arrive
+        // together, and a button disabled until the change lands swallows the tap.
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            Host.SetStatus("Nothing to fill it with yet — write the real answer first");
+            return;
+        }
+
+        await Host.SendAsync(TargetKind.Bracket, new ToolSend(Run.Anchor, Exercise.Name, "answer", answer));
+    }
+
+    private Task NextBracketAsync() => Host.NextBracketAsync();
+
+    private Task NotABracketAsync() => Host.NotABracketAsync(Run.Anchor.Text);
+
     private string AnchorColour => Host.Cast.FirstOrDefault(character => string.Equals(character.Name, Run.Anchor.Text.Trim(), StringComparison.OrdinalIgnoreCase))?.Colour ?? string.Empty;
 
     private bool InCast => Host.Cast.Any(character => string.Equals(character.Name, Run.Anchor.Text.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -270,7 +332,7 @@
 
     private Task StepChangedAsync(StepSlot slot)
     {
-        if (slot.Step.Kind is StepKind.Lines or StepKind.Slots)
+        if (slot.Step.Kind is StepKind.Lines or StepKind.Slots or StepKind.Dice)
         {
             _holdId = slot.Id;
         }
@@ -285,6 +347,18 @@
         Host.Save();
         Refresh();
         return Task.CompletedTask;
+    }
+
+    // The read-back just opens; a shortcut (Fill's real answer) also passes the questions before it.
+    private Task JumpToFinishAsync(StepSlot finish)
+    {
+        if (Exercise.ShortcutKey is not null)
+        {
+            _engine.SkipUnansweredBefore(Run, finish);
+            Host.Save();
+        }
+
+        return EditAsync(finish);
     }
 
     private Task EditAsync(StepSlot slot)
@@ -401,6 +475,24 @@
 
     private void UsePartnerLine(StepSlot slot, string line)
     {
+        if (slot.Step.Kind == StepKind.Lines)
+        {
+            // The first empty slot, as the old Fill runner did.
+            var empty = Enumerable.Range(0, _engine.LineCount(Run, slot)).FirstOrDefault(i => string.IsNullOrWhiteSpace(_engine.GetLine(Run, slot.Step.Key, slot.Round, i)), -1);
+            if (empty < 0)
+            {
+                Host.SetStatus("Every line here is written — clear one to use this");
+                return;
+            }
+
+            _engine.SetLine(Run, slot.Step.Key, slot.Round, empty, line);
+            _partnerLines.Remove(line);
+            _holdId = slot.Id;
+            Host.Save();
+            Refresh();
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(_engine.GetAnswer(Run, slot.Step.Key, slot.Round)) || !_engine.SetAnswer(Run, slot.Step.Key, slot.Round, line))
         {
             Host.SetStatus("That one already has an answer — clear it to use this");

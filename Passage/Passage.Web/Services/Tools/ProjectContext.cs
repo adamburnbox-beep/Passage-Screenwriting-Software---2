@@ -9,6 +9,10 @@ public sealed record CharacterChoice(string Name, string Colour, int Lines);
 /// heading gets a fresh id on every parse, so it can only be found again by its text.</summary>
 public sealed record SceneChoice(Guid? Id, string Heading, int LineNumber, string Synopsis);
 
+/// <summary>A bracket in the script, for the picker: the text as written, its line, whether it reads like prose
+/// rather than a placeholder (rank 1), and whether the writer has left it out.</summary>
+public sealed record BracketChoice(string Text, int LineNumber, bool Prose, bool Ignored);
+
 /// <summary>
 /// The lists the anchor pickers draw from (docs/SLATE-REDO-PLAN.md §4.4), built on demand from the parse and the
 /// sidecar and never stored. Pure, so the lookups are testable without the editor.
@@ -81,6 +85,11 @@ public static class ProjectContext
         var matches = scenes.Where(scene => string.Equals(scene.Heading, anchor.SceneText, StringComparison.OrdinalIgnoreCase)).ToList();
         return matches.Count == 1 ? matches[0] : null;
     }
+
+    /// <summary>Every bracket in the script as the picker lists it (ranked order), marked if ignored.</summary>
+    public static List<BracketChoice> Brackets(IEnumerable<Bracket> brackets, IReadOnlyCollection<string> ignored) =>
+        brackets.Select(bracket => new BracketChoice(bracket.Text, bracket.LineNumber, bracket.Rank == 1,
+            ignored.Contains(bracket.Text, StringComparer.Ordinal))).ToList();
 
     /// <summary>Who speaks in the scene, most speeches in the script first (the Cast order).</summary>
     public static List<string> SpeakersOf(

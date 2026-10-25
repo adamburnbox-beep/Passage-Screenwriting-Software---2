@@ -100,5 +100,8 @@ public sealed record Exercise
     // A character-anchored exercise that may also name the scene it is about.
     public bool SceneToo { get; init; }
     public IReadOnlyList<TargetKind> Targets { get; init; } = Array.Empty<TargetKind>();
+    // A step the runner offers as a button from any other step, for the
+    // worksheet's "got the real answer already? write it here and stop".
+    public string? ShortcutKey { get; init; }
     public required IReadOnlyList<Step> Steps { get; init; }
 }

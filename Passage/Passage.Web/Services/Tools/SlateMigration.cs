@@ -5,15 +5,17 @@ namespace Passage.Web.Services.Tools;
 /// (docs/SLATE-REDO-PLAN.md R-E). A move, not a copy: each record type is
 /// converted and its old list cleared by the row that deletes that type's dock
 /// view, so a second run finds nothing to do. Not gated by version; the
-/// version bump waits for T8. Row T1 handles Chains only and is not yet called
-/// from <c>SlateStore.Load</c> (T2 wires it in).
+/// version bump waits for T8. Handles Chains (T2) and Fills (T4); it runs from
+/// <c>SlateStore.Load</c>.
 /// </summary>
 public static class SlateMigration
 {
     public const string WoacId = "woac";
     public const string FlawId = "flaw";
+    public const string FillId = "fill";
+    public const string SceneDialsId = "scenedials";
 
-    /// <summary>Moves Chains in place. Returns the number of runs moved.</summary>
+    /// <summary>Moves Chains and Fills in place. Returns the number of runs moved.</summary>
     public static int Migrate(SlateDocument document)
     {
         var moved = document.Chains.Count;
@@ -23,7 +25,43 @@ public static class SlateMigration
         }
 
         document.Chains.Clear();
+
+        // A Fill with nothing written was never worth keeping (the old view
+        // dropped it too), but it is still cleared so a second run finds none.
+        foreach (var fill in document.Fills.Where(fill => !IsBlank(fill)))
+        {
+            document.Exercises.Add(FromFill(fill, Guid.NewGuid().ToString("N")));
+            moved++;
+        }
+
+        document.Fills.Clear();
         return moved;
+    }
+
+    private static bool IsBlank(FillRun fill) =>
+        string.IsNullOrWhiteSpace(fill.PointsTo) && string.IsNullOrWhiteSpace(fill.Answer)
+        && fill.Options.All(option => string.IsNullOrWhiteSpace(option.Text) && string.IsNullOrWhiteSpace(option.WhyWrong));
+
+    /// <summary>A Fill run becomes a run anchored on its bracket text: candidates and their
+    /// reasons are two Lines steps, in the same order.</summary>
+    public static ExerciseRun FromFill(FillRun fill, string id)
+    {
+        var run = new ExerciseRun
+        {
+            Id = id,
+            ExerciseId = FillId,
+            Anchor = new Anchor { Kind = AnchorKind.Bracket, Text = fill.Bracket }
+        };
+
+        for (var i = 0; i < fill.Options.Count; i++)
+        {
+            Put(run, $"cands[{i}]", 0, fill.Options[i].Text);
+            Put(run, $"why[{i}]", 0, fill.Options[i].WhyWrong);
+        }
+
+        Put(run, "points", 0, fill.PointsTo);
+        Put(run, "answer", 0, fill.Answer);
+        return run;
     }
 
     public static ExerciseRun FromChain(ChainRun chain, string id)

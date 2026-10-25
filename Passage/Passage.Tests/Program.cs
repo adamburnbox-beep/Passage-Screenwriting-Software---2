@@ -63,6 +63,10 @@ class Program
         failures += RunTest("Test Slate Migration Loads Old And New Sidecars", TestSlateMigrationLoadsSidecars);
         failures += RunTest("Test Catalog Woac Three Rounds", TestCatalogWoacThreeRounds);
         failures += RunTest("Test Catalog Flaw And Migrated Chains", TestCatalogFlawAndMigratedChains);
+        failures += RunTest("Test Slate Migration Fills", TestSlateMigrationFills);
+        failures += RunTest("Test Exercise Engine Dice And Slots", TestExerciseEngineDiceAndSlots);
+        failures += RunTest("Test Catalog Fill And Scene Dials", TestCatalogFillAndSceneDials);
+        failures += RunTest("Test Bracket And Scene Runs Are Empty Until Answered", TestAnchoredRunEmptiness);
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
         failures += RunTest("Test Project Context Scenes And Resolve", TestProjectContextScenesAndResolve);
         failures += RunTest("Test Tool Targets Note Append", TestToolTargetsNoteAppend);
@@ -508,10 +512,11 @@ class Program
             Assert(loaded is not null, "Sidecar loads back");
             Assert(loaded!.SlateVersion == SlateStore.CurrentVersion, "Save stamps the current schema version");
             Assert(loaded.IgnoredBrackets.SequenceEqual(new[] { "[sic]" }), "Ignore list round-trips");
-            Assert(loaded.Fills.Count == 1 && loaded.Fills[0].Bracket == "[SOMETHING forces her to stay]", "Fill run round-trips by bracket text");
-            Assert(loaded.Fills[0].Options.Count == 3 && loaded.Fills[0].Options[0].WhyWrong == "weather is never a reason"
-                && loaded.Fills[0].Options[2].Text == string.Empty, "All three option rows round-trip, empty ones included");
-            Assert(loaded.Fills[0].PointsTo == "she wants to be made to stay", "Free-text fields round-trip");
+            Assert(loaded.Fills.Count == 0 && loaded.Exercises.Count == 1 && loaded.Exercises[0].ExerciseId == "fill"
+                && loaded.Exercises[0].Anchor.Text == "[SOMETHING forces her to stay]", "Fill run round-trips by bracket text, as a migrated exercise run");
+            Assert(loaded.Exercises[0].Answers["cands[0]"] == "the storm" && loaded.Exercises[0].Answers["why[0]"] == "weather is never a reason"
+                && !loaded.Exercises[0].Answers.ContainsKey("cands[2]"), "The option rows round-trip, empty ones dropped");
+            Assert(loaded.Exercises[0].Answers["points"] == "she wants to be made to stay", "Free-text fields round-trip");
 
             Assert(library.List().Count == 0, "The .slate directory never appears in the script list");
 
@@ -1132,11 +1137,11 @@ class Program
         var flaw = new ChainRun { Path = ChainPath.Flaw, Seed = "MARA, never asks" };
         flaw.Answers[2] = "carries it alone";
         document.Chains.Add(flaw);
-        document.Fills.Add(new FillRun { Bracket = "[SOMETHING]" });
+        document.Positions.Add(new PositionRun { Moment = "the keeper's letter" });
 
         Assert(SlateMigration.Migrate(document) == 2, "Both chains are moved");
         Assert(document.Chains.Count == 0, "A move leaves the old list empty");
-        Assert(document.Fills.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
+        Assert(document.Positions.Count == 1 && document.SlateVersion == 1, "Everything that is not migrated is left untouched, version included");
 
         var run = document.Exercises[0];
         Assert(run.ExerciseId == "woac" && run.Rounds == 3 && run.Anchor.Text == "MARA wants the key", "A WOAC run keeps its seed and three rounds");
@@ -1156,8 +1161,8 @@ class Program
         Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 2, "Running it twice adds nothing");
 
         var untouched = new SlateDocument();
-        untouched.Fills.Add(new FillRun { Bracket = "[X]" });
-        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.Fills.Count == 1,
+        untouched.Positions.Add(new PositionRun { Moment = "x" });
+        Assert(SlateMigration.Migrate(untouched) == 0 && untouched.Exercises.Count == 0 && untouched.Positions.Count == 1,
             "A document with no old chains is unchanged");
     }
 
@@ -1190,6 +1195,156 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestSlateMigrationFills()
+    {
+        var document = new SlateDocument();
+        var fill = new FillRun
+        {
+            Bracket = "[SOMETHING forces her to stay]",
+            Options = { [0] = new FillOption { Text = "the storm", WhyWrong = "weather is never a reason" }, [2] = new FillOption { WhyWrong = "too neat" } },
+            PointsTo = "she wants to be made to stay",
+            Answer = "her car won't start"
+        };
+        document.Fills.Add(fill);
+        document.Fills.Add(new FillRun { Bracket = "[CONDITION]" });
+        document.IgnoredBrackets.Add("[sic]");
+
+        Assert(SlateMigration.Migrate(document) == 1, "Only the Fill with something written is moved");
+        Assert(document.Fills.Count == 0, "A move leaves the old list empty, the blank Fill included");
+        Assert(document.IgnoredBrackets.SequenceEqual(new[] { "[sic]" }), "The ignore list is not touched");
+
+        var run = document.Exercises.Single();
+        Assert(run.ExerciseId == "fill" && run.Anchor.Kind == AnchorKind.Bracket && run.Anchor.Text == "[SOMETHING forces her to stay]",
+            "The run is anchored on the bracket's text");
+        var engine = new ExerciseEngine(ExerciseCatalog.Fill);
+        Assert(engine.GetLine(run, "cands", 0, 0) == "the storm" && engine.GetLine(run, "why", 0, 0) == "weather is never a reason"
+            && engine.GetLine(run, "why", 0, 2) == "too neat" && engine.GetLine(run, "cands", 0, 1) == string.Empty,
+            "Candidates and their reasons keep their rows, readable through the engine");
+        Assert(engine.GetAnswer(run, "points") == "she wants to be made to stay" && engine.GetAnswer(run, "answer") == "her car won't start",
+            "Points-to and the real answer survive");
+        Assert(engine.Current(run)!.Value.Step.Key == "stage-stop", "A migrated run that has its answer is waiting at the optional Stage it, not asking again");
+        Assert(SlateMigration.Migrate(document) == 0 && document.Exercises.Count == 1, "Running it twice adds nothing");
+    }
+
+    static void TestExerciseEngineDiceAndSlots()
+    {
+        var exercise = new Exercise
+        {
+            Id = "d",
+            Name = "D",
+            Steps = new Step[]
+            {
+                new() { Key = "who", Kind = StepKind.Slots, Source = "speakers" },
+                new() { Key = "dial", Kind = StepKind.Dice, Table = new[] { "A", "B", "C" } }
+            }
+        };
+        var speakers = new[] { "MARA", "JOE" };
+        var engine = new ExerciseEngine(exercise, source => source == "speakers" ? speakers : Array.Empty<string>());
+        var run = new ExerciseRun();
+        var dial = new StepSlot(exercise.Steps[1], 0);
+
+        Assert(engine.SlotItems(new StepSlot(exercise.Steps[0], 0)).SequenceEqual(speakers), "A Slots step has a field per speaker, in order");
+        Assert(engine.SlotItems(dial).Count == 0, "A step that isn't Slots has no items");
+
+        // Re-rolling never lands on the row it already has.
+        var seen = new HashSet<string>();
+        string? last = null;
+        for (var seed = 0; seed < 40; seed++)
+        {
+            var row = engine.Roll(run, dial, new Random(seed));
+            Assert(row is not null && row != last, "A re-roll always changes the row");
+            Assert(engine.GetAnswer(run, "dial") == row, "The roll is stored");
+            seen.Add(row!);
+            last = row;
+        }
+
+        Assert(seen.Count == 3, "Every row of the table can come up");
+
+        var single = new Exercise { Id = "s", Name = "S", Steps = new Step[] { new() { Key = "d", Kind = StepKind.Dice, Table = new[] { "only" } } } };
+        var one = new ExerciseEngine(single);
+        var oneRun = new ExerciseRun();
+        var slot = new StepSlot(single.Steps[0], 0);
+        Assert(one.Roll(oneRun, slot, new Random(1)) == "only" && one.Roll(oneRun, slot, new Random(2)) == "only", "A one-row table can only repeat itself");
+
+        // No one speaks: the Slots step cannot be answered, but it can be skipped, and the run goes on.
+        var empty = new ExerciseEngine(exercise);
+        var emptyRun = new ExerciseRun();
+        Assert(empty.Current(emptyRun)!.Value.Step.Key == "who", "With no speakers the Slots step is still first");
+        empty.Skip(emptyRun, empty.Current(emptyRun)!.Value);
+        Assert(empty.Current(emptyRun)!.Value.Step.Key == "dial", "Skipping it moves on to the dice");
+    }
+
+    static void TestCatalogFillAndSceneDials()
+    {
+        // Scene Dials: speakers' wants, the roll, the scene.
+        var speakers = new[] { "MAGGIE", "BOB" };
+        var dials = new ExerciseEngine(ExerciseCatalog.SceneDials, source => source == ExerciseCatalog.SpeakersSource ? speakers : Array.Empty<string>());
+        var run = new ExerciseRun { ExerciseId = "scenedials" };
+        Assert(dials.Current(run)!.Value.Step.Kind == StepKind.Slots && dials.SlotItems(dials.Current(run)!.Value).SequenceEqual(speakers),
+            "Scene Dials opens on one want per speaker in the scene");
+        dials.SetItem(run, "wants", 0, "MAGGIE", "the keys back");
+        Assert(dials.Current(run)!.Value.Step.Kind == StepKind.Dice, "One want is enough to reach the dice");
+        var rolled = dials.Roll(run, dials.Current(run)!.Value, new Random(3));
+        Assert(rolled is not null && ExerciseCatalog.SceneDials.Steps[1].Table.Contains(rolled), "The roll is one of the six dials");
+        Assert(ExerciseCatalog.SceneDials.Steps[1].Table.Count == 6 && ExerciseCatalog.SceneDials.Steps[1].Table.All(row => row.Contains(" — ")), "Six dials, each 'Name — what you do'");
+        Assert(dials.Current(run)!.Value.Step.Key == "scene", "The scene is last");
+        dials.SetAnswer(run, "scene", 0, "They walk in mid-argument.");
+        Assert(dials.Current(run) is null, "That's every question");
+
+        // Fill: three candidates, their reasons, the wrongness, the answer, then an optional Stage it behind a Stop.
+        var fill = new ExerciseEngine(ExerciseCatalog.Fill, source => source == ExerciseCatalog.SpeakersSource ? speakers : Array.Empty<string>());
+        var fillRun = new ExerciseRun { ExerciseId = "fill", Anchor = new Anchor { Kind = AnchorKind.Bracket, Text = "[SOMETHING]" } };
+        var asked = new List<string>();
+        for (var i = 0; i < 8 && fill.Current(fillRun) is { } now; i++)
+        {
+            asked.Add(now.Step.Key);
+            switch (now.Step.Kind)
+            {
+                case StepKind.Lines: fill.SetLine(fillRun, now.Step.Key, 0, 0, "x"); break;
+                case StepKind.Slots: fill.SetItem(fillRun, now.Step.Key, 0, "BOB", "to leave"); break;
+                case StepKind.Dice: fill.Roll(fillRun, now, new Random(1)); break;
+                case StepKind.Stop: fill.Continue(fillRun, now); break;
+                default: fill.SetAnswer(fillRun, now.Step.Key, 0, "y"); break;
+            }
+        }
+
+        Assert(string.Join(",", asked) == "cands,why,points,answer,stage-stop,stage-wants,stage-dial,stage-scene",
+            "Fill asks candidates, reasons, points-to, the real answer, then Stage it with the same dials");
+        Assert(ExerciseCatalog.Fill.ShortcutKey == ExerciseCatalog.FillAnswerKey && ExerciseCatalog.Fill.Steps.Any(step => step.Key == ExerciseCatalog.FillAnswerKey),
+            "The real-answer shortcut names a step Fill has");
+
+        // The escape hatch: the answer written first does not make the other questions go away or block Stage it.
+        var early = new ExerciseRun { ExerciseId = "fill" };
+        fill.SetAnswer(early, "answer", 0, "her car won't start");
+        Assert(fill.Current(early)!.Value.Step.Key == "cands", "An early answer alone leaves the candidates open");
+        var answerSlot = fill.Sequence(early).First(slot => slot.Step.Key == "answer");
+        fill.SetLine(early, "cands", 0, 1, "the bus");
+        fill.SkipUnansweredBefore(early, answerSlot);
+        Assert(fill.Current(early)!.Value.Step.Key == "stage-stop", "Jumping to the answer passes the unanswered questions, so the run goes on to Stage it");
+        Assert(fill.GetLine(early, "cands", 0, 1) == "the bus" && !early.Passed.Contains("cands"), "What was already written is kept, not passed over");
+        Assert(early.Passed.Contains("why") && early.Passed.Contains("points"), "The unanswered ones are passed, not erased");
+
+        var ids = ExerciseCatalog.All.Select(exercise => exercise.Id).ToList();
+        Assert(ids.Distinct().Count() == ids.Count && ids.Contains("fill") && ids.Contains("scenedials"), "Both are in the deck, once");
+    }
+
+    static void TestAnchoredRunEmptiness()
+    {
+        Assert(new ExerciseRun { Anchor = new Anchor { Kind = AnchorKind.Bracket, Text = "[SOMETHING]" } }.IsEmpty,
+            "A run that only holds a handed bracket is empty, so handing brackets out leaves nothing behind");
+        Assert(new ExerciseRun { Anchor = new Anchor { Kind = AnchorKind.Scene, Text = "INT. KITCHEN" } }.IsEmpty,
+            "A run that only holds a scene is empty");
+        Assert(!new ExerciseRun { Anchor = new Anchor { Kind = AnchorKind.Bracket, Text = "[X]" }, Answers = { ["points"] = "p" } }.IsEmpty,
+            "One answer makes it worth keeping");
+        Assert(!new ExerciseRun { Anchor = new Anchor { Kind = AnchorKind.Character, Text = "MARA" } }.IsEmpty,
+            "A character you typed is still kept, as before");
+
+        var brackets = new[] { new Bracket(2, 0, "[SOMETHING happens]", 0), new Bracket(5, 3, "[sic]", 1) };
+        var choices = ProjectContext.Brackets(brackets, new[] { "[sic]" });
+        Assert(choices.Count == 2 && !choices[0].Ignored && choices[1].Ignored && choices[1].Prose && choices[0].LineNumber == 3,
+            "The picker lists every bracket in ranked order, left-out ones marked");
     }
 
     static void TestCatalogWoacThreeRounds()

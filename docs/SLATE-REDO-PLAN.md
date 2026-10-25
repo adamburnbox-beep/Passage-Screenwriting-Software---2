@@ -494,7 +494,7 @@ into a new anchored run. Tests: 4 new (123 total, all pass).
   unreliable at phone width, so 375px was checked by layout metrics (no
   horizontal overflow) and a partial screenshot.
 
-### T4 — Fill and Scene Dials · `todo`
+### T4 — Fill and Scene Dials · `done`
 
 - Fill as an exercise anchored to a bracket; *Next bracket* keeps the
   "hand me one" cursor semantics (`_handCursor`, ignore list); "Not a
@@ -505,6 +505,60 @@ into a new anchored run. Tests: 4 new (123 total, all pass).
 - Success: SLATE-PLAN Phase 1's success line, in the new runner: caret on a
   bracket → *Right now* → Fill → accept → script edited, undo intact, next
   bracket handed.
+
+**Done:** `ExerciseCatalog.Fill` and `.SceneDials` (the dial steps are one shared
+builder, so Fill's "Stage it" and the standalone exercise ask the same three
+questions). `StepCard` renders `Slots` (a field per speaker in the run's scene,
+via `Host.SpeakersFor`) and `Dice` (Roll / Roll again, die face, "Name — what you
+do"). Engine: `SlotItems`, `Roll` never repeats the row it holds, and
+`SkipUnansweredBefore` for the escape hatch. Fill: Lines(3) candidates, Lines(3)
+reasons, points-to, the real answer, then a `Stop` and the Stage it steps. A
+"The real answer" button (`Exercise.ShortcutKey`) jumps there from any step and
+passes the unanswered questions before it. A bracket run's strip carries
+**Fill it** (ranged `passage.replaceInLine`, run dropped, next bracket handed,
+"— that was the last bracket" when none is left), **Not a bracket** (ignore list,
+hands on the next) and **Next bracket** (`_handCursor++`, hands on the next). The
+launcher's Fill card hands one bracket and Scene Dials starts on the scene under
+the caret; the picker lists every bracket (left-out ones with ↩). Closing a
+bracket's run puts it back, so Fill from the launcher offers a different one.
+`SlateMigration.Migrate` moves Fills (blank ones are cleared, not moved; candidate
+and reason rows become `cands[i]` / `why[i]`). Old Brackets / Fill views,
+handlers, `FillPartnerKey` and the `Fills` clean-up in `SaveSlate` are deleted.
+Right now offers Fill on a bracket on the caret's line and Scene Dials in the
+scene rotation; the Board card Tools menu lists the Scene-anchored exercises. 4
+new tests (127 total, all pass).
+
+**Deviations:**
+- Fill's targets are *Fill it* in the strip (not a Send to entry), so it works
+  from any step, including after Stage it; Send to on Fill's steps offers
+  Synopsis (under the scene the bracket sits in) and Copy.
+- A bracket run with nothing written, and a scene run with nothing written, are
+  `IsEmpty` however the anchor is set (`ExerciseRun.IsEmpty`), so handing out
+  brackets leaves no kept-run chip behind. A typed character still keeps one.
+- The answer is joined onto one line before it replaces the bracket (a bracket
+  sits in one line; the old view passed newlines through).
+- Fill is not in the Board card menu, and Cast menus now list character-anchored
+  exercises only: Fill is bracket-anchored and §4.6 gives scene cards
+  scene-anchored tools. Right now covers a bracket under the caret.
+- The old `SceneDials` table in `Editor.razor` stays: Push/Pull's check 0 still
+  points at it until T7 deletes it. `Suggestions.ForFill` and `FillRun` stay for
+  T8's cleanup (migration reads `FillRun`).
+- The dev data holds no saved Fill runs (the old view pruned empty ones), so the
+  migration was checked on a seeded scratch copy (`[gate or door?]` with two
+  candidates and a points-to): it shows as a kept run on the Fill card, anchored
+  by its bracket, with its rows in place.
+- Verified in the browser on that scratch copy (§8): Right now → Fill on the
+  caret's bracket; candidates, reasons, real answer; Fill it edits the line, the
+  status-bar Undo restores it exactly with the caret on that line; the next
+  bracket is handed; Not a bracket; Next bracket then Fill from the launcher offers
+  a different one; the bracket edited away underneath → "no longer in the
+  script — nothing changed", run kept; Stage it from the Stop uses the bracket's
+  scene speakers; Scene Dials on the caret's scene (MARA prefilled, dial rolled,
+  sketch sent to Synopsis, undo exact); Board card Tools → Scene Dials; no
+  counters or dates in the dock text; `.partner` count 0; 375px has no horizontal
+  overflow. Keyboard-only was exercised with the real Enter key between Lines
+  slots and steps; keystrokes sent faster than the round trip can race the
+  re-render, as before.
 
 ### T5 — Split family · `todo`
 
