@@ -61,6 +61,12 @@ class Program
         failures += RunTest("Test Structure Template Seed Skips Duplicates", TestStructureTemplateSeedSkipsDuplicates);
         failures += RunTest("Test Structure Template Save Round Trip", TestStructureTemplateSaveRoundTrip);
         failures += RunTest("Test SlateStore Keeps Templates File", TestSlateStoreKeepsTemplatesFile);
+        failures += RunTest("Test Project Notes Round Trip", TestProjectNotesRoundTrip);
+        failures += RunTest("Test Project Notes Old Sidecar Loads", TestProjectNotesOldSidecarLoads);
+        failures += RunTest("Test Note Templates Distinct", TestNoteTemplatesDistinct);
+        failures += RunTest("Test Note Templates Survive Prune", TestNoteTemplatesSurvivePrune);
+        failures += RunTest("Test Prune Message Counts Notes", TestPruneMessageCountsNotes);
+        failures += RunTest("Test Notes Zip File Names", TestNotesZipFileNames);
         failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
         failures += RunTest("Test Outline Export Matches Golden", TestOutlineExportMatchesGolden);
         failures += RunTest("Test Outline Export Fields Change Output", TestOutlineExportFieldsChangeOutput);
@@ -1104,6 +1110,111 @@ class Program
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    static void TestProjectNotesRoundTrip()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            library.Save("a", "INT. ROOM - DAY");
+            var doc = new SlateDocument();
+            doc.Story.Notes.Add(new NotePage { Title = "World", Body = "# World\nRain.", Template = "Location" });
+            store.Save("a", doc);
+            var note = store.Load("a")!.Story.Notes.Single();
+            Assert(note.Title == "World" && note.Body == "# World\nRain." && note.Template == "Location" && note.Id == doc.Story.Notes[0].Id,
+                "A project note reloads intact");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestProjectNotesOldSidecarLoads()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, ".slate"));
+            File.WriteAllText(Path.Combine(root, ".slate", "old.fountain.json"), "{\"SlateVersion\":1,\"Story\":{\"Storylines\":[]}}");
+            Assert(store.Load("old.fountain")!.Story.Notes.Count == 0, "A sidecar without Notes loads with an empty list");
+            File.WriteAllText(Path.Combine(root, ".slate", "templates.json"), "{\"SlateVersion\":1,\"Templates\":[]}");
+            Assert(store.LoadTemplates()!.NoteTemplates.Count == 0, "A templates file without NoteTemplates loads empty");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestNoteTemplatesDistinct()
+    {
+        var builtIns = NoteTemplates.BuiltIns;
+        Assert(builtIns.Count == 3 && builtIns.All(t => t.BuiltIn && t.Body.Trim().Length > 40), "Three non-empty built-in note templates");
+        Assert(builtIns.Select(t => t.Body).Distinct().Count() == 3 && builtIns.Select(t => t.Name).Distinct().Count() == 3
+            && builtIns.Select(t => t.Id).Distinct().Count() == 3, "Built-in note templates are distinct");
+        Assert(builtIns.All(t => t.Body.StartsWith("# ")), "Bodies are dedented Markdown");
+    }
+
+    static void TestNoteTemplatesSurvivePrune()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            store.SaveTemplates(new TemplatesDocument { NoteTemplates = { new NoteTemplate { Name = "Mine", Body = "x" } } });
+            store.Save("gone", new SlateDocument());
+            store.PruneOrphans(Array.Empty<string>());
+            var loaded = store.LoadTemplates()!;
+            Assert(loaded.NoteTemplates.Single().Name == "Mine" && loaded.NoteTemplates[0].Body == "x", "Custom note templates survive the orphan sweep");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestPruneMessageCountsNotes()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            var withNotes = new SlateDocument();
+            withNotes.Story.Notes.Add(new NotePage { Title = "a" });
+            withNotes.Story.Notes.Add(new NotePage { Title = "b" });
+            store.Save("one", withNotes);
+            store.Save("two", new SlateDocument());
+            var pruned = store.PruneOrphansCounted(Array.Empty<string>());
+            Assert(pruned.Single(entry => entry.Script == "one.fountain").Notes == 2 && pruned.Single(entry => entry.Script == "two.fountain").Notes == 0,
+                "The sweep counts the notes in each deleted sidecar");
+            var message = NoteTemplates.PruneMessage(pruned);
+            Assert(message.Contains("2 project notes") && message.Contains("one.fountain: 2"), "The message names the notes lost: " + message);
+            var plain = NoteTemplates.PruneMessage(new[] { ("x.fountain", 0) });
+            Assert(!plain.Contains("project note"), "No note clause when none were held");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestNotesZipFileNames()
+    {
+        var notes = new[]
+        {
+            new NotePage { Title = "World", Body = "one" },
+            new NotePage { Title = "world", Body = "two" },
+            new NotePage { Title = "", Body = "three" },
+            new NotePage { Title = "  ", Body = "four" },
+            new NotePage { Title = "a/b:c?", Body = "five" }
+        };
+        using var zip = new ZipArchive(new MemoryStream(NoteTemplates.BuildZip(notes)), ZipArchiveMode.Read);
+        var names = zip.Entries.Select(entry => entry.FullName).ToList();
+        Assert(names.Count == 5 && names.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 5, "One entry per page with unique names: " + string.Join("|", names));
+        Assert(names.All(n => n.EndsWith(".md") && !n.Contains('/') && !n.Contains(':') && !n.Contains('?')), "File names are safe");
+        Assert(names.Contains("Untitled.md") && names.Contains("Untitled (2).md") && names.Contains("world (2).md"), "Empty and duplicate titles are numbered");
+        using var reader = new StreamReader(zip.GetEntry("World.md")!.Open());
+        Assert(reader.ReadToEnd() == "one", "Entry holds the page body");
     }
 
     static void TestShapeLineDerivesFromLanes()

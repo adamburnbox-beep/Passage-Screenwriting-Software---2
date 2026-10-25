@@ -1070,7 +1070,7 @@ per-note history, and any bridge to the Slate runners.
 2. Sidecar (recommended) or companion files.
 3. Whether the three built-in templates are the right set.
 
-### S4.2 Project notes: implementation — `todo`
+### S4.2 Project notes: implementation — `done`
 
 - **Approved (2026-10-25):** per-script notes in the sidecar as
   `StoryData.Notes` (`NotePage`), three built-in templates. Read the S4.1
@@ -1102,6 +1102,27 @@ per-note history, and any bridge to the Slate runners.
   with an empty list; templates are non-empty and distinct; custom templates
   survive `PruneOrphans`; the prune message counts notes; the zip contains one
   `.md` per page with unique, safe file names (duplicate or empty titles).
+- **Landed:** `StoryData.Notes` (`NotePage`: Id, Title, Body, Template), no
+  version bump. `Services/NoteTemplates.cs` holds `NoteTemplate`, the three
+  built-ins (Character, Location, Logline & premise), the zip builder, the file
+  namer and the prune message. S2.2's `TemplatesDocument` took the sibling
+  `NoteTemplates` list as designed (an old file loads with none); `PersistTemplates`
+  now loads the document and replaces only `Templates`, so saving a structure
+  template no longer wipes note templates. UI: **a "Project notes" section under
+  the existing NOTES tab**, not a new tab, because that tab already means the
+  script's `[[notes]]` (so the name is shared, flag if it confuses). Pages open in
+  a modal with a title field and a plain `<textarea>`, not CodeMirror (rule 2;
+  Markdown highlighting can be a later row). It saves on an 800 ms debounce
+  through `SaveSlate` and flushes on Close. Delete is confirmed, Download .md
+  per page, Download all (zip), Save as template. With no saved script the
+  section says to save first. `PruneOrphansCounted` returns notes per deleted
+  sidecar and the message names them; `PruneOrphans` is unchanged for callers.
+  Zip names strip Windows-invalid characters (not the host's), and duplicate
+  or empty titles become `Untitled`, `Untitled (2)`, … case-insensitively.
+  Tried in the running app: pages from Character, Location, Logline and a
+  custom template; edit + rename persisted on disk and across a reload;
+  delete asked first; both downloads fired. The zip's contents are covered by
+  the test only, not opened.
 - **Budget:** ~80k.
 
 ---
