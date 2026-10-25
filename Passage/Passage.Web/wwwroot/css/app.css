@@ -278,7 +278,8 @@ html, body {
     box-shadow: var(--shadow-soft);
 }
 
-.btn:hover { border-color: var(--muted-text); }
+.btn:hover:not(:disabled) { border-color: var(--muted-text); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn:focus-visible, .view-tabs button:focus-visible {
     outline: 1px solid var(--control-accent);
     outline-offset: 1px;
@@ -1169,6 +1170,8 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     color: var(--secondary-text);
     padding: 0 2px;
 }
+
+.tool-note.warn { color: var(--header-text); border-left: 2px solid var(--control-accent); padding-left: 10px; margin-bottom: 8px; }
 
 .tool-note code { font-family: var(--mono); font-size: 11.5px; }
 
