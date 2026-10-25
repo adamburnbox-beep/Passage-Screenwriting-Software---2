@@ -1992,3 +1992,23 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .location-scene { display: block; width: 100%; padding: 2px 8px 2px 30px; font-size: 12px; color: var(--muted-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .location-scene:hover, .location-name:hover { color: var(--control-foreground); }
 .location-gone { opacity: 0.6; }
+
+/* Selection and tags (docs/STORY-PLAN.md S1.4) */
+.board-card { position: relative; }
+.item-selected { outline: 2px solid var(--control-accent); outline-offset: 1px; }
+.tag-bars { position: absolute; left: 0; top: 0; bottom: 0; display: flex; border-radius: var(--radius) 0 0 var(--radius); overflow: hidden; pointer-events: none; }
+.tag-bar { width: 4px; height: 100%; }
+.tag-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.tag-dot, .tag-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.tag-dot.neutral, .tag-swatch.neutral { background: transparent; border: 1.5px solid var(--muted-text); box-sizing: border-box; }
+.tag-chip { font-size: 0.75em; border: 1px solid var(--card-border); border-radius: 999px; padding: 0 6px; color: var(--muted-text); }
+.tag-popover {
+    position: fixed; z-index: 1000; width: 300px; max-height: 340px; display: flex; flex-direction: column;
+    background: var(--card-background); border: 1px solid var(--card-border); border-radius: var(--radius);
+    box-shadow: var(--shadow-card-hover); padding: 8px; gap: 6px;
+}
+.tag-popover input { width: 100%; box-sizing: border-box; }
+.tag-list { overflow-y: auto; }
+.tag-row { display: flex; align-items: center; gap: 8px; }
+.tag-row .jump-kind { margin-left: auto; }
+.tag-tick { width: 1em; text-align: center; }

@@ -2351,6 +2351,8 @@ Open a .fountain file to see formatted pages.</div>
             }
         }
 
+        await PushTagStateAsync();
+
         if (firstRender)
         {
             _selfRef = DotNetObjectReference.Create(this);
@@ -3493,18 +3495,18 @@ Open a .fountain file to see formatted pages.</div>
     /// line first if it has none or shares one with an earlier heading. One
     /// replaceInLine edit, so one undo step; the line is appended to, never
     /// rebuilt, so a scene number survives (decision A2).</summary>
-    private async Task<Guid?> EnsureCardIdAsync(BoardCard card)
+    private async Task<Guid?> EnsureCardIdAsync(BoardCard card, string verb = "star")
     {
         var lines = _content.Replace("\r\n", "\n").Split('\n');
         var index = card.LineNumber - 1;
         if (index < 0 || index >= lines.Length)
         {
-            _statusMessage = "Could not star: that heading is no longer in the script.";
+            _statusMessage = $"Could not {verb}: that heading is no longer in the script.";
             return null;
         }
 
         var duplicate = IsDuplicateCard(card);
-        if (!duplicate && card.Id != Guid.Empty && StoryItems.HasIdMarker(lines[index]))
+        if (!StoryItems.NeedsStamp(lines[index], duplicate) && card.Id != Guid.Empty)
         {
             return card.Id;
         }
@@ -3523,7 +3525,7 @@ Open a .fountain file to see formatted pages.</div>
 
         if (!replaced)
         {
-            _statusMessage = "Could not star: the script changed under the card. Try again.";
+            _statusMessage = $"Could not {verb}: the script changed under the card. Try again.";
             return null;
         }
 
@@ -3534,7 +3536,7 @@ Open a .fountain file to see formatted pages.</div>
         UpdateCaretElementLabel();
         _statusMessage = duplicate
             ? "That heading shared an id with an earlier card (a copy), so it was given a fresh one."
-            : "Card marked with an id so its star can follow it.";
+            : "Card marked with an id so its star and tags can follow it.";
         return id;
     }
 
@@ -3542,6 +3544,189 @@ Open a .fountain file to see formatted pages.</div>
     {
         StoryItems.SetKey(_slate.Story, beat.Id, StoryItems.BeatKind, beat.Title, !StoryItems.IsKey(_slate.Story, beat.Id));
         SaveSlate();
+    }
+
+    // ---- Tagging (docs/STORY-PLAN.md S1.4) ----
+    //
+    // Selection and the popover's filtering live in passage.js (decision D);
+    // the server hears only about Enter. The client is pushed the tag targets
+    // and each item's tags, but only when they change.
+
+    private string _lastTagPush = string.Empty;
+
+    // The parser gives an unmarked heading a random id on every parse, so a
+    // card only has a stable id once its heading line carries [[id:…]] (A2).
+    private DocumentAnalysis? _stampedFor;
+    private HashSet<int> _stampedLines = new();
+
+    private HashSet<int> StampedLines()
+    {
+        if (!ReferenceEquals(_stampedFor, _analysis))
+        {
+            _stampedFor = _analysis;
+            var lines = _content.Replace("\r\n", "\n").Split('\n');
+            _stampedLines = Enumerable.Range(0, lines.Length)
+                .Where(index => StoryItems.HasIdMarker(lines[index]))
+                .Select(index => index + 1)
+                .ToHashSet();
+        }
+
+        return _stampedLines;
+    }
+
+    private bool IsStampedCard(BoardCard card)
+    {
+        return card.Id != Guid.Empty && !IsDuplicateCard(card) && StampedLines().Contains(card.LineNumber);
+    }
+
+    private string? StorylineColourOf(Guid id) =>
+        _slate.Story.Storylines.FirstOrDefault(line => line.Id == id) is { } line ? StoryItems.StorylineColour(line.Colour) : null;
+
+    private string TagCharacterColour(string name) =>
+        Characters.Palette.Contains(CharacterColour(name)) ? CharacterColour(name) : string.Empty;
+
+    private async Task PushTagStateAsync()
+    {
+        var targets = new List<object>();
+        foreach (var line in _slate.Story.Storylines)
+        {
+            targets.Add(new { kind = "storyline", key = "storyline:" + line.Id, label = line.Name.Length > 0 ? line.Name : "Unnamed storyline", colour = StoryItems.StorylineColour(line.Colour) });
+        }
+
+        foreach (var stat in _analysis.Characters)
+        {
+            targets.Add(new { kind = "character", key = "character:" + stat.Name, label = stat.Name, colour = TagCharacterColour(stat.Name) });
+        }
+
+        foreach (var place in _analysis.Locations ?? Array.Empty<LocationEntry>())
+        {
+            targets.Add(new { kind = "location", key = "location:" + place.Name, label = place.Name, colour = LocationColour(place.Name) });
+        }
+
+        var items = _slate.Story.Items
+            .Where(item => !item.IsEmpty)
+            .ToDictionary(item => item.TargetId.ToString(), StoryItems.TagKeys);
+        var json = System.Text.Json.JsonSerializer.Serialize(new { targets, items });
+        if (json == _lastTagPush)
+        {
+            return;
+        }
+
+        _lastTagPush = json;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setTagTargets", targets, items);
+        }
+        catch (JSException)
+        {
+            _lastTagPush = string.Empty;
+        }
+    }
+
+    private ItemTags? TagsOf(Guid id) =>
+        id == Guid.Empty ? null : _slate.Story.Items.FirstOrDefault(item => item.TargetId == id);
+
+    private RenderFragment<Guid> RenderTagBars => id => __builder =>
+    {
+        var tags = TagsOf(id);
+        @if (tags is { Storylines.Count: > 0 })
+        {
+            <div class="tag-bars">
+                @foreach (var lineId in tags.Storylines)
+                {
+                    var line = _slate.Story.Storylines.FirstOrDefault(entry => entry.Id == lineId);
+                    @if (line is not null)
+                    {
+                        <span class="tag-bar" style="background:@(StorylineColourOf(lineId) is { Length: > 0 } colour ? colour : "var(--muted-text)")"
+                              title="@(line.Name.Length > 0 ? line.Name : "Unnamed storyline")"></span>
+                    }
+                }
+            </div>
+        }
+    };
+
+    private RenderFragment<Guid> RenderTagMarks => id => __builder =>
+    {
+        var tags = TagsOf(id);
+        @if (tags is { Characters.Count: > 0 } or { Locations.Count: > 0 })
+        {
+            <div class="tag-marks">
+                @foreach (var name in tags.Characters)
+                {
+                    var colour = TagCharacterColour(name);
+                    <span class="tag-dot @(colour.Length == 0 ? "neutral" : null)" style="@(colour.Length > 0 ? "background:" + colour : null)"
+                          title="@(colour.Length == 0 ? name + " — no Cast colour" : name)"></span>
+                }
+                @foreach (var place in tags.Locations)
+                {
+                    <span class="tag-chip" style="@(LocationColour(place) is { Length: > 0 } colour ? "border-color:" + colour : null)">@place</span>
+                }
+            </div>
+        }
+    };
+
+    /// <summary>Called on Enter in the tag popover. Returns the id the item is
+    /// now known by (a card is stamped first if it has none), or empty when
+    /// nothing was tagged.</summary>
+    [JSInvokable]
+    public async Task<string> OnTagToggled(string targetId, string itemKind, string key)
+    {
+        Guid id;
+        string label;
+        if (itemKind == StoryItems.BeatKind)
+        {
+            var beat = Guid.TryParse(targetId, out var beatId) ? _slate.Beats.FirstOrDefault(entry => entry.Id == beatId) : null;
+            if (beat is null)
+            {
+                _statusMessage = "Could not tag: that beat no longer exists.";
+                StateHasChanged();
+                return string.Empty;
+            }
+
+            id = beat.Id;
+            label = beat.Title;
+        }
+        else
+        {
+            var line = targetId.StartsWith("line:", StringComparison.Ordinal) && int.TryParse(targetId[5..], out var number) ? number : 0;
+            var live = _analysis.Elements
+                .Where(element => element is SectionElement or SceneHeadingElement)
+                .FirstOrDefault(element => line > 0
+                    ? element.LineNumber == line
+                    : Guid.TryParse(targetId, out var wanted) && element.Id == wanted && _analysis.DuplicateIdLines?.Contains(element.LineNumber) != true && StampedLines().Contains(element.LineNumber));
+            if (live is null)
+            {
+                _statusMessage = "Could not tag: that heading is no longer in the script.";
+                StateHasChanged();
+                return string.Empty;
+            }
+
+            var heading = live is SectionElement section ? section.Heading : ((SceneHeadingElement)live).Heading;
+            var stamped = await EnsureCardIdAsync(new BoardCard(heading, string.Empty, string.Empty, live.LineNumber, new List<BoardCard>(), live.Id), "tag");
+            if (stamped is null)
+            {
+                StateHasChanged();
+                return string.Empty;
+            }
+
+            id = stamped.Value;
+            label = heading;
+        }
+
+        StoryItems.ToggleTag(_slate.Story, id, itemKind, label, key);
+        SaveSlate();
+        StateHasChanged();
+        return id.ToString();
+    }
+
+    [JSInvokable]
+    public void OnBeatActivated(string id)
+    {
+        if (Guid.TryParse(id, out var beatId) && _slate.Beats.FirstOrDefault(entry => entry.Id == beatId) is { } beat)
+        {
+            StartBeatEdit(beat);
+            StateHasChanged();
+        }
     }
 
     private void DiscardDetached(ItemTags item)
@@ -4386,6 +4571,11 @@ Open a .fountain file to see formatted pages.</div>
         if (outcome.Applied > 0 && settings is not null && _slate.Characters.All(entry => entry.Name != newKey))
         {
             _slate.Characters.Add(new CharacterSettings { Name = newKey, Colour = settings.Colour, Gender = settings.Gender });
+            SaveSlate();
+        }
+
+        if (outcome.Applied > 0 && newKey != oldName && StoryItems.RenameCharacter(_slate.Story, oldName, newKey) > 0)
+        {
             SaveSlate();
         }
 
@@ -6155,14 +6345,16 @@ Open a .fountain file to see formatted pages.</div>
         var beat = item.Beat;
         <div class="beat-card @(_editingBeat == beat ? "selected" : null) @(_keyOnly && !StoryItems.IsKey(_slate.Story, beat.Id) ? "dimmed" : null)"
              data-beat-id="@beat.Id" data-page="@beat.Page" data-span="@beat.Span"
+             data-item-kind="beat" data-item-id="@beat.Id"
              style="@BeatStyle(beat, item.Row)"
-             @onclick="() => StartBeatEdit(beat)"
              @ondblclick:stopPropagation="true">
+            @RenderTagBars(beat.Id)
             <div class="beat-title">
                 <button class="icon-btn key-star @(StoryItems.IsKey(_slate.Story, beat.Id) ? "on" : null)" title="Key beat"
                         @onclick="() => ToggleBeatKey(beat)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">@(StoryItems.IsKey(_slate.Story, beat.Id) ? "★" : "☆")</button>
                 @(beat.Title.Length > 0 ? beat.Title : "Untitled beat")
             </div>
+            @RenderTagMarks(beat.Id)
             @if (beat.Description.Length > 0)
             {
                 <div class="beat-body">@beat.Description</div>
@@ -6258,14 +6450,15 @@ Open a .fountain file to see formatted pages.</div>
         else
         {
             <div class="board-card @(_dragOverCardId == card.Id ? "drop-target" : null) @DimClass(card)"
+                 data-item-kind="card" data-item-id="@(IsStampedCard(card) ? card.Id.ToString() : string.Empty)" data-line="@card.LineNumber"
                  draggable="@((card.Id != Guid.Empty).ToString().ToLowerInvariant())"
                  @ondragstart="() => OnCardDragStart(card)"
                  @ondragend="OnCardDragEnd"
                  @ondragover="() => OnCardDragOver(card)"
                  @ondragover:preventDefault="true"
                  @ondrop="() => OnCardDropAsync(card)"
-                 @ondrop:preventDefault="true"
-                 @onclick="() => JumpToLineAsync(card.LineNumber)" @onclick:stopPropagation="true">
+                 @ondrop:preventDefault="true">
+                @RenderTagBars(IsStampedCard(card) ? card.Id : Guid.Empty)
                 <div class="card-top">
                     <span class="card-kind">@card.Kind</span>
                     @RenderCardStar(card)
@@ -6276,6 +6469,7 @@ Open a .fountain file to see formatted pages.</div>
                     }
                 </div>
                 <div class="card-heading">@card.Heading</div>
+                @RenderTagMarks(IsStampedCard(card) ? card.Id : Guid.Empty)
                 @if (card.Description.Length > 0)
                 {
                     <div class="card-body">@card.Description</div>

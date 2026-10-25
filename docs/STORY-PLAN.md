@@ -464,7 +464,7 @@ the bigger rows rely on them.
   location disappears into "Not in the script" and Discard clears it. No
   per-keystroke work was added (list derived on parse only).
 
-### S1.4 Tagging: selection, `#` popover, bars and dots — `todo`
+### S1.4 Tagging: selection, `#` popover, bars and dots — `done`
 
 - **Read:** Standing decisions A, A2, D, G. `RenderBeat` / `RenderBoardCard`
   5716–5847. Jump palette `passage.js` 280–370. Character rename
@@ -500,6 +500,27 @@ the bigger rows rely on them.
 - **Budget:** ~130k. This is the largest row: stop and ask at 150k (rule 6)
   rather than finishing display or rename in a rush. If it trends over, split
   display into its own PR.
+- **Landed:** `ItemTags` gains `Characters` and `Locations` (bare cue names;
+  normalised locations) and `IsEmpty`. `StoryItems`: `ToggleTag`, `TagKeys`,
+  `RenameCharacter` (rewrites and merges), `NeedsStamp`. `passage.js`: JS-only
+  selection (ring class, arrow keys, Enter / double-click, Esc, re-applied by a
+  `MutationObserver` after Blazor re-renders) and one popover used on BOARD
+  cards, grid beats and tray beats, fed by `setTagTargets(targets, items)`.
+  Server calls: `OnTagToggled(targetId, kind, key)` on Enter only (returns the
+  id, stamping an unstamped card first), and `OnBeatActivated(id)` for
+  Enter / double-click on a beat (a card reuses `OnJumpTarget`). Display:
+  storyline bars, character dots (neutral ring + tooltip with no Cast colour),
+  location chips. A card's `data-item-id` is empty until its heading carries
+  `[[id:…]]`, because the parser gives unmarked headings a random id on every
+  parse; the client addresses those as `line:N`. `RenameCharacterAsync` renames
+  tags. **Both clicks changed** (decision G): a card click selects instead of
+  jumping, a beat click selects instead of opening its editor. Checked in the
+  running app: no WebSocket frames while typing in the popover; Enter on an
+  already-stamped item is one call plus Blazor's render acks (3 frames);
+  the first tag on an unstamped card adds the stamp's edit round trips (12).
+  Tags persist across reload; the `.fountain` changed only by the stamp (and
+  the rename I did). Known gap: undoing a CAST rename restores the script and
+  colour but not the renamed tags, because tags are moved, not copied.
 
 ### S1.5 Element filters — `todo`
 

@@ -277,6 +277,239 @@ window.passage = (function () {
         if (dotnetRef) dotnetRef.invokeMethodAsync("OnGoToSceneShortcut");
     }
 
+    // Selecting and tagging Board cards and beats (STORY-PLAN S1.4, decisions D
+    // and G). Selection, arrow keys and the popover's filtering all stay in the
+    // browser (trap 4); only Enter in the popover, and Enter / double-click on
+    // the selection, reach the server.
+    let tagTargets = [];
+    let itemTags = {};
+    let selectedItem = null; // { kind, id, line }
+    let tagPopover = null;
+
+    function setTagTargets(targets, items) {
+        tagTargets = Array.isArray(targets) ? targets : [];
+        itemTags = items || {};
+        if (tagPopover) tagPopover.refresh();
+    }
+
+    function itemElements() {
+        return Array.from(document.querySelectorAll("[data-item-kind]")).filter((el) => el.offsetParent !== null);
+    }
+
+    function selectedElement() {
+        if (!selectedItem) return null;
+        const all = itemElements().filter((el) => el.dataset.itemKind === selectedItem.kind);
+        let found = selectedItem.id ? all.find((el) => el.dataset.itemId === selectedItem.id) : null;
+        // A card not yet stamped is found by line until it has an id.
+        if (!found && selectedItem.kind === "card" && selectedItem.line) {
+            found = all.find((el) => el.dataset.line === String(selectedItem.line));
+        }
+        return found || null;
+    }
+
+    function applySelection() {
+        const el = selectedElement();
+        document.querySelectorAll(".item-selected").forEach((other) => {
+            if (other !== el) other.classList.remove("item-selected");
+        });
+        if (el && !el.classList.contains("item-selected")) el.classList.add("item-selected");
+        if (el && selectedItem.kind === "card") {
+            selectedItem.line = Number(el.dataset.line) || selectedItem.line;
+            if (el.dataset.itemId) selectedItem.id = el.dataset.itemId;
+        }
+    }
+
+    function selectItem(el) {
+        selectedItem = el
+            ? { kind: el.dataset.itemKind, id: el.dataset.itemId || "", line: Number(el.dataset.line) || 0 }
+            : null;
+        applySelection();
+        if (el) el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+
+    function typingInField() {
+        const active = document.activeElement;
+        if (!active || active === document.body) return false;
+        return /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) || active.isContentEditable
+            || !!active.closest(".cm-editor");
+    }
+
+    function activateSelection() {
+        const el = selectedElement();
+        if (!el || !dotnetRef) return;
+        if (selectedItem.kind === "beat") dotnetRef.invokeMethodAsync("OnBeatActivated", el.dataset.itemId);
+        else dotnetRef.invokeMethodAsync("OnJumpTarget", Number(el.dataset.line));
+    }
+
+    function openTagPopover() {
+        if (tagPopover) return;
+        const el = selectedElement();
+        if (!el || !dotnetRef) return;
+        const kind = el.dataset.itemKind;
+        let targetId = el.dataset.itemId || ("line:" + el.dataset.line);
+        let on = new Set(itemTags[targetId] || []);
+        let matches = [];
+        let selected = 0;
+
+        const box = document.createElement("div");
+        box.className = "tag-popover";
+        box.setAttribute("role", "dialog");
+        box.setAttribute("aria-label", "Tag");
+        box.innerHTML = '<input type="text" placeholder="Tag with a storyline, character or location..." />' +
+            '<div class="tag-list"></div>';
+        const input = box.querySelector("input");
+        const list = box.querySelector(".tag-list");
+
+        function render() {
+            const query = input.value.trim().toLowerCase();
+            matches = query.length === 0
+                ? tagTargets
+                : tagTargets.filter((target) => target.label.toLowerCase().includes(query));
+            selected = Math.max(0, Math.min(selected, matches.length - 1));
+            list.replaceChildren();
+            if (matches.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "sidebar-empty";
+                empty.textContent = tagTargets.length === 0
+                    ? "Nothing to tag with yet. Add a storyline in ELEMENTS."
+                    : "Nothing matches that filter.";
+                list.appendChild(empty);
+                return;
+            }
+            matches.forEach((target, index) => {
+                const row = document.createElement("div");
+                row.className = "scene-row tag-row" + (index === selected ? " active" : "");
+                const dot = document.createElement("span");
+                dot.className = "tag-swatch" + (target.colour ? "" : " neutral");
+                if (target.colour) dot.style.background = target.colour;
+                const kindLabel = document.createElement("span");
+                kindLabel.className = "jump-kind";
+                kindLabel.textContent = target.kind;
+                const tick = document.createElement("span");
+                tick.className = "tag-tick";
+                tick.textContent = on.has(target.key) ? "✓" : "";
+                row.append(dot, document.createTextNode(target.label), kindLabel, tick);
+                row.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    selected = index;
+                    toggle();
+                });
+                list.appendChild(row);
+            });
+            const active = list.children[selected];
+            if (active) active.scrollIntoView({ block: "nearest" });
+        }
+
+        function toggle() {
+            const target = matches[selected];
+            if (!target) return;
+            const before = new Set(on);
+            if (!on.delete(target.key)) on.add(target.key);
+            render();
+            dotnetRef.invokeMethodAsync("OnTagToggled", targetId, kind, target.key).then((id) => {
+                if (!id) {
+                    on = before;
+                } else {
+                    targetId = id;
+                    if (selectedItem) selectedItem.id = id;
+                    on = new Set(itemTags[targetId] || []);
+                }
+                if (tagPopover) render();
+            });
+        }
+
+        function close() {
+            document.removeEventListener("mousedown", outside, true);
+            box.remove();
+            tagPopover = null;
+        }
+
+        function outside(event) {
+            if (!box.contains(event.target)) close();
+        }
+
+        input.addEventListener("input", () => {
+            selected = 0;
+            render();
+        });
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowDown") selected = Math.min(selected + 1, matches.length - 1);
+            else if (event.key === "ArrowUp") selected = Math.max(selected - 1, 0);
+            else if (event.key === "Enter") toggle();
+            else if (event.key === "Escape") close();
+            else return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (tagPopover) render();
+        });
+
+        document.body.appendChild(box);
+        const rect = el.getBoundingClientRect();
+        const left = Math.max(8, Math.min(rect.left, window.innerWidth - box.offsetWidth - 8));
+        const below = rect.bottom + 6;
+        const top = below + box.offsetHeight > window.innerHeight - 8
+            ? Math.max(8, rect.top - box.offsetHeight - 6)
+            : below;
+        box.style.left = left + "px";
+        box.style.top = top + "px";
+        document.addEventListener("mousedown", outside, true);
+        tagPopover = {
+            refresh() {
+                on = new Set(itemTags[targetId] || []);
+                render();
+            }
+        };
+        render();
+        input.focus();
+    }
+
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest || event.target.closest("button, input, textarea, select, a, .tag-popover")) return;
+        const el = event.target.closest("[data-item-kind]");
+        if (el) selectItem(el);
+    });
+
+    document.addEventListener("dblclick", (event) => {
+        if (!event.target.closest || event.target.closest("button, input, textarea, select, a, .tag-popover")) return;
+        const el = event.target.closest("[data-item-kind]");
+        if (!el) return;
+        selectItem(el);
+        activateSelection();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (!selectedItem || tagPopover || typingInField() || event.ctrlKey || event.metaKey || event.altKey) return;
+        const el = selectedElement();
+        if (!el) return;
+        if (event.key === "#") {
+            openTagPopover();
+        } else if (event.key === "Enter" && document.activeElement?.tagName !== "BUTTON") {
+            activateSelection();
+        } else if (event.key === "Escape") {
+            selectedItem = null;
+            applySelection();
+            return;
+        } else if (/^Arrow(Left|Right|Up|Down)$/.test(event.key)) {
+            const all = itemElements();
+            const index = all.indexOf(el);
+            const next = all[Math.max(0, Math.min(all.length - 1, index + (/Left|Up/.test(event.key) ? -1 : 1)))];
+            if (next) selectItem(next);
+        } else {
+            return;
+        }
+        event.preventDefault();
+    });
+
+    // Blazor re-renders replace or rewrite the cards; put the ring back.
+    let selectionFrame = 0;
+    new MutationObserver(() => {
+        if (!selectedItem || selectionFrame) return;
+        selectionFrame = requestAnimationFrame(() => {
+            selectionFrame = 0;
+            applySelection();
+        });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+
     // Jump to (HIGHLAND-PLAN H4.2): scenes, sections and named markers from the
     // last parse, filtered here so typing never round-trips (trap 4). Only the
     // chosen jump goes to the server, which also switches back to the script.
@@ -1688,7 +1921,7 @@ window.passage = (function () {
         exportDocument, focusEditor, startBurst, stopBurst,
         loadSession, setSessionDocument,
         readRecoverySnapshot, clearRecoverySnapshot,
-        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setJumpTargets, openJumpPalette, setCharacterHighlights, restoreLineOverrides,
+        refreshHighlights, undo, redo, copyText, scrollIntoView, scrollToTop, replaceLineRange, replaceInLine, replaceLines, insertLinesAt, deleteLineRange, dropIsAfter, setPageRules, setSuggestions, setJumpTargets, setTagTargets, openJumpPalette, setCharacterHighlights, restoreLineOverrides,
         findNext, findPrevious, replaceCurrent, replaceAll, selectedText,
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
