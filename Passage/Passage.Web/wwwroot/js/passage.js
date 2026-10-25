@@ -1419,6 +1419,12 @@ window.passage = (function () {
         scheduleSessionSave();
     }
 
+    // BOARD and BEATS filter bars (STORY-PLAN S1.5), one set per view.
+    function setStoryFilter(view, filter) {
+        session[view === 'beats' ? 'beatFilter' : 'boardFilter'] = filter;
+        scheduleSessionSave();
+    }
+
     // Markdown reading speed for the status bar's reading time; Blazor clamps it.
     function setWordsPerMinute(wordsPerMinute) {
         session.wordsPerMinute = wordsPerMinute;
@@ -1926,7 +1932,7 @@ window.passage = (function () {
         getTheme, setTheme,
         getSyntaxScheme, setSyntaxScheme, applySyntaxColours,
         getAutoContd, setAutoContd,
-        setTypewriterScrolling, setFocusLine, setWordsPerMinute, setOutlineFilters,
+        setTypewriterScrolling, setFocusLine, setWordsPerMinute, setOutlineFilters, setStoryFilter,
         get editor() { return cm; }
     };
 })();

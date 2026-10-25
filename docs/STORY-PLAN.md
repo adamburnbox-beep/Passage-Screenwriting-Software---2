@@ -522,7 +522,7 @@ the bigger rows rely on them.
   the rename I did). Known gap: undoing a CAST rename restores the script and
   colour but not the renamed tags, because tags are moved, not copied.
 
-### S1.5 Element filters — `todo`
+### S1.5 Element filters — `done`
 
 - **Read:** Standing decisions B, C, D. Outline filters: `Editor.razor` 158–166
   and `SetOutlineFiltersAsync` 4189, `Services/OutlineFilters.cs`, and
@@ -554,6 +554,22 @@ the bigger rows rely on them.
   location, derived speaker (including a `(V.O.)` cue), a lane matching via a child, an
   empty filter matching everything).
 - **Budget:** ~70k.
+- **Landed:** `Services/StoryFilter.cs`: the `StoryFilter` record (storylines,
+  characters, locations, `KeyOnly`; OR within a kind, AND across kinds, empty
+  matches everything), `LaneMatches`, and `SceneSpeakers` (bare cue names per
+  scene, keyed by heading line). `Editor.razor`: `RenderFilterBar` on both
+  toolbars (three `<details>` menus, Key only, Clear; the tooltip states the
+  rule) replaces the S1.1 `_keyOnly` toggle. `_boardFilter` and `_beatFilter`
+  are separate and persist in the session key (`passage.setStoryFilter`,
+  `BoardFilter` / `BeatFilter` on the snapshot). Dimming covers cards, act and
+  sequence heads (a lane matches via itself or any card in it), beats, and the
+  BEATS scene track. A scene's own heading counts as its location; a speaker
+  counts as its character. Beats match on explicit tags only. Server render on
+  click, no per-keystroke handlers. Tests: `Test Story Filter Match Table`,
+  `Test Story Filter Scene Speakers`. Tried in the app on BOARD (ANN, then
+  ANN + KITCHEN, survived a reload) and BEATS (BOB dims the other scenes in
+  the track). Not tried in the app: a storyline pick, since no tagged scenes
+  were set up; that path is covered by the match table only.
 
 ---
 

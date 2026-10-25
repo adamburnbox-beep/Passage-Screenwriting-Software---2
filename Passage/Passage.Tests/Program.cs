@@ -68,6 +68,8 @@ class Program
         failures += RunTest("Test Locations Normalise Times Of Day", TestLocationsNormaliseTimesOfDay);
         failures += RunTest("Test Locations Normalise Edge Cases", TestLocationsNormaliseEdgeCases);
         failures += RunTest("Test Locations Build Groups Scenes", TestLocationsBuildGroupsScenes);
+        failures += RunTest("Test Story Filter Match Table", TestStoryFilterMatchTable);
+        failures += RunTest("Test Story Filter Scene Speakers", TestStoryFilterSceneSpeakers);
         failures += RunTest("Test Story Old Sidecar Loads", TestStoryOldSidecarLoads);
         failures += RunTest("Test Storylines Round Trip", TestStorylinesRoundTrip);
         failures += RunTest("Test Storyline Delete Untags Items", TestStorylineDeleteUntagsItems);
@@ -791,6 +793,57 @@ class Program
         Assert(StoryItems.StorylineColour(Characters.Palette[2]) == Characters.Palette[2], "A palette colour is kept");
         Assert(StoryItems.StorylineColour("#123456").Length == 0, "An unknown colour is rejected");
         Assert(StoryItems.StorylineColour(null).Length == 0, "Null reads as no colour");
+    }
+
+    static void TestStoryFilterMatchTable()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var none = Array.Empty<string>();
+        var noLines = Array.Empty<Guid>();
+
+        Assert(new StoryFilter().Matches(false, noLines, none, none), "An empty filter matches everything");
+        Assert(!new StoryFilter().IsActive, "An empty filter is inactive");
+
+        var lines = new StoryFilter { Storylines = { a, b } };
+        Assert(lines.Matches(false, new[] { b }, none, none), "OR within a kind: one storyline is enough");
+        Assert(!lines.Matches(false, noLines, none, none), "An untagged item fails a storyline filter");
+
+        var both = new StoryFilter { Storylines = { a }, Locations = { "KITCHEN" } };
+        Assert(both.Matches(false, new[] { a }, none, new[] { "KITCHEN" }), "AND across kinds: both satisfied");
+        Assert(!both.Matches(false, new[] { a }, none, new[] { "HALL" }), "AND across kinds: location missing");
+        Assert(!both.Matches(false, noLines, none, new[] { "KITCHEN" }), "AND across kinds: storyline missing");
+
+        Assert(!new StoryFilter { KeyOnly = true }.Matches(false, noLines, none, none), "Key only dims a non-key item");
+        Assert(new StoryFilter { KeyOnly = true, Characters = { "BOB" } }.Matches(true, noLines, new[] { "BOB" }, none), "Key only ANDs with the other kinds");
+        Assert(!new StoryFilter { KeyOnly = true, Characters = { "BOB" } }.Matches(true, noLines, new[] { "ANN" }, none), "Key does not rescue a character miss");
+
+        Assert(StoryFilter.LaneMatches(false, new[] { false, true }), "A lane matches via a child card");
+        Assert(!StoryFilter.LaneMatches(false, new[] { false, false }), "A lane with no matching card dims");
+        Assert(StoryFilter.LaneMatches(true, Array.Empty<bool>()), "A lane matches by its own tags");
+
+        var toggled = new StoryFilter().ToggleLocation("KITCHEN").ToggleLocation("HALL").ToggleLocation("KITCHEN");
+        Assert(toggled.Locations.SequenceEqual(new[] { "HALL" }), "Toggling twice removes a choice");
+
+        // Implicit location and derived speaker, as the Editor builds them.
+        var elements = new FountainParser().Parse("INT. KITCHEN - DAY\n\nBOB (V.O.)\nHello.\n\nINT. HALL - NIGHT\n\nANN\nHi.\n").Elements;
+        var speakers = StoryFilter.SceneSpeakers(elements);
+        var scenes = elements.OfType<SceneHeadingElement>().ToList();
+        var kitchen = new HashSet<string>(speakers[scenes[0].LineNumber]);
+        var filter = new StoryFilter { Characters = { "BOB" }, Locations = { Locations.Normalise(scenes[0].Text) } };
+        Assert(filter.Matches(false, noLines, kitchen, new[] { Locations.Normalise(scenes[0].Text) }), "A scene matches by its heading and a (V.O.) speaker");
+        Assert(!filter.Matches(false, noLines, speakers[scenes[1].LineNumber], new[] { Locations.Normalise(scenes[1].Text) }), "The other scene dims");
+    }
+
+    static void TestStoryFilterSceneSpeakers()
+    {
+        var text = "INT. KITCHEN - DAY\n\nBOB (V.O.)\nOne.\n\nANN LEE\nTwo.\n\nEXT. YARD - DAY\n\nBOB\nThree.\n\nINT. EMPTY - DAY\n\nNobody speaks.\n";
+        var elements = new FountainParser().Parse(text).Elements;
+        var scenes = elements.OfType<SceneHeadingElement>().ToList();
+        var speakers = StoryFilter.SceneSpeakers(elements);
+        Assert(speakers[scenes[0].LineNumber].SetEquals(new[] { "BOB", "ANN LEE" }), "Cues are bare names: (V.O.) stripped");
+        Assert(speakers[scenes[1].LineNumber].SetEquals(new[] { "BOB" }), "Speakers do not leak into the next scene");
+        Assert(speakers[scenes[2].LineNumber].Count == 0, "A scene with no cues has no speakers");
     }
 
     static void TestStoryOldSidecarLoads()
