@@ -60,6 +60,20 @@ public sealed class StoryData
     public List<Storyline> Storylines { get; set; } = new();
     public List<LocationSettings> Locations { get; set; } = new(); // S1.3, keyed by normalised name
     public List<ItemTags> Items { get; set; } = new();
+    public List<ArcPoint> Arc { get; set; } = new(); // S3.1: only dragged points are stored
+}
+
+/// <summary>A dragged value on one storyline's arc (S3.1), keyed by item rather
+/// than position so Board order and Pages show the same values. Value is 0–100;
+/// a tagged item with no point sits at 50, drawn hollow. Label is the last
+/// heading seen, so a detached point stays recognisable.</summary>
+public sealed class ArcPoint
+{
+    public Guid StorylineId { get; set; }
+    public Guid TargetId { get; set; }
+    public string Kind { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public int Value { get; set; } = 50;
 }
 
 /// <summary>Story data on one Board card or beat. Kind is "card" or "beat";
@@ -96,6 +110,8 @@ public sealed class Storyline
     public string Name { get; set; } = string.Empty;
     public string Colour { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    /// <summary>What the arc's vertical axis measures for this storyline (S3.1).</summary>
+    public string ArcAxis { get; set; } = "Tension";
 }
 
 /// <summary>One beat on the Beat Sheet. Page 0 means unassigned (the tray);

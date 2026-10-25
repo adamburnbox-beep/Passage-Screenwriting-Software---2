@@ -67,7 +67,8 @@ Click New to start one — files are stored on the server volume.</div>
             <button class="@(_mainViewIndex == 0 ? "active" : null)" @onclick="() => SetMainView(0)">SCRIPT</button>
             <button class="@(_mainViewIndex == 1 ? "active" : null)" @onclick="() => SetMainView(1)">BOARD</button>
             <button class="@(_mainViewIndex == 2 ? "active" : null)" @onclick="() => SetMainView(2)">BEATS</button>
-            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">PREVIEW</button>
+            <button class="@(_mainViewIndex == 3 ? "active" : null)" @onclick="() => SetMainView(3)">ARC</button>
+            <button class="@(_mainViewIndex == 4 ? "active" : null)" @onclick="() => SetMainView(4)">PREVIEW</button>
         </nav>
 
         <div class="topbar-actions">
@@ -328,6 +329,8 @@ Click New to start one — files are stored on the server volume.</div>
                                 <div class="storyline-edit">
                                     <input class="character-rename" @ref="_storylineNameInput" @bind="_storylineEditName" @bind:event="oninput"
                                            placeholder="@StorylineHint(line)" @onkeydown="OnStorylineKeyDown" />
+                                    <input class="character-rename" @bind="_storylineEditAxis" @bind:event="oninput"
+                                           placeholder="Arc axis, e.g. Tension" title="What the Arc's vertical axis measures for this storyline" />
                                     <textarea class="card-body-input" rows="3" placeholder="What is this storyline about?"
                                               @bind="_storylineEditDescription" @bind:event="oninput"></textarea>
                                     <div class="character-palette">
@@ -737,6 +740,109 @@ Open a .fountain file to plan beats against its pages.</div>
                 }
             }
             else if (_mainViewIndex == 3)
+            {
+                @if (!IsScreenplayMode)
+                {
+                    <div class="board-empty">The Arc works in Screenplay mode.
+Open a .fountain file to chart storylines against its scenes.</div>
+                }
+                else
+                {
+                    var arc = ArcChartData;
+                    var arcFilter = _boardFilter;
+                    <div class="arc-view">
+                    <div class="preview-toolbar beats-toolbar">
+                        <span>X axis</span>
+                        <button class="btn @(_arcPages ? null : "active")" @onclick="() => SetArcModeAsync(false)">Board order</button>
+                        <button class="btn @(_arcPages ? "active" : null)" @onclick="() => SetArcModeAsync(true)">Pages</button>
+                        @RenderFilterBar
+                        <span>Drag a point up or down. Hollow points are untouched (50).</span>
+                    </div>
+                    @if (_slate.Story.Storylines.Count == 0)
+                    {
+                        <div class="board-empty">No storylines yet. Add them in ELEMENTS, then tag scenes with #.</div>
+                    }
+                    else
+                    {
+                        <div class="arc-legend">
+                            @foreach (var line in _slate.Story.Storylines)
+                            {
+                                <span class="arc-legend-item @ArcLineDim(arcFilter, line)" style="--c:@ArcColour(line)">
+                                    <span class="arc-swatch"></span>@(line.Name.Length > 0 ? line.Name : "Untitled storyline")
+                                    <span class="arc-axis-name">@(string.IsNullOrWhiteSpace(line.ArcAxis) ? "Tension" : line.ArcAxis) 0–100</span>
+                                </span>
+                            }
+                        </div>
+                        <svg class="arc-chart" viewBox="0 0 @ArcWidth @ArcHeight" data-top="@ArcTop" data-height="@ArcPlotHeight">
+                            @foreach (var tick in new[] { 0, 25, 50, 75, 100 })
+                            {
+                                <line class="arc-grid" x1="@ArcLeft" x2="@(ArcWidth - ArcRight)" y1="@ArcY(tick)" y2="@ArcY(tick)" />
+                                @if (tick % 50 == 0)
+                                {
+                                    @ArcLabel(ArcNumber(ArcLeft - 8), ArcY(tick), "end", tick.ToString())
+                                }
+                            }
+                            @if (_arcPages)
+                            {
+                                var step = Math.Max(1, (int)Math.Ceiling((arc.XMax - arc.XMin) / 12.0));
+                                @for (var page = arc.XMin; page <= arc.XMax; page += step)
+                                {
+                                    @ArcLabel(ArcX(arc, page), ArcNumber(ArcTop + ArcPlotHeight + 20), "middle", page.ToString())
+                                }
+                            }
+                            else
+                            {
+                                @ArcLabel(ArcX(arc, arc.XMin), ArcNumber(ArcTop + ArcPlotHeight + 20), "start", "script order →")
+                            }
+                            @foreach (var line in _slate.Story.Storylines)
+                            {
+                                var points = arc.Lines.GetValueOrDefault(line.Id) ?? new List<ArcPlotPoint>();
+                                var dim = ArcLineDim(arcFilter, line);
+                                <polyline class="arc-line @dim" data-line="@line.Id" style="--c:@ArcColour(line)" fill="none"
+                                          points="@string.Join(" ", points.Select(point => ArcX(arc, point.X) + "," + ArcY(point.Value)))" />
+                            }
+                            @foreach (var line in _slate.Story.Storylines)
+                            {
+                                var dimLine = ArcLineDim(arcFilter, line);
+                                @foreach (var point in arc.Lines.GetValueOrDefault(line.Id) ?? new List<ArcPlotPoint>())
+                                {
+                                    <circle class="arc-point @(point.Touched ? null : "untouched") @(dimLine ?? ArcPointDim(arcFilter, point))" r="7"
+                                            data-line="@line.Id" data-target="@point.TargetId" style="--c:@ArcColour(line)"
+                                            cx="@ArcX(arc, point.X)" cy="@ArcY(point.Value)">
+                                        <title>@point.Label — @(string.IsNullOrWhiteSpace(line.ArcAxis) ? "Tension" : line.ArcAxis) @point.Value</title>
+                                    </circle>
+                                }
+                            }
+                        </svg>
+                        @if (arc.Lines.Values.All(points => points.Count == 0))
+                        {
+                            <div class="arc-note">No tagged scenes on a line yet. Tag a card or beat with a storyline to give it a point.</div>
+                        }
+                        @if (arc.Unplaced.Count > 0)
+                        {
+                            <div class="arc-note">
+                                <strong>@(_arcPages ? "Not on a page" : "Not on the Board") (@arc.Unplaced.Count)</strong>
+                                @foreach (var item in arc.Unplaced)
+                                {
+                                    <div>@(item.Kind == "beat" ? "Beat" : "Card"): @item.Label</div>
+                                }
+                            </div>
+                        }
+                        @if (arc.Detached.Count > 0)
+                        {
+                            <div class="arc-note">
+                                <strong>Detached (@arc.Detached.Count)</strong> — the card is no longer in the script; its value is kept.
+                                @foreach (var item in arc.Detached)
+                                {
+                                    <div>@item.Label — @(_slate.Story.Storylines.FirstOrDefault(line => line.Id == item.StorylineId)?.Name) @item.Value</div>
+                                }
+                            </div>
+                        }
+                    }
+                    </div>
+                }
+            }
+            else if (_mainViewIndex == 4)
             {
                 @if (!IsScreenplayMode)
                 {
@@ -2682,6 +2788,8 @@ Open a .fountain file to see formatted pages.</div>
 
         public bool BoardDescriptions { get; init; } = true;
 
+        public string ArcMode { get; init; } = "board";
+
         public bool TypewriterScrolling { get; init; }
 
         public bool FocusLine { get; init; }
@@ -2763,6 +2871,7 @@ Open a .fountain file to see formatted pages.</div>
         _besideOpen = snapshot.BesideOpen;
         _besideBeats = snapshot.BesideBeats;
         _boardDescriptions = snapshot.BoardDescriptions;
+        _arcPages = snapshot.ArcMode == "pages";
         _typewriterScrolling = snapshot.TypewriterScrolling;
         _focusLine = snapshot.FocusLine;
         _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
@@ -3594,6 +3703,7 @@ Open a .fountain file to see formatted pages.</div>
     private string _storylineEditDescription = string.Empty;
     private string _storylineEditColour = string.Empty;
     private ElementReference _storylineNameInput;
+    private string _storylineEditAxis = "Tension";
     private bool _focusStorylineName;
     private Storyline? _deleteStoryline;
 
@@ -3613,6 +3723,7 @@ Open a .fountain file to see formatted pages.</div>
         _editingStoryline = line;
         _storylineEditName = line.Name;
         _storylineEditDescription = line.Description;
+        _storylineEditAxis = line.ArcAxis;
         _storylineEditColour = line.Colour;
         _focusStorylineName = true;
     }
@@ -3626,6 +3737,7 @@ Open a .fountain file to see formatted pages.</div>
 
         line.Name = _storylineEditName.Trim();
         line.Description = _storylineEditDescription.Trim();
+        line.ArcAxis = _storylineEditAxis.Trim() is { Length: > 0 } axis ? axis : "Tension";
         line.Colour = StoryItems.StorylineColour(_storylineEditColour);
         _editingStoryline = null;
         SaveSlate();
@@ -3665,6 +3777,79 @@ Open a .fountain file to see formatted pages.</div>
         SaveSlate();
         _statusMessage = $"Deleted storyline \"{(line.Name.Length > 0 ? line.Name : "Untitled storyline")}\"" +
             (untagged > 0 ? $", untagged from {untagged} item{(untagged == 1 ? "" : "s")}" : string.Empty);
+    }
+
+    // ---- Arc view (docs/STORY-PLAN.md S3.1) ----
+    //
+    // The point drag runs in passage.js; the server hears once, on release.
+
+    private bool _arcPages;
+
+    private const double ArcWidth = 900;
+    private const double ArcHeight = 340;
+    private const double ArcLeft = 48;
+    private const double ArcRight = 24;
+    private const double ArcTop = 20;
+    private const double ArcPlotHeight = 284;
+
+    private ArcChart ArcChartData => ArcLayout.Build(
+        _slate.Story, _analysis.Elements, BeatScenes, _slate.Beats, _arcPages ? ArcAxisMode.Pages : ArcAxisMode.Board);
+
+    private static string ArcNumber(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string ArcY(int value) => ArcNumber(ArcTop + (100 - value) / 100.0 * ArcPlotHeight);
+
+    private static string ArcX(ArcChart chart, int x) =>
+        ArcNumber(ArcLeft + (x - chart.XMin) / (double)Math.Max(1, chart.XMax - chart.XMin) * (ArcWidth - ArcLeft - ArcRight));
+
+    // Razor reserves <text>, so the SVG labels are built as markup. Only
+    // numbers and fixed strings go in.
+    private static MarkupString ArcLabel(string x, string y, string anchor, string text) =>
+        new($"<text class=\"arc-tick\" x=\"{x}\" y=\"{y}\" text-anchor=\"{anchor}\" dominant-baseline=\"middle\">{text}</text>");
+
+    private static string ArcColour(Storyline line) =>
+        StoryItems.StorylineColour(line.Colour) is { Length: > 0 } colour ? colour : "var(--muted-text)";
+
+    private string? ArcLineDim(StoryFilter filter, Storyline line) =>
+        filter.Storylines.Count > 0 && !filter.Storylines.Contains(line.Id) ? "dimmed" : null;
+
+    private string? ArcPointDim(StoryFilter filter, ArcPlotPoint point)
+    {
+        if (!filter.IsActive) return null;
+        var scene = point.Kind == StoryItems.CardKind
+            ? _analysis.Elements.OfType<SceneHeadingElement>().FirstOrDefault(element => element.Id == point.TargetId)
+            : null;
+        return ItemMatches(filter, point.TargetId, scene?.Heading, scene?.LineNumber ?? 0) ? null : "dimmed";
+    }
+
+    private async Task SetArcModeAsync(bool pages)
+    {
+        _arcPages = pages;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setArcMode", pages ? "pages" : "board");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public void OnArcPointMoved(Guid storylineId, Guid targetId, int value)
+    {
+        var isBeat = FindBeat(targetId) is not null;
+        var label = isBeat
+            ? BeatInbox.Heading(FindBeat(targetId)!)
+            : CardLabels().GetValueOrDefault(targetId, string.Empty);
+        if (!ArcLayout.SetValue(_slate.Story, storylineId, targetId, isBeat ? StoryItems.BeatKind : StoryItems.CardKind, label, value))
+        {
+            _statusMessage = "That point is no longer tagged with the storyline, so its value was not saved";
+            StateHasChanged();
+            return;
+        }
+
+        SaveSlate();
+        StateHasChanged();
     }
 
     // ---- Structure templates (docs/STORY-PLAN.md S2.2) ----

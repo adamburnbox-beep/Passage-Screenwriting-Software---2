@@ -773,7 +773,7 @@ Beat Sheet PR (#40) listed four out-of-scope items:
 
 Nothing is left over, so an empty row would only cost a session (rule 2).
 
-### S3.1 Arc view — `todo`
+### S3.1 Arc view — `done`
 
 - **Read:** Standing decisions A, D. BEATS view 497–574 and `BeatSheet.cs`
   (`MapScenes`). Beat gesture `passage.js` 789–985. Storylines from S1.2,
@@ -810,6 +810,28 @@ Nothing is left over, so an empty row would only cost a session (rule 2).
 - **Tests:** point ordering in both modes, the value clamp, unplaced items
   reported, and a deleted beat's points cascading.
 - **Budget:** ~120k.
+- **Landed:** ARC is main tab index 3 and PREVIEW moved to 4; nothing persisted
+  `_mainViewIndex`, so the only edits were the tab buttons and the PREVIEW
+  branch. `Services/ArcLayout.cs` is the pure layer: `Build` returns each
+  storyline's points, the unplaced list and the detached list; `SetValue`
+  clamps to 0–100 and refuses an item not tagged with the storyline.
+  `ArcPoint` (storyline, target, kind, label, value) sits in `StoryData.Arc`
+  and is stored only once dragged; an untouched point is 50, drawn hollow.
+  `Storyline.ArcAxis` (default "Tension") is edited in ELEMENTS and named in
+  the chart legend. Board order spaces every card evenly and lists beats as
+  "not on the Board" (a beat has no Board slot until converted); Pages uses
+  `MapScenes` pages and grid beats, and lists acts and sequences, scenes at
+  page 0 and tray beats as "not on a page". The x-axis choice rides the
+  session key (`passage.setArcMode`). The drag is `startArcDrag` in
+  `passage.js`: pointer capture, no server frames until release (0 sent
+  during 15 moves, then one `OnArcPointMoved`). The S1.5 board filter dims
+  lines and points. Deleting a beat or a storyline removes its points. Checked
+  in the running app: points survive a reload, Pages shows the same values,
+  the axis edit shows in the legend. Not done: a point whose item loses the
+  storyline tag is kept dormant and not listed (it returns if re-tagged);
+  the SVG labels go through `MarkupString` because Razor reserves `<text>`.
+  The `passage.js` 789–985 range named above is stale: the beat gesture is
+  at ~1070–1260.
 
 ### S3.2 Outline export: Fountain and text — `todo`
 

@@ -105,6 +105,7 @@ public static class StoryItems
     public static int DeleteStoryline(StoryData story, Guid storylineId)
     {
         var removed = story.Storylines.RemoveAll(line => line.Id == storylineId);
+        story.Arc.RemoveAll(point => point.StorylineId == storylineId);
         var untagged = 0;
         foreach (var item in story.Items)
         {
@@ -232,8 +233,11 @@ public static class StoryItems
 
     /// <summary>Deleting a beat is explicit and the beat is sidecar-owned, so its
     /// tags go with it. Deleting a card never calls this (decision B).</summary>
-    public static void RemoveBeat(StoryData story, Guid beatId) =>
+    public static void RemoveBeat(StoryData story, Guid beatId)
+    {
         story.Items.RemoveAll(item => item.Kind == BeatKind && item.TargetId == beatId);
+        story.Arc.RemoveAll(point => point.Kind == BeatKind && point.TargetId == beatId);
+    }
 
     /// <summary>Refreshes labels of attached items whose heading changed.
     /// Returns whether anything changed; called only on saves that happen anyway.</summary>
@@ -245,6 +249,15 @@ public static class StoryItems
             if (labels.TryGetValue(item.TargetId, out var label) && item.Label != label)
             {
                 item.Label = label;
+                changed = true;
+            }
+        }
+
+        foreach (var point in story.Arc)
+        {
+            if (labels.TryGetValue(point.TargetId, out var label) && point.Label != label)
+            {
+                point.Label = label;
                 changed = true;
             }
         }
