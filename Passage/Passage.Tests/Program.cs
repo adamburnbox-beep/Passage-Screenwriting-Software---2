@@ -55,6 +55,12 @@ class Program
         failures += RunTest("Test SlateStore Chain Round Trip", TestSlateStoreChainRoundTrip);
         failures += RunTest("Test Synopsis Placement", TestSynopsisPlacement);
         failures += RunTest("Test SplitScript Lines And Parse", TestSplitScriptLinesAndParse);
+        failures += RunTest("Test Structure Templates Print Nothing", TestStructureTemplatesPrintNothing);
+        failures += RunTest("Test Structure Template Passage Is The Shape", TestStructureTemplatePassageIsTheShape);
+        failures += RunTest("Test Structure Template Page Scaling", TestStructureTemplatePageScaling);
+        failures += RunTest("Test Structure Template Seed Skips Duplicates", TestStructureTemplateSeedSkipsDuplicates);
+        failures += RunTest("Test Structure Template Save Round Trip", TestStructureTemplateSaveRoundTrip);
+        failures += RunTest("Test SlateStore Keeps Templates File", TestSlateStoreKeepsTemplatesFile);
         failures += RunTest("Test ShapeLine Derives From Lanes", TestShapeLineDerivesFromLanes);
         failures += RunTest("Test Story Stamp Keeps Id And Scene Number", TestStoryStampKeepsIdAndSceneNumber);
         failures += RunTest("Test Story Duplicate Id Flags Second Only", TestStoryDuplicateIdFlagsSecondOnly);
@@ -950,6 +956,138 @@ class Program
         var midpointLine = SplitScript.FindLine(scriptLines, SplitScript.Slots[4]);
         Assert(midpointLine >= 0 && scriptLines[midpointLine].StartsWith("= Midpoint:"), "FindLine locates a slot in the script");
         Assert(SplitScript.FindLine(new[] { "INT. HOUSE", "Action." }, SplitScript.Slots[4]) == -1, "FindLine is -1 when absent");
+    }
+
+    static string StripIds(string line) => System.Text.RegularExpressions.Regex.Replace(line, @"\s*\[\[id:[0-9a-fA-F-]+\]\]", string.Empty);
+
+    static void TestStructureTemplatesPrintNothing()
+    {
+        var expected = new Dictionary<string, (int Acts, int Sequences, int Sections)>
+        {
+            ["8 sequences / 7 turns (Passage)"] = (4, 8, 0),
+            ["Paradigm (Syd Field)"] = (3, 0, 5),
+            ["Save the Cat (Blake Snyder)"] = (3, 0, 15),
+            ["Five-act TV"] = (6, 0, 4)
+        };
+        Assert(StructureTemplates.BuiltIns.Count == 4, "Four built-in templates");
+        foreach (var template in StructureTemplates.BuiltIns)
+        {
+            var text = string.Join("\n", StructureTemplates.BuildLines(template));
+            var lines = text.Split('\n');
+            Assert(lines.All(line => line.Length == 0 || line.StartsWith("# ") || line.StartsWith("## ") || line.StartsWith("### ") || line.StartsWith("= ")),
+                $"{template.Name} writes only #, ##, ### and = lines");
+            Assert(template.Description.Length > 0, $"{template.Name} credits its source in the description");
+
+            var analysis = new DocumentAnalyzer().Analyze(text);
+            Assert(analysis.Elements.All(element => element.Type is ScreenplayElementType.Section or ScreenplayElementType.Synopsis),
+                $"{template.Name} has no printable element");
+            Assert(analysis.PageCount <= 1, $"{template.Name} adds no pages, got {analysis.PageCount}");
+            var (acts, sequences, sections) = expected[template.Name];
+            Assert(analysis.Elements.Count(e => e.Type == ScreenplayElementType.Section && e.Level == 0) == acts, $"{template.Name}: {acts} acts");
+            Assert(analysis.Elements.Count(e => e.Type == ScreenplayElementType.Section && e.Level == 1) == sequences, $"{template.Name}: {sequences} sequences");
+            Assert(analysis.Elements.Count(e => e.Type == ScreenplayElementType.Section && e.Level == 2) == sections, $"{template.Name}: {sections} sections");
+        }
+    }
+
+    static void TestStructureTemplatePassageIsTheShape()
+    {
+        var passage = StructureTemplates.BuiltIns[0];
+        var fromTemplate = StructureTemplates.BuildLines(passage).Select(StripIds).ToList();
+        var fromShape = SplitScript.BuildLines(new SplitRun()).Select(StripIds).ToList();
+        Assert(fromTemplate.SequenceEqual(fromShape), "Passage's template is SplitScript.BuildLines of an empty run");
+    }
+
+    static void TestStructureTemplatePageScaling()
+    {
+        Assert(StructureTemplates.ScalePage(55, 110) == 55, "On the reference length a page is itself");
+        Assert(StructureTemplates.ScalePage(55, 90) == 45, "Page 55 of 110 is 45 of 90 (45.0)");
+        Assert(StructureTemplates.ScalePage(1, 90) == 1, "Scaling never goes below page 1");
+        Assert(StructureTemplates.ScalePage(110, 90) == 90, "The last reference page is the last target page");
+        Assert(StructureTemplates.ScalePage(110, 300) == 300, "A longer target scales up");
+        Assert(StructureTemplates.ScalePage(5, 3) is >= 1 and <= 3, "A tiny target clamps onto the grid");
+    }
+
+    static void TestStructureTemplateSeedSkipsDuplicates()
+    {
+        var template = StructureTemplates.BuiltIns.Single(entry => entry.Name.StartsWith("Save the Cat"));
+        var withPage = template.Nodes.Count(node => node.Page > 0);
+        var beats = new List<Beat>();
+        var (added, skipped) = StructureTemplates.SeedBeats(template, beats, 90, 90);
+        Assert(added == withPage && skipped == 0 && beats.Count == withPage, "Every node with a page seeds a beat");
+        var midpoint = beats.Single(beat => beat.Title == "Midpoint");
+        Assert(midpoint.Page == 45, $"Midpoint lands at page 45 of 90, got {midpoint.Page}");
+        Assert(beats.All(beat => beat.Page is >= 1 and <= 90), "Every seeded beat is on the grid");
+
+        (added, skipped) = StructureTemplates.SeedBeats(template, beats, 90, 90);
+        Assert(added == 0 && skipped == withPage && beats.Count == withPage, "A second run adds nothing and counts what was there");
+
+        var existing = new List<Beat> { new() { Title = "  catalyst " } };
+        (added, skipped) = StructureTemplates.SeedBeats(template, existing, 90, 90);
+        Assert(skipped == 1 && added == withPage - 1, "A title match ignores case and spacing");
+    }
+
+    static void TestStructureTemplateSaveRoundTrip()
+    {
+        var script = string.Join("\n", new[]
+        {
+            "# Act One [[id:" + Guid.NewGuid() + "]]",
+            "= The setup.",
+            "",
+            "## Opening [[id:" + Guid.NewGuid() + "]]",
+            "",
+            ".INT. KITCHEN - DAY [[id:" + Guid.NewGuid() + "]]",
+            "= A scene synopsis that is not the template's.",
+            "",
+            "ANNA",
+            "Hello.",
+            "",
+            "### Catalyst [[id:" + Guid.NewGuid() + "]]",
+            "= Something breaks.",
+            "= Twice.",
+        });
+        var template = StructureTemplates.FromScript("Mine", script.Split('\n'));
+        Assert(template.Nodes.Select(node => node.Kind).SequenceEqual(new[] { "Act", "Sequence", "Section" }), "Headings only, scenes excluded");
+        Assert(template.Nodes[0].Prompt == "The setup." && template.Nodes[1].Prompt.Length == 0, "A heading keeps its own = lines");
+        Assert(template.Nodes[2].Prompt == "Something breaks.\nTwice.", "Several = lines stay several");
+        Assert(!template.Nodes.Any(node => node.Heading.Contains("id:")), "Ids are not kept");
+
+        var written = StructureTemplates.BuildLines(template);
+        var again = StructureTemplates.FromScript("Mine", written);
+        Assert(again.Nodes.Select(node => (node.Kind, node.Heading, node.Prompt)).SequenceEqual(template.Nodes.Select(node => (node.Kind, node.Heading, node.Prompt))),
+            "Writing and reading a template gives it back");
+        Assert(!string.Join("\n", written).Contains("KITCHEN"), "No scene text in the written template");
+        Assert(!StructureTemplates.HasStructure(new[] { "### Only a section", "= x" }) && StructureTemplates.HasStructure(new[] { "text", "## Seq" }),
+            "Templates are offered unless there is a # or ## heading");
+
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            store.SaveTemplates(new TemplatesDocument { Templates = { template } });
+            var loaded = store.LoadTemplates()!.Templates.Single();
+            Assert(loaded.Name == "Mine" && loaded.Nodes.Count == 3 && loaded.Nodes[2].Prompt == "Something breaks.\nTwice.",
+                "A saved template reloads, as it would for another script");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    static void TestSlateStoreKeepsTemplatesFile()
+    {
+        var (library, store, root) = NewSlateFixture();
+        try
+        {
+            store.SaveTemplates(new TemplatesDocument { Templates = { new StructureTemplate { Name = "Kept" } } });
+            store.Save("gone", new SlateDocument());
+            var pruned = store.PruneOrphans(Array.Empty<string>());
+            Assert(pruned.Count == 1 && pruned[0] == "gone.fountain", "Only the orphan sidecar is pruned");
+            Assert(store.LoadTemplates() is { Templates.Count: 1 }, "The orphan sweep leaves templates.json alone");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     static void TestShapeLineDerivesFromLanes()

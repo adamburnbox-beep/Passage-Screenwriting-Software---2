@@ -527,6 +527,7 @@ Click New to start one — files are stored on the server volume.</div>
                     var detachedItems = DetachedItems;
                     <div class="preview-toolbar beats-toolbar board-toolbar">
                         @RenderFilterBar
+                        <button class="btn" title="@(TemplatesAvailable ? "Write a structure into the script" : "Available only while the script has no # or ## heading")" @onclick="OpenTemplates">Start from a template…</button>
                         @if (detachedItems.Count > 0)
                         {
                             <button class="btn" @onclick="() => _showDetached = !_showDetached">Detached (@detachedItems.Count)</button>
@@ -2052,6 +2053,64 @@ Open a .fountain file to see formatted pages.</div>
     </div>
 }
 
+@if (_templatesOpen)
+{
+    <div class="modal-backdrop">
+        <div class="modal templates-modal">
+            <h3>Start from a template</h3>
+            @if (!TemplatesAvailable)
+            {
+                <p class="tool-note">This script already has a # or ## heading, so a template would have to merge with it. Templates go into a script that has no structure yet.</p>
+            }
+            else
+            {
+                <p class="tool-note">Writes headings and prompts only, nothing that prints, so the page count does not change.</p>
+                <label class="key-only-toggle"><input type="checkbox" @bind="_seedBeats" /> Seed the Beat Sheet too</label>
+            }
+            @foreach (var template in AllTemplates)
+            {
+                <div class="template-item">
+                    @if (_renamingTemplate == template.Id)
+                    {
+                        <input @bind="_renameTemplateName" @bind:event="oninput" />
+                        <button class="btn" @onclick="CommitTemplateRename">Save</button>
+                        <button class="btn" @onclick="() => _renamingTemplate = null">Cancel</button>
+                    }
+                    else
+                    {
+                        <div class="template-name">@template.Name</div>
+                        <div class="detached-note">@(template.Description.Length > 0 ? template.Description : $"{template.Nodes.Count} headings")</div>
+                        <div class="modal-actions">
+                            <button class="btn primary" disabled="@(!TemplatesAvailable)" @onclick="() => ApplyTemplateAsync(template)">Use</button>
+                            @if (!template.BuiltIn)
+                            {
+                                <button class="btn" @onclick="() => StartTemplateRename(template)">Rename</button>
+                                <button class="btn" @onclick="() => DeleteTemplate(template)">Delete</button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            <div class="template-item">
+                <div class="template-name">Save this structure as a template</div>
+                @if (ScriptHasHeadings)
+                {
+                    <div class="detached-note">Keeps the script's headings and = lines. Scenes are left out.</div>
+                    <input placeholder="Template name" @bind="_saveTemplateName" @bind:event="oninput" />
+                    <button class="btn" disabled="@(_saveTemplateName.Trim().Length == 0)" @onclick="SaveAsTemplate">Save</button>
+                }
+                else
+                {
+                    <div class="detached-note">The script has no headings to save yet.</div>
+                }
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="() => _templatesOpen = false">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_confirmDiscardAll)
 {
     <div class="modal-backdrop">
@@ -3460,6 +3519,137 @@ Open a .fountain file to see formatted pages.</div>
         SaveSlate();
         _statusMessage = $"Deleted storyline \"{(line.Name.Length > 0 ? line.Name : "Untitled storyline")}\"" +
             (untagged > 0 ? $", untagged from {untagged} item{(untagged == 1 ? "" : "s")}" : string.Empty);
+    }
+
+    // ---- Structure templates (docs/STORY-PLAN.md S2.2) ----
+
+    private bool _templatesOpen;
+    private bool _seedBeats;
+    private string _saveTemplateName = string.Empty;
+    private Guid? _renamingTemplate;
+    private string _renameTemplateName = string.Empty;
+    private List<StructureTemplate> _customTemplates = new();
+
+    private bool TemplatesAvailable => !StructureTemplates.HasStructure(_content.Split('\n'));
+
+    private bool ScriptHasHeadings => StructureTemplates.ReadNodes(_content.Split('\n')).Count > 0;
+
+    private IEnumerable<StructureTemplate> AllTemplates => StructureTemplates.BuiltIns.Concat(_customTemplates);
+
+    private void OpenTemplates()
+    {
+        try
+        {
+            _customTemplates = Slate.LoadTemplates()?.Templates ?? new List<StructureTemplate>();
+        }
+        catch (JsonException)
+        {
+            _customTemplates = new List<StructureTemplate>();
+            _statusMessage = "Your saved templates could not be read, so they are not listed";
+        }
+
+        _saveTemplateName = string.Empty;
+        _renamingTemplate = null;
+        _templatesOpen = true;
+    }
+
+    private bool PersistTemplates()
+    {
+        try
+        {
+            Slate.SaveTemplates(new TemplatesDocument { Templates = _customTemplates });
+            return true;
+        }
+        catch (IOException ex)
+        {
+            _statusMessage = $"Could not save templates: {ex.Message}";
+            return false;
+        }
+    }
+
+    private async Task ApplyTemplateAsync(StructureTemplate template)
+    {
+        if (!TemplatesAvailable)
+        {
+            return;
+        }
+
+        var insertAt = await InsertStructureAsync(StructureTemplates.BuildLines(template), template.Name);
+        if (insertAt < 0)
+        {
+            return;
+        }
+
+        var message = $"Wrote {template.Name} from line {insertAt + 1} — see BOARD";
+        if (_seedBeats)
+        {
+            var columns = BeatSheet.Columns(_analysis.PageCount, _slate.BeatSheetPages);
+            var (added, skipped) = StructureTemplates.SeedBeats(template, _slate.Beats, _slate.BeatSheetPages, columns);
+            SaveSlate();
+            message += $"; {added} beat{(added == 1 ? "" : "s")} added to the Beat Sheet"
+                + (skipped > 0 ? $", {skipped} beat{(skipped == 1 ? "" : "s")} already there" : string.Empty);
+        }
+
+        _statusMessage = message;
+        _templatesOpen = false;
+    }
+
+    private void SaveAsTemplate()
+    {
+        var name = _saveTemplateName.Trim();
+        if (name.Length == 0)
+        {
+            return;
+        }
+
+        var template = StructureTemplates.FromScript(name, _content.Split('\n'));
+        if (template.Nodes.Count == 0)
+        {
+            _statusMessage = "No headings to save";
+            return;
+        }
+
+        _customTemplates.Add(template);
+        if (PersistTemplates())
+        {
+            _statusMessage = $"Saved \"{name}\" as a template";
+            _saveTemplateName = string.Empty;
+        }
+        else
+        {
+            _customTemplates.Remove(template);
+        }
+    }
+
+    private void StartTemplateRename(StructureTemplate template)
+    {
+        _renamingTemplate = template.Id;
+        _renameTemplateName = template.Name;
+    }
+
+    private void CommitTemplateRename()
+    {
+        var template = _customTemplates.FirstOrDefault(entry => entry.Id == _renamingTemplate);
+        var name = _renameTemplateName.Trim();
+        if (template is not null && name.Length > 0 && name != template.Name)
+        {
+            var old = template.Name;
+            template.Name = name;
+            if (!PersistTemplates())
+            {
+                template.Name = old;
+            }
+        }
+
+        _renamingTemplate = null;
+    }
+
+    private void DeleteTemplate(StructureTemplate template)
+    {
+        if (_customTemplates.Remove(template) && !PersistTemplates())
+        {
+            _customTemplates.Add(template);
+        }
     }
 
     // ---- Key beats and story items (docs/STORY-PLAN.md S1.1) ----
@@ -5767,6 +5957,45 @@ Open a .fountain file to see formatted pages.</div>
         return null;
     }
 
+    // The one writer for a structure going into the script for the first time
+    // (decision F): at the end by ranged insert, mirrored into _content and
+    // re-analysed. Returns the line it went in at, or -1 after saying why not.
+    private async Task<int> InsertStructureAsync(List<string> structureLines, string description)
+    {
+        var empty = string.IsNullOrWhiteSpace(_content);
+        if (empty)
+        {
+            // Nothing to separate from: no leading blank line.
+            structureLines.RemoveAt(0);
+        }
+
+        var text = string.Join('\n', structureLines);
+        var insertAt = empty ? 0 : _analysis.LineCount;
+        bool inserted;
+        try
+        {
+            inserted = await JS.InvokeAsync<bool>("passage.insertLinesAt", insertAt, text);
+        }
+        catch (JSException)
+        {
+            inserted = false;
+        }
+
+        if (!inserted)
+        {
+            _statusMessage = $"Could not write {description} — nothing changed";
+            return -1;
+        }
+
+        var mirrored = _content.Split('\n').ToList();
+        mirrored.Insert(Math.Min(insertAt, mirrored.Count), text);
+        _content = string.Join('\n', mirrored);
+        _isDirty = true;
+        RunAnalysis();
+        UpdateCaretElementLabel();
+        return insertAt;
+    }
+
     // Writing the shape: the first time, the whole structure goes in at the
     // end by ranged insert. After that, only turns the script still holds as
     // a bracket are filled in, matched by text; a turn with real text in the
@@ -5777,39 +6006,12 @@ Open a .fountain file to see formatted pages.</div>
         var values = SplitScript.Values(run);
         if (!ScriptHasShape)
         {
-            var shapeLines = SplitScript.BuildLines(run);
-            var empty = string.IsNullOrWhiteSpace(_content);
-            if (empty)
+            var insertAt = await InsertStructureAsync(SplitScript.BuildLines(run), "the shape");
+            if (insertAt >= 0)
             {
-                // Nothing to separate from: no leading blank line.
-                shapeLines.RemoveAt(0);
+                _statusMessage = $"Wrote four acts and eight sequences from line {insertAt + 1} — see BOARD";
             }
 
-            var text = string.Join('\n', shapeLines);
-            var insertAt = empty ? 0 : _analysis.LineCount;
-            bool inserted;
-            try
-            {
-                inserted = await JS.InvokeAsync<bool>("passage.insertLinesAt", insertAt, text);
-            }
-            catch (JSException)
-            {
-                inserted = false;
-            }
-
-            if (!inserted)
-            {
-                _statusMessage = "Could not write the shape — nothing changed";
-                return;
-            }
-
-            var mirrored = _content.Split('\n').ToList();
-            mirrored.Insert(Math.Min(insertAt, mirrored.Count), text);
-            _content = string.Join('\n', mirrored);
-            _isDirty = true;
-            RunAnalysis();
-            UpdateCaretElementLabel();
-            _statusMessage = $"Wrote four acts and eight sequences from line {insertAt + 1} — see BOARD";
             return;
         }
 

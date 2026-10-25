@@ -630,7 +630,7 @@ the bigger rows rely on them.
   `moveBeat` captures the pointer on press (not confirmed). Undo is not atomic across the two stores (decision E), as
   planned.
 
-### S2.2 Structure templates — `todo`
+### S2.2 Structure templates — `done`
 
 - **Read:** Standing decision F. Shape writer `Editor.razor` 4845–5000.
   `SplitScript.cs` 13–80. `BeatBoardText.BuildCardLines`. `Slate` 398–551
@@ -666,6 +666,32 @@ the bigger rows rely on them.
   - `PruneOrphans` keeps `templates.json`.
   - A save-as-template round trip excludes scenes.
 - **Budget:** ~90k.
+- **Landed:** `Services/StructureTemplates.cs` (`TemplateNode`,
+  `StructureTemplate`, `TemplatesDocument`; `BuildLines`, `ReadNodes`,
+  `HasStructure`, `ScalePage`, `SeedBeats`, `FromScript`). Passage's built-in
+  is `ReadNodes(SplitScript.BuildLines(new SplitRun()))`, so there is one copy
+  of the eight sequences; its sequences carry pages, its acts don't. The other
+  three use `#` acts with `###` named beats and no `##`; the Board shows those
+  as lanes of BEAT cards. `Editor.razor`: `InsertStructureAsync(lines,
+  description)` extracted from `WriteShapeAsync` (same messages), a "Start from
+  a template…" button on BOARD opening a dialog (built-ins, custom with
+  rename and delete, "Seed the Beat Sheet too", "Save this structure as a
+  template"). `SlateStore`: `LoadTemplates`/`SaveTemplates`, and `PruneOrphans`
+  spares `templates.json`. Also `passage.focusEditor` now refreshes
+  CodeMirror: lines inserted from BOARD (template or inbox) showed a blank
+  editor on returning to SCRIPT until it was clicked. Tests: `Structure
+  Templates Print Nothing`, `Passage Is The Shape`, `Page Scaling`, `Seed Skips
+  Duplicates`, `Save Round Trip`, and `SlateStore Keeps Templates File`. Tried
+  in the app: Save the Cat with seed ticked wrote the lanes and 15 beats, and
+  PREVIEW stayed at 1 page; the menu then said why it was unavailable;
+  a saved custom template was listed and applied after a reload; Passage's
+  template then the Shape tool filled Starts and Ends; the Shape tool alone
+  still wrote the shape first time and filled a turn on update. Not tried in
+  the app: seeding on a 90-page target and the "already there" message (unit
+  tests only); the template picks up no `Page` from a saved structure, so a
+  custom template never seeds. Seen, not changed: a script named
+  "templates" (or "ideation") has a sidecar path that is the library-wide
+  file.
 
 ### S2.3 Board beside the script — `todo`
 

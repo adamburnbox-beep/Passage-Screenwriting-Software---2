@@ -456,6 +456,9 @@ public sealed class SlateStore
     // Ideation's file. Not a script sidecar, so the orphan sweep leaves it.
     public const string IdeationFile = "ideation.json";
 
+    // Saved structure templates (S2.2): library-wide, so also not a sidecar.
+    public const string TemplatesFile = "templates.json";
+
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     private readonly string _root;
@@ -538,7 +541,7 @@ public sealed class SlateStore
 
             foreach (var path in Directory.EnumerateFiles(_root, "*.json"))
             {
-                if (Path.GetFileName(path) == IdeationFile)
+                if (Path.GetFileName(path) is IdeationFile or TemplatesFile)
                 {
                     continue;
                 }
@@ -580,6 +583,32 @@ public sealed class SlateStore
         {
             Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, IdeationFile), JsonSerializer.Serialize(document, JsonOptions));
+        }
+    }
+
+    /// <summary>The saved custom templates, or null when there are none yet. A
+    /// corrupt file throws, as <see cref="Load"/> does.</summary>
+    public TemplatesDocument? LoadTemplates()
+    {
+        var path = Path.Combine(_root, TemplatesFile);
+        lock (_gate)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<TemplatesDocument>(File.ReadAllText(path), JsonOptions);
+        }
+    }
+
+    public void SaveTemplates(TemplatesDocument document)
+    {
+        document.SlateVersion = CurrentVersion;
+        lock (_gate)
+        {
+            Directory.CreateDirectory(_root);
+            File.WriteAllText(Path.Combine(_root, TemplatesFile), JsonSerializer.Serialize(document, JsonOptions));
         }
     }
 
