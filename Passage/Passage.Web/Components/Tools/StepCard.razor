@@ -55,12 +55,9 @@ else
             <div class="step-hint">This kind of question isn't in the runner yet.</div>
             break;
     }
-    @if (step.Send == TargetKind.Synopsis)
+    @if ((step.Kind is StepKind.Text or StepKind.Lines) && Exercise.Targets.Count > 0)
     {
-        <div class="step-send">
-            <button class="btn" title="Adds it to the script as a synopsis line" @onclick="PutAsync">Put it in the script</button>
-            <div class="fill-meta">@Host.SynopsisTargetLabel</div>
-        </div>
+        <SendToMenu Targets="Exercise.Targets" Character="@CharacterName" SynopsisLabel="@Host.SynopsisTargetLabel(Run.Anchor)" OnSend="SendAsync" />
     }
 }
 
@@ -69,13 +66,13 @@ else
     [Parameter, EditorRequired] public ExerciseRun Run { get; set; } = default!;
     [Parameter, EditorRequired] public StepSlot Slot { get; set; }
     [Parameter, EditorRequired] public IToolHost Host { get; set; } = default!;
+    [Parameter, EditorRequired] public Exercise Exercise { get; set; } = default!;
     // The card is being held open (reopened from the trail), so Enter ends the
     // hold instead of waiting for a change.
     [Parameter] public bool Held { get; set; }
     [Parameter] public EventCallback<StepSlot> OnChanged { get; set; }
     [Parameter] public EventCallback<StepSlot> OnContinue { get; set; }
     [Parameter] public EventCallback OnStopHere { get; set; }
-    [Parameter] public EventCallback<string> OnPutSynopsis { get; set; }
 
     private Task SetAnswerAsync(string value)
     {
@@ -100,17 +97,24 @@ else
         return OnChanged.InvokeAsync(Slot);
     }
 
-    // Not a disabled button: the field's change event and this tap arrive
-    // together, and a button disabled until the change lands would swallow it.
-    private Task PutAsync()
+    private string CharacterName => Run.Anchor.Kind == AnchorKind.Character ? Characters.BareName(Run.Anchor.Text) : string.Empty;
+
+    // The answer as it is now: the field's change event reaches the server
+    // before this tap does, so reading the run is enough.
+    private string AnswerText() => Slot.Step.Kind == StepKind.Lines
+        ? string.Join('\n', Enumerable.Range(0, Engine.LineCount(Run, Slot)).Select(i => Engine.GetLine(Run, Slot.Step.Key, Slot.Round, i)).Where(line => !string.IsNullOrWhiteSpace(line)))
+        : Engine.GetAnswer(Run, Slot.Step.Key, Slot.Round);
+
+    private async Task SendAsync(TargetKind target)
     {
-        var text = Engine.GetAnswer(Run, Slot.Step.Key, Slot.Round);
-        if (string.IsNullOrWhiteSpace(text))
+        var label = string.IsNullOrWhiteSpace(Slot.Step.Label) ? Slot.Step.Question : Slot.Step.Label;
+        var landed = await Host.SendAsync(target, new ToolSend(Run.Anchor, Exercise.Name, label, AnswerText()));
+        if (landed && !Run.Sent.Any(mark => mark.Key == Slot.Id && mark.Target == target))
         {
-            Host.SetStatus("Nothing to add yet — write the one line first");
-            return Task.CompletedTask;
+            Run.Sent.Add(new SentMark { Key = Slot.Id, Target = target });
         }
 
-        return OnPutSynopsis.InvokeAsync(text);
+        Host.Save();
+        await OnChanged.InvokeAsync(Slot);
     }
 }

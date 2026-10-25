@@ -333,8 +333,20 @@ Click New to start one — files are stored on the server volume.</div>
                                 <span class="character-count">@character.Words</span>
                                 <button class="icon-btn character-actions" title="Rename everywhere"
                                         @onclick="() => StartRename(character.Name)">✎</button>
+                                <button class="icon-btn character-tools" title="Writer's tools for @character.Name"
+                                        aria-expanded="@CastMenuOpen(character.Name)"
+                                        @onclick="() => ToggleCastMenu(character.Name)">Tools</button>
                             }
                         </div>
+                        @if (CastMenuOpen(character.Name))
+                        {
+                            <div class="tool-menu" role="menu">
+                                @foreach (var exercise in ExerciseCatalog.All)
+                                {
+                                    <button class="btn" role="menuitem" @onclick="() => StartCastToolAsync(exercise.Id, character.Name)">@exercise.Name</button>
+                                }
+                            </div>
+                        }
                         @if (_colourPickerFor == character.Name)
                         {
                             <div class="character-palette">
@@ -5822,6 +5834,11 @@ Open a .fountain file to see formatted pages.</div>
     private async Task ToggleWorkshopAsync()
     {
         _workshopOpen = !_workshopOpen;
+        if (_workshopOpen)
+        {
+            _toolsRotation++;
+        }
+
         await PersistSessionAsync();
     }
 
@@ -6174,13 +6191,25 @@ Open a .fountain file to see formatted pages.</div>
     }
 
     // Promotion: the one line goes into the script as a synopsis under the
-    // current heading, by ranged insert so undo survives. The run stays in the
-    // sidecar; the script now holds the result and the sidecar the working-out
-    // (decision B).
-    private async Task PutSynopsisAsync(string text)
+    // anchored scene (or the current heading, when the run names none), by
+    // ranged insert so undo survives. The run stays in the sidecar; the script
+    // now holds the result and the sidecar the working-out (decision B).
+    private async Task<bool> PutSynopsisAsync(string text, Anchor? anchor)
     {
-        var line = "= " + string.Join(' ', text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(part => part.Trim()));
-        var (insertAt, headingIndex) = PromotionTarget;
+        var line = ToolTargets.SynopsisLine(text);
+        var target = PromotionTarget;
+        if (anchor is { } named && HasSceneAnchor(named))
+        {
+            if (ProjectContext.Resolve(ProjectContext.Scenes(_analysis.Elements), named) is not { } scene)
+            {
+                _statusMessage = $"{SceneAnchorName(named)} is no longer in the script — nothing inserted";
+                return false;
+            }
+
+            target = SynopsisPlacement.Find(_analysis.LineClasses, scene.LineNumber - 1);
+        }
+
+        var (insertAt, headingIndex) = target;
         var heading = headingIndex >= 0 ? LineText(headingIndex) : null;
         bool inserted;
         try
@@ -6195,7 +6224,7 @@ Open a .fountain file to see formatted pages.</div>
         if (!inserted)
         {
             _statusMessage = "Could not add the line — nothing changed";
-            return;
+            return false;
         }
 
         // Mirror the edit so the next promotion targets the right line now,
@@ -6209,7 +6238,12 @@ Open a .fountain file to see formatted pages.</div>
         _statusMessage = heading is null
             ? $"Added a synopsis at line {insertAt + 1}"
             : $"Added a synopsis under {heading} (line {insertAt + 1})";
+        return true;
     }
+
+    private static bool HasSceneAnchor(Anchor anchor) => anchor.SceneId is not null || anchor.SceneText.Length > 0;
+
+    private static string SceneAnchorName(Anchor anchor) => anchor.SceneText.Length > 0 ? anchor.SceneText : "That scene";
 
     // ---- The tools dock host (docs/SLATE-REDO-PLAN.md R-D) ----
 
@@ -6225,9 +6259,33 @@ Open a .fountain file to see formatted pages.</div>
         public SlateDocument Slate => _editor._slate;
         public bool HasScript => _editor._fileName.Length > 0;
         public void Save() => _editor.SaveSlate();
-        public void SetStatus(string message) => _editor._statusMessage = message;
-        public Task PutSynopsisAsync(string text) => _editor.PutSynopsisAsync(text);
-        public string SynopsisTargetLabel => _editor.PromotionTargetLabel;
+        // The dock's own events re-render the dock only; the status bar belongs to the page.
+        public void SetStatus(string message)
+        {
+            _editor._statusMessage = message;
+            _editor.StateHasChanged();
+        }
+
+        public IReadOnlyList<CharacterChoice> Cast => ProjectContext.Cast(_editor._analysis.Characters, _editor._slate.Characters);
+        public IReadOnlyList<SceneChoice> Scenes => ProjectContext.Scenes(_editor._analysis.Elements);
+        public SceneChoice? SceneUnderCaret => ProjectContext.SceneAt(Scenes, _editor._caretLine);
+        public IReadOnlyList<string> SpeakersOf(SceneChoice scene) =>
+            ProjectContext.SpeakersOf(scene, StoryFilter.SceneSpeakers(_editor._analysis.Elements), Cast);
+        public SceneChoice? ResolveScene(Anchor anchor) => ProjectContext.Resolve(Scenes, anchor);
+        public IReadOnlyList<RightNowSuggestion> RightNow() => _editor.ToolRightNow();
+        public async Task<bool> SendAsync(TargetKind target, ToolSend send)
+        {
+            var landed = await _editor.SendToolAsync(target, send);
+            _editor.StateHasChanged();
+            return landed;
+        }
+
+        public string SynopsisTargetLabel(Anchor anchor) => _editor.SynopsisLabelFor(anchor);
+        public async Task JumpToAsync(Anchor anchor)
+        {
+            await _editor.JumpToToolAnchorAsync(anchor);
+            _editor.StateHasChanged();
+        }
         public bool BurstRunning => _editor._burstRunning;
         public Task StartBurstAsync(string rootId) => _editor.StartBurstAsync(rootId);
         public Task StopBurstAsync() => _editor.StopBurstAsync();
@@ -6243,6 +6301,184 @@ Open a .fountain file to see formatted pages.</div>
         _toolRunId = id;
         SaveSlate();
         await ScrollWorkshopToTopAsync();
+    }
+
+    // Opens the dock (if closed) straight into a new run with the anchor set —
+    // the Cast row, a Board card and Right now all come through here.
+    private async Task StartToolAsync(string exerciseId, Anchor anchor)
+    {
+        if (ExerciseCatalog.Find(exerciseId) is null)
+        {
+            return;
+        }
+
+        var run = new ExerciseRun { ExerciseId = exerciseId, Anchor = anchor };
+        _slate.Exercises.Add(run);
+        _workshopView = WorkshopView.Tools;
+        _toolMenuFor = null;
+        if (!_workshopOpen)
+        {
+            _workshopOpen = true;
+            await PersistSessionAsync();
+        }
+
+        await SetToolRunAsync(run.Id);
+    }
+
+    // Which Cast row or Board card has its Tools menu open ("cast:NAME" / "card:LINE").
+    private string? _toolMenuFor;
+
+    private void ToggleToolMenu(string key) => _toolMenuFor = _toolMenuFor == key ? null : key;
+
+    private bool CastMenuOpen(string name) => _toolMenuFor == "cast:" + name;
+
+    private void ToggleCastMenu(string name) => ToggleToolMenu("cast:" + name);
+
+    private bool CardMenuOpen(BoardCard card) => _toolMenuFor == "card:" + card.LineNumber;
+
+    private void ToggleCardMenu(BoardCard card) => ToggleToolMenu("card:" + card.LineNumber);
+
+    private Task StartCastToolAsync(string exerciseId, string character) =>
+        StartToolAsync(exerciseId, new Anchor { Kind = AnchorKind.Character, Text = character });
+
+    // A Board scene card: the scene is the anchor for exercises that take one,
+    // and the character defaults to whoever speaks most in it.
+    private Task StartCardToolAsync(string exerciseId, BoardCard card)
+    {
+        var host = _toolHost;
+        var scene = host.Scenes.FirstOrDefault(entry => entry.LineNumber == card.LineNumber);
+        var speaker = scene is null ? string.Empty : host.SpeakersOf(scene).FirstOrDefault() ?? string.Empty;
+        var anchor = new Anchor { Kind = AnchorKind.Character, Text = speaker };
+        if (scene is not null && ExerciseCatalog.Find(exerciseId)?.SceneToo == true)
+        {
+            anchor.SceneId = scene.Id;
+            anchor.SceneText = scene.Heading;
+        }
+
+        return StartToolAsync(exerciseId, anchor);
+    }
+
+    private int _toolsRotation;
+
+    private IReadOnlyList<RightNowSuggestion> ToolRightNow()
+    {
+        var cast = ProjectContext.Cast(_analysis.Characters, _slate.Characters);
+        var scene = ProjectContext.SceneAt(ProjectContext.Scenes(_analysis.Elements), _caretLine);
+        var speakers = scene is null
+            ? new List<string>()
+            : ProjectContext.SpeakersOf(scene, StoryFilter.SceneSpeakers(_analysis.Elements), cast);
+        var input = new RightNowInput
+        {
+            BracketUnderCaret = _analysis.Brackets.FirstOrDefault(bracket => bracket.LineNumber == _caretLine && !IsIgnored(bracket))?.Text,
+            SceneUnderCaret = scene,
+            SceneSpeakers = speakers,
+            NewestInboxBeat = _slate.Beats.LastOrDefault(beat => beat.Page == 0),
+            NoStructure = ShapeLine.Derive(_analysis.BoardLanes) is null
+                && !_analysis.Elements.OfType<SectionElement>().Any(section => section.SectionDepth <= 2),
+            CastWithoutNote = cast.Where(character => ProjectContext.NoteFor(_slate.Story, character.Name) is null).ToList(),
+            Rotation = _toolsRotation
+        };
+        return RightNow.Suggest(input, ExerciseCatalog.All.Select(exercise => exercise.Id).ToHashSet());
+    }
+
+    private string SynopsisLabelFor(Anchor anchor)
+    {
+        if (!HasSceneAnchor(anchor))
+        {
+            return PromotionTargetLabel;
+        }
+
+        return ProjectContext.Resolve(ProjectContext.Scenes(_analysis.Elements), anchor) is { } scene
+            ? $"Goes in as a = synopsis line under {scene.Heading} (line {scene.LineNumber})."
+            : $"{SceneAnchorName(anchor)} is no longer in the script — nothing will be inserted.";
+    }
+
+    private async Task<bool> SendToolAsync(TargetKind target, ToolSend send)
+    {
+        var text = send.Text.Trim();
+        if (text.Length == 0)
+        {
+            _statusMessage = "Nothing to send yet — write the answer first";
+            return false;
+        }
+
+        var character = send.Anchor.Kind == AnchorKind.Character ? send.Anchor.Text.Trim() : string.Empty;
+        switch (target)
+        {
+            case TargetKind.Synopsis:
+                return await PutSynopsisAsync(text, send.Anchor);
+            case TargetKind.InboxBeat:
+                var beat = ToolTargets.BuildBeat(text);
+                _slate.Beats.Add(beat);
+                if (character.Length > 0)
+                {
+                    ToolTargets.TagBeat(_slate.Story, beat, character);
+                }
+
+                SaveSlate();
+                _statusMessage = character.Length > 0
+                    ? $"Added to the Inbox, tagged {Characters.BareName(character)}"
+                    : "Added to the Inbox";
+                return true;
+            case TargetKind.NotePage:
+                if (character.Length == 0)
+                {
+                    _statusMessage = "Name a character first — the note page is theirs";
+                    return false;
+                }
+
+                var (page, created) = ToolTargets.AppendToNote(_slate.Story, character, send.Exercise, send.Label, text);
+                SaveSlate();
+                _statusMessage = created
+                    ? $"Started {page.Title}'s note page from the Character template and added it"
+                    : $"Added to {page.Title}'s note page";
+                return true;
+            case TargetKind.Copy:
+                bool copied;
+                try
+                {
+                    copied = await JS.InvokeAsync<bool>("passage.copyText", text);
+                }
+                catch (JSException)
+                {
+                    copied = false;
+                }
+
+                _statusMessage = copied ? "Copied" : "Could not copy — select the text and copy it by hand";
+                return copied;
+            default:
+                _statusMessage = "That target isn't available from here yet";
+                return false;
+        }
+    }
+
+    private async Task JumpToToolAnchorAsync(Anchor anchor)
+    {
+        int? line = null;
+        if (HasSceneAnchor(anchor))
+        {
+            line = ProjectContext.Resolve(ProjectContext.Scenes(_analysis.Elements), anchor)?.LineNumber;
+        }
+        else if (anchor.Kind == AnchorKind.Character && anchor.Text.Length > 0)
+        {
+            var name = Characters.BareName(anchor.Text);
+            line = _analysis.Elements.OfType<CharacterElement>()
+                .FirstOrDefault(cue => Characters.BareName(cue.CharacterName) == name)?.LineNumber;
+        }
+
+        if (line is null)
+        {
+            _statusMessage = "That isn't in the script right now";
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("passage.scrollToLine", line.Value, false);
+        }
+        catch (JSException)
+        {
+        }
     }
 
     // The tools that are not exercises yet keep their old view until the row
@@ -7330,7 +7566,22 @@ Open a .fountain file to see formatted pages.</div>
                         <button class="icon-btn card-edit-btn" title="Edit card"
                                 @onclick="() => StartCardEdit(card)" @onclick:stopPropagation="true">✎</button>
                     }
+                    @if (card.Kind == "Scene")
+                    {
+                        <button class="icon-btn card-tools-btn" title="Writer's tools for this scene"
+                                aria-expanded="@CardMenuOpen(card)"
+                                @onclick="() => ToggleCardMenu(card)" @onclick:stopPropagation="true">Tools</button>
+                    }
                 </div>
+                @if (CardMenuOpen(card))
+                {
+                    <div class="tool-menu" role="menu">
+                        @foreach (var exercise in ExerciseCatalog.All)
+                        {
+                            <button class="btn" role="menuitem" @onclick="() => StartCardToolAsync(exercise.Id, card)" @onclick:stopPropagation="true">@exercise.Name</button>
+                        }
+                    </div>
+                }
                 <div class="card-heading">@card.Heading</div>
                 @RenderTagMarks(IsStampedCard(card) ? card.Id : Guid.Empty)
                 @if (card.Description.Length > 0)

@@ -1528,32 +1528,86 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
     white-space: nowrap;
 }
 
-.runner-anchor {
+/* What the run is about: name in their colour, the scene, a jump and a change link. */
+.anchor-strip {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    align-items: center;
+    gap: 8px;
     padding: 8px 10px;
     border: 1px solid var(--control-border);
     border-radius: var(--radius);
 }
 
-.runner-anchor-label {
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted-text);
+.anchor-glyph { font-size: 14px; }
+.anchor-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.anchor-name { font-size: 14px; color: var(--header-text); display: flex; align-items: center; gap: 6px; }
+.anchor-empty { color: var(--muted-text); }
+.anchor-scene, .anchor-gone { font-size: 11.5px; color: var(--muted-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.anchor-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; margin-right: 6px; }
+.anchor-name .anchor-dot { margin-right: 0; }
+.anchor-dot.none { border: 1px solid var(--control-border); }
+.anchor-strip .icon-btn { background: transparent; border: none; color: var(--muted-text); cursor: pointer; padding: 2px 4px; font: inherit; font-size: 12px; }
+.anchor-strip .icon-btn:hover { color: var(--control-foreground); }
+
+.anchor-picker { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; border: 1px solid var(--control-border); border-radius: var(--radius); }
+.anchor-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.anchor-chip {
+    display: inline-flex;
+    align-items: center;
+    background: var(--control-background);
+    color: var(--secondary-text);
+    border: 1px solid var(--control-border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
 }
 
-.runner-anchor input {
-    background: none;
-    border: none;
-    outline: none;
+.anchor-chip:hover { border-color: var(--muted-text); }
+.anchor-chip.on { background: var(--control-accent); border-color: var(--control-accent); color: var(--control-pressed-foreground); }
+.anchor-else { display: flex; flex-direction: column; gap: 3px; padding: 0; }
+.anchor-else input, .anchor-else select {
+    background: var(--control-background);
     color: var(--control-foreground);
+    border: 1px solid var(--control-border);
+    border-radius: 6px;
     font: inherit;
-    font-size: 14px;
-    padding: 2px 0;
+    font-size: 13px;
+    padding: 4px 6px;
     min-width: 0;
 }
+
+/* Send to: a small menu under the answer. */
+.send-to { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.send-menu { display: flex; flex-direction: column; gap: 4px; align-items: stretch; width: 100%; }
+.send-menu .btn { text-align: left; }
+
+/* Right now: up to three lines above the chips. */
+.right-now { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.right-now-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    text-align: left;
+    background: var(--control-background);
+    color: var(--control-foreground);
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.right-now-item:hover { border-color: var(--muted-text); }
+.right-now-name { font-size: 13px; font-weight: 600; }
+.right-now-detail { font-size: 12px; color: var(--muted-text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The Tools menu on a Cast row or a Board card. */
+.tool-menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px; }
+.card-tools-btn { font-size: 11px; color: var(--muted-text); }
+.card-top .card-tools-btn { margin-left: 4px; }
 
 /* "Why?" and the "Earlier" fold share one look: muted, collapsed. */
 .why, .trail-earlier { font-size: 12px; color: var(--secondary-text); }
@@ -2075,7 +2129,7 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 /* Character panel (HIGHLAND-PLAN H3.1) */
 .character-row {
     display: grid;
-    grid-template-columns: 16px 18px 1fr 40px 48px 22px;
+    grid-template-columns: 16px 18px 1fr 40px 48px 22px 34px;
     align-items: center;
     gap: 6px;
     padding: 4px 8px;

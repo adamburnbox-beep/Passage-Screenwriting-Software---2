@@ -2191,10 +2191,10 @@ window.passage = (function () {
             return;
         }
         const next = root.querySelector("[data-next]");
-        const blank = target.value.trim() === "";
-        const held = target.hasAttribute("data-held");
         target.blur();
-        if (next && (blank || held)) next.click();
+        // An answered step holds the card (so Send to stays reachable) until
+        // Next, so Enter always taps it: the change event saves, then Next moves on.
+        if (next) next.click();
     });
 
     // The CodeMirror instance is exposed for end-to-end tests.

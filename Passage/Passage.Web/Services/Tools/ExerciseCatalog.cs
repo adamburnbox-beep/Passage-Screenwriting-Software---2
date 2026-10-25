@@ -13,9 +13,10 @@ public static class ExerciseCatalog
         Name = "WOAC chain",
         Tagline = "What happens next, round by round",
         Shelf = Shelf.SceneGoing,
-        Anchor = AnchorKind.None,
-        AnchorLabel = "Character + starting want",
-        Targets = new[] { TargetKind.Synopsis },
+        Anchor = AnchorKind.Character,
+        SceneToo = true,
+        AnchorLabel = "Whose want?",
+        Targets = new[] { TargetKind.InboxBeat, TargetKind.Synopsis, TargetKind.NotePage, TargetKind.Copy },
         Why = "Want → Obstacle → Action → Consequence. Each round: what does the character want right now, "
             + "what's in their way, what do they do about it, and what happens as a result? That consequence "
             + "becomes next round's want automatically, so you never have to invent a new question, just carry "
@@ -32,7 +33,7 @@ public static class ExerciseCatalog
             new Step { Key = "consequence", Label = "Consequence", Group = "round", Offer = true,
                 Question = "What happens as a result?", Hint = "This becomes the next want." },
             new Step { Key = "loop", Kind = StepKind.Loop, LoopGroup = "round", CarryFrom = "consequence", CarryTo = "want" },
-            new Step { Key = "readback", Label = "Read it back", Multiline = true, Send = TargetKind.Synopsis,
+            new Step { Key = "readback", Label = "Read it back", Multiline = true,
                 Question = "Read it back — what's the scene now, in one line?" }
         }
     };
@@ -55,9 +56,9 @@ public static class ExerciseCatalog
         Name = "Character Flaw Brainstorm",
         Tagline = "One flaw, eight questions, a surprise",
         Shelf = Shelf.SceneGoing,
-        Anchor = AnchorKind.None,
-        AnchorLabel = "Character + the flaw",
-        Targets = new[] { TargetKind.Synopsis },
+        Anchor = AnchorKind.Character,
+        AnchorLabel = "Whose flaw?",
+        Targets = new[] { TargetKind.NotePage, TargetKind.InboxBeat, TargetKind.Copy },
         Why = "Eight fixed questions that take one character flaw from the worst situation it causes to a "
             + "surprising final action. Same chain grammar as WOAC, but a fixed-length loop, each question "
             + "different from the last. You can stop after any question — a partial chain is still real "
@@ -65,7 +66,7 @@ public static class ExerciseCatalog
             + "finishing the set in one sitting is worth more here than with WOAC's open-ended rounds.",
         Steps = FlawQuestions
             .Select((question, i) => new Step { Key = $"q{i}", Label = question, Question = question, Offer = true })
-            .Append(new Step { Key = "readback", Label = "Read it back", Multiline = true, Send = TargetKind.Synopsis,
+            .Append(new Step { Key = "readback", Label = "Read it back", Multiline = true,
                 Question = "Read it back — what's the scene now, in one line?" })
             .ToList()
     };
