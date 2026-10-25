@@ -1974,6 +1974,12 @@ pre.CodeMirror-placeholder { color: var(--muted-text) !important; }
 .key-star { background: none; border: none; cursor: pointer; padding: 0 4px; color: var(--muted-text); font-size: 1em; }
 .key-star.on { color: #d9a21b; }
 .dimmed { opacity: 0.35; }
+.filter-bar { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-menu { position: relative; }
+.filter-menu > summary { cursor: pointer; list-style: none; }
+.filter-menu > summary.active { font-weight: bold; }
+.filter-pop { position: absolute; z-index: 20; top: 100%; left: 0; min-width: 160px; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--card-bg, Canvas); border: 1px solid var(--card-border, #8884); border-radius: 6px; }
+.filter-none { color: var(--muted-text); font-size: 0.9em; }
 .key-only-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .detached-list { padding: 8px 12px; border-bottom: 1px solid var(--border, #8884); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .detached-note { color: var(--muted-text); font-size: 0.9em; }

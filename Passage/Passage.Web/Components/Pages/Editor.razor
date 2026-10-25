@@ -526,7 +526,7 @@ Click New to start one — files are stored on the server volume.</div>
                 {
                     var detachedItems = DetachedItems;
                     <div class="preview-toolbar beats-toolbar board-toolbar">
-                        <label class="key-only-toggle"><input type="checkbox" @bind="_keyOnly" /> Key only</label>
+                        @RenderFilterBar
                         @if (detachedItems.Count > 0)
                         {
                             <button class="btn" @onclick="() => _showDetached = !_showDetached">Detached (@detachedItems.Count)</button>
@@ -574,7 +574,7 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                 {
                                     <div class="board-lane-head">
                                         <span class="board-twisty" @onclick="() => ToggleLane(laneKey)">@(laneOpen ? "▾" : "▸")</span>
-                                        <span class="board-lane-title @DimClass(lane.ActCard)" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
+                                        <span class="board-lane-title @DimLane(lane)" @onclick="() => ToggleLane(laneKey)">@(lane.ActCard?.Heading ?? "Script")</span>
                                         @if (lane.ActCard is not null && lane.ActCard.Id != Guid.Empty)
                                         {
                                             @RenderCardStar(lane.ActCard)
@@ -606,7 +606,7 @@ Add Acts (#), Sequences (##), and Scenes to see nested index cards here.</div>
                                                 {
                                                     <div class="board-group-head">
                                                         <span class="board-twisty" @onclick="() => ToggleGroup(groupKey)">@(groupOpen ? "▾" : "▸")</span>
-                                                        <span class="board-group-title @DimClass(group.SequenceCard)" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
+                                                        <span class="board-group-title @DimGroup(group)" @onclick="() => ToggleGroup(groupKey)">@group.SequenceCard.Heading</span>
                                                         @RenderCardStar(group.SequenceCard)
                                                         <button class="icon-btn board-add" title="Edit sequence"
                                                                 @onclick="() => StartCardEdit(group.SequenceCard)">✎</button>
@@ -655,7 +655,7 @@ Open a .fountain file to plan beats against its pages.</div>
                         <label class="beats-target">Target
                             <input type="number" class="burst-seconds" min="1" max="@BeatSheet.MaxTargetPages"
                                    @bind="_slate.BeatSheetPages" @bind:after="SetBeatTarget" /> pages</label>
-                        <label class="key-only-toggle"><input type="checkbox" @bind="_keyOnly" /> Key only</label>
+                        @RenderFilterBar
                         <span>Double-click a page to add a beat</span>
                         @if (unplacedScenes > 0)
                         {
@@ -703,7 +703,7 @@ Open a .fountain file to plan beats against its pages.</div>
                                 <div class="beat-track" style="grid-column:@pageScenes.Key;grid-row:-2 / -1">
                                     @foreach (var scene in pageScenes)
                                     {
-                                        <button class="beat-scene" title="@scene.Heading (line @scene.LineNumber)"
+                                        <button class="beat-scene @DimScene(scene)" title="@scene.Heading (line @scene.LineNumber)"
                                                 @onclick="() => JumpToLineAsync(scene.LineNumber)">@scene.Heading</button>
                                     }
                                 </div>
@@ -2515,6 +2515,10 @@ Open a .fountain file to see formatted pages.</div>
 
         public OutlineFilters? OutlineFilters { get; init; }
 
+        public StoryFilter? BoardFilter { get; init; }
+
+        public StoryFilter? BeatFilter { get; init; }
+
         // "Classify As" overrides ride in the session key, per row 3.2's note
         // that they are session state rather than file content.
         public Dictionary<string, string>? LineOverrides { get; init; }
@@ -2585,6 +2589,8 @@ Open a .fountain file to see formatted pages.</div>
         _focusLine = snapshot.FocusLine;
         _wordsPerMinute = Math.Clamp(snapshot.WordsPerMinute, MinWordsPerMinute, MaxWordsPerMinute);
         _outlineFilters = snapshot.OutlineFilters ?? new OutlineFilters();
+        _boardFilter = snapshot.BoardFilter ?? new StoryFilter();
+        _beatFilter = snapshot.BeatFilter ?? new StoryFilter();
 
         // Prune entries the server no longer has rather than erroring on click.
         _recentFiles.Clear();
@@ -3429,7 +3435,6 @@ Open a .fountain file to see formatted pages.</div>
 
     // ---- Key beats and story items (docs/STORY-PLAN.md S1.1) ----
 
-    private bool _keyOnly;
     private bool _showDetached;
     private bool _confirmDiscardAll;
 
@@ -3440,8 +3445,135 @@ Open a .fountain file to see formatted pages.</div>
     private bool IsCardKey(BoardCard card) =>
         card.Id != Guid.Empty && !IsDuplicateCard(card) && StoryItems.IsKey(_slate.Story, card.Id);
 
+    // ---- Filters (S1.5): dim, never hide. One set per view, per browser. ----
+
+    private StoryFilter _boardFilter = new();
+    private StoryFilter _beatFilter = new();
+    private StoryFilter ActiveFilter => _mainViewIndex == 2 ? _beatFilter : _boardFilter;
+
+    private async Task SetStoryFilterAsync(StoryFilter filter)
+    {
+        var view = _mainViewIndex == 2 ? "beats" : "board";
+        if (view == "beats") _beatFilter = filter; else _boardFilter = filter;
+        try
+        {
+            await JS.InvokeVoidAsync("passage.setStoryFilter", view, filter);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private object? _filterFor;
+    private Dictionary<int, HashSet<string>> _filterSpeakers = new();
+    private Dictionary<int, SceneHeadingElement> _filterScenes = new();
+
+    private void EnsureFilterCaches()
+    {
+        if (ReferenceEquals(_filterFor, _analysis)) return;
+        _filterFor = _analysis;
+        _filterSpeakers = StoryFilter.SceneSpeakers(_analysis.Elements);
+        _filterScenes = _analysis.Elements.OfType<SceneHeadingElement>().ToDictionary(scene => scene.LineNumber);
+    }
+
+    // A scene matches a character by explicit tag or by speaking in it, and a
+    // location by its own heading or an explicit tag (decision C).
+    private bool ItemMatches(StoryFilter filter, Guid id, string? sceneHeading, int line)
+    {
+        EnsureFilterCaches();
+        var tags = TagsOf(id);
+        var characters = new HashSet<string>(tags?.Characters ?? new List<string>());
+        var locations = new HashSet<string>(tags?.Locations ?? new List<string>());
+        if (sceneHeading is not null)
+        {
+            if (_filterSpeakers.TryGetValue(line, out var speakers)) characters.UnionWith(speakers);
+            var own = Passage.Web.Services.Locations.Normalise(sceneHeading);
+            if (own.Length > 0) locations.Add(own);
+        }
+
+        return filter.Matches(tags?.Key == true, tags?.Storylines ?? new List<Guid>(), characters, locations);
+    }
+
+    private bool CardMatches(StoryFilter filter, BoardCard card) =>
+        ItemMatches(filter, IsStampedCard(card) ? card.Id : Guid.Empty, card.Kind == "Scene" ? card.Heading : null, card.LineNumber);
+
+    private bool GroupMatches(StoryFilter filter, BoardGroup group) =>
+        StoryFilter.LaneMatches(group.SequenceCard is { } sequence && CardMatches(filter, sequence), group.Cards.Select(card => CardMatches(filter, card)));
+
     private string? DimClass(BoardCard? card) =>
-        _keyOnly && (card is null || !IsCardKey(card)) ? "dimmed" : null;
+        ActiveFilter.IsActive && (card is null || !CardMatches(ActiveFilter, card)) ? "dimmed" : null;
+
+    private string? DimGroup(BoardGroup group) =>
+        _boardFilter.IsActive && !GroupMatches(_boardFilter, group) ? "dimmed" : null;
+
+    private string? DimLane(BoardLane lane) =>
+        _boardFilter.IsActive && !StoryFilter.LaneMatches(lane.ActCard is { } act && CardMatches(_boardFilter, act), lane.Groups.Select(group => GroupMatches(_boardFilter, group))) ? "dimmed" : null;
+
+    private string? DimBeat(Beat beat) =>
+        _beatFilter.IsActive && !ItemMatches(_beatFilter, beat.Id, null, 0) ? "dimmed" : null;
+
+    private string? DimScene(ScenePlacement scene)
+    {
+        if (!_beatFilter.IsActive) return null;
+        EnsureFilterCaches();
+        if (!_filterScenes.TryGetValue(scene.LineNumber, out var element)) return "dimmed";
+        var id = element.Id != Guid.Empty && _analysis.DuplicateIdLines?.Contains(scene.LineNumber) != true ? element.Id : Guid.Empty;
+        return ItemMatches(_beatFilter, id, scene.Heading, scene.LineNumber) ? null : "dimmed";
+    }
+
+    private RenderFragment RenderFilterBar => __builder =>
+    {
+        var filter = ActiveFilter;
+        <span class="filter-bar" title="Choices combine: any one within a group (OR), all groups together (AND). Items that don't match are dimmed, not hidden.">
+            <details class="filter-menu">
+                <summary class="btn @(filter.Storylines.Count > 0 ? "active" : null)">Storylines@(filter.Storylines.Count > 0 ? $" ({filter.Storylines.Count})" : "")</summary>
+                <div class="filter-pop">
+                    @foreach (var line in _slate.Story.Storylines)
+                    {
+                        var lineId = line.Id;
+                        <label><input type="checkbox" checked="@filter.Storylines.Contains(lineId)" @onchange="() => SetStoryFilterAsync(ActiveFilter.ToggleStoryline(lineId))" /> @(line.Name.Length > 0 ? line.Name : "Unnamed storyline")</label>
+                    }
+                    @if (_slate.Story.Storylines.Count == 0)
+                    {
+                        <span class="filter-none">No storylines yet</span>
+                    }
+                </div>
+            </details>
+            <details class="filter-menu">
+                <summary class="btn @(filter.Characters.Count > 0 ? "active" : null)">Characters@(filter.Characters.Count > 0 ? $" ({filter.Characters.Count})" : "")</summary>
+                <div class="filter-pop">
+                    @foreach (var stat in _analysis.Characters)
+                    {
+                        var name = stat.Name;
+                        <label><input type="checkbox" checked="@filter.Characters.Contains(name)" @onchange="() => SetStoryFilterAsync(ActiveFilter.ToggleCharacter(name))" /> @name</label>
+                    }
+                    @if (_analysis.Characters.Count == 0)
+                    {
+                        <span class="filter-none">No characters yet</span>
+                    }
+                </div>
+            </details>
+            <details class="filter-menu">
+                <summary class="btn @(filter.Locations.Count > 0 ? "active" : null)">Locations@(filter.Locations.Count > 0 ? $" ({filter.Locations.Count})" : "")</summary>
+                <div class="filter-pop">
+                    @foreach (var place in _analysis.Locations ?? Array.Empty<LocationEntry>())
+                    {
+                        var name = place.Name;
+                        <label><input type="checkbox" checked="@filter.Locations.Contains(name)" @onchange="() => SetStoryFilterAsync(ActiveFilter.ToggleLocation(name))" /> @name</label>
+                    }
+                    @if (_analysis.Locations is not { Count: > 0 })
+                    {
+                        <span class="filter-none">No locations yet</span>
+                    }
+                </div>
+            </details>
+            <label class="key-only-toggle"><input type="checkbox" checked="@filter.KeyOnly" @onchange="e => SetStoryFilterAsync(ActiveFilter with { KeyOnly = IsChecked(e) })" /> Key only</label>
+            @if (filter.IsActive)
+            {
+                <button class="btn" @onclick="() => SetStoryFilterAsync(new StoryFilter())">Clear</button>
+            }
+        </span>
+    };
 
     private Dictionary<Guid, string> CardLabels()
     {
@@ -6343,7 +6475,7 @@ Open a .fountain file to see formatted pages.</div>
     private RenderFragment<(Beat Beat, int? Row)> RenderBeat => item => __builder =>
     {
         var beat = item.Beat;
-        <div class="beat-card @(_editingBeat == beat ? "selected" : null) @(_keyOnly && !StoryItems.IsKey(_slate.Story, beat.Id) ? "dimmed" : null)"
+        <div class="beat-card @(_editingBeat == beat ? "selected" : null) @DimBeat(beat)"
              data-beat-id="@beat.Id" data-page="@beat.Page" data-span="@beat.Span"
              data-item-kind="beat" data-item-id="@beat.Id"
              style="@BeatStyle(beat, item.Row)"
